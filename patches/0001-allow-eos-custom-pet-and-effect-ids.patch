@@ -1,0 +1,16 @@
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 0000000000..0000000000 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@
+-#define MAX_EFFECTID 814 // 768 real + 46 custom
++#define MAX_EFFECTID 815 // 768 real + 47 custom
+ DECLARE_FORMAT_AS_UNDERLYING(EFFECT);
+diff --git a/src/map/utils/petutils.h b/src/map/utils/petutils.h
+index 0000000000..0000000000 100644
+--- a/src/map/utils/petutils.h
++++ b/src/map/utils/petutils.h
+@@
+-    MAX_PETID = 128,
++    MAX_PETID = 129,
+ };

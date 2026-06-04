@@ -1,0 +1,8 @@
+/.gitattributes text eol=lf
+*.cpp text eol=lf
+*.lua text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.patch text eol=lf
+*.DAT binary
