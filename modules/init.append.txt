@@ -3,4 +3,6 @@ custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
+custom/sql/sch_specs.sql
 custom/commands/spec.lua
+custom/commands/eos.lua

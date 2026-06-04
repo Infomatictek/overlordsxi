@@ -12,14 +12,17 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/lua/overlords_job_specs.lua` defines the reusable per-job spec helper API.
 - `modules/custom/lua/sch_specs.lua` defines the SCH Medic and Sage spec behavior.
 - `modules/custom/commands/spec.lua` adds the player-facing `!spec` command.
+- `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss`.
 - `modules/custom/cpp/eos_companion.cpp` defines Eos support AI and Orphic Egg's Eos-only Refresh behavior.
 - `modules/custom/sql/eos_companion.sql` defines the ability row, pet row, mob pool, Eos spell list, custom status rows, and Orphic Egg DB changes.
+- `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 
-One tiny engine patch is still required:
+Two small engine patches are still required:
 
 - `patches/0001-allow-eos-custom-pet-and-effect-ids.patch` raises `MAX_PETID` from `128` to `129` and `MAX_EFFECTID` from `814` to `815`.
+- `patches/0002-eos-deterministic-level-and-subjob.patch` makes Eos spawn at the master's level and correctly initializes her SCH main job / SMN subjob levels.
 
-That patch is needed because LSB bounds pet IDs and status effect IDs in C++. The packaged version does not need direct edits to `pet_controller.cpp`, `status_effect_container.cpp`, `modifier.h`, base Lua enums, or base SQL files.
+The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The packaged version does not need direct edits to `pet_controller.cpp`, `status_effect_container.cpp`, `modifier.h`, base Lua enums, or base SQL files.
 
 ## Install
 
@@ -28,12 +31,15 @@ From your LandSandBoat checkout:
 ```powershell
 Set-Location C:\dev\server
 git apply C:\path\to\overlordsxi\patches\0001-allow-eos-custom-pet-and-effect-ids.patch
+git apply C:\path\to\overlordsxi\patches\0002-eos-deterministic-level-and-subjob.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\eos_companion.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\sch_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\spec.lua .\modules\custom\commands\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\eos.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\eos_companion.cpp .\modules\custom\cpp\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companion.sql .\modules\custom\sql\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\sch_specs.sql .\modules\custom\sql\
 ```
 
 Add these lines to `modules/init.txt`:
@@ -44,7 +50,9 @@ custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
+custom/sql/sch_specs.sql
 custom/commands/spec.lua
+custom/commands/eos.lua
 ```
 
 Apply the SQL module with dbtool, or manually import `modules/custom/sql/eos_companion.sql` into `xidb`.
@@ -88,6 +96,8 @@ Players can use:
 !spec set medic
 !spec set sage
 !spec clear
+!eos heal
+!eos dismiss
 ```
 
 Current SCH spec slots:

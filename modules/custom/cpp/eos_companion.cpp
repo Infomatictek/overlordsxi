@@ -20,6 +20,7 @@
 #include "map/status_effect.h"
 #include "map/status_effect_container.h"
 #include "map/utils/moduleutils.h"
+#include "map/utils/petutils.h"
 #include "map/zone.h"
 
 #include <algorithm>
@@ -32,6 +33,8 @@ namespace
 {
 
 constexpr uint32 EosPetId           = 128;
+constexpr auto   EosSpecVar         = "OX_SPEC_SCH";
+constexpr int32  EosMedicSpecId     = 1;
 constexpr EFFECT EosRegenEffect     = static_cast<EFFECT>(789);
 constexpr EFFECT EosRefreshEffect   = static_cast<EFFECT>(814);
 constexpr Mod    EosRefreshMod      = static_cast<Mod>(1198);
@@ -51,6 +54,50 @@ std::unordered_map<uint32, timer::time_point> nextEosCastTime;
 bool IsEos(CPetEntity* PPet)
 {
     return PPet && PPet->m_PetID == EosPetId && PPet->isAlive();
+}
+
+bool IsMedicScholar(CCharEntity* PMaster)
+{
+    return PMaster && PMaster->GetMJob() == JOB_SCH && PMaster->getCharVar(EosSpecVar) == EosMedicSpecId;
+}
+
+bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
+{
+    if (!PPet || !PPet->PMaster || PPet->PMaster->objtype != TYPE_PC)
+    {
+        return false;
+    }
+
+    auto* PMaster = static_cast<CCharEntity*>(PPet->PMaster);
+    if (!IsMedicScholar(PMaster))
+    {
+        petutils::DespawnPet(PMaster);
+        return false;
+    }
+
+    const auto mainLevel = PMaster->GetMLevel();
+    if (PPet->GetMJob() != JOB_SCH)
+    {
+        PPet->SetMJob(JOB_SCH);
+    }
+
+    if (PPet->GetSJob(true) != JOB_SMN)
+    {
+        PPet->SetSJob(JOB_SMN);
+    }
+
+    if (PPet->GetMLevel() != mainLevel)
+    {
+        PPet->SetMLevel(mainLevel);
+    }
+
+    const auto expectedSubLevel = mainLevel == 1 ? 1 : mainLevel / 2;
+    if (PPet->GetSLevel() != expectedSubLevel)
+    {
+        PPet->SetSLevel(mainLevel);
+    }
+
+    return true;
 }
 
 bool IsSupportTarget(CPetEntity* PPet, CBattleEntity* PTarget)
@@ -112,6 +159,33 @@ bool NeedsEosRegen(CBattleEntity* PTarget, timer::time_point tick)
     return !PEosRegen || PEosRegen->GetStartTime() + PEosRegen->GetDuration() <= tick + EosRegenWindow;
 }
 
+SpellID GetEosRegenSpell(CPetEntity* PPet)
+{
+    const auto level = PPet ? PPet->GetMLevel() : 1;
+
+    if (level >= 81)
+    {
+        return SpellID::Regen_V;
+    }
+
+    if (level >= 61)
+    {
+        return SpellID::Regen_IV;
+    }
+
+    if (level >= 41)
+    {
+        return SpellID::Regen_III;
+    }
+
+    if (level >= 21)
+    {
+        return SpellID::Regen_II;
+    }
+
+    return SpellID::Regen;
+}
+
 std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_point tick)
 {
     if (!PPet || !PPet->PMaster || PPet->PMaster->objtype != TYPE_PC)
@@ -157,6 +231,11 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
         return partyAction;
     }
 
+    if (auto petAction = checkNaTarget(PPet); petAction.has_value())
+    {
+        return petAction;
+    }
+
     auto checkRegenTarget = [&](CBattleEntity* PTarget) -> std::optional<EosSupportAction>
     {
         if (!IsSupportTarget(PPet, PTarget) || !NeedsEosRegen(PTarget, tick))
@@ -164,8 +243,13 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
             return std::nullopt;
         }
 
-        return EosSupportAction{ SpellID::Regen, PTarget };
+        return EosSupportAction{ GetEosRegenSpell(PPet), PTarget };
     };
+
+    if (auto petRegen = checkRegenTarget(PPet); petRegen.has_value())
+    {
+        return petRegen;
+    }
 
     if (auto masterRegen = checkRegenTarget(PMaster); masterRegen.has_value())
     {
@@ -289,6 +373,11 @@ class EosCompanionModule : public CPPModule
             [tick](CPetEntity* PPet)
             {
                 if (!IsEos(PPet))
+                {
+                    return;
+                }
+
+                if (!EnsureEosOwnerAndJobs(PPet))
                 {
                     return;
                 }

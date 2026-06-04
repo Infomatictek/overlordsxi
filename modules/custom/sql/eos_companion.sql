@@ -32,10 +32,14 @@ VALUES
     (6020, 'faerie_companion', 'Faerie', 274, 0x0000EE0700000000000000000000000000000000, 20, 15, 7, 240, 100,
      0, 0, 0, 0, 0, 0, 32, 0, 3, 0, 0, 566, 0, 0, 195, 195, 0, 6);
 
--- Eos starts with Regen and status removal spells at level 1.
+-- Eos starts with Regen at level 1, then upgrades Regen tiers as she levels.
 DELETE FROM `mob_spell_lists` WHERE `spell_list_id` = 566;
 INSERT INTO `mob_spell_lists` (`spell_list_name`, `spell_list_id`, `spell_id`, `min_level`, `max_level`) VALUES
     ('eos_companion', 566, 108, 1, 255), -- Regen
+    ('eos_companion', 566, 110, 21, 255), -- Regen II
+    ('eos_companion', 566, 111, 41, 255), -- Regen III
+    ('eos_companion', 566, 477, 61, 255), -- Regen IV
+    ('eos_companion', 566, 504, 81, 255), -- Regen V
     ('eos_companion', 566, 14,  1, 255), -- Poisona
     ('eos_companion', 566, 15,  1, 255), -- Paralyna
     ('eos_companion', 566, 16,  1, 255), -- Blindna
