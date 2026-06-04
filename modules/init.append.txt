@@ -1,3 +1,6 @@
+custom/lua/overlords_job_specs.lua
 custom/lua/eos_companion.lua
+custom/lua/sch_specs.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
+custom/commands/spec.lua

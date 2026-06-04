@@ -9,6 +9,9 @@ Eos is a real pet, not a trust. She maintains a stackable Regen on the master, p
 Most of the customization is packaged as LandSandBoat modules:
 
 - `modules/custom/lua/eos_companion.lua` defines the new ability behavior and the Eos-only Regen spell override.
+- `modules/custom/lua/overlords_job_specs.lua` defines the reusable per-job spec helper API.
+- `modules/custom/lua/sch_specs.lua` defines the SCH Medic and Sage spec behavior.
+- `modules/custom/commands/spec.lua` adds the player-facing `!spec` command.
 - `modules/custom/cpp/eos_companion.cpp` defines Eos support AI and Orphic Egg's Eos-only Refresh behavior.
 - `modules/custom/sql/eos_companion.sql` defines the ability row, pet row, mob pool, Eos spell list, custom status rows, and Orphic Egg DB changes.
 
@@ -26,6 +29,9 @@ From your LandSandBoat checkout:
 Set-Location C:\dev\server
 git apply C:\path\to\overlordsxi\patches\0001-allow-eos-custom-pet-and-effect-ids.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\eos_companion.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\sch_specs.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\spec.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\eos_companion.cpp .\modules\custom\cpp\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companion.sql .\modules\custom\sql\
 ```
@@ -33,9 +39,12 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companio
 Add these lines to `modules/init.txt`:
 
 ```text
+custom/lua/overlords_job_specs.lua
 custom/lua/eos_companion.lua
+custom/lua/sch_specs.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
+custom/commands/spec.lua
 ```
 
 Apply the SQL module with dbtool, or manually import `modules/custom/sql/eos_companion.sql` into `xidb`.
@@ -62,6 +71,35 @@ The overlay updates:
 - Orphic Egg item text to show Eos Refresh scaling
 
 The server enforces the real 5 minute recast.
+
+## Job Specs
+
+The package includes the first pass of a reusable job spec system. Spec choices are stored as character variables, one per job. SCH currently uses:
+
+```text
+OX_SPEC_SCH
+```
+
+Players can use:
+
+```text
+!spec
+!spec list
+!spec set medic
+!spec set sage
+!spec clear
+```
+
+Current SCH spec slots:
+
+- `medic` / Medic: Addendum: White remains a 2 hour stance, Sublimation charging stores MP twice as fast without HP drain, and Cure/Regen spells use Accession-style 10y AoE without consuming Stratagem charges.
+- `sage` / Sage: Addendum: Black remains a 2 hour stance, Ebullience is permanent for black magic, Helix damage is increased by 50%, Helix duration is extended to 2 hours, magic attack bonus is increased by 30, and elemental magic gets a 10% target Magic Evasion bypass as bonus accuracy.
+
+Spell and ability modules can branch with:
+
+```lua
+xi.overlords.spec.is(player, xi.job.SCH, 'medic')
+```
 
 ## IDs
 
