@@ -32,6 +32,25 @@ The first patch is needed because LSB bounds pet IDs and status effect IDs in C+
 
 ## Install
 
+### Automated Local Server Setup (Windows)
+
+Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from PowerShell to clone or update `landsandboat/server`, apply `patches/*.patch`, copy `modules/custom/*`, merge `modules/init.append.txt` into `modules/init.txt`, copy `dat-overlay/ROM`, optionally install the Ashita v4 addon, and compile `xi_connect`, `xi_world`, `xi_search`, and `xi_map`:
+
+```powershell
+.\scripts\setup-local-server.ps1 -ServerDir C:\dev\server -AshitaAddonsDir C:\Ashita\addons
+```
+
+Supported flags:
+
+- `-ServerDir` (default `C:\dev\server`): target LandSandBoat checkout path.
+- `-AshitaAddonsDir`: if set, copies `addons\ashita4\overlords_talents` into `<AshitaAddonsDir>\overlords_talents`.
+- `-DatOverlayDir` (default `C:\DATs\Overlords`): destination for `dat-overlay\ROM`.
+- `-BuildJobs` (default `4`): parallel CMake build jobs.
+- `-SkipClone` / `-SkipBuild`: update files/patches on an existing checkout without cloning or recompiling.
+- `-RunDbTool`: also executes `python tools\dbtool.py` inside `-ServerDir`.
+
+### Manual Install
+
 From your LandSandBoat checkout:
 
 ```powershell
