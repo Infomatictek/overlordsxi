@@ -372,14 +372,18 @@ local function drawTreeCanvas()
     {
         [1] = 'Tier 1: Foundation (0+ pts)',
         [2] = 'Tier 2: Specialization (3+ pts in WS)',
-        [3] = 'Tier 3: Capstone (6+ pts in WS)',
+        [3] = 'Tier 3: Mastery & Capstone (6+ pts in WS)',
     }
 
     -- Compute node screen coordinates
     local coords = {}
+    local maxCol = 1
     for _, node in ipairs(detail.nodes) do
         local tierRow = node.tier - 1
         local colIdx  = node.col - 1
+        if node.col > maxCol then
+            maxCol = node.col
+        end
         local x = canvasPosX + 12 + colIdx * (cardW + gapX)
         local y = canvasPosY + 24 + tierRow * (cardH + gapY)
         coords[node.key] = { x = x, y = y }
@@ -481,8 +485,10 @@ local function drawTreeCanvas()
     end
 
     -- Reserve canvas bounds for scrolling
-    imgui.SetCursorScreenPos({ canvasPosX, canvasPosY + math.max(availH - 10, 3 * (cardH + gapY)) })
-    imgui.Dummy({ math.max(availW - 10, 3 * (cardW + gapX)), 4 })
+    local contentW = 24 + maxCol * cardW + math.max(0, maxCol - 1) * gapX
+    local contentH = 24 + 3 * (cardH + gapY)
+    imgui.SetCursorScreenPos({ canvasPosX, canvasPosY + math.max(availH - 10, contentH) })
+    imgui.Dummy({ math.max(availW - 10, contentW), 4 })
 end
 
 ashita.events.register('d3d_present', 'ox_talents_present', function()
@@ -509,7 +515,7 @@ ashita.events.register('d3d_present', 'ox_talents_present', function()
         return
     end
 
-    imgui.SetNextWindowSize({ 860, 560 }, ImGuiCond_FirstUseEver or 4)
+    imgui.SetNextWindowSize({ 940, 570 }, ImGuiCond_FirstUseEver or 4)
     if imgui.Begin('OverlordsXI - Weaponskill Talents###OXTalentsWin', state.open) then
         -- Top Header Bar
         imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s Lv.%d', state.jobKey, state.jobLevel))

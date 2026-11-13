@@ -82,7 +82,7 @@ local function sendProto(player, payload)
 end
 
 -----------------------------------
--- Persistence (3 bits per slot, up to 8 slots per WS)
+-- Persistence (3 bits per slot, up to 10 slots / 30 bits per WS)
 -----------------------------------
 function talents.getJobKey(jobId)
     return JOB_KEYS[jobId] or string.format('J%u', jobId or 0)
@@ -182,11 +182,185 @@ local calcWscAtRank = talents.calcWscAtRank
 local calcScaledTable = talents.calcScaledTable
 local calcAtkScaleAtRank = talents.calcAtkScaleAtRank
 
+local SC_IDS =
+{
+    NONE          = 0,
+    TRANSFIXION   = 1,
+    COMPRESSION   = 2,
+    LIQUEFACTION  = 3,
+    SCISSION      = 4,
+    REVERBERATION = 5,
+    DETONATION    = 6,
+    INDURATION    = 7,
+    IMPACTION     = 8,
+    GRAVITATION   = 9,
+    DISTORTION    = 10,
+    FUSION        = 11,
+    FRAGMENTATION = 12,
+    LIGHT         = 13,
+    DARKNESS      = 14,
+}
+
+local SC_SHORT =
+{
+    TRANSFIXION   = 'Transfix',
+    COMPRESSION   = 'Compress',
+    LIQUEFACTION  = 'Liquefac',
+    SCISSION      = 'Scission',
+    REVERBERATION = 'Reverb',
+    DETONATION    = 'Detonat',
+    INDURATION    = 'Indurat',
+    IMPACTION     = 'Impact',
+    GRAVITATION   = 'Gravit',
+    DISTORTION    = 'Distort',
+    FUSION        = 'Fusion',
+    FRAGMENTATION = 'Frag',
+    LIGHT         = 'Light',
+    DARKNESS      = 'Dark',
+}
+
+local DARK_SC_SET =
+{
+    COMPRESSION   = true,
+    SCISSION      = true,
+    REVERBERATION = true,
+    INDURATION    = true,
+    GRAVITATION   = true,
+    DISTORTION    = true,
+    DARKNESS      = true,
+}
+
+local function hasSc(list, name)
+    for _, v in ipairs(list or {}) do
+        if v == name then
+            return true
+        end
+    end
+    return false
+end
+
+local function isDarkAligned(ws)
+    if ws.elementName == 'Dark' or ws.key == 'sanguine_blade' or ws.key == 'energy_steal' or ws.key == 'energy_drain' or ws.key == 'catastrophe' then
+        return true
+    end
+    if ws.elementName == 'Earth' or ws.elementName == 'Water' or ws.elementName == 'Ice' then
+        return true
+    end
+    local sc = (ws.orig and ws.orig.skillchain) or {}
+    if #sc > 0 then
+        return DARK_SC_SET[sc[1]] == true
+    end
+    return false
+end
+
+local function formatScNames(names)
+    local parts = {}
+    for _, n in ipairs(names or {}) do
+        table.insert(parts, SC_SHORT[n] or n)
+    end
+    return #parts > 0 and table.concat(parts, '/') or 'None'
+end
+
+local scPlanCache = {}
+
+function talents.getSkillchainPlan(ws)
+    if ws == nil then
+        return nil
+    end
+    if ws.orig and ws.orig.restoreMp then
+        return nil
+    end
+    if scPlanCache[ws.id] ~= nil then
+        return scPlanCache[ws.id]
+    end
+
+    local origSc = (ws.orig and ws.orig.skillchain) or {}
+    local dark = isDarkAligned(ws)
+
+    local r1, r2, r3
+    if #origSc == 0 then
+        if dark then
+            r1 = { 'COMPRESSION' }
+            r2 = { 'COMPRESSION', 'GRAVITATION' }
+            r3 = { 'COMPRESSION', 'GRAVITATION', 'DARKNESS' }
+        else
+            r1 = { 'TRANSFIXION' }
+            r2 = { 'TRANSFIXION', 'FUSION' }
+            r3 = { 'TRANSFIXION', 'FUSION', 'LIGHT' }
+        end
+    else
+        local lv2
+        if dark then
+            lv2 = not hasSc(origSc, 'GRAVITATION') and 'GRAVITATION' or 'DISTORTION'
+        else
+            lv2 = not hasSc(origSc, 'FUSION') and 'FUSION' or 'FRAGMENTATION'
+        end
+
+        local lv3
+        if dark then
+            lv3 = not hasSc(origSc, 'DARKNESS') and 'DARKNESS' or 'LIGHT'
+        else
+            lv3 = not hasSc(origSc, 'LIGHT') and 'LIGHT' or 'DARKNESS'
+        end
+
+        if #origSc == 1 then
+            r1 = { origSc[1], lv2 }
+            r2 = { origSc[1], lv2, lv3 }
+            r3 = { origSc[1], lv2, lv3 }
+        elseif #origSc == 2 then
+            r1 = { origSc[1], origSc[2], lv2 }
+            r2 = { origSc[1], origSc[2], lv3 }
+            r3 = { origSc[1], lv2, lv3 }
+        else
+            r1 = { origSc[1], origSc[2], lv2 }
+            r2 = { origSc[1], origSc[2], lv3 }
+            r3 = { origSc[1], lv2, lv3 }
+        end
+    end
+
+    local plan =
+    {
+        base = origSc,
+        ranks = { r1, r2, r3 },
+        bonusPct = { 10, 20, 35 },
+    }
+    scPlanCache[ws.id] = plan
+    return plan
+end
+
+function talents.getSkillchainAtRank(ws, rank)
+    local plan = talents.getSkillchainPlan(ws)
+    if plan == nil or (rank or 0) <= 0 then
+        return nil
+    end
+
+    local props = plan.ranks[math.min(rank, 3)]
+    local bonus = plan.bonusPct[math.min(rank, 3)] or 0
+    local function toId(name)
+        if name == nil then
+            return 0
+        end
+        if xi and xi.skillchainType and xi.skillchainType[name] then
+            return xi.skillchainType[name]
+        end
+        return SC_IDS[name] or 0
+    end
+
+    return
+    {
+        names = props,
+        sc1 = toId(props[1]),
+        sc2 = toId(props[2]),
+        sc3 = toId(props[3]),
+        scBonus = bonus,
+    }
+end
+
 local function determineArchetype(ws)
     local orig = ws.orig
     if ws.wsType == 'utility' then
         return 'utility'
-    elseif ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil then
+    elseif ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil or orig.drainHp then
         return 'magic'
     elseif orig.critVaries ~= nil then
         return 'crit'
@@ -196,6 +370,8 @@ local function determineArchetype(ws)
 
     return 'heavy'
 end
+
+local T2_SLOTS = { 5, 6, 9 }
 
 local function buildTreeForWS(ws)
     local orig = ws.orig
@@ -217,13 +393,13 @@ local function buildTreeForWS(ws)
             local nxt = rank < 5 and calcFtpAtRank(orig.ftp, rank + 1) or nil
             local curStr = string.format('fTP: %.2f/%.2f/%.2f', f[1], f[2], f[3])
             if nxt then
-                return string.format('%s | Next: %.2f/%.2f/%.2f', curStr, nxt[1], nxt[2], nxt[3])
+                return string.format('%s | Next: %.2f/%.2f', curStr, nxt[1], nxt[3])
             end
             return curStr .. ' (MAX)'
         end,
     })
 
-    -- Tier 1, Col 2..3 (Slots 2..4): Original Stat WSC (or Utility Potency)
+    -- Tier 1, Col 2..4 (Slots 2..4): Original Stat WSC (or Utility Potency)
     local nextCol = 2
     local wscSlot = 2
     local hasWsc = false
@@ -272,31 +448,142 @@ local function buildTreeForWS(ws)
             describe = function(rank)
                 local cur = rank * 20
                 if rank < 5 then
-                    return string.format('+%d%% HP/MP/Breath potency | Next: +%d%%', cur, (rank + 1) * 20)
+                    return string.format('+%d%% HP/MP potency | Next: +%d%%', cur, (rank + 1) * 20)
                 end
-                return string.format('+%d%% HP/MP/Breath potency (MAX)', cur)
+                return string.format('+%d%% HP/MP potency (MAX)', cur)
             end,
         })
     end
 
-    -- Tier 2 (Slots 5..6, requires >= 3 pts in this WS, prereq ftp >= 1)
-    local t2Col = 1
-    local t2Slot = 5
+    -- Tier 2 (Slots 5, 6, 9, requires >= 3 pts in this WS, prereq ftp >= 1)
+    local t2Idx = 1
 
     local function addT2Node(node)
-        if t2Slot > 6 then
+        if t2Idx > #T2_SLOTS then
             return
         end
-        node.slot = t2Slot
+        node.slot = T2_SLOTS[t2Idx]
         node.tier = 2
-        node.col = t2Col
+        node.col = t2Idx
         node.reqWsPoints = 3
         node.requires = { key = 'ftp', rank = 1 }
         table.insert(nodes, node)
-        t2Slot = t2Slot + 1
-        t2Col = t2Col + 1
+        t2Idx = t2Idx + 1
     end
 
+    -- Priority 1: Unique WS signature traits based on what the WS originally did
+    if orig.drainHp then
+        addT2Node(
+        {
+            key = 'siphon',
+            name = ws.key == 'sanguine_blade' and 'Crimson Siphon' or 'Soul Siphon',
+            maxRank = 3,
+            describe = function(rank)
+                local pcts = { 15, 30, 50 }
+                if rank == 0 then
+                    return '+15/30/50% HP Drain & drains dmg as MP'
+                end
+                local p = pcts[rank] or 50
+                return string.format('+%d%% HP Drain & drains %d%% dmg as MP', p, p)
+            end,
+        })
+    end
+
+    if orig.drainMp or orig.restoreMp then
+        addT2Node(
+        {
+            key = 'mana_leech',
+            name = orig.restoreMp and 'Font of Aether' or 'Aether Siphon',
+            maxRank = 3,
+            describe = function(rank)
+                local mps = { 25, 50, 100 }
+                local hps = { 25, 50, 75 }
+                if rank == 0 then
+                    return '+25/50/100% MP & heals 25/50/75% MP as HP'
+                end
+                return string.format('+%d%% MP gained & +%d%% MP healed as HP', mps[rank] or 100, hps[rank] or 75)
+            end,
+        })
+    end
+
+    if orig.debuff ~= nil then
+        local deb = orig.debuff
+        addT2Node(
+        {
+            key = 'debuff',
+            name = deb.label .. ' +',
+            maxRank = 3,
+            describe = function(rank)
+                local durs = { 35, 70, 120 }
+                local maccs = { 25, 50, 80 }
+                if deb.binary then
+                    local atks = { 10, 20, 35 }
+                    if rank == 0 then
+                        return '+35/70/120% Dur, +25-80 MACC, +10-35% Atk'
+                    end
+                    return string.format('+%d%% Dur, +%d MACC, +%d%% WS Atk', durs[rank], maccs[rank], atks[rank])
+                else
+                    local pots = { 20, 40, 65 }
+                    if rank == 0 then
+                        return '+20/40/65% Pot, +35-120% Dur, +25-80 MACC'
+                    end
+                    return string.format('+%d%% Potency, +%d%% Dur, +%d MACC', pots[rank], durs[rank], maccs[rank])
+                end
+            end,
+        })
+    end
+
+    if orig.aoe then
+        addT2Node(
+        {
+            key = 'aoe_cleave',
+            name = 'Tempest Cleave',
+            maxRank = 3,
+            describe = function(rank)
+                local atks = { 10, 20, 35 }
+                local accs = { 15, 30, 50 }
+                local wsds = { 8, 16, 25 }
+                if rank == 0 then
+                    return '+10-35% Atk, +15-50 Acc, +8-25% AoE WSD'
+                end
+                return string.format('+%d%% Atk, +%d Acc, +%d%% AoE WSD', atks[rank], accs[rank], wsds[rank])
+            end,
+        })
+    end
+
+    if orig.enmity == 'high' then
+        addT2Node(
+        {
+            key = 'enmity_ctrl',
+            name = 'Vanguard Oath',
+            maxRank = 3,
+            describe = function(rank)
+                local enms = { 50, 100, 175 }
+                local heals = { 15, 30, 50 }
+                if rank == 0 then
+                    return '+50/100/175% Enmity & 15/30/50% HP drain'
+                end
+                return string.format('+%d%% Enmity & +%d%% dmg self-heal', enms[rank], heals[rank])
+            end,
+        })
+    elseif orig.enmity == 'low' then
+        addT2Node(
+        {
+            key = 'enmity_ctrl',
+            name = 'Phantom Shot',
+            maxRank = 3,
+            describe = function(rank)
+                local enms = { 30, 60, 90 }
+                local wsds = { 10, 20, 35 }
+                if rank == 0 then
+                    return '-30/60/90 Enmity & +10/20/35% WS Damage'
+                end
+                return string.format('-%d Enmity & +%d%% WS Damage', enms[rank], wsds[rank])
+            end,
+        })
+    end
+
+    -- Priority 2: Combat curve traits matching original WS math
     if orig.numHits >= 2 then
         addT2Node(
         {
@@ -305,13 +592,13 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'R1: +15 Acc/+10% Atk | R2: fTP all hits | R3: +1 Hit'
+                    return 'R1:+Acc/Atk R2:fTP all hits R3:+1 Hit'
                 elseif rank == 1 then
-                    return '+15 Acc/+10% Atk | Next: fTP carries to all hits'
+                    return '+15 Acc/+10% Atk | Next: fTP all hits'
                 elseif rank == 2 then
-                    return '+30 Acc/+20% Atk, fTP all hits | Next: +1 Extra Hit'
+                    return '+30 Acc/+20% Atk, fTP all | Next: +1 Hit'
                 end
-                return '+45 Acc/+30% Atk, fTP all hits, +1 Hit (MAX)'
+                return '+45 Acc/+30% Atk, fTP all, +1 Hit (MAX)'
             end,
         })
     end
@@ -324,7 +611,7 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores TP crit scaling (+10-30% crit, +5-15% crit dmg)'
+                    return 'TP crit scaling (+10-30% crit, +5-15% dmg)'
                 end
                 local c = calcScaledTable(orig.critVaries, rank, { 0.10, 0.15, 0.20 })
                 return string.format('Crit %s/%s/%s, +%d%% Crit Dmg', fmtPct(c[1]), fmtPct(c[2]), fmtPct(c[3]), rank * 5)
@@ -340,10 +627,10 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores & boosts Defense Ignore (up to 120% orig)'
+                    return 'Restores & boosts Defense Ignore (up to 120%)'
                 end
                 local d = calcScaledTable(orig.ignoredDefense, rank, { 0.08, 0.12, 0.16 })
-                return string.format('Ignores %s/%s/%s target DEF', fmtPct(d[1]), fmtPct(d[2]), fmtPct(d[3]))
+                return string.format('Ignores %s/%s/%s DEF', fmtPct(d[1]), fmtPct(d[2]), fmtPct(d[3]))
             end,
         })
     end
@@ -356,7 +643,7 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores & boosts WS Attack multiplier with TP'
+                    return 'Restores & boosts WS Attack multiplier'
                 end
                 local a = calcAtkScaleAtRank(orig.atkVaries, rank)
                 return string.format('WS Atk +%s/+%s/+%s', fmtPct(a[1]), fmtPct(a[2]), fmtPct(a[3]))
@@ -372,7 +659,7 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores & boosts TP-varying WS Accuracy'
+                    return 'Restores & boosts TP-varying Accuracy'
                 end
                 local ac = calcScaledTable(orig.accVaries, rank, { 20, 25, 30 })
                 return string.format('WS Acc +%d/+%d/+%d', math.floor(ac[1]), math.floor(ac[2]), math.floor(ac[3]))
@@ -380,8 +667,8 @@ local function buildTreeForWS(ws)
         })
     end
 
-    if ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil then
-        local elemText = ws.elementName or 'Elemental'
+    if ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil or orig.drainHp then
+        local elemText = ws.elementName or (ws.key == 'sanguine_blade' and 'Dark' or 'Elemental')
         addT2Node(
         {
             key = 'elemental',
@@ -392,12 +679,30 @@ local function buildTreeForWS(ws)
                     return string.format('+15/+30/+50 MAB & MACC for %s WS', elemText)
                 end
                 local val = rank == 3 and 50 or (rank * 15)
-                return string.format('+%d MAB and +%d MACC on this WS', val, val)
+                return string.format('+%d MAB and +%d MACC on WS', val, val)
             end,
         })
     end
 
-    if t2Slot == 5 then
+    if orig.aftermath ~= nil then
+        local amNames = { relic = 'Relic Echo', mythic = 'Mythic Echo', empyrean = 'Empyrean Echo' }
+        addT2Node(
+        {
+            key = 'aftermath_echo',
+            name = amNames[orig.aftermath] or 'RMEA Echo',
+            maxRank = 3,
+            describe = function(rank)
+                local wsds = { 8, 16, 25 }
+                local tps = { 50, 100, 175 }
+                if rank == 0 then
+                    return '+8/16/25% WSD & +50/100/175 TP Bonus'
+                end
+                return string.format('+%d%% WS Dmg & +%d TP Bonus', wsds[rank], tps[rank])
+            end,
+        })
+    end
+
+    if t2Idx == 1 then
         addT2Node(
         {
             key = 'focused',
@@ -405,17 +710,23 @@ local function buildTreeForWS(ws)
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return '+12/24/40% WS Attack & +15/30/50 WS Accuracy'
+                    return '+12/24/40% WS Atk & +15/30/50 WS Acc'
                 end
                 local atkPct = rank == 3 and 40 or (rank * 12)
                 local accVal = rank == 3 and 50 or (rank * 15)
-                return string.format('+%d%% WS Attack, +%d WS Accuracy', atkPct, accVal)
+                return string.format('+%d%% WS Atk, +%d WS Acc', atkPct, accVal)
             end,
         })
     end
 
-    -- Tier 3 (Slots 7..8, requires >= 6 pts in this WS)
-    local t3PrereqKey = nodes[#nodes] and nodes[#nodes].key or 'ftp'
+    -- Tier 3 (Slots 7, 10, 8, requires >= 6 pts in this WS)
+    local firstT2Key = 'ftp'
+    for _, n in ipairs(nodes) do
+        if n.tier == 2 then
+            firstT2Key = n.key
+            break
+        end
+    end
 
     table.insert(nodes,
     {
@@ -430,11 +741,54 @@ local function buildTreeForWS(ws)
         describe = function(rank)
             local refund = rank == 3 and 350 or (rank * 100)
             if rank == 0 then
-                return 'Refunds 100/200/350 TP after using this WS'
+                return 'Refunds 100/200/350 TP after using WS'
             end
-            return string.format('Refunds +%d TP after using this WS', refund)
+            return string.format('Refunds +%d TP after using WS', refund)
         end,
     })
+
+    local scPlan = talents.getSkillchainPlan(ws)
+    if scPlan ~= nil then
+        table.insert(nodes,
+        {
+            slot = 10,
+            key = 'skillchain',
+            name = 'Skillchain Trait',
+            tier = 3,
+            col = 2,
+            reqWsPoints = 6,
+            requires = { key = 'ftp', rank = 2 },
+            maxRank = 3,
+            describe = function(rank)
+                if rank == 0 then
+                    local nextProps = formatScNames(scPlan.ranks[1])
+                    return string.format('R1: %s (+10%% SC) | R3: %s', nextProps, formatScNames(scPlan.ranks[3]))
+                end
+                local cur = talents.getSkillchainAtRank(ws, rank)
+                return string.format('SC: %s (+%d%% SC Dmg)', formatScNames(cur.names), cur.scBonus)
+            end,
+        })
+    else
+        table.insert(nodes,
+        {
+            slot = 10,
+            key = 'aether_pulse',
+            name = 'Aether Pulse',
+            tier = 3,
+            col = 2,
+            reqWsPoints = 6,
+            requires = { key = 'ftp', rank = 2 },
+            maxRank = 3,
+            describe = function(rank)
+                local hps = { 10, 20, 35 }
+                local refs = { 3, 5, 8 }
+                if rank == 0 then
+                    return 'Restores 10/20/35% Max HP & grants Refresh'
+                end
+                return string.format('+%d%% Max HP heal & Refresh %d MP/t', hps[rank], refs[rank])
+            end,
+        })
+    end
 
     local capstoneSpecs =
     {
@@ -456,7 +810,7 @@ local function buildTreeForWS(ws)
         heavy =
         {
             name = 'Brutal Impact',
-            desc = '+35% WS Attack, 25% DEF Ignore, +15% WS Damage',
+            desc = '+35% WS Atk, 25% DEF Ign, +15% WS Dmg',
         },
         utility =
         {
@@ -473,9 +827,9 @@ local function buildTreeForWS(ws)
         name = capInfo.name,
         archetype = archetype,
         tier = 3,
-        col = 2,
+        col = 3,
         reqWsPoints = 6,
-        requires = { key = t3PrereqKey, rank = 1 },
+        requires = { key = firstT2Key, rank = 1 },
         maxRank = 1,
         describe = function(rank)
             if rank > 0 then
@@ -720,7 +1074,19 @@ function talents.formatOrigSummary(ws)
     local wscStr = #wscParts > 0 and table.concat(wscParts, ' ') or 'None'
     local extraParts = {}
     if orig.numHits > 1 then
-        table.insert(extraParts, string.format('%d-hit', orig.numHits))
+        table.insert(extraParts, string.format('%dh', orig.numHits))
+    end
+    if orig.drainHp then
+        table.insert(extraParts, 'DrainHP')
+    end
+    if orig.drainMp or orig.restoreMp then
+        table.insert(extraParts, orig.restoreMp and 'RestMP' or 'DrainMP')
+    end
+    if orig.debuff then
+        table.insert(extraParts, orig.debuff.label)
+    end
+    if orig.aoe then
+        table.insert(extraParts, 'AoE')
     end
     if orig.critVaries then
         table.insert(extraParts, 'Crit')
@@ -728,17 +1094,16 @@ function talents.formatOrigSummary(ws)
     if orig.ignoredDefense then
         table.insert(extraParts, 'DefIgn')
     end
-    if orig.atkVaries then
-        table.insert(extraParts, 'AtkMod')
-    end
-    if orig.accVaries then
-        table.insert(extraParts, 'AccMod')
-    end
     if ws.elementName then
         table.insert(extraParts, ws.elementName)
     end
-    local extraStr = #extraParts > 0 and (' | ' .. table.concat(extraParts, ',')) or ''
-    return string.format('%s | WSC: %s%s', ftpStr, wscStr, extraStr)
+    local scStr = formatScNames(orig.skillchain)
+    table.insert(extraParts, 'SC:' .. scStr)
+    local summary = string.format('%s | %s | %s', ftpStr, wscStr, table.concat(extraParts, ','))
+    if #summary > 86 then
+        summary = string.sub(summary, 1, 83) .. '...'
+    end
+    return summary
 end
 
 local function sendChunked(player, tag, items)

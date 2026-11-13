@@ -43,6 +43,7 @@ catalog.byId =
             wsc = { str = 0.3, dex = 0.3 },
             numHits = 3,
             multiHitfTP = true,
+            skillchain = { 'IMPACTION' },
         },
     },
     [2] =
@@ -59,6 +60,8 @@ catalog.byId =
             wsc = { vit = 1.0 },
             numHits = 2,
             multiHitfTP = true,
+            skillchain = { 'REVERBERATION', 'IMPACTION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [3] =
@@ -76,6 +79,7 @@ catalog.byId =
             numHits = 2,
             multiHitfTP = true,
             ignoredDefense = { 0.0, 0.375, 0.75 },
+            skillchain = { 'COMPRESSION' },
         },
     },
     [4] =
@@ -93,6 +97,7 @@ catalog.byId =
             numHits = 2,
             multiHitfTP = true,
             critVaries = { 0.3, 0.63, 0.96 },
+            skillchain = { 'DETONATION' },
         },
     },
     [5] =
@@ -109,6 +114,7 @@ catalog.byId =
             wsc = { str = 0.3, dex = 0.3 },
             numHits = 5,
             multiHitfTP = true,
+            skillchain = { 'IMPACTION' },
         },
     },
     [6] =
@@ -125,6 +131,8 @@ catalog.byId =
             wsc = { str = 1.0 },
             numHits = 2,
             multiHitfTP = true,
+            skillchain = { 'LIQUEFACTION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [7] =
@@ -142,6 +150,7 @@ catalog.byId =
             numHits = 2,
             multiHitfTP = true,
             atkVaries = { 1.5, 1.5, 1.5 },
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [8] =
@@ -158,6 +167,7 @@ catalog.byId =
             wsc = { str = 0.5, vit = 0.5 },
             numHits = 2,
             multiHitfTP = true,
+            skillchain = { 'FRAGMENTATION' },
         },
     },
     [9] =
@@ -175,6 +185,7 @@ catalog.byId =
             numHits = 8,
             multiHitfTP = true,
             accVaries = { 0.0, 33.0, 96.0 },
+            skillchain = { 'GRAVITATION', 'LIQUEFACTION' },
         },
     },
     [10] =
@@ -190,6 +201,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { vit = 0.8 },
             numHits = 2,
+            skillchain = { 'LIGHT', 'FUSION' },
+            aftermath = 'relic',
         },
     },
     [11] =
@@ -208,6 +221,8 @@ catalog.byId =
             multiHitfTP = true,
             critVaries = { 0.2, 0.4, 0.8 },
             atkVaries = { 2.5, 2.5, 2.5 },
+            skillchain = { 'FUSION', 'TRANSFIXION' },
+            aftermath = 'mythic',
         },
     },
     [12] =
@@ -224,6 +239,8 @@ catalog.byId =
             wsc = { str = 0.32, vit = 0.32 },
             numHits = 6,
             critVaries = { 0.1, 0.22, 0.36 },
+            skillchain = { 'GRAVITATION', 'LIQUEFACTION' },
+            aftermath = 'mythic',
         },
     },
     [13] =
@@ -240,6 +257,7 @@ catalog.byId =
             wsc = { str = 0.4, vit = 0.4 },
             numHits = 3,
             multiHitfTP = true,
+            skillchain = { 'INDURATION', 'IMPACTION', 'DETONATION' },
         },
     },
     [14] =
@@ -257,6 +275,8 @@ catalog.byId =
             numHits = 4,
             multiHitfTP = true,
             critVaries = { 0.1, 0.25, 0.45 },
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            aftermath = 'empyrean',
         },
     },
     [15] =
@@ -274,6 +294,8 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             atkVaries = { 1.05, 1.05, 1.05 },
+            skillchain = { 'FUSION', 'REVERBERATION' },
+            debuff = { effect = 'PLAGUE', label = 'Plague', binary = false },
         },
     },
     [16] =
@@ -289,6 +311,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { dex = 1.0 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
+            debuff = { effect = 'POISON', label = 'Poison', binary = false },
         },
     },
     [17] =
@@ -305,6 +329,8 @@ catalog.byId =
             wsc = { dex = 1.0 },
             numHits = 1,
             atkVaries = { 2.0, 2.0, 2.0 },
+            skillchain = { 'SCISSION' },
+            debuff = { effect = 'POISON', label = 'Poison', binary = false },
         },
     },
     [18] =
@@ -320,6 +346,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { chr = 1.0 },
             numHits = 1,
+            skillchain = { 'REVERBERATION' },
+            debuff = { effect = 'BIND', label = 'Bind', binary = true },
         },
     },
     [19] =
@@ -337,6 +365,7 @@ catalog.byId =
             ftp = { 1.0, 2.0, 3.0 },
             wsc = { dex = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'DETONATION' },
         },
     },
     [20] =
@@ -354,6 +383,8 @@ catalog.byId =
             ftp = { 1.0, 2.375, 3.75 },
             wsc = { dex = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'DETONATION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [21] =
@@ -369,6 +400,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { mnd = 1.0 },
             numHits = 1,
+            skillchain = {},
+            drainMp = true,
         },
     },
     [22] =
@@ -384,6 +417,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { mnd = 1.0 },
             numHits = 1,
+            skillchain = {},
+            drainMp = true,
         },
     },
     [23] =
@@ -401,6 +436,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             accVaries = { 0.0, 40.0, 100.0 },
+            skillchain = { 'SCISSION', 'DETONATION' },
         },
     },
     [24] =
@@ -416,6 +452,7 @@ catalog.byId =
             ftp = { 4.5, 6.8, 8.5 },
             wsc = { dex = 0.4, agi = 0.4 },
             numHits = 2,
+            skillchain = { 'FRAGMENTATION' },
         },
     },
     [25] =
@@ -433,6 +470,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             critVaries = { 0.1, 0.24, 0.48 },
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
         },
     },
     [26] =
@@ -448,6 +486,8 @@ catalog.byId =
             ftp = { 5.0, 5.0, 5.0 },
             wsc = { str = 0.8 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'GRAVITATION' },
+            aftermath = 'relic',
         },
     },
     [27] =
@@ -464,6 +504,8 @@ catalog.byId =
             wsc = { dex = 0.6 },
             numHits = 1,
             atkVaries = { 1.75, 1.75, 1.75 },
+            skillchain = { 'FUSION', 'COMPRESSION' },
+            aftermath = 'mythic',
         },
     },
     [28] =
@@ -479,6 +521,9 @@ catalog.byId =
             ftp = { 5.0, 5.0, 5.0 },
             wsc = { dex = 0.3, chr = 0.7 },
             numHits = 2,
+            skillchain = { 'FRAGMENTATION', 'DISTORTION' },
+            debuff = { effect = 'WEIGHT', label = 'Gravity', binary = false },
+            aftermath = 'mythic',
         },
     },
     [29] =
@@ -495,6 +540,9 @@ catalog.byId =
             wsc = { str = 0.4, dex = 0.4 },
             numHits = 4,
             multiHitfTP = true,
+            skillchain = { 'DISTORTION', 'SCISSION' },
+            debuff = { effect = 'EVASION_DOWN', label = 'Evasion Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [30] =
@@ -512,6 +560,8 @@ catalog.byId =
             ftp = { 2.0, 3.0, 4.5 },
             wsc = { dex = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'SCISSION', 'DETONATION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [31] =
@@ -527,6 +577,9 @@ catalog.byId =
             ftp = { 5.0, 10.19, 13.0 },
             wsc = { dex = 0.8 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'DISTORTION' },
+            debuff = { effect = 'WEIGHT', label = 'Gravity', binary = false },
+            aftermath = 'empyrean',
         },
     },
     [32] =
@@ -542,6 +595,7 @@ catalog.byId =
             ftp = { 1.0, 3.0, 5.0 },
             wsc = { str = 0.4, dex = 0.4 },
             numHits = 2,
+            skillchain = { 'SCISSION' },
         },
     },
     [33] =
@@ -559,6 +613,7 @@ catalog.byId =
             ftp = { 1.0, 2.1, 3.4 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION' },
         },
     },
     [34] =
@@ -576,6 +631,7 @@ catalog.byId =
             ftp = { 1.0, 2.38, 3.75 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION', 'DETONATION' },
         },
     },
     [35] =
@@ -591,6 +647,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [36] =
@@ -608,6 +666,7 @@ catalog.byId =
             ftp = { 1.125, 2.222, 3.523 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
         },
     },
     [37] =
@@ -625,6 +684,7 @@ catalog.byId =
             ftp = { 1.125, 2.625, 4.125 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
         },
     },
     [38] =
@@ -640,6 +700,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'REVERBERATION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [39] =
@@ -655,6 +717,7 @@ catalog.byId =
             ftp = { 0.125, 0.5, 1.0 },
             wsc = {},
             numHits = 1,
+            skillchain = {},
         },
     },
     [40] =
@@ -672,6 +735,7 @@ catalog.byId =
             numHits = 4,
             multiHitfTP = true,
             critVaries = { 0.15, 0.3, 0.5 },
+            skillchain = { 'SCISSION', 'IMPACTION' },
         },
     },
     [41] =
@@ -689,6 +753,7 @@ catalog.byId =
             numHits = 3,
             multiHitfTP = true,
             accVaries = { 0.0, 40.0, 120.0 },
+            skillchain = { 'GRAVITATION' },
         },
     },
     [42] =
@@ -704,6 +769,7 @@ catalog.byId =
             ftp = { 4.0, 10.3, 13.6 },
             wsc = { str = 0.5, mnd = 0.5 },
             numHits = 2,
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
         },
     },
     [43] =
@@ -719,6 +785,8 @@ catalog.byId =
             ftp = { 5.0, 5.0, 5.0 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'FUSION' },
+            aftermath = 'relic',
         },
     },
     [44] =
@@ -734,6 +802,9 @@ catalog.byId =
             ftp = { 4.0, 4.0, 4.0 },
             wsc = { str = 0.3, mnd = 0.5 },
             numHits = 3,
+            skillchain = { 'FRAGMENTATION', 'DISTORTION' },
+            debuff = { effect = 'MAGIC_EVASION_DOWN', label = 'M.Eva Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [45] =
@@ -749,6 +820,9 @@ catalog.byId =
             ftp = { 1.0, 1.5, 2.0 },
             wsc = { str = 0.4, vit = 0.5 },
             numHits = 2,
+            skillchain = { 'FUSION', 'REVERBERATION' },
+            enmity = 'high',
+            aftermath = 'mythic',
         },
     },
     [46] =
@@ -764,6 +838,8 @@ catalog.byId =
             ftp = { 3.7969, 9.3906, 12.1875 },
             wsc = { str = 0.3, dex = 0.2, int = 0.3 },
             numHits = 2,
+            skillchain = { 'DISTORTION', 'SCISSION' },
+            aftermath = 'mythic',
         },
     },
     [47] =
@@ -779,6 +855,8 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { str = 0.3, mnd = 0.5 },
             numHits = 1,
+            skillchain = {},
+            drainHp = true,
         },
     },
     [48] =
@@ -794,6 +872,7 @@ catalog.byId =
             ftp = { 1.5, 2.5, 3.5 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
         },
     },
     [49] =
@@ -810,6 +889,7 @@ catalog.byId =
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
             critVaries = { 0.5, 0.75, 1.0 },
+            skillchain = { 'TRANSFIXION' },
         },
     },
     [50] =
@@ -827,6 +907,7 @@ catalog.byId =
             ftp = { 1.5, 3.25, 5.0 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'INDURATION' },
         },
     },
     [51] =
@@ -844,6 +925,7 @@ catalog.byId =
             ftp = { 1.5, 3.5, 6.0 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'DETONATION' },
         },
     },
     [52] =
@@ -859,6 +941,9 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.3, mnd = 0.3 },
             numHits = 1,
+            skillchain = { 'REVERBERATION' },
+            aoe = true,
+            debuff = { effect = 'SLEEP_I', label = 'Sleep', binary = true },
         },
     },
     [53] =
@@ -874,6 +959,7 @@ catalog.byId =
             ftp = { 1.0, 2.25, 4.0 },
             wsc = { str = 0.8 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
         },
     },
     [54] =
@@ -889,6 +975,7 @@ catalog.byId =
             ftp = { 1.5, 3.5, 6.5 },
             wsc = { str = 0.4, agi = 0.4 },
             numHits = 2,
+            skillchain = { 'SCISSION', 'IMPACTION' },
         },
     },
     [55] =
@@ -905,6 +992,7 @@ catalog.byId =
             wsc = { str = 0.3, int = 0.3 },
             numHits = 1,
             atkVaries = { 1.5, 1.5, 1.5 },
+            skillchain = { 'FRAGMENTATION' },
         },
     },
     [56] =
@@ -921,6 +1009,7 @@ catalog.byId =
             wsc = { str = 0.5, int = 0.5 },
             numHits = 1,
             atkVaries = { 1.75, 1.75, 1.75 },
+            skillchain = { 'FRAGMENTATION', 'DISTORTION' },
         },
     },
     [57] =
@@ -936,6 +1025,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { str = 0.4, vit = 0.4 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'FUSION' },
+            aftermath = 'relic',
         },
     },
     [58] =
@@ -951,6 +1042,8 @@ catalog.byId =
             ftp = { 3.5, 3.5, 3.5 },
             wsc = { vit = 0.8 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'DETONATION', 'IMPACTION' },
+            debuff = { effect = 'PARALYSIS', label = 'Paralysis', binary = false },
         },
     },
     [59] =
@@ -966,6 +1059,8 @@ catalog.byId =
             ftp = { 4.75, 7.5, 9.75 },
             wsc = { vit = 0.8 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'DISTORTION' },
+            aftermath = 'empyrean',
         },
     },
     [60] =
@@ -983,6 +1078,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             atkVaries = { 0.85, 0.85, 0.85 },
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
         },
     },
     [61] =
@@ -999,6 +1095,8 @@ catalog.byId =
             wsc = { dex = 0.8 },
             numHits = 2,
             atkVaries = { 1.25, 1.25, 1.25 },
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            aftermath = 'mythic',
         },
     },
     [64] =
@@ -1014,6 +1112,7 @@ catalog.byId =
             ftp = { 1.0, 3.0, 6.0 },
             wsc = { str = 0.6 },
             numHits = 2,
+            skillchain = { 'DETONATION', 'IMPACTION' },
         },
     },
     [65] =
@@ -1029,6 +1128,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [66] =
@@ -1044,6 +1145,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'DETONATION' },
+            debuff = { effect = 'CHOKE', label = 'Choke', binary = false },
         },
     },
     [67] =
@@ -1059,6 +1162,7 @@ catalog.byId =
             ftp = { 1.5, 3.0, 5.5 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'SCISSION', 'IMPACTION' },
         },
     },
     [68] =
@@ -1074,6 +1178,7 @@ catalog.byId =
             ftp = { 2.0, 4.0, 6.5 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION', 'SCISSION', 'IMPACTION' },
         },
     },
     [69] =
@@ -1091,6 +1196,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             critVaries = { 0.1, 0.2, 0.4 },
+            skillchain = { 'SCISSION' },
         },
     },
     [70] =
@@ -1106,6 +1212,7 @@ catalog.byId =
             ftp = { 2.5625, 6.4688, 10.375 },
             wsc = { str = 0.5, vit = 0.5 },
             numHits = 1,
+            skillchain = { 'SCISSION', 'IMPACTION' },
         },
     },
     [71] =
@@ -1121,6 +1228,7 @@ catalog.byId =
             ftp = { 4.0, 10.3, 13.6 },
             wsc = { str = 0.5 },
             numHits = 1,
+            skillchain = { 'FUSION' },
         },
     },
     [72] =
@@ -1138,6 +1246,7 @@ catalog.byId =
             numHits = 3,
             multiHitfTP = true,
             accVaries = { 35.0, 70.0, 120.0 },
+            skillchain = { 'FUSION', 'REVERBERATION' },
         },
     },
     [73] =
@@ -1153,6 +1262,9 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { dex = 0.8 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'GRAVITATION' },
+            debuff = { effect = 'ACCURACY_DOWN', label = 'Accuracy Down', binary = false },
+            aftermath = 'relic',
         },
     },
     [74] =
@@ -1170,6 +1282,8 @@ catalog.byId =
             ftp = { 3.0625, 4.6875, 7.5625 },
             wsc = { dex = 0.3, chr = 0.6 },
             numHits = 1,
+            skillchain = { 'GRAVITATION', 'REVERBERATION' },
+            aftermath = 'mythic',
         },
     },
     [75] =
@@ -1186,6 +1300,8 @@ catalog.byId =
             wsc = { dex = 1.0 },
             numHits = 1,
             atkVaries = { 1.0, 1.0, 1.0 },
+            skillchain = { 'SCISSION', 'DETONATION' },
+            debuff = { effect = 'BIND', label = 'Bind', binary = true },
         },
     },
     [76] =
@@ -1203,6 +1319,8 @@ catalog.byId =
             ftp = { 3.75, 5.5, 8.5 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'FRAGMENTATION' },
+            aftermath = 'empyrean',
         },
     },
     [77] =
@@ -1221,6 +1339,7 @@ catalog.byId =
             multiHitfTP = true,
             accVaries = { 20.0, 40.0, 70.0 },
             atkVaries = { 1.1, 1.1, 1.1 },
+            skillchain = { 'DISTORTION', 'DETONATION' },
         },
     },
     [80] =
@@ -1236,6 +1355,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
+            debuff = { effect = 'EVASION_DOWN', label = 'Evasion Down', binary = false },
         },
     },
     [81] =
@@ -1252,6 +1373,7 @@ catalog.byId =
             wsc = { str = 0.6 },
             numHits = 1,
             atkVaries = { 1.0, 2.0, 3.5 },
+            skillchain = { 'SCISSION' },
         },
     },
     [82] =
@@ -1268,6 +1390,7 @@ catalog.byId =
             wsc = { str = 0.6 },
             numHits = 2,
             atkVaries = { 1.0, 2.0, 3.5 },
+            skillchain = { 'REVERBERATION', 'SCISSION' },
         },
     },
     [83] =
@@ -1283,6 +1406,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
+            debuff = { effect = 'DEFENSE_DOWN', label = 'Defense Down', binary = false },
         },
     },
     [84] =
@@ -1299,6 +1424,7 @@ catalog.byId =
             wsc = { str = 1.0 },
             numHits = 1,
             critVaries = { 0.5, 0.75, 1.0 },
+            skillchain = { 'COMPRESSION' },
         },
     },
     [85] =
@@ -1314,6 +1440,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
+            debuff = { effect = 'ATTACK_DOWN', label = 'Attack Down', binary = false },
         },
     },
     [86] =
@@ -1330,6 +1458,7 @@ catalog.byId =
             wsc = { str = 0.5 },
             numHits = 3,
             critVaries = { 0.15, 0.3, 0.5 },
+            skillchain = { 'INDURATION', 'REVERBERATION' },
         },
     },
     [87] =
@@ -1345,6 +1474,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.5, vit = 0.5 },
             numHits = 1,
+            skillchain = { 'DISTORTION' },
+            debuff = { effect = 'FULL_BREAK', label = 'All Stats Break', binary = false },
         },
     },
     [88] =
@@ -1361,6 +1492,7 @@ catalog.byId =
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
             atkVaries = { 1.5, 1.5, 1.5 },
+            skillchain = { 'DISTORTION', 'DETONATION' },
         },
     },
     [89] =
@@ -1376,6 +1508,9 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { str = 0.8 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'FUSION' },
+            debuff = { effect = 'DEFENSE_DOWN', label = 'Defense Down', binary = false },
+            aftermath = 'relic',
         },
     },
     [90] =
@@ -1391,6 +1526,8 @@ catalog.byId =
             ftp = { 1.0, 3.0, 5.0 },
             wsc = { str = 0.5 },
             numHits = 3,
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
+            aftermath = 'mythic',
         },
     },
     [91] =
@@ -1406,6 +1543,8 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'SCISSION', 'DETONATION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [92] =
@@ -1422,6 +1561,9 @@ catalog.byId =
             wsc = { str = 0.8 },
             numHits = 2,
             critVaries = { 0.2, 0.4, 0.7 },
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            debuff = { effect = 'SLOW', label = 'Slow', binary = false },
+            aftermath = 'empyrean',
         },
     },
     [93] =
@@ -1437,6 +1579,7 @@ catalog.byId =
             ftp = { 1.0, 3.5, 6.5 },
             wsc = { vit = 0.7 },
             numHits = 4,
+            skillchain = { 'FUSION', 'COMPRESSION' },
         },
     },
     [96] =
@@ -1452,6 +1595,7 @@ catalog.byId =
             ftp = { 1.0, 2.5, 4.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'SCISSION' },
         },
     },
     [97] =
@@ -1469,6 +1613,7 @@ catalog.byId =
             ftp = { 1.0, 3.54, 6.07 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'REVERBERATION' },
         },
     },
     [98] =
@@ -1486,6 +1631,7 @@ catalog.byId =
             ftp = { 1.0, 4.17, 8.6 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION' },
         },
     },
     [99] =
@@ -1501,6 +1647,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.6, mnd = 0.6 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'SCISSION' },
+            debuff = { effect = 'BLINDNESS', label = 'Blind', binary = false },
         },
     },
     [100] =
@@ -1516,6 +1664,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'REVERBERATION', 'SCISSION' },
+            aoe = true,
         },
     },
     [101] =
@@ -1532,6 +1682,7 @@ catalog.byId =
             wsc = { str = 1.0 },
             numHits = 1,
             critVaries = { 0.3, 0.63, 0.96 },
+            skillchain = { 'TRANSFIXION', 'SCISSION' },
         },
     },
     [102] =
@@ -1547,6 +1698,8 @@ catalog.byId =
             ftp = { 0.875, 0.875, 0.875 },
             wsc = { str = 0.3, mnd = 0.5 },
             numHits = 4,
+            skillchain = { 'INDURATION' },
+            debuff = { effect = 'SILENCE', label = 'Silence', binary = true },
         },
     },
     [103] =
@@ -1562,6 +1715,7 @@ catalog.byId =
             ftp = { 2.0, 4.0, 7.0 },
             wsc = { str = 0.6, mnd = 0.6 },
             numHits = 2,
+            skillchain = { 'DISTORTION' },
         },
     },
     [104] =
@@ -1577,6 +1731,7 @@ catalog.byId =
             ftp = { 1.375, 2.75, 4.75 },
             wsc = { str = 0.5, int = 0.5 },
             numHits = 1,
+            skillchain = { 'DISTORTION', 'SCISSION' },
         },
     },
     [105] =
@@ -1592,6 +1747,9 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'GRAVITATION' },
+            drainHp = true,
+            aftermath = 'relic',
         },
     },
     [106] =
@@ -1607,6 +1765,8 @@ catalog.byId =
             ftp = { 0.5, 3.25, 6.0 },
             wsc = { str = 0.2, int = 0.2 },
             numHits = 4,
+            skillchain = { 'FUSION', 'COMPRESSION' },
+            aftermath = 'mythic',
         },
     },
     [107] =
@@ -1624,6 +1784,8 @@ catalog.byId =
             ftp = { 3.5, 3.5, 3.5 },
             wsc = { str = 0.3, int = 0.7 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'REVERBERATION' },
+            debuff = { effect = 'ATTACK_DOWN', label = 'Attack Down', binary = false },
         },
     },
     [108] =
@@ -1640,6 +1802,8 @@ catalog.byId =
             wsc = { str = 0.6, mnd = 0.6 },
             numHits = 1,
             ignoredDefense = { 0.125, 0.375, 0.625 },
+            skillchain = { 'DARKNESS', 'DISTORTION' },
+            aftermath = 'empyrean',
         },
     },
     [109] =
@@ -1656,6 +1820,8 @@ catalog.byId =
             wsc = { int = 0.7 },
             numHits = 4,
             multiHitfTP = true,
+            skillchain = { 'GRAVITATION', 'REVERBERATION' },
+            drainMp = true,
         },
     },
     [112] =
@@ -1671,6 +1837,7 @@ catalog.byId =
             ftp = { 1.0, 2.5, 4.0 },
             wsc = { str = 0.3, dex = 0.3 },
             numHits = 2,
+            skillchain = { 'TRANSFIXION' },
         },
     },
     [113] =
@@ -1688,6 +1855,7 @@ catalog.byId =
             ftp = { 1.5, 3.2773, 5.4297 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [114] =
@@ -1705,6 +1873,7 @@ catalog.byId =
             ftp = { 1.0, 3.9102, 7.9609 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [115] =
@@ -1720,6 +1889,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [116] =
@@ -1737,6 +1908,7 @@ catalog.byId =
             numHits = 5,
             accVaries = { 20.0, 40.0, 70.0 },
             atkVaries = { 0.875, 0.875, 0.875 },
+            skillchain = { 'COMPRESSION' },
         },
     },
     [117] =
@@ -1753,6 +1925,7 @@ catalog.byId =
             wsc = { str = 0.5, agi = 0.5 },
             numHits = 1,
             critVaries = { 0.3, 0.63, 0.96 },
+            skillchain = { 'REVERBERATION', 'TRANSFIXION' },
         },
     },
     [118] =
@@ -1769,6 +1942,7 @@ catalog.byId =
             wsc = { str = 0.5 },
             numHits = 3,
             critVaries = { 0.15, 0.3, 0.5 },
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [119] =
@@ -1785,6 +1959,7 @@ catalog.byId =
             wsc = { str = 0.8 },
             numHits = 1,
             ignoredDefense = { 0.5, 0.625, 0.75 },
+            skillchain = { 'FUSION' },
         },
     },
     [120] =
@@ -1800,6 +1975,7 @@ catalog.byId =
             ftp = { 1.0, 3.0977, 5.5 },
             wsc = { str = 1.0 },
             numHits = 2,
+            skillchain = { 'GRAVITATION', 'INDURATION' },
         },
     },
     [121] =
@@ -1815,6 +1991,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { dex = 0.8 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'DISTORTION' },
+            aftermath = 'relic',
         },
     },
     [122] =
@@ -1832,6 +2010,8 @@ catalog.byId =
             numHits = 4,
             critVaries = { 0.1, 0.2, 0.3 },
             atkVaries = { 0.8125, 0.8125, 0.8125 },
+            skillchain = { 'FUSION', 'TRANSFIXION' },
+            aftermath = 'mythic',
         },
     },
     [123] =
@@ -1847,6 +2027,8 @@ catalog.byId =
             ftp = { 3.0, 3.75, 4.5 },
             wsc = { str = 0.4, dex = 0.4 },
             numHits = 1,
+            skillchain = { 'TRANSFIXION', 'SCISSION' },
+            aoe = true,
         },
     },
     [124] =
@@ -1863,6 +2045,8 @@ catalog.byId =
             wsc = { str = 0.6, vit = 0.6 },
             numHits = 1,
             ignoredDefense = { 0.125, 0.375, 0.625 },
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            aftermath = 'empyrean',
         },
     },
     [125] =
@@ -1881,6 +2065,8 @@ catalog.byId =
             wsc = { str = 0.7 },
             numHits = 4,
             multiHitfTP = true,
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
+            debuff = { effect = 'CRIT_HIT_EVASION_DOWN', label = 'Crit Eva Down', binary = false },
         },
     },
     [128] =
@@ -1897,6 +2083,7 @@ catalog.byId =
             wsc = { str = 0.6, dex = 0.6 },
             numHits = 1,
             critVaries = { 0.3, 0.63, 0.96 },
+            skillchain = { 'TRANSFIXION' },
         },
     },
     [129] =
@@ -1912,6 +2099,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.2, dex = 0.6 },
             numHits = 2,
+            skillchain = { 'SCISSION' },
+            debuff = { effect = 'PARALYSIS', label = 'Paralysis', binary = false },
         },
     },
     [130] =
@@ -1929,6 +2118,7 @@ catalog.byId =
             ftp = { 0.5, 1.5, 2.25 },
             wsc = { str = 0.3, int = 0.3 },
             numHits = 1,
+            skillchain = { 'REVERBERATION' },
         },
     },
     [131] =
@@ -1946,6 +2136,7 @@ catalog.byId =
             ftp = { 0.5, 1.5, 2.5 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'DETONATION' },
         },
     },
     [132] =
@@ -1963,6 +2154,7 @@ catalog.byId =
             ftp = { 0.5, 1.5, 2.25 },
             wsc = { str = 0.3, int = 0.3 },
             numHits = 2,
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [133] =
@@ -1980,6 +2172,7 @@ catalog.byId =
             ftp = { 1.0, 3.0, 5.0 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'COMPRESSION' },
         },
     },
     [134] =
@@ -1997,6 +2190,7 @@ catalog.byId =
             numHits = 3,
             multiHitfTP = true,
             critVaries = { 0.1, 0.2, 0.4 },
+            skillchain = { 'DETONATION', 'IMPACTION' },
         },
     },
     [135] =
@@ -2012,6 +2206,7 @@ catalog.byId =
             ftp = { 4.5, 11.5, 15.35 },
             wsc = { str = 0.3, dex = 0.3 },
             numHits = 1,
+            skillchain = { 'GRAVITATION' },
         },
     },
     [136] =
@@ -2029,6 +2224,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             accVaries = { 30.0, 60.0, 90.0 },
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
         },
     },
     [137] =
@@ -2044,6 +2240,9 @@ catalog.byId =
             ftp = { 5.0, 5.0, 5.0 },
             wsc = { dex = 0.8 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'FRAGMENTATION' },
+            debuff = { effect = 'PARALYSIS', label = 'Paralysis', binary = false },
+            aftermath = 'relic',
         },
     },
     [138] =
@@ -2061,6 +2260,9 @@ catalog.byId =
             numHits = 1,
             atkVaries = { 2.25, 2.25, 2.25 },
             ignoredDefense = { 0.25, 0.25, 0.25 },
+            skillchain = { 'FRAGMENTATION', 'COMPRESSION' },
+            debuff = { effect = 'ACCURACY_DOWN', label = 'Accuracy Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [139] =
@@ -2078,6 +2280,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { dex = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'REVERBERATION', 'SCISSION' },
+            debuff = { effect = 'POISON', label = 'Poison', binary = false },
         },
     },
     [140] =
@@ -2094,6 +2298,8 @@ catalog.byId =
             wsc = { agi = 0.8 },
             numHits = 1,
             critVaries = { 0.15, 0.3, 0.6 },
+            skillchain = { 'DARKNESS', 'GRAVITATION' },
+            aftermath = 'empyrean',
         },
     },
     [141] =
@@ -2111,6 +2317,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             atkVaries = { 1.0, 2.0, 3.0 },
+            skillchain = { 'FUSION', 'IMPACTION' },
         },
     },
     [144] =
@@ -2126,6 +2333,7 @@ catalog.byId =
             ftp = { 1.0, 3.0, 5.0 },
             wsc = { str = 0.6 },
             numHits = 2,
+            skillchain = { 'TRANSFIXION', 'SCISSION' },
         },
     },
     [145] =
@@ -2141,6 +2349,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'INDURATION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [146] =
@@ -2158,6 +2368,7 @@ catalog.byId =
             ftp = { 0.5, 1.4492, 2.5 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'TRANSFIXION', 'IMPACTION' },
         },
     },
     [147] =
@@ -2175,6 +2386,7 @@ catalog.byId =
             ftp = { 0.5, 1.4492, 2.5 },
             wsc = { str = 0.75 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION' },
         },
     },
     [148] =
@@ -2192,6 +2404,7 @@ catalog.byId =
             ftp = { 0.5, 1.4492, 2.5 },
             wsc = { str = 0.3 },
             numHits = 2,
+            skillchain = { 'SCISSION', 'DETONATION' },
         },
     },
     [149] =
@@ -2209,6 +2422,7 @@ catalog.byId =
             ftp = { 0.5, 1.4492, 2.5 },
             wsc = { str = 0.5, mnd = 0.3 },
             numHits = 1,
+            skillchain = { 'REVERBERATION', 'IMPACTION' },
         },
     },
     [150] =
@@ -2225,6 +2439,8 @@ catalog.byId =
             wsc = { str = 0.75 },
             numHits = 1,
             atkVaries = { 1.5, 1.5, 1.5 },
+            skillchain = { 'INDURATION', 'DETONATION' },
+            debuff = { effect = 'BLINDNESS', label = 'Blind', binary = false },
         },
     },
     [151] =
@@ -2241,6 +2457,8 @@ catalog.byId =
             wsc = { str = 0.75 },
             numHits = 1,
             atkVaries = { 2.0, 2.0, 2.0 },
+            skillchain = { 'DISTORTION', 'REVERBERATION' },
+            debuff = { effect = 'SILENCE', label = 'Silence', binary = true },
         },
     },
     [152] =
@@ -2257,6 +2475,8 @@ catalog.byId =
             wsc = { str = 0.75 },
             numHits = 1,
             atkVaries = { 1.65, 1.65, 1.65 },
+            skillchain = { 'FUSION', 'COMPRESSION' },
+            debuff = { effect = 'PARALYSIS', label = 'Paralysis', binary = false },
         },
     },
     [153] =
@@ -2272,6 +2492,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { str = 0.8 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            aftermath = 'relic',
         },
     },
     [154] =
@@ -2288,6 +2510,8 @@ catalog.byId =
             wsc = { str = 0.5 },
             numHits = 3,
             accVaries = { 10.0, 25.0, 40.0 },
+            skillchain = { 'GRAVITATION', 'INDURATION' },
+            aftermath = 'mythic',
         },
     },
     [155] =
@@ -2303,6 +2527,8 @@ catalog.byId =
             ftp = { 2.625, 2.625, 2.625 },
             wsc = { str = 0.4, chr = 0.6 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'SCISSION' },
+            debuff = { effect = 'DEFENSE_DOWN', label = 'Defense Down', binary = false },
         },
     },
     [156] =
@@ -2319,6 +2545,8 @@ catalog.byId =
             wsc = { str = 0.8 },
             numHits = 1,
             atkVaries = { 1.0, 1.0, 1.0 },
+            skillchain = { 'LIGHT', 'DISTORTION' },
+            aftermath = 'empyrean',
         },
     },
     [157] =
@@ -2335,6 +2563,7 @@ catalog.byId =
             wsc = { str = 0.7 },
             numHits = 2,
             atkVaries = { 1.375, 1.375, 1.375 },
+            skillchain = { 'FRAGMENTATION', 'COMPRESSION' },
         },
     },
     [160] =
@@ -2352,6 +2581,7 @@ catalog.byId =
             ftp = { 1.625, 3.0, 4.625 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
         },
     },
     [161] =
@@ -2369,6 +2599,7 @@ catalog.byId =
             ftp = { 2.125, 3.625, 6.125 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
         },
     },
     [162] =
@@ -2384,6 +2615,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'REVERBERATION' },
+            debuff = { effect = 'STUN', label = 'Stun', binary = true },
         },
     },
     [163] =
@@ -2399,6 +2632,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = {},
             numHits = 1,
+            skillchain = {},
+            restoreMp = true,
         },
     },
     [164] =
@@ -2414,6 +2649,9 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = {},
             numHits = 1,
+            skillchain = {},
+            aoe = true,
+            restoreMp = true,
         },
     },
     [165] =
@@ -2429,6 +2667,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION' },
+            debuff = { effect = 'INT_DOWN', label = 'INT Down', binary = false },
         },
     },
     [166] =
@@ -2447,6 +2687,7 @@ catalog.byId =
             critVaries = { 1.0, 1.0, 1.0 },
             accVaries = { -50.0, 10.0, 50.0 },
             atkVaries = { 2.0, 2.0, 2.0 },
+            skillchain = { 'DETONATION', 'IMPACTION' },
         },
     },
     [167] =
@@ -2462,6 +2703,7 @@ catalog.byId =
             ftp = { 3.5, 8.75, 11.75 },
             wsc = { str = 0.5, mnd = 0.5 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
         },
     },
     [168] =
@@ -2479,6 +2721,7 @@ catalog.byId =
             numHits = 6,
             multiHitfTP = true,
             critVaries = { 0.05, 0.1, 0.25 },
+            skillchain = { 'FUSION' },
         },
     },
     [169] =
@@ -2494,6 +2737,7 @@ catalog.byId =
             ftp = { 3.0, 7.2, 9.6 },
             wsc = { str = 0.3, mnd = 0.7 },
             numHits = 2,
+            skillchain = { 'FRAGMENTATION', 'COMPRESSION' },
         },
     },
     [170] =
@@ -2509,6 +2753,9 @@ catalog.byId =
             ftp = { 4.25, 4.25, 4.25 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'FRAGMENTATION' },
+            debuff = { effect = 'EVASION_DOWN', label = 'Evasion Down', binary = false },
+            aftermath = 'relic',
         },
     },
     [171] =
@@ -2524,6 +2771,9 @@ catalog.byId =
             ftp = { 2.5, 4.0, 7.0 },
             wsc = { str = 0.3, mnd = 0.7 },
             numHits = 1,
+            skillchain = {},
+            drainMp = true,
+            aftermath = 'mythic',
         },
     },
     [172] =
@@ -2541,6 +2791,7 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { str = 0.5, mnd = 0.5 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION' },
         },
     },
     [173] =
@@ -2556,6 +2807,9 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = {},
             numHits = 1,
+            skillchain = {},
+            restoreMp = true,
+            aftermath = 'empyrean',
         },
     },
     [174] =
@@ -2573,6 +2827,7 @@ catalog.byId =
             numHits = 7,
             multiHitfTP = true,
             accVaries = { 20.0, 40.0, 70.0 },
+            skillchain = { 'FUSION', 'IMPACTION' },
         },
     },
     [175] =
@@ -2589,6 +2844,7 @@ catalog.byId =
             wsc = { int = 0.5, mnd = 0.5 },
             numHits = 1,
             atkVaries = { 1.5, 3.6, 4.7 },
+            skillchain = { 'DARKNESS', 'FRAGMENTATION' },
         },
     },
     [176] =
@@ -2604,6 +2860,7 @@ catalog.byId =
             ftp = { 1.0, 2.0, 3.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
         },
     },
     [177] =
@@ -2621,6 +2878,7 @@ catalog.byId =
             ftp = { 1.0, 3.2656, 5.5312 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'IMPACTION' },
         },
     },
     [178] =
@@ -2638,6 +2896,8 @@ catalog.byId =
             ftp = { 1.0, 3.5781, 6.1562 },
             wsc = { str = 0.4, int = 0.4 },
             numHits = 1,
+            skillchain = { 'DETONATION', 'IMPACTION' },
+            aoe = true,
         },
     },
     [179] =
@@ -2655,6 +2915,7 @@ catalog.byId =
             ftp = { 1.0, 3.2656, 5.5312 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'REVERBERATION' },
         },
     },
     [180] =
@@ -2670,6 +2931,7 @@ catalog.byId =
             ftp = { 1.0, 3.5781, 6.1562 },
             wsc = { str = 0.4, mnd = 0.4 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'REVERBERATION' },
         },
     },
     [181] =
@@ -2685,6 +2947,8 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = { str = 1.0 },
             numHits = 1,
+            skillchain = { 'DETONATION' },
+            debuff = { effect = 'DEFENSE_DOWN', label = 'Defense Down', binary = false },
         },
     },
     [182] =
@@ -2700,6 +2964,7 @@ catalog.byId =
             ftp = { 1.0, 3.0, 9.0 },
             wsc = { str = 0.5 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION', 'IMPACTION' },
         },
     },
     [183] =
@@ -2715,6 +2980,8 @@ catalog.byId =
             ftp = { 1.0, 2.0, 3.0 },
             wsc = { int = 0.5, mnd = 0.5 },
             numHits = 1,
+            skillchain = {},
+            drainMp = true,
         },
     },
     [184] =
@@ -2731,6 +2998,7 @@ catalog.byId =
             wsc = { str = 0.3, mnd = 0.5 },
             numHits = 1,
             atkVaries = { 1.5, 1.5, 1.5 },
+            skillchain = { 'GRAVITATION', 'REVERBERATION' },
         },
     },
     [185] =
@@ -2746,6 +3014,9 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { chr = 0.8 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'DISTORTION' },
+            debuff = { effect = 'ATTACK_DOWN', label = 'Attack Down', binary = false },
+            aftermath = 'relic',
         },
     },
     [186] =
@@ -2761,6 +3032,9 @@ catalog.byId =
             ftp = { 1.75, 1.75, 1.75 },
             wsc = { int = 0.8 },
             numHits = 1,
+            skillchain = { 'FRAGMENTATION', 'DISTORTION' },
+            debuff = { effect = 'MAGIC_DEF_DOWN', label = 'M.Def Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [187] =
@@ -2776,6 +3050,9 @@ catalog.byId =
             ftp = { 2.25, 2.25, 2.25 },
             wsc = { str = 0.3, mnd = 0.7 },
             numHits = 1,
+            skillchain = { 'FUSION', 'REVERBERATION' },
+            debuff = { effect = 'DEFENSE_DOWN', label = 'Defense Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [188] =
@@ -2791,6 +3068,9 @@ catalog.byId =
             ftp = { 2.0, 2.0, 2.0 },
             wsc = { mnd = 0.8 },
             numHits = 1,
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
+            debuff = { effect = 'MAGIC_ATK_DOWN', label = 'M.Atk Down', binary = false },
+            aftermath = 'mythic',
         },
     },
     [189] =
@@ -2808,6 +3088,8 @@ catalog.byId =
             ftp = { 1.75, 3.75, 6.5 },
             wsc = { str = 0.3, int = 0.3 },
             numHits = 1,
+            skillchain = { 'COMPRESSION', 'REVERBERATION' },
+            aoe = true,
         },
     },
     [190] =
@@ -2823,6 +3105,9 @@ catalog.byId =
             ftp = { 1.0, 1.0, 1.0 },
             wsc = {},
             numHits = 1,
+            skillchain = {},
+            restoreMp = true,
+            aftermath = 'empyrean',
         },
     },
     [191] =
@@ -2838,6 +3123,8 @@ catalog.byId =
             ftp = { 1.375, 1.375, 1.375 },
             wsc = { int = 0.7 },
             numHits = 4,
+            skillchain = { 'GRAVITATION', 'INDURATION' },
+            debuff = { effect = 'MAGIC_DEF_DOWN', label = 'M.Def Down', binary = false },
         },
     },
     [192] =
@@ -2855,6 +3142,7 @@ catalog.byId =
             ftp = { 0.5, 1.55, 2.1 },
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION', 'TRANSFIXION' },
         },
     },
     [193] =
@@ -2871,6 +3159,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             ignoredDefense = { 0.0, 0.375, 0.75 },
+            skillchain = { 'REVERBERATION', 'TRANSFIXION' },
         },
     },
     [194] =
@@ -2887,6 +3176,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             critVaries = { 0.2, 0.5, 1.0 },
+            skillchain = { 'LIQUEFACTION', 'TRANSFIXION' },
         },
     },
     [196] =
@@ -2903,6 +3193,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             accVaries = { -50.0, -10.0, 30.0 },
+            skillchain = { 'REVERBERATION', 'TRANSFIXION', 'DETONATION' },
         },
     },
     [197] =
@@ -2919,6 +3210,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             accVaries = { 0.0, 60.0, 100.0 },
+            skillchain = { 'INDURATION', 'TRANSFIXION' },
         },
     },
     [198] =
@@ -2935,6 +3227,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             critVaries = { 0.2, 0.5, 0.9 },
+            skillchain = { 'FUSION' },
         },
     },
     [199] =
@@ -2951,6 +3244,7 @@ catalog.byId =
             wsc = { str = 0.2, agi = 0.5 },
             numHits = 1,
             atkVaries = { 2.0, 2.0, 2.0 },
+            skillchain = { 'FUSION', 'TRANSFIXION' },
         },
     },
     [200] =
@@ -2966,6 +3260,9 @@ catalog.byId =
             ftp = { 2.75, 2.75, 2.75 },
             wsc = { str = 0.4, agi = 0.4 },
             numHits = 1,
+            skillchain = { 'LIGHT', 'DISTORTION' },
+            enmity = 'low',
+            aftermath = 'relic',
         },
     },
     [201] =
@@ -2981,6 +3278,7 @@ catalog.byId =
             ftp = { 3.0, 4.25, 7.0 },
             wsc = { str = 0.6 },
             numHits = 1,
+            skillchain = { 'REVERBERATION', 'TRANSFIXION' },
         },
     },
     [202] =
@@ -2998,6 +3296,8 @@ catalog.byId =
             numHits = 3,
             multiHitfTP = true,
             critVaries = { 0.15, 0.3, 0.6 },
+            skillchain = { 'LIGHT', 'FUSION' },
+            aftermath = 'empyrean',
         },
     },
     [203] =
@@ -3014,6 +3314,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             ignoredDefense = { 0.125, 0.1875, 0.25 },
+            skillchain = { 'FRAGMENTATION', 'TRANSFIXION' },
         },
     },
     [208] =
@@ -3031,6 +3332,7 @@ catalog.byId =
             ftp = { 0.5, 1.55, 2.1 },
             wsc = { agi = 0.7 },
             numHits = 1,
+            skillchain = { 'LIQUEFACTION', 'TRANSFIXION' },
         },
     },
     [209] =
@@ -3047,6 +3349,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             ignoredDefense = { 0.0, 0.375, 0.75 },
+            skillchain = { 'REVERBERATION', 'TRANSFIXION' },
         },
     },
     [210] =
@@ -3063,6 +3366,8 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             critVaries = { 0.2, 0.5, 1.0 },
+            skillchain = { 'LIQUEFACTION', 'TRANSFIXION' },
+            debuff = { effect = 'INT_DOWN', label = 'INT Down', binary = false },
         },
     },
     [212] =
@@ -3079,6 +3384,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             accVaries = { -50.0, -10.0, 30.0 },
+            skillchain = { 'REVERBERATION', 'TRANSFIXION', 'DETONATION' },
         },
     },
     [213] =
@@ -3095,6 +3401,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             accVaries = { 0.0, 60.0, 100.0 },
+            skillchain = { 'INDURATION', 'TRANSFIXION' },
         },
     },
     [214] =
@@ -3111,6 +3418,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             critVaries = { 0.2, 0.5, 0.9 },
+            skillchain = { 'FUSION' },
         },
     },
     [215] =
@@ -3127,6 +3435,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 1,
             atkVaries = { 2.0, 2.0, 2.0 },
+            skillchain = { 'FUSION', 'TRANSFIXION' },
         },
     },
     [216] =
@@ -3142,6 +3451,9 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { dex = 0.4, agi = 0.4 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'FRAGMENTATION' },
+            enmity = 'low',
+            aftermath = 'relic',
         },
     },
     [217] =
@@ -3159,6 +3471,8 @@ catalog.byId =
             ftp = { 3.8906, 6.4922, 9.6719 },
             wsc = { agi = 1.0 },
             numHits = 1,
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
+            aftermath = 'mythic',
         },
     },
     [218] =
@@ -3176,6 +3490,8 @@ catalog.byId =
             ftp = { 4.0, 6.7, 10.0 },
             wsc = { agi = 1.0 },
             numHits = 1,
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
+            aftermath = 'mythic',
         },
     },
     [219] =
@@ -3191,6 +3507,8 @@ catalog.byId =
             ftp = { 3.0, 3.0, 3.0 },
             wsc = { agi = 0.8 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'DETONATION', 'IMPACTION' },
+            debuff = { effect = 'PARALYSIS', label = 'Paralysis', binary = false },
         },
     },
     [220] =
@@ -3208,6 +3526,9 @@ catalog.byId =
             ftp = { 5.5, 5.5, 5.5 },
             wsc = { agi = 0.6 },
             numHits = 1,
+            skillchain = { 'DARKNESS', 'GRAVITATION' },
+            enmity = 'low',
+            aftermath = 'empyrean',
         },
     },
     [221] =
@@ -3224,6 +3545,7 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 2,
             multiHitfTP = true,
+            skillchain = { 'FUSION', 'REVERBERATION' },
         },
     },
     [224] =
@@ -3240,6 +3562,8 @@ catalog.byId =
             wsc = { agi = 0.7 },
             numHits = 4,
             multiHitfTP = true,
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
+            debuff = { effect = 'ACCURACY_DOWN', label = 'Accuracy Down', binary = false },
         },
     },
     [225] =
@@ -3257,6 +3581,8 @@ catalog.byId =
             numHits = 3,
             multiHitfTP = true,
             critVaries = { 0.15, 0.3, 0.6 },
+            skillchain = { 'LIGHT', 'DISTORTION' },
+            aftermath = 'empyrean',
         },
     },
     [226] =
@@ -3274,6 +3600,7 @@ catalog.byId =
             numHits = 5,
             multiHitfTP = true,
             atkVaries = { 0.8, 0.9172, 1.05 },
+            skillchain = { 'GRAVITATION', 'SCISSION' },
         },
     },
     [231] =
@@ -3289,6 +3616,7 @@ catalog.byId =
             ftp = { 3.128, 7.273, 11.414 },
             wsc = { str = 0.4175, dex = 0.4175 },
             numHits = 2,
+            skillchain = { 'DETONATION', 'COMPRESSION', 'DISTORTION' },
         },
     },
     [232] =
@@ -3304,6 +3632,7 @@ catalog.byId =
             ftp = { 5.7578, 14.5156, 23.2773 },
             wsc = { dex = 0.2, agi = 0.2 },
             numHits = 4,
+            skillchain = { 'LIQUEFACTION', 'IMPACTION', 'FRAGMENTATION' },
         },
     },
     [235] =
@@ -3319,6 +3648,7 @@ catalog.byId =
             ftp = { 3.95, 7.89, 11.84 },
             wsc = { int = 0.45, mnd = 0.45 },
             numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION', 'FUSION' },
         },
     },
 }
