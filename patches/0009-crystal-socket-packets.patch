@@ -90,6 +90,212 @@ index 0000000000..c467d06498
 +    return Result::Success;
 +}
 +} // namespace crystal
+diff --git a/src/map/crystal_socket_lua.h b/src/map/crystal_socket_lua.h
+new file mode 100644
+index 0000000000..f209240b9a
+--- /dev/null
++++ b/src/map/crystal_socket_lua.h
+@@ -0,0 +1,200 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#pragma once
++
++#include "crystal_socket.h"
++
++#include <sol/sol.hpp>
++
++#include <algorithm>
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <string>
++#include <utility>
++#include <vector>
++
++namespace crystal
++{
++struct SnapshotEntry
++{
++    uint8_t ownedMask{ 0 };
++    uint8_t activeBranch{ 0 };
++};
++
++struct CatalogEntryData
++{
++    uint8_t                  branchId{ 0 };
++    uint8_t                  reqLevel{ 10 };
++    std::string              key;
++    std::string              name;
++    std::string              role;
++    std::string              icon;
++    std::string              description;
++    std::vector<std::string> highlights;
++};
++
++struct CatalogData
++{
++    std::string                   jobName;
++    std::vector<CatalogEntryData> entries;
++};
++
++inline auto sanitizeField(std::string value) -> std::string
++{
++    std::replace(value.begin(), value.end(), '\x1f', ' ');
++    std::replace(value.begin(), value.end(), '\r', ' ');
++    std::replace(value.begin(), value.end(), '\n', ' ');
++    return value;
++}
++
++template <typename Key>
++auto getTableField(const sol::table& tbl, Key&& key) -> std::optional<sol::table>
++{
++    const sol::object obj = tbl.get<sol::object>(std::forward<Key>(key));
++    if (obj.valid() && obj.get_type() == sol::type::table)
++    {
++        return obj.as<sol::table>();
++    }
++    return std::nullopt;
++}
++
++inline auto getProtectedTableResult(const sol::protected_function_result& res) -> std::optional<sol::table>
++{
++    if (!res.valid())
++    {
++        return std::nullopt;
++    }
++
++    const sol::object obj = res.get<sol::object>();
++    if (obj.valid() && obj.get_type() == sol::type::table)
++    {
++        return obj.as<sol::table>();
++    }
++    return std::nullopt;
++}
++
++inline auto getSpecTable(sol::state& luaState) -> std::optional<sol::table>
++{
++    const auto xiTbl = getTableField(luaState.globals(), "xi");
++    if (!xiTbl)
++    {
++        return std::nullopt;
++    }
++
++    const auto overlordsTbl = getTableField(*xiTbl, "overlords");
++    if (!overlordsTbl)
++    {
++        return std::nullopt;
++    }
++
++    return getTableField(*overlordsTbl, "spec");
++}
++
++inline auto getProtectedFunction(const sol::table& tbl, const char* name) -> std::optional<sol::protected_function>
++{
++    const sol::object obj = tbl.get<sol::object>(name);
++    if (obj.valid() && obj.get_type() == sol::type::function)
++    {
++        return obj.as<sol::protected_function>();
++    }
++    return std::nullopt;
++}
++
++inline auto parseCrystalSnapshot(const sol::table& snapshot) -> std::array<SnapshotEntry, MaxJobs>
++{
++    std::array<SnapshotEntry, MaxJobs> result{};
++    const auto jobsTbl = getTableField(snapshot, "jobs");
++    if (!jobsTbl)
++    {
++        return result;
++    }
++
++    for (uint8_t jobId = 1; jobId < MaxJobs; ++jobId)
++    {
++        const auto entryTbl = getTableField(*jobsTbl, static_cast<int>(jobId));
++        if (!entryTbl)
++        {
++            continue;
++        }
++
++        const uint8_t ownedMask    = entryTbl->get_or<uint8_t>("ownedMask", 0);
++        const uint8_t activeBranch = entryTbl->get_or<uint8_t>("activeBranch", 0);
++
++        result[jobId].ownedMask    = ownedMask & 0xFE;
++        result[jobId].activeBranch = activeBranch <= MaxBranches ? activeBranch : 0;
++    }
++
++    return result;
++}
++
++inline auto parseCrystalCatalog(const sol::table& catalog) -> CatalogData
++{
++    CatalogData out{};
++    out.jobName = sanitizeField(catalog.get_or<std::string>("jobName", ""));
++
++    const auto entriesTbl = getTableField(catalog, "entries");
++    if (!entriesTbl)
++    {
++        return out;
++    }
++
++    const size_t entryCount = std::min<size_t>(entriesTbl->size(), MaxBranches);
++    out.entries.reserve(entryCount);
++
++    for (size_t i = 1; i <= entryCount; ++i)
++    {
++        const auto entryTbl = getTableField(*entriesTbl, i);
++        if (!entryTbl)
++        {
++            continue;
++        }
++
++        CatalogEntryData item{};
++        item.branchId    = entryTbl->get_or<uint8_t>("id", 0);
++        item.reqLevel    = entryTbl->get_or<uint8_t>("reqLevel", 10);
++        item.key         = sanitizeField(entryTbl->get_or<std::string>("key", ""));
++        item.name        = sanitizeField(entryTbl->get_or<std::string>("name", ""));
++        item.role        = sanitizeField(entryTbl->get_or<std::string>("role", ""));
++        item.icon        = sanitizeField(entryTbl->get_or<std::string>("icon", ""));
++        item.description = sanitizeField(entryTbl->get_or<std::string>("description", ""));
++
++        if (const auto highlightsTbl = getTableField(*entryTbl, "highlights"))
++        {
++            const size_t hlCount = std::min<size_t>(highlightsTbl->size(), 255);
++            item.highlights.reserve(hlCount);
++            for (size_t h = 1; h <= hlCount; ++h)
++            {
++                const sol::object hlObj = highlightsTbl->get<sol::object>(h);
++                if (hlObj.valid() && hlObj.is<std::string>())
++                {
++                    item.highlights.push_back(sanitizeField(hlObj.as<std::string>()));
++                }
++            }
++        }
++
++        out.entries.push_back(std::move(item));
++    }
++
++    return out;
++}
++} // namespace crystal
 diff --git a/src/map/enums/packet_c2s.h b/src/map/enums/packet_c2s.h
 index 9e5fffd201..a4b4aada01 100644
 --- a/src/map/enums/packet_c2s.h
@@ -142,10 +348,10 @@ index 06f9182480..6de3778e0d 100644
      registerPacket<GP_CLI_COMMAND_CLSTAT>(handlers);
 diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
 new file mode 100644
-index 0000000000..355de224f2
+index 0000000000..485a90bd21
 --- /dev/null
 +++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,111 @@
 +/*
 +===========================================================================
 +
@@ -172,6 +378,7 @@ index 0000000000..355de224f2
 +#include "ai/ai_container.h"
 +#include "common/logging.h"
 +#include "crystal_socket.h"
++#include "crystal_socket_lua.h"
 +#include "entities/char_entity.h"
 +#include "lua/luautils.h"
 +#include "map_session.h"
@@ -228,14 +435,14 @@ index 0000000000..355de224f2
 +                              !PChar->PAI->QueueEmpty() ||
 +                              PChar->hasEnmityEXPENSIVE();
 +
-+            auto specTable = lua["xi"]["overlords"]["spec"];
-+            if (specTable.valid())
++            const auto specTable = crystal::getSpecTable(lua);
++            if (specTable)
 +            {
-+                sol::protected_function selectFn = specTable["handleCrystalSelect"];
-+                if (selectFn.valid())
++                const auto selectFn = crystal::getProtectedFunction(*specTable, "handleCrystalSelect");
++                if (selectFn)
 +                {
-+                    const auto luaResult = selectFn(PChar, job, branch, busy);
-+                    if (luaResult.valid())
++                    const auto luaResult = (*selectFn)(PChar, job, branch, busy);
++                    if (luaResult.valid() && luaResult.get_type() == sol::type::number)
 +                    {
 +                        const uint8_t code = luaResult.get<uint8_t>();
 +                        if (code <= std::to_underlying(crystal::Result::Invalid))
@@ -243,9 +450,9 @@ index 0000000000..355de224f2
 +                            result = static_cast<crystal::Result>(code);
 +                        }
 +                    }
-+                    else
++                    else if (!luaResult.valid())
 +                    {
-+                        sol::error err = luaResult;
++                        const sol::error err = luaResult;
 +                        ShowError("crystal_socket: handleCrystalSelect failed: %s", err.what());
 +                    }
 +                }
@@ -314,10 +521,10 @@ index 5f39a70a43..c43dee1bdd 100644
      ${CMAKE_CURRENT_SOURCE_DIR}/rate_limiter.h
 diff --git a/src/map/packets/s2c/0x1ff_crystal_collection.cpp b/src/map/packets/s2c/0x1ff_crystal_collection.cpp
 new file mode 100644
-index 0000000000..882a3e3f50
+index 0000000000..4894591a6b
 --- /dev/null
 +++ b/src/map/packets/s2c/0x1ff_crystal_collection.cpp
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,208 @@
 +/*
 +===========================================================================
 +
@@ -343,6 +550,7 @@ index 0000000000..882a3e3f50
 +
 +#include "common/logging.h"
 +#include "common/utils.h"
++#include "crystal_socket_lua.h"
 +#include "entities/char_entity.h"
 +#include "lua/luautils.h"
 +
@@ -352,14 +560,6 @@ index 0000000000..882a3e3f50
 +
 +namespace
 +{
-+auto sanitizeField(std::string value) -> std::string
-+{
-+    std::replace(value.begin(), value.end(), '\x1f', ' ');
-+    std::replace(value.begin(), value.end(), '\r', ' ');
-+    std::replace(value.begin(), value.end(), '\n', ' ');
-+    return value;
-+}
-+
 +void pushChunkedCatalogPacket(CCharEntity*         PChar,
 +                              crystal::CatalogKind kind,
 +                              uint16_t             requestId,
@@ -405,51 +605,37 @@ index 0000000000..882a3e3f50
 +    packet.currentMainLvl = static_cast<uint8_t>(PChar->GetMLevel());
 +    packet.reserved       = 0;
 +
-+    auto specTable = lua["xi"]["overlords"]["spec"];
-+    if (!specTable.valid())
++    const auto specTable = crystal::getSpecTable(lua);
++    if (!specTable)
 +    {
 +        return;
 +    }
 +
-+    sol::protected_function snapshotFn = specTable["getCrystalSnapshot"];
-+    if (!snapshotFn.valid())
++    const auto snapshotFn = crystal::getProtectedFunction(*specTable, "getCrystalSnapshot");
++    if (!snapshotFn)
 +    {
 +        return;
 +    }
 +
-+    const auto luaResult = snapshotFn(PChar);
++    const auto luaResult = (*snapshotFn)(PChar);
 +    if (!luaResult.valid())
 +    {
-+        sol::error err = luaResult;
++        const sol::error err = luaResult;
 +        ShowError("crystal_socket: getCrystalSnapshot failed: %s", err.what());
 +        return;
 +    }
 +
-+    const sol::table snapshot = luaResult;
-+    if (!snapshot.valid())
++    const auto snapshot = crystal::getProtectedTableResult(luaResult);
++    if (!snapshot)
 +    {
 +        return;
 +    }
 +
-+    const sol::table jobs = snapshot["jobs"];
-+    if (!jobs.valid())
-+    {
-+        return;
-+    }
-+
++    const auto parsed = crystal::parseCrystalSnapshot(*snapshot);
 +    for (uint8_t jobId = 1; jobId < crystal::MaxJobs; ++jobId)
 +    {
-+        const sol::table entry = jobs[jobId];
-+        if (!entry.valid())
-+        {
-+            continue;
-+        }
-+
-+        const uint8_t ownedMask    = entry.get_or<uint8_t>("ownedMask", 0);
-+        const uint8_t activeBranch = entry.get_or<uint8_t>("activeBranch", 0);
-+
-+        packet.entries[jobId].ownedMask    = ownedMask & 0xFE;
-+        packet.entries[jobId].activeBranch = activeBranch <= crystal::MaxBranches ? activeBranch : 0;
++        packet.entries[jobId].ownedMask    = parsed[jobId].ownedMask;
++        packet.entries[jobId].activeBranch = parsed[jobId].activeBranch;
 +    }
 +}
 +
@@ -495,80 +681,52 @@ index 0000000000..882a3e3f50
 +        return;
 +    }
 +
-+    auto specTable = lua["xi"]["overlords"]["spec"];
-+    if (!specTable.valid())
++    const auto specTable = crystal::getSpecTable(lua);
++    if (!specTable)
 +    {
 +        return;
 +    }
 +
-+    sol::protected_function catalogFn = specTable["getCrystalCatalog"];
-+    if (!catalogFn.valid())
++    const auto catalogFn = crystal::getProtectedFunction(*specTable, "getCrystalCatalog");
++    if (!catalogFn)
 +    {
 +        return;
 +    }
 +
-+    const auto luaResult = catalogFn(PChar, targetJob);
++    const auto luaResult = (*catalogFn)(PChar, targetJob);
 +    if (!luaResult.valid())
 +    {
-+        sol::error err = luaResult;
++        const sol::error err = luaResult;
 +        ShowError("crystal_socket: getCrystalCatalog failed: %s", err.what());
 +        return;
 +    }
 +
-+    const sol::table catalog = luaResult;
-+    if (!catalog.valid())
++    const auto catalog = crystal::getProtectedTableResult(luaResult);
++    if (!catalog)
 +    {
 +        return;
 +    }
 +
-+    const std::string jobName    = sanitizeField(catalog.get_or<std::string>("jobName", ""));
-+    const sol::table  entries    = catalog["entries"];
-+    const uint8_t     entryCount = entries.valid() ? static_cast<uint8_t>(std::min<size_t>(entries.size(), MaxBranches)) : 0;
++    const auto   parsed     = crystal::parseCrystalCatalog(*catalog);
++    const auto   entryCount = static_cast<uint8_t>(std::min<size_t>(parsed.entries.size(), MaxBranches));
++    pushChunkedCatalogPacket(PChar, CatalogKind::BeginJob, requestId, targetJob, 0, entryCount, 0, parsed.jobName);
 +
-+    pushChunkedCatalogPacket(PChar, CatalogKind::BeginJob, requestId, targetJob, 0, entryCount, 0, jobName);
-+
-+    if (entries.valid())
++    for (size_t i = 0; i < entryCount; ++i)
 +    {
-+        for (size_t i = 1; i <= entryCount; ++i)
++        const auto&       entry  = parsed.entries[i];
++        const std::string packed = entry.key + "\x1f" + entry.name + "\x1f" + entry.role + "\x1f" + entry.icon + "\x1f" + entry.description;
++        pushChunkedCatalogPacket(PChar, CatalogKind::Entry, requestId, targetJob, entry.branchId, static_cast<uint8_t>(i + 1), entry.reqLevel, packed);
++
++        for (size_t h = 0; h < entry.highlights.size(); ++h)
 +        {
-+            const sol::table entry = entries[i];
-+            if (!entry.valid())
-+            {
-+                continue;
-+            }
-+
-+            const uint8_t     branchId = entry.get_or<uint8_t>("id", 0);
-+            const uint8_t     reqLevel = entry.get_or<uint8_t>("reqLevel", 10);
-+            const std::string key      = sanitizeField(entry.get_or<std::string>("key", ""));
-+            const std::string name     = sanitizeField(entry.get_or<std::string>("name", ""));
-+            const std::string role     = sanitizeField(entry.get_or<std::string>("role", ""));
-+            const std::string icon     = sanitizeField(entry.get_or<std::string>("icon", ""));
-+            const std::string desc     = sanitizeField(entry.get_or<std::string>("description", ""));
-+
-+            const std::string packed = key + "\x1f" + name + "\x1f" + role + "\x1f" + icon + "\x1f" + desc;
-+            pushChunkedCatalogPacket(PChar, CatalogKind::Entry, requestId, targetJob, branchId, static_cast<uint8_t>(i), reqLevel, packed);
-+
-+            const sol::table highlights = entry["highlights"];
-+            if (highlights.valid())
-+            {
-+                const size_t hlCount = std::min<size_t>(highlights.size(), 255);
-+                for (size_t h = 1; h <= hlCount; ++h)
-+                {
-+                    const sol::object hlObj = highlights[h];
-+                    if (hlObj.is<std::string>())
-+                    {
-+                        const std::string line = sanitizeField(hlObj.as<std::string>());
-+                        pushChunkedCatalogPacket(PChar,
-+                                                 CatalogKind::Highlight,
-+                                                 requestId,
-+                                                 targetJob,
-+                                                 branchId,
-+                                                 static_cast<uint8_t>(h),
-+                                                 0,
-+                                                 line);
-+                    }
-+                }
-+            }
++            pushChunkedCatalogPacket(PChar,
++                                     CatalogKind::Highlight,
++                                     requestId,
++                                     targetJob,
++                                     entry.branchId,
++                                     static_cast<uint8_t>(h + 1),
++                                     0,
++                                     entry.highlights[h]);
 +        }
 +    }
 +
@@ -702,10 +860,10 @@ index ff0d4b5b83..685e60fdcf 100644
      ${CMAKE_CURRENT_SOURCE_DIR}/tests/char_points_queries_tests.cpp
 diff --git a/src/test/tests/crystal_socket_tests.cpp b/src/test/tests/crystal_socket_tests.cpp
 new file mode 100644
-index 0000000000..0240a12862
+index 0000000000..ad19016516
 --- /dev/null
 +++ b/src/test/tests/crystal_socket_tests.cpp
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,148 @@
 +/*
 +===========================================================================
 +
@@ -761,4 +919,96 @@ index 0000000000..0240a12862
 +    CHECK_FALSE(validRequest(Magic, 2, 0, 0));
 +    CHECK_FALSE(validRequest(Magic, 1, 3, 0));
 +    CHECK_FALSE(validRequest(Magic, 1, 0, 1));
++}
++
++#include "map/crystal_socket_lua.h"
++
++TEST_CASE("Crystal socket Lua helpers handle sparse tables safely", "[crystal]")
++{
++    sol::state luaState;
++    luaState.open_libraries(sol::lib::base, sol::lib::table);
++
++    CHECK_FALSE(crystal::getSpecTable(luaState).has_value());
++
++    luaState.script(R"(
++        xi = {
++            overlords = {
++                spec = {
++                    getCrystalSnapshot = function()
++                        return {
++                            jobs = {
++                                [1]  = { ownedMask = 0x0E, activeBranch = 2 },
++                                [2]  = { ownedMask = 0x05, activeBranch = 9 },
++                                [20] = { ownedMask = 0x02, activeBranch = 1 },
++                                [4]  = "not-a-table",
++                            },
++                        }
++                    end,
++                    getCrystalCatalog = function()
++                        return {
++                            jobName = "Scholar\n",
++                            entries = {
++                                {
++                                    id = 1,
++                                    key = "sch_sage",
++                                    name = "Sage",
++                                    role = "Caster",
++                                    icon = "sch_sage",
++                                    description = "Line1\r\nLine2",
++                                },
++                                "invalid-entry",
++                                {
++                                    id = 2,
++                                    reqLevel = 30,
++                                    key = "sch_medic",
++                                    name = "Medic",
++                                    highlights = { "Triage\x1fBurst", 123 },
++                                },
++                            },
++                        }
++                    end,
++                },
++            },
++        }
++    )");
++
++    const auto specTbl = crystal::getSpecTable(luaState);
++    REQUIRE(specTbl.has_value());
++    CHECK_FALSE(crystal::getProtectedFunction(*specTbl, "missingFn").has_value());
++
++    const auto snapFn = crystal::getProtectedFunction(*specTbl, "getCrystalSnapshot");
++    REQUIRE(snapFn.has_value());
++    const auto snapTbl = crystal::getProtectedTableResult((*snapFn)());
++    REQUIRE(snapTbl.has_value());
++
++    const auto parsedSnap = crystal::parseCrystalSnapshot(*snapTbl);
++    CHECK(parsedSnap[1].ownedMask == 0x0E);
++    CHECK(parsedSnap[1].activeBranch == 2);
++    CHECK(parsedSnap[2].ownedMask == 0x04);
++    CHECK(parsedSnap[2].activeBranch == 0);
++    CHECK(parsedSnap[3].ownedMask == 0);
++    CHECK(parsedSnap[3].activeBranch == 0);
++    CHECK(parsedSnap[4].ownedMask == 0);
++    CHECK(parsedSnap[20].ownedMask == 0x02);
++    CHECK(parsedSnap[20].activeBranch == 1);
++
++    const auto emptyCatalog = crystal::parseCrystalCatalog(luaState.create_table());
++    CHECK(emptyCatalog.jobName.empty());
++    CHECK(emptyCatalog.entries.empty());
++
++    const auto catFn = crystal::getProtectedFunction(*specTbl, "getCrystalCatalog");
++    REQUIRE(catFn.has_value());
++    const auto catTbl = crystal::getProtectedTableResult((*catFn)());
++    REQUIRE(catTbl.has_value());
++
++    const auto parsedCat = crystal::parseCrystalCatalog(*catTbl);
++    CHECK(parsedCat.jobName == "Scholar ");
++    REQUIRE(parsedCat.entries.size() == 2);
++    CHECK(parsedCat.entries[0].branchId == 1);
++    CHECK(parsedCat.entries[0].description == "Line1  Line2");
++    CHECK(parsedCat.entries[0].highlights.empty());
++    CHECK(parsedCat.entries[1].branchId == 2);
++    CHECK(parsedCat.entries[1].reqLevel == 30);
++    REQUIRE(parsedCat.entries[1].highlights.size() == 1);
++    CHECK(parsedCat.entries[1].highlights[0] == "Triage Burst");
 +}
