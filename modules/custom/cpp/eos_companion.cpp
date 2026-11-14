@@ -11,9 +11,9 @@
 
 #include "map/ai/ai_container.h"
 #include "map/ai/controllers/controller.h"
-#include "map/entities/battleentity.h"
-#include "map/entities/charentity.h"
-#include "map/entities/petentity.h"
+#include "map/entities/battle_entity.h"
+#include "map/entities/char_entity.h"
+#include "map/entities/pet_entity.h"
 #include "map/mob_spell_container.h"
 #include "map/modifier.h"
 #include "map/spell.h"
@@ -24,6 +24,7 @@
 #include "map/zone.h"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <unordered_map>
 
@@ -32,16 +33,16 @@ using namespace std::chrono_literals;
 namespace
 {
 
-constexpr uint32 EosPetId           = 128;
-constexpr auto   EosSpecVar         = "OX_SPEC_SCH";
-constexpr int32  EosMedicSpecId     = 1;
-constexpr EFFECT EosRegenEffect     = static_cast<EFFECT>(789);
-constexpr EFFECT EosRefreshEffect   = static_cast<EFFECT>(814);
-constexpr Mod    EosRefreshMod      = static_cast<Mod>(1198);
-constexpr float  EosSupportRange    = 20.0f;
-constexpr auto   EosCastCooldown    = 5s;
-constexpr auto   EosRefreshDuration = 10s;
-constexpr auto   EosRegenWindow     = 15s;
+constexpr uint32           EosPetId           = 128;
+constexpr auto             EosSpecVar         = "OX_SPEC_SCH";
+constexpr int32            EosMedicSpecId     = 1;
+constexpr xi::StatusEffect EosRegenEffect     = static_cast<xi::StatusEffect>(789);
+constexpr xi::StatusEffect EosRefreshEffect   = static_cast<xi::StatusEffect>(814);
+constexpr xi::Mod          EosRefreshMod      = static_cast<xi::Mod>(1198);
+constexpr float            EosSupportRange    = 20.0f;
+constexpr auto             EosCastCooldown    = 5s;
+constexpr auto             EosRefreshDuration = 10s;
+constexpr auto             EosRegenWindow     = 15s;
 
 struct EosSupportAction
 {
@@ -53,12 +54,12 @@ std::unordered_map<uint32, timer::time_point> nextEosCastTime;
 
 bool IsEos(CPetEntity* PPet)
 {
-    return PPet && PPet->m_PetID == EosPetId && PPet->isAlive();
+    return PPet && PPet->petID() == EosPetId && PPet->isAlive();
 }
 
 bool IsMedicScholar(CCharEntity* PMaster)
 {
-    return PMaster && PMaster->GetMJob() == JOB_SCH && PMaster->getCharVar(EosSpecVar) == EosMedicSpecId;
+    return PMaster && PMaster->GetMJob() == xi::Job::SCH && PMaster->getCharVar(EosSpecVar) == EosMedicSpecId;
 }
 
 bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
@@ -76,14 +77,14 @@ bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
     }
 
     const auto mainLevel = PMaster->GetMLevel();
-    if (PPet->GetMJob() != JOB_SCH)
+    if (PPet->GetMJob() != xi::Job::SCH)
     {
-        PPet->SetMJob(JOB_SCH);
+        PPet->SetMJob(static_cast<uint8>(xi::Job::SCH));
     }
 
-    if (PPet->GetSJob(true) != JOB_SMN)
+    if (PPet->GetSJob(true) != xi::Job::SMN)
     {
-        PPet->SetSJob(JOB_SMN);
+        PPet->SetSJob(static_cast<uint8>(xi::Job::SMN));
     }
 
     if (PPet->GetMLevel() != mainLevel)
@@ -110,42 +111,42 @@ std::optional<SpellID> GetNaSpell(CBattleEntity* PTarget)
 {
     auto* PEffects = PTarget->StatusEffectContainer;
 
-    if (PEffects->HasStatusEffect(EFFECT_PETRIFICATION))
+    if (PEffects->HasStatusEffect(xi::StatusEffect::Petrification))
     {
         return SpellID::Stona;
     }
 
-    if (PEffects->HasStatusEffect({ EFFECT_DOOM, EFFECT_CURSE, EFFECT_CURSE_II, EFFECT_BANE }))
+    if (PEffects->HasStatusEffect({ xi::StatusEffect::Doom, xi::StatusEffect::CurseI, xi::StatusEffect::CurseIi, xi::StatusEffect::Bane }))
     {
         return SpellID::Cursna;
     }
 
-    if (PEffects->HasStatusEffect(EFFECT_PARALYSIS))
+    if (PEffects->HasStatusEffect(xi::StatusEffect::Paralysis))
     {
         return SpellID::Paralyna;
     }
 
-    if (PEffects->HasStatusEffect(EFFECT_SILENCE))
+    if (PEffects->HasStatusEffect(xi::StatusEffect::Silence))
     {
         return SpellID::Silena;
     }
 
-    if (PEffects->HasStatusEffect(EFFECT_POISON))
+    if (PEffects->HasStatusEffect(xi::StatusEffect::Poison))
     {
         return SpellID::Poisona;
     }
 
-    if (PEffects->HasStatusEffect(EFFECT_BLINDNESS))
+    if (PEffects->HasStatusEffect(xi::StatusEffect::Blindness))
     {
         return SpellID::Blindna;
     }
 
-    if (PEffects->HasStatusEffect({ EFFECT_DISEASE, EFFECT_PLAGUE }))
+    if (PEffects->HasStatusEffect({ xi::StatusEffect::Disease, xi::StatusEffect::Plague }))
     {
         return SpellID::Viruna;
     }
 
-    if (PEffects->HasStatusEffectByFlag(EFFECTFLAG_ERASABLE))
+    if (PEffects->HasStatusEffectByFlag(xi::StatusEffectFlag::Erasable))
     {
         return SpellID::Erase;
     }
@@ -276,7 +277,7 @@ bool CanCast(CPetEntity* PPet, SpellID spellId)
         return false;
     }
 
-    if (PPet->StatusEffectContainer->HasStatusEffect({ EFFECT_SILENCE, EFFECT_MUTE }))
+    if (PPet->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::Silence, xi::StatusEffect::Mute }))
     {
         return false;
     }
@@ -303,7 +304,7 @@ void TrySupportCast(CPetEntity* PPet, timer::time_point tick)
         return;
     }
 
-    if (PPet->PAI->Cast(action->PTarget->targid, action->spellId))
+    if (PPet->PAI->Cast(action->PTarget->entityId(), action->spellId))
     {
         nextEosCastTime[PPet->id] = tick + EosCastCooldown;
     }
@@ -344,13 +345,9 @@ void MaintainOrphicRefresh(CPetEntity* PPet, timer::time_point tick)
         PPet->StatusEffectContainer->DelStatusEffectSilent(EosRefreshEffect);
     }
 
-    auto* PEosRefresh = new CStatusEffect(EosRefreshEffect, 0, 0, 0s, EosRefreshDuration, 0, desired);
-    PEosRefresh->addMod(Mod::REFRESH, desired);
-
-    if (!PPet->StatusEffectContainer->AddStatusEffect(PEosRefresh, EffectNotice::Silent))
-    {
-        delete PEosRefresh;
-    }
+    auto PEosRefresh = std::make_unique<CStatusEffect>(EosRefreshEffect, 0, 0, 0s, EosRefreshDuration, 0, desired);
+    PEosRefresh->addMod(xi::Mod::REFRESH, static_cast<int16>(desired));
+    PPet->StatusEffectContainer->AddStatusEffect(std::move(PEosRefresh), EffectNotice::Silent);
 }
 
 } // namespace
