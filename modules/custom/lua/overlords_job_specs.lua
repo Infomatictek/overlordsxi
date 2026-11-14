@@ -698,6 +698,120 @@ function spec.sendSync(player, optJobId)
 end
 
 -----------------------------------
+-- Crystal Socket Binary Protocol Helpers (0x11F / 0x1FF)
+-----------------------------------
+function spec.getCrystalSnapshot(player)
+    if player == nil then
+        return nil
+    end
+
+    spec.ensureUpToDate(player)
+
+    local jobsOut = {}
+    for jobId, job in pairs(spec.jobs) do
+        local ownedMask = 0
+        for _, entry in ipairs(job.ordered or {}) do
+            if entry.id >= 1 and entry.id <= 7 and spec.isLevelEligible(player, jobId, entry) then
+                ownedMask = bit.bor(ownedMask, bit.lshift(1, entry.id))
+            end
+        end
+
+        local active = spec.get(player, jobId)
+        local activeId = active and tonumber(active.id) or 0
+        jobsOut[jobId] =
+        {
+            ownedMask    = ownedMask,
+            activeBranch = activeId,
+        }
+    end
+
+    return
+    {
+        mainJob = player:getMainJob(),
+        mainLvl = player:getMainLvl(),
+        jobs    = jobsOut,
+    }
+end
+
+function spec.getCrystalCatalog(player, optJobId)
+    if player == nil then
+        return nil
+    end
+
+    local jobId = tonumber(optJobId) or 0
+    if jobId <= 0 then
+        jobId = player:getMainJob()
+    end
+
+    local entriesOut = {}
+    for _, entry in ipairs(spec.list(jobId)) do
+        local highlights = {}
+        for _, line in ipairs(entry.highlights or {}) do
+            table.insert(highlights, tostring(line or ''))
+        end
+
+        table.insert(entriesOut,
+        {
+            id          = tonumber(entry.id) or 0,
+            key         = tostring(entry.key or ''),
+            name        = tostring(entry.name or ''),
+            role        = tostring(entry.role or ''),
+            icon        = tostring(entry.icon or ''),
+            reqLevel    = tonumber(entry.reqLevel) or spec.DEFAULT_REQ_LEVEL,
+            description = tostring(entry.description or ''),
+            highlights  = highlights,
+        })
+    end
+
+    return
+    {
+        jobId   = jobId,
+        jobName = spec.getJobName(jobId),
+        entries = entriesOut,
+    }
+end
+
+function spec.handleCrystalSelect(player, jobId, branch, busy)
+    if player == nil then
+        return 4
+    end
+
+    if jobId ~= player:getMainJob() then
+        return 2
+    end
+
+    local job = spec.jobs[jobId]
+    if job == nil or branch == nil or branch < 0 or branch > 7 then
+        return 4
+    end
+
+    if branch > 0 then
+        local entry = spec.resolve(jobId, branch)
+        if entry == nil then
+            return 4
+        end
+
+        if busy then
+            return 3
+        end
+
+        if not spec.isLevelEligible(player, jobId, entry) then
+            return 1
+        end
+
+        local selected = spec.set(player, jobId, branch)
+        return selected ~= nil and 0 or 3
+    else
+        if busy then
+            return 3
+        end
+
+        local ok = spec.clear(player, jobId)
+        return ok and 0 or 3
+    end
+end
+
+-----------------------------------
 -- Built-in Scholar Crystals
 -----------------------------------
 if xi.job and xi.job.SCH then

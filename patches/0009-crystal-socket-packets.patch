@@ -1,0 +1,764 @@
+diff --git a/src/map/crystal_socket.h b/src/map/crystal_socket.h
+new file mode 100644
+index 0000000000..c467d06498
+--- /dev/null
++++ b/src/map/crystal_socket.h
+@@ -0,0 +1,86 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#pragma once
++
++#include <cstdint>
++
++namespace crystal
++{
++constexpr uint32_t Magic        = 0x53595243; // "CRYS"
++constexpr uint32_t CatalogMagic = 0x43595243; // "CRYC"
++constexpr uint8_t  MaxBranches  = 7;
++constexpr uint8_t  MaxJobs      = 24;
++
++enum class Operation : uint8_t
++{
++    Query       = 0,
++    Select      = 1,
++    SyncCatalog = 2,
++};
++
++enum class CatalogKind : uint8_t
++{
++    BeginJob  = 0,
++    Entry     = 1,
++    Highlight = 2,
++    EndJob    = 3,
++};
++
++enum class Result : uint8_t
++{
++    Success  = 0,
++    Locked   = 1,
++    WrongJob = 2,
++    Busy     = 3,
++    Invalid  = 4,
++};
++
++constexpr auto validRequest(uint32_t magic, uint8_t version, uint8_t op, uint16_t reserved) -> bool
++{
++    return magic == Magic && version == 1 && op <= 2 && reserved == 0;
++}
++
++constexpr auto selectionResult(uint8_t mainJob, uint8_t job, uint8_t branch, uint8_t owned, bool busy, uint8_t registeredMask) -> Result
++{
++    if (job == 0 || job >= MaxJobs || branch > MaxBranches || registeredMask == 0)
++    {
++        return Result::Invalid;
++    }
++    if (branch != 0 && !(registeredMask & (1 << branch)))
++    {
++        return Result::Invalid;
++    }
++    if (mainJob != job)
++    {
++        return Result::WrongJob;
++    }
++    if (busy)
++    {
++        return Result::Busy;
++    }
++    if (branch != 0 && !(owned & (1 << branch)))
++    {
++        return Result::Locked;
++    }
++    return Result::Success;
++}
++} // namespace crystal
+diff --git a/src/map/enums/packet_c2s.h b/src/map/enums/packet_c2s.h
+index 9e5fffd201..a4b4aada01 100644
+--- a/src/map/enums/packet_c2s.h
++++ b/src/map/enums/packet_c2s.h
+@@ -160,6 +160,7 @@ enum class PacketC2S : uint16_t
+     GP_CLI_COMMAND_MASTERY_DISPLAY           = 0x11B,
+     GP_CLI_COMMAND_PARTY_REQUEST             = 0x11C,
+     GP_CLI_COMMAND_JUMP                      = 0x11D,
++    GP_CLI_COMMAND_CRYSTAL_SOCKET            = 0x11F,
+ };
+ 
+ template <>
+diff --git a/src/map/enums/packet_s2c.h b/src/map/enums/packet_s2c.h
+index 59ab02f5e9..f6dae825d0 100644
+--- a/src/map/enums/packet_s2c.h
++++ b/src/map/enums/packet_s2c.h
+@@ -179,11 +179,12 @@ enum class PacketS2C : uint16_t
+     GP_SERV_COMMAND_LOCKSTYLE_ERROR        = 0x11C,
+     GP_SERV_COMMAND_PARTYREQ               = 0x11D,
+     GP_SERV_COMMAND_JUMP                   = 0x11E,
++    GP_SERV_COMMAND_CRYSTAL_COLLECTION     = 0x1FF,
+ };
+ 
+ template <>
+ struct magic_enum::customize::enum_range<PacketS2C>
+ {
+     static constexpr int min = 0;
+-    static constexpr int max = 300;
++    static constexpr int max = 511;
+ };
+diff --git a/src/map/packet_system.cpp b/src/map/packet_system.cpp
+index 06f9182480..6de3778e0d 100644
+--- a/src/map/packet_system.cpp
++++ b/src/map/packet_system.cpp
+@@ -30,6 +30,7 @@
+ #include "map_session.h"
+ #include "packets/basic.h"
+ #include "packets/c2s/0x00a_login.h"
++#include "packets/c2s/0x11f_crystal_socket.h"
+ #include "packets/c2s/0x00c_gameok.h"
+ #include "packets/c2s/0x00d_netend.h"
+ #include "packets/c2s/0x00f_clstat.h"
+@@ -237,6 +238,7 @@ consteval auto buildPacketHandlers() -> std::array<PacketHandler, 512>
+     std::array<PacketHandler, 512> handlers{};
+ 
+     registerPacket<GP_CLI_COMMAND_LOGIN>(handlers);
++    registerPacket<GP_CLI_COMMAND_CRYSTAL_SOCKET>(handlers);
+     registerPacket<GP_CLI_COMMAND_GAMEOK>(handlers);
+     registerPacket<GP_CLI_COMMAND_NETEND>(handlers);
+     registerPacket<GP_CLI_COMMAND_CLSTAT>(handlers);
+diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+new file mode 100644
+index 0000000000..355de224f2
+--- /dev/null
++++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+@@ -0,0 +1,110 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#include "0x11f_crystal_socket.h"
++
++#include "ai/ai_container.h"
++#include "common/logging.h"
++#include "crystal_socket.h"
++#include "entities/char_entity.h"
++#include "lua/luautils.h"
++#include "map_session.h"
++#include "packets/c2s/validation.h"
++#include "packets/s2c/0x1ff_crystal_collection.h"
++
++auto GP_CLI_COMMAND_CRYSTAL_SOCKET::validate(MapSession* PSession, const CCharEntity* PChar) const -> PacketValidationResult
++{
++    return PacketValidator(PChar).mustEqual(magic, crystal::Magic, "Not a Crystal protocol request.");
++}
++
++void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* PChar) const
++{
++    auto result = crystal::Result::Invalid;
++    if (crystal::validRequest(magic, version, operation, reserved))
++    {
++        if (operation == std::to_underlying(crystal::Operation::Query))
++        {
++            result = crystal::Result::Success;
++        }
++        else if (operation == std::to_underlying(crystal::Operation::SyncCatalog))
++        {
++            const uint8_t targetJob = job == 0 ? static_cast<uint8_t>(PChar->GetMJob()) : job;
++            if (targetJob > 0 && targetJob < crystal::MaxJobs)
++            {
++                crystal::pushCatalogPackets(PChar, requestId, targetJob);
++                result = crystal::Result::Success;
++            }
++        }
++        else if (operation == std::to_underlying(crystal::Operation::Select))
++        {
++            const PacketValidationResult state = PacketValidator(PChar).blockedBy({
++                BlockedState::Dead,
++                BlockedState::InEvent,
++                BlockedState::Engaged,
++                BlockedState::AbnormalStatus,
++                BlockedState::PreventAction,
++                BlockedState::Crafting,
++                BlockedState::Fishing,
++                BlockedState::Healing,
++                BlockedState::Mounted,
++                BlockedState::Charmed,
++                BlockedState::Monstrosity,
++            });
++
++            // Conservatively forbid battlefield changes and active/queued actions.
++            const bool busy = !PSession->hasLoadedZone() ||
++                              PSession->shuttingDown ||
++                              PSession->zone_type != GP_GAME_LOGOUT_STATE::NONE ||
++                              !state.valid() ||
++                              !PChar->loc.zone ||
++                              PChar->PBattlefield ||
++                              !PChar->PAI->IsStateStackEmpty() ||
++                              !PChar->PAI->QueueEmpty() ||
++                              PChar->hasEnmityEXPENSIVE();
++
++            auto specTable = lua["xi"]["overlords"]["spec"];
++            if (specTable.valid())
++            {
++                sol::protected_function selectFn = specTable["handleCrystalSelect"];
++                if (selectFn.valid())
++                {
++                    const auto luaResult = selectFn(PChar, job, branch, busy);
++                    if (luaResult.valid())
++                    {
++                        const uint8_t code = luaResult.get<uint8_t>();
++                        if (code <= std::to_underlying(crystal::Result::Invalid))
++                        {
++                            result = static_cast<crystal::Result>(code);
++                        }
++                    }
++                    else
++                    {
++                        sol::error err = luaResult;
++                        ShowError("crystal_socket: handleCrystalSelect failed: %s", err.what());
++                    }
++                }
++            }
++        }
++    }
++
++    // Only reply to a request, keeping stock clients unaware of the extension.
++    PChar->pushPacket<GP_SERV_COMMAND_CRYSTAL_COLLECTION>(PChar, result, requestId);
++}
+diff --git a/src/map/packets/c2s/0x11f_crystal_socket.h b/src/map/packets/c2s/0x11f_crystal_socket.h
+new file mode 100644
+index 0000000000..426c3241c7
+--- /dev/null
++++ b/src/map/packets/c2s/0x11f_crystal_socket.h
+@@ -0,0 +1,39 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#pragma once
++
++#include "base.h"
++
++#include <cstddef>
++
++GP_CLI_PACKET(GP_CLI_COMMAND_CRYSTAL_SOCKET,
++              uint32_t magic;
++              uint8_t  version;
++              uint8_t  operation;
++              uint16_t requestId;
++              uint8_t  job;
++              uint8_t  branch;
++              uint16_t reserved;
++);
++
++static_assert(sizeof(GP_CLI_COMMAND_CRYSTAL_SOCKET) == 16);
++static_assert(offsetof(GP_CLI_COMMAND_CRYSTAL_SOCKET, job) == 12);
+diff --git a/src/map/packets/c2s/CMakeLists.txt b/src/map/packets/c2s/CMakeLists.txt
+index 5f39a70a43..c43dee1bdd 100644
+--- a/src/map/packets/c2s/CMakeLists.txt
++++ b/src/map/packets/c2s/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ target_sources(xi_map_packets_c2s PRIVATE
++    ${CMAKE_CURRENT_SOURCE_DIR}/0x11f_crystal_socket.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/0x11f_crystal_socket.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/base.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limiter.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limiter.h
+diff --git a/src/map/packets/s2c/0x1ff_crystal_collection.cpp b/src/map/packets/s2c/0x1ff_crystal_collection.cpp
+new file mode 100644
+index 0000000000..882a3e3f50
+--- /dev/null
++++ b/src/map/packets/s2c/0x1ff_crystal_collection.cpp
+@@ -0,0 +1,257 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#include "0x1ff_crystal_collection.h"
++
++#include "common/logging.h"
++#include "common/utils.h"
++#include "entities/char_entity.h"
++#include "lua/luautils.h"
++
++#include <algorithm>
++#include <cstring>
++#include <string>
++
++namespace
++{
++auto sanitizeField(std::string value) -> std::string
++{
++    std::replace(value.begin(), value.end(), '\x1f', ' ');
++    std::replace(value.begin(), value.end(), '\r', ' ');
++    std::replace(value.begin(), value.end(), '\n', ' ');
++    return value;
++}
++
++void pushChunkedCatalogPacket(CCharEntity*         PChar,
++                              crystal::CatalogKind kind,
++                              uint16_t             requestId,
++                              uint8_t              jobId,
++                              uint8_t              branchId,
++                              uint8_t              index,
++                              uint8_t              reqLevel,
++                              std::string_view     text)
++{
++    constexpr size_t MaxChunkBytes = sizeof(GP_SERV_COMMAND_CRYSTAL_CATALOG::PacketData::payload);
++    size_t           offset        = 0;
++    uint8_t          chunkIdx      = 0;
++
++    do
++    {
++        const size_t  remaining = text.size() - offset;
++        const size_t  len       = std::min(remaining, MaxChunkBytes);
++        const uint8_t more      = (offset + len < text.size()) ? 1 : 0;
++        PChar->pushPacket<GP_SERV_COMMAND_CRYSTAL_CATALOG>(kind,
++                                                           requestId,
++                                                           jobId,
++                                                           branchId,
++                                                           index,
++                                                           reqLevel,
++                                                           chunkIdx,
++                                                           more,
++                                                           text.substr(offset, len));
++        offset += len;
++        ++chunkIdx;
++    } while (offset < text.size());
++}
++} // namespace
++
++GP_SERV_COMMAND_CRYSTAL_COLLECTION::GP_SERV_COMMAND_CRYSTAL_COLLECTION(CCharEntity* PChar, crystal::Result result, uint16_t requestId)
++{
++    auto& packet          = this->data();
++    packet.magic          = crystal::Magic;
++    packet.version        = 1;
++    packet.result         = result;
++    packet.requestId      = requestId;
++    packet.currentMainJob = static_cast<uint8_t>(PChar->GetMJob());
++    packet.entryCount     = crystal::MaxJobs;
++    packet.currentMainLvl = static_cast<uint8_t>(PChar->GetMLevel());
++    packet.reserved       = 0;
++
++    auto specTable = lua["xi"]["overlords"]["spec"];
++    if (!specTable.valid())
++    {
++        return;
++    }
++
++    sol::protected_function snapshotFn = specTable["getCrystalSnapshot"];
++    if (!snapshotFn.valid())
++    {
++        return;
++    }
++
++    const auto luaResult = snapshotFn(PChar);
++    if (!luaResult.valid())
++    {
++        sol::error err = luaResult;
++        ShowError("crystal_socket: getCrystalSnapshot failed: %s", err.what());
++        return;
++    }
++
++    const sol::table snapshot = luaResult;
++    if (!snapshot.valid())
++    {
++        return;
++    }
++
++    const sol::table jobs = snapshot["jobs"];
++    if (!jobs.valid())
++    {
++        return;
++    }
++
++    for (uint8_t jobId = 1; jobId < crystal::MaxJobs; ++jobId)
++    {
++        const sol::table entry = jobs[jobId];
++        if (!entry.valid())
++        {
++            continue;
++        }
++
++        const uint8_t ownedMask    = entry.get_or<uint8_t>("ownedMask", 0);
++        const uint8_t activeBranch = entry.get_or<uint8_t>("activeBranch", 0);
++
++        packet.entries[jobId].ownedMask    = ownedMask & 0xFE;
++        packet.entries[jobId].activeBranch = activeBranch <= crystal::MaxBranches ? activeBranch : 0;
++    }
++}
++
++GP_SERV_COMMAND_CRYSTAL_CATALOG::GP_SERV_COMMAND_CRYSTAL_CATALOG(crystal::CatalogKind kind,
++                                                                 uint16_t             requestId,
++                                                                 uint8_t              jobId,
++                                                                 uint8_t              branchId,
++                                                                 uint8_t              index,
++                                                                 uint8_t              reqLevel,
++                                                                 uint8_t              chunkIdx,
++                                                                 uint8_t              chunkFlag,
++                                                                 std::string_view     text)
++{
++    auto& packet     = this->data();
++    packet.magic     = crystal::CatalogMagic;
++    packet.version   = 1;
++    packet.kind      = kind;
++    packet.requestId = requestId;
++    packet.jobId     = jobId;
++    packet.branchId  = branchId;
++    packet.index     = index;
++    packet.reqLevel  = reqLevel;
++    packet.chunkIdx  = chunkIdx;
++    packet.chunkFlag = chunkFlag;
++
++    const auto copyLen = static_cast<uint16_t>(std::min(text.size(), sizeof(packet.payload)));
++    packet.textLen     = copyLen;
++    if (copyLen > 0)
++    {
++        std::memcpy(packet.payload, text.data(), copyLen);
++    }
++
++    const auto packetSize = sizeof(GP_SERV_HEADER) + offsetof(PacketData, payload) + copyLen;
++    this->setSize(roundUpToNearestFour(packetSize));
++}
++
++namespace crystal
++{
++void pushCatalogPackets(CCharEntity* PChar, uint16_t requestId, uint8_t targetJob)
++{
++    if (!PChar || targetJob == 0 || targetJob >= MaxJobs)
++    {
++        return;
++    }
++
++    auto specTable = lua["xi"]["overlords"]["spec"];
++    if (!specTable.valid())
++    {
++        return;
++    }
++
++    sol::protected_function catalogFn = specTable["getCrystalCatalog"];
++    if (!catalogFn.valid())
++    {
++        return;
++    }
++
++    const auto luaResult = catalogFn(PChar, targetJob);
++    if (!luaResult.valid())
++    {
++        sol::error err = luaResult;
++        ShowError("crystal_socket: getCrystalCatalog failed: %s", err.what());
++        return;
++    }
++
++    const sol::table catalog = luaResult;
++    if (!catalog.valid())
++    {
++        return;
++    }
++
++    const std::string jobName    = sanitizeField(catalog.get_or<std::string>("jobName", ""));
++    const sol::table  entries    = catalog["entries"];
++    const uint8_t     entryCount = entries.valid() ? static_cast<uint8_t>(std::min<size_t>(entries.size(), MaxBranches)) : 0;
++
++    pushChunkedCatalogPacket(PChar, CatalogKind::BeginJob, requestId, targetJob, 0, entryCount, 0, jobName);
++
++    if (entries.valid())
++    {
++        for (size_t i = 1; i <= entryCount; ++i)
++        {
++            const sol::table entry = entries[i];
++            if (!entry.valid())
++            {
++                continue;
++            }
++
++            const uint8_t     branchId = entry.get_or<uint8_t>("id", 0);
++            const uint8_t     reqLevel = entry.get_or<uint8_t>("reqLevel", 10);
++            const std::string key      = sanitizeField(entry.get_or<std::string>("key", ""));
++            const std::string name     = sanitizeField(entry.get_or<std::string>("name", ""));
++            const std::string role     = sanitizeField(entry.get_or<std::string>("role", ""));
++            const std::string icon     = sanitizeField(entry.get_or<std::string>("icon", ""));
++            const std::string desc     = sanitizeField(entry.get_or<std::string>("description", ""));
++
++            const std::string packed = key + "\x1f" + name + "\x1f" + role + "\x1f" + icon + "\x1f" + desc;
++            pushChunkedCatalogPacket(PChar, CatalogKind::Entry, requestId, targetJob, branchId, static_cast<uint8_t>(i), reqLevel, packed);
++
++            const sol::table highlights = entry["highlights"];
++            if (highlights.valid())
++            {
++                const size_t hlCount = std::min<size_t>(highlights.size(), 255);
++                for (size_t h = 1; h <= hlCount; ++h)
++                {
++                    const sol::object hlObj = highlights[h];
++                    if (hlObj.is<std::string>())
++                    {
++                        const std::string line = sanitizeField(hlObj.as<std::string>());
++                        pushChunkedCatalogPacket(PChar,
++                                                 CatalogKind::Highlight,
++                                                 requestId,
++                                                 targetJob,
++                                                 branchId,
++                                                 static_cast<uint8_t>(h),
++                                                 0,
++                                                 line);
++                    }
++                }
++            }
++        }
++    }
++
++    pushChunkedCatalogPacket(PChar, CatalogKind::EndJob, requestId, targetJob, 0, entryCount, 0, "");
++}
++} // namespace crystal
+diff --git a/src/map/packets/s2c/0x1ff_crystal_collection.h b/src/map/packets/s2c/0x1ff_crystal_collection.h
+new file mode 100644
+index 0000000000..eaa22e06ae
+--- /dev/null
++++ b/src/map/packets/s2c/0x1ff_crystal_collection.h
+@@ -0,0 +1,96 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#pragma once
++
++#include "base.h"
++#include "crystal_socket.h"
++
++#include <cstddef>
++#include <string_view>
++
++class CCharEntity;
++
++class GP_SERV_COMMAND_CRYSTAL_COLLECTION final : public GP_SERV_PACKET<PacketS2C::GP_SERV_COMMAND_CRYSTAL_COLLECTION, GP_SERV_COMMAND_CRYSTAL_COLLECTION>
++{
++public:
++    struct Entry
++    {
++        uint8_t ownedMask;
++        uint8_t activeBranch;
++    };
++
++    struct PacketData
++    {
++        uint32_t        magic;
++        uint8_t         version;
++        crystal::Result result;
++        uint16_t        requestId;
++        uint8_t         currentMainJob;
++        uint8_t         entryCount;
++        uint8_t         currentMainLvl;
++        uint8_t         reserved;
++        Entry           entries[24];
++    };
++
++    GP_SERV_COMMAND_CRYSTAL_COLLECTION(CCharEntity* PChar, crystal::Result result, uint16_t requestId);
++};
++
++static_assert(sizeof(GP_SERV_COMMAND_CRYSTAL_COLLECTION::PacketData) == 60);
++static_assert(offsetof(GP_SERV_COMMAND_CRYSTAL_COLLECTION::PacketData, entries) == 12);
++
++class GP_SERV_COMMAND_CRYSTAL_CATALOG final : public GP_SERV_PACKET<PacketS2C::GP_SERV_COMMAND_CRYSTAL_COLLECTION, GP_SERV_COMMAND_CRYSTAL_CATALOG>
++{
++public:
++    struct PacketData
++    {
++        uint32_t             magic;
++        uint8_t              version;
++        crystal::CatalogKind kind;
++        uint16_t             requestId;
++        uint8_t              jobId;
++        uint8_t              branchId;
++        uint8_t              index;
++        uint8_t              reqLevel;
++        uint8_t              chunkIdx;
++        uint8_t              chunkFlag;
++        uint16_t             textLen;
++        char                 payload[220];
++    };
++
++    GP_SERV_COMMAND_CRYSTAL_CATALOG(crystal::CatalogKind kind,
++                                    uint16_t             requestId,
++                                    uint8_t              jobId,
++                                    uint8_t              branchId,
++                                    uint8_t              index,
++                                    uint8_t              reqLevel,
++                                    uint8_t              chunkIdx,
++                                    uint8_t              chunkFlag,
++                                    std::string_view     text);
++};
++
++static_assert(sizeof(GP_SERV_COMMAND_CRYSTAL_CATALOG::PacketData) == 236);
++static_assert(offsetof(GP_SERV_COMMAND_CRYSTAL_CATALOG::PacketData, payload) == 16);
++
++namespace crystal
++{
++void pushCatalogPackets(CCharEntity* PChar, uint16_t requestId, uint8_t targetJob);
++} // namespace crystal
+diff --git a/src/map/packets/s2c/CMakeLists.txt b/src/map/packets/s2c/CMakeLists.txt
+index e155684cfc..fd5915036b 100644
+--- a/src/map/packets/s2c/CMakeLists.txt
++++ b/src/map/packets/s2c/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ target_sources(xi_map_packets_s2c PRIVATE
++    ${CMAKE_CURRENT_SOURCE_DIR}/0x1ff_crystal_collection.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/0x1ff_crystal_collection.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/base.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/0x005_packetcontrol.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/0x006_naraku.h
+diff --git a/src/test/CMakeLists.txt b/src/test/CMakeLists.txt
+index ff0d4b5b83..685e60fdcf 100644
+--- a/src/test/CMakeLists.txt
++++ b/src/test/CMakeLists.txt
+@@ -51,6 +51,7 @@ endif()
+ 
+ # Catch2 test TUs live in the executable, the only target that links Catch2.
+ xi_add_executable(xi_test testserver.rc
++    ${CMAKE_CURRENT_SOURCE_DIR}/tests/crystal_socket_tests.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/tests/bitset_tests.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/tests/char_points_queries_tests.cpp
+diff --git a/src/test/tests/crystal_socket_tests.cpp b/src/test/tests/crystal_socket_tests.cpp
+new file mode 100644
+index 0000000000..0240a12862
+--- /dev/null
++++ b/src/test/tests/crystal_socket_tests.cpp
+@@ -0,0 +1,56 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#include "map/crystal_socket.h"
++#include <catch2/catch_test_macros.hpp>
++
++TEST_CASE("Crystal socket validates before changing selection", "[crystal]")
++{
++    using namespace crystal;
++    constexpr uint8_t warMask = 0x0E; // Branches 1, 2, 3
++    constexpr uint8_t mnkMask = 0x02; // Branch 1 (Sensei)
++    constexpr uint8_t schMask = 0x06; // Branches 1, 2 (Medic, Sage)
++
++    CHECK(selectionResult(1, 1, 1, 0, false, warMask) == Result::Locked);
++    CHECK(selectionResult(1, 1, 1, 2, false, warMask) == Result::Success);
++    CHECK(selectionResult(1, 1, 0, 0, false, warMask) == Result::Success);
++    CHECK(selectionResult(2, 1, 1, warMask, false, warMask) == Result::WrongJob);
++    CHECK(selectionResult(1, 3, 1, warMask, false, 0) == Result::Invalid);
++    CHECK(selectionResult(1, 1, 4, warMask, false, warMask) == Result::Invalid);
++    CHECK(selectionResult(1, 1, 1, warMask, true, warMask) == Result::Busy);
++    CHECK(selectionResult(1, 1, 0, warMask, true, warMask) == Result::Busy);
++    CHECK(selectionResult(2, 2, 1, mnkMask, false, mnkMask) == Result::Success);
++    CHECK(selectionResult(2, 2, 2, mnkMask, false, mnkMask) == Result::Invalid);
++    CHECK(selectionResult(20, 20, 2, schMask, false, schMask) == Result::Success);
++    CHECK(selectionResult(20, 20, 3, schMask, false, schMask) == Result::Invalid);
++
++    for (uint8_t branch = 1; branch <= 3; ++branch)
++    {
++        CHECK(selectionResult(1, 1, branch, 1 << branch, false, warMask) == Result::Success);
++    }
++
++    CHECK(validRequest(Magic, 1, 0, 0));
++    CHECK(validRequest(Magic, 1, 2, 0));
++    CHECK_FALSE(validRequest(0, 1, 0, 0));
++    CHECK_FALSE(validRequest(Magic, 2, 0, 0));
++    CHECK_FALSE(validRequest(Magic, 1, 3, 0));
++    CHECK_FALSE(validRequest(Magic, 1, 0, 1));
++}
