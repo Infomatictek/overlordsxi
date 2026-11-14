@@ -167,14 +167,18 @@ try {
         }
     }
 
+    $initBytes = [System.IO.File]::ReadAllBytes($initPath)
+    $hasBom = ($initBytes.Length -ge 3 -and $initBytes[0] -eq 0xEF -and $initBytes[1] -eq 0xBB -and $initBytes[2] -eq 0xBF)
+
     $existingLines = [System.Collections.Generic.List[string]]::new()
     $removedStale = $false
     foreach ($l in (Get-Content -Path $initPath -ErrorAction SilentlyContinue)) {
-        if ($l.Trim() -eq 'custom/sql/ws_strip_skillchains.sql') {
+        $clean = $l.TrimStart([char]0xFEFF)
+        if ($clean.Trim() -eq 'custom/sql/ws_strip_skillchains.sql') {
             $removedStale = $true
             continue
         }
-        $existingLines.Add($l)
+        $existingLines.Add($clean)
     }
     $trimmedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($l in $existingLines) {
@@ -190,8 +194,9 @@ try {
             $addedCount++
         }
     }
-    if ($addedCount -gt 0 -or $removedStale) {
-        Set-Content -Path $initPath -Value $existingLines -Encoding UTF8
+    if ($addedCount -gt 0 -or $removedStale -or $hasBom) {
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllLines($initPath, $existingLines, $utf8NoBom)
     }
     Write-Host "==> modules/init.txt updated ($addedCount new entries added)." -ForegroundColor Green
 
