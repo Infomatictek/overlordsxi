@@ -75,4 +75,4 @@ commandObj.onTrigger = function(player, action)
     printUsage(player)
 end
 
-return commandObj
+xi.module.registerCommand('eos', commandObj)

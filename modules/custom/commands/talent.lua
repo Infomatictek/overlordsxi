@@ -510,4 +510,4 @@ commandObj.onTrigger = function(player, action, arg1, arg2)
     tell(player, 'Unknown subcommand. Use !talent or !talent help.')
 end
 
-return commandObj
+xi.module.registerCommand('talent', commandObj)

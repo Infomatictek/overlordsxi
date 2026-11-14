@@ -3,8 +3,8 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
-require('scripts/globals/combat/magic_aoe')
-require('scripts/globals/combat/magic_hit_rate')
+require('scripts/combat/basic/magic_aoe')
+require('scripts/combat/basic/magic_hit_rate')
 require('scripts/globals/spells/damage_spell')
 require('scripts/globals/spells/enfeebling_spell')
 -----------------------------------
@@ -196,14 +196,20 @@ m:addOverride('xi.spells.enfeebling.calculateDuration', function(caster, target,
     return duration
 end)
 
-m:addOverride('xi.combat.magicHitRate.calculateResistRate', function(actor, target, spellGroup, skillType, skillRank, actionElement, statUsed, effectId, bonusMacc)
-    local adjustedBonusMacc = bonusMacc or 0
-
-    if isSage(actor) and skillType == xi.skill.ELEMENTAL_MAGIC then
-        adjustedBonusMacc = adjustedBonusMacc + calculateSageMevaBypass(target, actionElement)
+m:addOverride('xi.combat.magicHitRate.calculateResistRate', function(actor, target, fedData)
+    if type(fedData) == 'table' and isSage(actor) and fedData.skillType == xi.skill.ELEMENTAL_MAGIC then
+        local bypass = calculateSageMevaBypass(target, fedData.magicalElement)
+        if bypass > 0 then
+            local adjustedFedData = {}
+            for k, v in pairs(fedData) do
+                adjustedFedData[k] = v
+            end
+            adjustedFedData.bonusMacc = (adjustedFedData.bonusMacc or 0) + bypass
+            return super(actor, target, adjustedFedData)
+        end
     end
 
-    return super(actor, target, spellGroup, skillType, skillRank, actionElement, statUsed, effectId, adjustedBonusMacc)
+    return super(actor, target, fedData)
 end)
 
 return m

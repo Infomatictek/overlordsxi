@@ -97,4 +97,4 @@ commandObj.onTrigger = function(player, action, value)
     tell(player, string.format('Selected %s spec: %s (%s)', jobName(jobId), selected.name, selected.key))
 end
 
-return commandObj
+xi.module.registerCommand('spec', commandObj)
