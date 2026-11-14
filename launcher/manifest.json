@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "serverName": "OverlordsXI",
+  "tagline": "Call Eos Faerie Companion \u2022 Job Specs \u2022 4-Tier Weaponskill Talent Trees",
+  "defaultHost": "127.0.0.1",
+  "useHairpin": false,
+  "ports": {
+    "lobby": 54231,
+    "auth": 54001,
+    "search": 54002
+  },
+  "repo": {
+    "owner": "Infomatictek",
+    "name": "overlordsxi",
+    "branch": "main",
+    "rawBaseUrl": "https://raw.githubusercontent.com/Infomatictek/overlordsxi/main"
+  },
+  "bootstrap": {
+    "ashitaZipUrl": "https://github.com/AshitaXI/Ashita-v4beta/archive/refs/heads/main.zip",
+    "xiloaderLatestApiUrl": "https://api.github.com/repos/LandSandBoat/xiloader/releases/latest",
+    "xipivotLatestApiUrl": "https://api.github.com/repos/HealsCodes/XIPivot/releases/latest"
+  },
+  "files": [
+    {
+      "category": "dat",
+      "sourcePath": "dat-overlay/ROM/118/108.DAT",
+      "targetPath": "ROM/118/108.DAT",
+      "sha256": "e3aca38ea3fc69718614b411a8da2e63858ca237a0292aac9862567c9fe859ec",
+      "size": 20447232
+    },
+    {
+      "category": "dat",
+      "sourcePath": "dat-overlay/ROM/118/114.DAT",
+      "targetPath": "ROM/118/114.DAT",
+      "sha256": "8dc090472c81ff0e481276249df28917beae406fe2d9bb2085e4e39fc62add9d",
+      "size": 403280
+    },
+    {
+      "category": "dat",
+      "sourcePath": "dat-overlay/ROM/181/72.DAT",
+      "targetPath": "ROM/181/72.DAT",
+      "sha256": "75727987ed937950304778ae24327768da61a41589f2c8c78e1cc2e0850ef3e0",
+      "size": 471104
+    },
+    {
+      "category": "dat",
+      "sourcePath": "dat-overlay/ROM/181/74.DAT",
+      "targetPath": "ROM/181/74.DAT",
+      "sha256": "de6fc71391f6bcf400c522b1a06628aa3c1dd1e76233c6c2c99fadcf46fa8da7",
+      "size": 1507392
+    },
+    {
+      "category": "addon",
+      "sourcePath": "addons/ashita4/overlords_talents/overlords_talents.lua",
+      "targetPath": "overlords_talents/overlords_talents.lua",
+      "sha256": "5fb547f9ce798b653aaad89c50f81ec57bab0df527a64f6cbf51edaa1de277b1",
+      "size": 25688
+    }
+  ],
+  "news": [
+    {
+      "date": "2026-11-14",
+      "title": "OverlordsXI Launcher & Auto-Updater",
+      "body": "Distributable Ashita v4 launcher with automatic DAT overlay (Pivot) and overlords_talents addon syncing, FFXI install detection, and graphics configuration."
+    },
+    {
+      "date": "2026-11-13",
+      "title": "192 Bespoke 4-Tier Weaponskill Talent Trees",
+      "body": "Use /talents (or /tal) in-game with the Ashita addon loaded, or !talent without the addon, to customize all 207 player weaponskills."
+    },
+    {
+      "date": "2026-11-10",
+      "title": "Scholar Call Eos & Job Specs",
+      "body": "Summon Eos as a real faerie pet with stackable Regen and debuff removal, or switch between Medic and Sage with !spec."
+    }
+  ]
+}
