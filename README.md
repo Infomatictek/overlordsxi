@@ -10,9 +10,9 @@ Most of the customization is packaged as LandSandBoat modules:
 
 - `modules/custom/lua/eos_companion.lua` defines the new ability behavior and the Eos-only Regen spell override.
 - `modules/custom/lua/overlords_job_specs.lua` defines the reusable per-job spec helper API.
-- `modules/custom/lua/overlords_ws_catalog.lua` stores the original LandSandBoat profiles for all 207 implemented player weaponskills.
-- `modules/custom/lua/overlords_ws_talents.lua` defines the per-weaponskill talent tree generator, bit-packed `char_vars` persistence, and Ashita v4 sync protocol.
-- `modules/custom/lua/overlords_ws_overrides.lua` normalizes base PC weaponskills to `fTP = 1.0` and `WSC = 0` and applies invested talent ranks dynamically.
+- `modules/custom/lua/overlords_ws_catalog.lua` stores the original LandSandBoat profiles (including skillchains, drains, debuffs, AoE, enmity, and RMEA flags) for all 207 implemented player weaponskills.
+- `modules/custom/lua/overlords_ws_talents.lua` defines the per-weaponskill talent tree generator (including unique per-WS signature traits and dynamic skillchain traits), bit-packed `char_vars` persistence, and Ashita v4 sync protocol.
+- `modules/custom/lua/overlords_ws_overrides.lua` normalizes base PC weaponskills to `fTP = 1.0` and `WSC = 0` and applies invested talent ranks, unique WS traits, and dynamic skillchain bonuses dynamically.
 - `modules/custom/lua/sch_specs.lua` defines the SCH Medic and Sage spec behavior.
 - `modules/custom/commands/spec.lua` adds the player-facing `!spec` command.
 - `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss`.
@@ -22,13 +22,14 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - `addons/ashita4/overlords_talents/overlords_talents.lua` provides the Ashita v4 ImGui talent tree UI (`/talents` or `/tal`).
 
-Three small engine patches are still required:
+Four small engine patches are still required:
 
 - `patches/0001-allow-eos-custom-pet-and-effect-ids.patch` raises `MAX_PETID` from `128` to `129` and `MAX_EFFECTID` from `814` to `815`.
 - `patches/0002-eos-deterministic-level-and-subjob.patch` makes Eos spawn at the master's level and correctly initializes her SCH main job / SMN subjob levels.
 - `patches/0003-unlock-all-player-weaponskills.patch` unlocks all implemented player weaponskills at level 1 for any job wielding that weapon type (excluding NPC/event/unimplemented WSes).
+- `patches/0004-dynamic-ws-skillchain-traits.patch` reads per-cast `OX_WS_SC1..3` localVars inside `CCharEntity::OnWeaponSkillFinished` so talent-upgraded skillchain properties apply dynamically on each weaponskill.
 
-The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility.
+The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility. The fourth patch allows per-character talent ranks to customize or add skillchain properties (such as giving Sanguine Blade Compression / Gravitation / Darkness) without mutating shared server WS definitions.
 
 ## Install
 
@@ -58,6 +59,7 @@ Set-Location C:\dev\server
 git apply C:\path\to\overlordsxi\patches\0001-allow-eos-custom-pet-and-effect-ids.patch
 git apply C:\path\to\overlordsxi\patches\0002-eos-deterministic-level-and-subjob.patch
 git apply C:\path\to\overlordsxi\patches\0003-unlock-all-player-weaponskills.patch
+git apply C:\path\to\overlordsxi\patches\0004-dynamic-ws-skillchain-traits.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_catalog.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_talents.lua .\modules\custom\lua\
