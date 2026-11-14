@@ -2,8 +2,3 @@ _vm/
 *.log
 *.tmp
 Thumbs.db
-bin/
-obj/
-.vs/
-*.user
-publish/

@@ -34,19 +34,19 @@ The first patch is needed because LSB bounds pet IDs and status effect IDs in C+
 
 ## Client Launcher (For Players & Server Distribution)
 
-A self-contained Windows client launcher (`OverlordsLauncher.exe`, C# / .NET 8 WPF under [`launcher/OverlordsLauncher`](launcher/OverlordsLauncher)) is included so players can join without manually installing Ashita v4, `xiloader`, XIPivot, DAT overlays, or addons.
+The distributable Windows client launcher (`OverlordsLauncher.exe`, C# / .NET 8 WPF) lives in its own repository: **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
 ### What the Launcher Automates
 
 - **Prerequisite & FFXI Setup**: Auto-detects an existing FFXI installation from the Windows Registry, checks Windows DirectPlay & x86 VC++ runtime status, and downloads **Ashita v4**, **`xiloader.exe`**, and **XIPivot** (`pivot.dll`) if missing.
-- **Auto-Updates via SHA-256 Manifest**: Syncs `dat-overlay/ROM/...` into XIPivot (`Ashita\polplugins\DATs\overlordsxi\`) and `addons/ashita4/overlords_talents/overlords_talents.lua` into `Ashita\addons\overlords_talents\` from [`launcher/manifest.json`](launcher/manifest.json).
+- **Auto-Updates via SHA-256 Manifest**: Syncs `dat-overlay/ROM/...` into XIPivot (`Ashita\polplugins\DATs\overlordsxi\`) and `addons/ashita4/overlords_talents/overlords_talents.lua` into `Ashita\addons\overlords_talents\` from [`launcher/manifest.json`](launcher/manifest.json) in this repository.
 - **Graphics, Settings & Auto-Login**: Configures Ashita boot/registry settings (`config\boot\overlordsxi.ini`), XIPivot overlay (`config\pivot\overlordsxi.ini`), startup script (`scripts\overlordsxi.txt` with `/addon load overlords_talents` and `/fps`), resolution presets, audio, region, and optional DPAPI-encrypted saved credentials.
 - **Live Server Status**: Probes lobby (`54231`) and search (`54002`) TCP ports and lets players toggle a custom host or load a host-provided `overlords-server.json`.
 
 ### Sharing Your Server with Players
 
-1. Build or download `OverlordsLauncher.exe` from the **Build Client Launcher** GitHub Actions workflow ([`.github/workflows/build-launcher.yml`](.github/workflows/build-launcher.yml)) — pushing a `v*` tag (e.g. `v1.0.0`) automatically publishes a GitHub Release with `OverlordsLauncher.exe` and `OverlordsLauncher-win-x64.zip`.
-2. Either set `defaultHost` / `useHairpin` / `ports` in [`launcher/manifest.json`](launcher/manifest.json) before building, **or** place an `overlords-server.json` file next to `OverlordsLauncher.exe` (you can generate one from the launcher's **Graphics & Settings -> Export Shareable overlords-server.json** button):
+1. Download `OverlordsLauncher.exe` (or `OverlordsLauncher-win-x64.zip`) from the **[overlordsxi-launcher Releases](https://github.com/Infomatictek/overlordsxi-launcher/releases)** page.
+2. Place an `overlords-server.json` file next to `OverlordsLauncher.exe` (you can generate one from **Graphics & Settings -> Export Shareable overlords-server.json** inside the launcher) to point players to your server host/IP:
 
 ```json
 {
@@ -58,7 +58,7 @@ A self-contained Windows client launcher (`OverlordsLauncher.exe`, C# / .NET 8 W
 }
 ```
 
-Whenever you update files under `dat-overlay/` or `addons/ashita4/`, regenerate manifest hashes before pushing:
+Whenever you update files under `dat-overlay/` or `addons/ashita4/` in this server repository, regenerate [`launcher/manifest.json`](launcher/manifest.json) hashes before pushing so existing `OverlordsLauncher.exe` clients auto-update:
 
 ```bash
 python scripts/update-launcher-manifest.py
