@@ -1,0 +1,24 @@
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 51f4872..a8e2c11 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -128,6 +128,19 @@ void LoadEffectsParameters()
+         auto filename = fmt::format("./scripts/effects/{}.lua", EffectsParams[static_cast<uint16>(id)].Name);
+         luautils::LoadLuaObjectFromFile(filename);
+     }
++
++    // OverlordsXI Eos Companion custom status effect slots (789: stackable Regen, 814: hidden Orphic Refresh).
++    EffectsParams[789].Name             = "regen";
++    EffectsParams[789].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[789].Element          = 7;
++    EffectsParams[789].SortKey          = 700;
++    EffectsParams[789].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[814].Name             = "eos_refresh";
++    EffectsParams[814].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::NoCancel | xi::StatusEffectFlag::HideTimer;
++    EffectsParams[814].Element          = 7;
++    EffectsParams[814].SortKey          = 10000;
++    EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect

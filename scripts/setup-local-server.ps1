@@ -151,6 +151,10 @@ try {
             Copy-Item -Path (Join-Path $srcSub '*') -Destination $dstSub -Recurse -Force
         }
     }
+    $staleWsSql = Join-Path $dstModules 'sql\ws_strip_skillchains.sql'
+    if (Test-Path $staleWsSql) {
+        Remove-Item -Path $staleWsSql -Force
+    }
 
     # 4. Update modules/init.txt idempotently
     $initPath = Join-Path $ServerDir 'modules\init.txt'

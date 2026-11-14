@@ -1,10 +1,6 @@
 -- Eos Companion module data.
 -- Apply with dbtool or import manually into xidb after copying this file into modules/custom/sql.
-
-SET @FLAG_DISPELABLE = 1;
-SET @FLAG_DEATH = 32;
-SET @FLAG_NO_CANCEL = 8388608;
-SET @FLAG_HIDE_TIMER = 134217728;
+-- Note: Status effect definitions (789 & 814) are applied via patches/0006-eos-status-effect-params.patch.
 
 -- Server-side SCH job ability. Client display ID is 743 (abilityId + 512).
 DELETE FROM `abilities` WHERE `abilityId` = 231 OR `name` = 'faerie_companion';
@@ -48,14 +44,6 @@ INSERT INTO `mob_spell_lists` (`spell_list_name`, `spell_list_id`, `spell_id`, `
     ('eos_companion', 566, 19,  1, 255), -- Viruna
     ('eos_companion', 566, 20,  1, 255), -- Cursna
     ('eos_companion', 566, 143, 1, 255); -- Erase
-
--- 789 is an existing spare effect ID. It uses the Regen effect script but has its own status ID, so it stacks.
-DELETE FROM `status_effects` WHERE `id` IN (789, 814);
-INSERT INTO `status_effects`
-    (`id`, `name`, `flags`, `type`, `negative_id`, `overwrite`, `block_id`, `remove_id`, `element`, `min_duration`, `sort_key`, `wear_off_message_id`)
-VALUES
-    (789, 'regen', @FLAG_DISPELABLE | @FLAG_DEATH, 0, 0, 0, 0, 0, 7, 0, 700, NULL),
-    (814, 'eos_refresh', @FLAG_DEATH | @FLAG_NO_CANCEL | @FLAG_HIDE_TIMER, 0, 0, 0, 0, 0, 7, 0, 0, NULL);
 
 -- Orphic Egg: SCH-only ammo item that grants Eos level-scaling Refresh via numeric mod 1198.
 UPDATE `item_equipment`
