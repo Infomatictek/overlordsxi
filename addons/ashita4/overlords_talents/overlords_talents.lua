@@ -233,6 +233,10 @@ local function handleProtoLine(payload)
                 reqRank     = tonumber(parts[11]) or 0,
                 name        = parts[12] or parts[3],
                 desc        = parts[13] or '',
+                reqLevel    = tonumber(parts[14]) or 1,
+                scTier      = tonumber(parts[15]) or 0,
+                scId        = tonumber(parts[16]) or 0,
+                scName      = parts[17] or '',
             }
             table.insert(state.tempWs.nodes, node)
             state.tempWs.byKey[node.key] = node
@@ -383,9 +387,9 @@ local function drawTreeCanvas()
     local tierLabels =
     {
         [1] = 'Tier 1: Foundation (Lv 1+, 0+ WS pts)',
-        [2] = 'Tier 2: Signature (Lv 25+, 7+ WS pts)',
-        [3] = 'Tier 3: Mastery (Lv 45+, 15+ WS pts)',
-        [4] = 'Tier 4: Capstone (Lv 65+, 24+ WS pts)',
+        [2] = 'Tier 2: Specialization (Lv 20+, 10+ WS pts)',
+        [3] = 'Tier 3: Mastery (Lv 42+, 22+ WS pts)',
+        [4] = 'Tier 4: Capstone (Lv 62+, 35+ WS pts)',
     }
 
     -- Compute node screen coordinates

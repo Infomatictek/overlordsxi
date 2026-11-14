@@ -11,7 +11,7 @@ local commandObj = {}
 commandObj.cmdprops =
 {
     permission = 0,
-    parameters = 'sss',
+    parameters = 'ssss',
 }
 
 local catalog = xi.overlords.wsCatalog
@@ -66,7 +66,7 @@ openWSDetailMenu = function(player, wsId, backFn)
         {
             label,
             function(p)
-                tell(p, string.format('%s [%d/%d]: %s', capturedNode.name, capturedRank, capturedNode.maxRank, capturedNode.describe(capturedRank, ws)))
+                tell(p, string.format('%s [%d/%d]: %s', capturedNode.name, capturedRank, capturedNode.maxRank, capturedNode.describe(capturedRank, ws, p, p:getMainJob())))
                 local ok, res = talents.invest(p, p:getMainJob(), wsId, capturedKey)
                 if ok then
                     tell(p, string.format('Upgraded %s -> %s Rank %d/%d.', ws.name, capturedNode.name, res, capturedNode.maxRank))
