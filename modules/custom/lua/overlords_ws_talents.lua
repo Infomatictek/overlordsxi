@@ -2,9 +2,18 @@
 -- OverlordsXI Weaponskill Talent System
 --
 -- - All player weaponskills are unlocked at level 1 (via patch 0003).
--- - Base weaponskills for PCs are normalized to fTP 1.0 and 0 WSC.
--- - Players earn 1 talent point per main job level (starting at 1 at Lv 1).
--- - Each weaponskill has a tailored talent tree based on what that WS originally was.
+-- - Base weaponskills for PCs are normalized to fTP = 1.0, WSC = 0,
+--   numHits = 1, and ZERO skillchain properties (via patch 0005 + SQL).
+-- - Players earn 2 talent points per main job level (150 pts at Lv 75),
+--   allowing 4 fully maxed weaponskills (~37 pts each) at Lv 75.
+-- - 4 Tiers gated by both WS points invested and job level:
+--     Tier 1 (Lv 1+,  0+ WS pts)
+--     Tier 2 (Lv 25+, 7+ WS pts)
+--     Tier 3 (Lv 45+, 15+ WS pts)
+--     Tier 4 (Lv 65+, 24+ WS pts)
+-- - Every tier includes a player-selectable Skillchain Augment (Col 4)
+--   so Lv 1 characters can enable Skillchains immediately, or leave
+--   them off on Utility WSs to avoid interrupting party Skillchains.
 -----------------------------------
 require('modules/custom/lua/overlords_ws_catalog')
 -----------------------------------
@@ -15,9 +24,11 @@ xi.overlords.wsTalents = xi.overlords.wsTalents or {}
 local talents = xi.overlords.wsTalents
 local catalog = xi.overlords.wsCatalog
 
-local VAR_PREFIX = 'OX_WST_'
-local PROTO_TAG  = '[OXTAL]|'
-local MAX_MSG    = 135
+local VAR_PREFIX    = 'OX_WST_'
+local VAR2_PREFIX   = 'OX_WST2_'
+local VAR_SC_PREFIX = 'OX_WSSC_'
+local PROTO_TAG     = '[OXTAL]|'
+local MAX_MSG       = 135
 
 local JOB_KEYS =
 {
@@ -57,6 +68,15 @@ local STAT_LABELS =
 }
 
 local STAT_ORDER = { 'str', 'dex', 'vit', 'agi', 'int', 'mnd', 'chr' }
+talents.STAT_ORDER = STAT_ORDER
+
+talents.TIER_GATES =
+{
+    [1] = { reqWsPoints = 0,  reqLevel = 1  },
+    [2] = { reqWsPoints = 7,  reqLevel = 25 },
+    [3] = { reqWsPoints = 15, reqLevel = 45 },
+    [4] = { reqWsPoints = 24, reqLevel = 65 },
+}
 
 local function round2(v)
     return math.floor(v * 100 + 0.5) / 100
@@ -82,106 +102,8 @@ local function sendProto(player, payload)
 end
 
 -----------------------------------
--- Persistence (3 bits per slot, up to 10 slots / 30 bits per WS)
+-- Skillchain Definitions & Choices
 -----------------------------------
-function talents.getJobKey(jobId)
-    return JOB_KEYS[jobId] or string.format('J%u', jobId or 0)
-end
-
-function talents.getVarPrefix(jobId)
-    return VAR_PREFIX .. talents.getJobKey(jobId) .. '_'
-end
-
-function talents.getVarName(jobId, wsId)
-    return string.format('%s%u', talents.getVarPrefix(jobId), wsId)
-end
-
-local function unpackSlot(packed, slot)
-    local shift = 8 ^ (slot - 1)
-    return math.floor((packed or 0) / shift) % 8
-end
-
-local function packSlot(packed, slot, rank)
-    local shift = 8 ^ (slot - 1)
-    local oldRank = math.floor((packed or 0) / shift) % 8
-    return (packed or 0) + (rank - oldRank) * shift
-end
-
------------------------------------
--- Dynamic Per-WS Tree Generation
------------------------------------
-local treeCache = {}
-
-talents.STAT_ORDER = STAT_ORDER
-
-function talents.calcFtpAtRank(origFtp, rank)
-    local out = { 1.0, 1.0, 1.0 }
-    if rank <= 0 then
-        return out
-    end
-
-    for i = 1, 3 do
-        local origVal = (origFtp and origFtp[i]) or 1.0
-        if origVal > 1.0 then
-            local scale = rank * 0.20 + (rank == 5 and 0.15 or 0)
-            out[i] = round2(1.0 + (origVal - 1.0) * scale)
-        else
-            local step = 0.15 + (i - 1) * 0.10
-            out[i] = round2(1.0 + rank * step)
-        end
-    end
-
-    return out
-end
-
-function talents.calcWscAtRank(origWeight, rank)
-    if rank <= 0 then
-        return 0
-    end
-
-    local maxWsc = math.max((origWeight or 0) * 1.25, 0.50)
-    return round2(maxWsc * (rank / 5))
-end
-
-function talents.calcScaledTable(origTbl, rank, minPerRank)
-    if rank <= 0 then
-        return nil
-    end
-
-    local mults = { 0.34, 0.67, 1.20 }
-    local mFactor = mults[rank] or 0
-    local out = {}
-    for i = 1, 3 do
-        local baseVal = (origTbl and origTbl[i]) or 0
-        local minFloor = minPerRank and (minPerRank[i] * rank) or 0
-        out[i] = round2(math.max(baseVal * mFactor, minFloor))
-    end
-
-    return out
-end
-
-function talents.calcAtkScaleAtRank(origAtk, rank)
-    if rank <= 0 then
-        return 0
-    end
-
-    local mults = { 0.34, 0.67, 1.20 }
-    local mFactor = mults[rank] or 0
-    local out = {}
-    for i = 1, 3 do
-        local origBonus = math.max(0, ((origAtk and origAtk[i]) or 1.0) - 1.0)
-        local bonus = math.max(origBonus * mFactor, 0.10 * rank)
-        out[i] = round2(bonus)
-    end
-
-    return out
-end
-
-local calcFtpAtRank = talents.calcFtpAtRank
-local calcWscAtRank = talents.calcWscAtRank
-local calcScaledTable = talents.calcScaledTable
-local calcAtkScaleAtRank = talents.calcAtkScaleAtRank
-
 local SC_IDS =
 {
     NONE          = 0,
@@ -201,25 +123,65 @@ local SC_IDS =
     DARKNESS      = 14,
 }
 
-local SC_SHORT =
+local SC_NAMES =
 {
-    TRANSFIXION   = 'Transfix',
-    COMPRESSION   = 'Compress',
-    LIQUEFACTION  = 'Liquefac',
-    SCISSION      = 'Scission',
-    REVERBERATION = 'Reverb',
-    DETONATION    = 'Detonat',
-    INDURATION    = 'Indurat',
-    IMPACTION     = 'Impact',
-    GRAVITATION   = 'Gravit',
-    DISTORTION    = 'Distort',
-    FUSION        = 'Fusion',
-    FRAGMENTATION = 'Frag',
-    LIGHT         = 'Light',
-    DARKNESS      = 'Dark',
+    [0]  = 'None',
+    [1]  = 'Transfixion',
+    [2]  = 'Compression',
+    [3]  = 'Liquefaction',
+    [4]  = 'Scission',
+    [5]  = 'Reverberation',
+    [6]  = 'Detonation',
+    [7]  = 'Induration',
+    [8]  = 'Impaction',
+    [9]  = 'Gravitation',
+    [10] = 'Distortion',
+    [11] = 'Fusion',
+    [12] = 'Fragmentation',
+    [13] = 'Light',
+    [14] = 'Darkness',
 }
 
-local DARK_SC_SET =
+local SC_SHORT =
+{
+    [0]  = 'None',
+    [1]  = 'Transfix',
+    [2]  = 'Compress',
+    [3]  = 'Liquefac',
+    [4]  = 'Scission',
+    [5]  = 'Reverb',
+    [6]  = 'Detonat',
+    [7]  = 'Indurat',
+    [8]  = 'Impact',
+    [9]  = 'Gravit',
+    [10] = 'Distort',
+    [11] = 'Fusion',
+    [12] = 'Frag',
+    [13] = 'Light',
+    [14] = 'Darkness',
+}
+
+local SC_CHOICES =
+{
+    [1] = { 8, 3, 6, 4, 5, 7, 1, 2 }, -- Tier 1 (Lv 1+): All Level 1 properties
+    [2] = { 3, 8, 4, 6, 7, 5, 2, 1 }, -- Tier 2 (Lv 25+): 2nd Level 1 property
+    [3] = { 11, 12, 9, 10 },          -- Tier 3 (Lv 45+): Level 2 properties
+    [4] = { 13, 14 },                 -- Tier 4 (Lv 65+): Level 3 properties
+}
+
+local SC_BONUS_BY_TIER =
+{
+    [1] = { 5, 10 },
+    [2] = { 8, 15 },
+    [3] = { 10, 20 },
+    [4] = { 15, 28 },
+}
+
+local LV1_SC_SET = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true }
+local LV2_SC_SET = { [9] = true, [10] = true, [11] = true, [12] = true }
+local LV3_SC_SET = { [13] = true, [14] = true }
+
+local DARK_SC_NAMES =
 {
     COMPRESSION   = true,
     SCISSION      = true,
@@ -230,16 +192,15 @@ local DARK_SC_SET =
     DARKNESS      = true,
 }
 
-local function hasSc(list, name)
-    for _, v in ipairs(list or {}) do
-        if v == name then
-            return true
-        end
-    end
-    return false
-end
+talents.SC_IDS     = SC_IDS
+talents.SC_NAMES   = SC_NAMES
+talents.SC_SHORT   = SC_SHORT
+talents.SC_CHOICES = SC_CHOICES
 
 local function isDarkAligned(ws)
+    if ws == nil then
+        return false
+    end
     if ws.elementName == 'Dark' or ws.key == 'sanguine_blade' or ws.key == 'energy_steal' or ws.key == 'energy_drain' or ws.key == 'catastrophe' then
         return true
     end
@@ -248,111 +209,916 @@ local function isDarkAligned(ws)
     end
     local sc = (ws.orig and ws.orig.skillchain) or {}
     if #sc > 0 then
-        return DARK_SC_SET[sc[1]] == true
+        return DARK_SC_NAMES[sc[1]] == true
     end
     return false
 end
 
-local function formatScNames(names)
-    local parts = {}
-    for _, n in ipairs(names or {}) do
-        table.insert(parts, SC_SHORT[n] or n)
+local function isValidChoiceForTier(scTier, scId)
+    for _, v in ipairs(SC_CHOICES[scTier] or {}) do
+        if v == scId then
+            return true
+        end
     end
-    return #parts > 0 and table.concat(parts, '/') or 'None'
+    return false
 end
 
-local scPlanCache = {}
-
-function talents.getSkillchainPlan(ws)
-    if ws == nil then
-        return nil
-    end
-    if ws.orig and ws.orig.restoreMp then
-        return nil
-    end
-    if scPlanCache[ws.id] ~= nil then
-        return scPlanCache[ws.id]
-    end
-
-    local origSc = (ws.orig and ws.orig.skillchain) or {}
+local function getDefaultSCForWS(ws, scTier)
+    local origSc = (ws and ws.orig and ws.orig.skillchain) or {}
     local dark = isDarkAligned(ws)
 
-    local r1, r2, r3
-    if #origSc == 0 then
-        if dark then
-            r1 = { 'COMPRESSION' }
-            r2 = { 'COMPRESSION', 'GRAVITATION' }
-            r3 = { 'COMPRESSION', 'GRAVITATION', 'DARKNESS' }
-        else
-            r1 = { 'TRANSFIXION' }
-            r2 = { 'TRANSFIXION', 'FUSION' }
-            r3 = { 'TRANSFIXION', 'FUSION', 'LIGHT' }
+    if scTier == 1 then
+        for _, name in ipairs(origSc) do
+            local id = SC_IDS[name]
+            if id and LV1_SC_SET[id] then
+                return id
+            end
         end
-    else
-        local lv2
-        if dark then
-            lv2 = not hasSc(origSc, 'GRAVITATION') and 'GRAVITATION' or 'DISTORTION'
-        else
-            lv2 = not hasSc(origSc, 'FUSION') and 'FUSION' or 'FRAGMENTATION'
+        return dark and SC_IDS.COMPRESSION or SC_IDS.IMPACTION
+    elseif scTier == 2 then
+        local t1 = getDefaultSCForWS(ws, 1)
+        for _, name in ipairs(origSc) do
+            local id = SC_IDS[name]
+            if id and LV1_SC_SET[id] and id ~= t1 then
+                return id
+            end
         end
-
-        local lv3
-        if dark then
-            lv3 = not hasSc(origSc, 'DARKNESS') and 'DARKNESS' or 'LIGHT'
-        else
-            lv3 = not hasSc(origSc, 'LIGHT') and 'LIGHT' or 'DARKNESS'
+        return (t1 == SC_IDS.LIQUEFACTION) and SC_IDS.IMPACTION or (dark and SC_IDS.SCISSION or SC_IDS.LIQUEFACTION)
+    elseif scTier == 3 then
+        for _, name in ipairs(origSc) do
+            local id = SC_IDS[name]
+            if id and LV2_SC_SET[id] then
+                return id
+            end
         end
-
-        if #origSc == 1 then
-            r1 = { origSc[1], lv2 }
-            r2 = { origSc[1], lv2, lv3 }
-            r3 = { origSc[1], lv2, lv3 }
-        elseif #origSc == 2 then
-            r1 = { origSc[1], origSc[2], lv2 }
-            r2 = { origSc[1], origSc[2], lv3 }
-            r3 = { origSc[1], lv2, lv3 }
-        else
-            r1 = { origSc[1], origSc[2], lv2 }
-            r2 = { origSc[1], origSc[2], lv3 }
-            r3 = { origSc[1], lv2, lv3 }
+        return dark and SC_IDS.GRAVITATION or SC_IDS.FUSION
+    elseif scTier == 4 then
+        for _, name in ipairs(origSc) do
+            local id = SC_IDS[name]
+            if id and LV3_SC_SET[id] then
+                return id
+            end
         end
+        return dark and SC_IDS.DARKNESS or SC_IDS.LIGHT
     end
 
-    local plan =
-    {
-        base = origSc,
-        ranks = { r1, r2, r3 },
-        bonusPct = { 10, 20, 35 },
-    }
-    scPlanCache[ws.id] = plan
-    return plan
+    return 0
 end
 
-function talents.getSkillchainAtRank(ws, rank)
-    local plan = talents.getSkillchainPlan(ws)
-    if plan == nil or (rank or 0) <= 0 then
-        return nil
+-----------------------------------
+-- Persistence (3 bits/slot across OX_WST_ (1..10) & OX_WST2_ (11..20))
+-- Skillchain tier picks packed 4 bits/tier in OX_WSSC_ (tiers 1..4)
+-----------------------------------
+function talents.getJobKey(jobId)
+    return JOB_KEYS[jobId] or string.format('J%u', jobId or 0)
+end
+
+function talents.getVarPrefix(jobId)
+    return VAR_PREFIX .. talents.getJobKey(jobId) .. '_'
+end
+
+function talents.getVar2Prefix(jobId)
+    return VAR2_PREFIX .. talents.getJobKey(jobId) .. '_'
+end
+
+function talents.getScVarPrefix(jobId)
+    return VAR_SC_PREFIX .. talents.getJobKey(jobId) .. '_'
+end
+
+function talents.getVarName(jobId, wsId)
+    return string.format('%s%u', talents.getVarPrefix(jobId), wsId)
+end
+
+function talents.getVar2Name(jobId, wsId)
+    return string.format('%s%u', talents.getVar2Prefix(jobId), wsId)
+end
+
+function talents.getScVarName(jobId, wsId)
+    return string.format('%s%u', talents.getScVarPrefix(jobId), wsId)
+end
+
+local function unpack3(packed, idx)
+    local shift = 8 ^ (idx - 1)
+    return math.floor((packed or 0) / shift) % 8
+end
+
+local function pack3(packed, idx, val)
+    local shift = 8 ^ (idx - 1)
+    local oldVal = math.floor((packed or 0) / shift) % 8
+    return (packed or 0) + (val - oldVal) * shift
+end
+
+local function unpack4(packed, idx)
+    local shift = 16 ^ (idx - 1)
+    return math.floor((packed or 0) / shift) % 16
+end
+
+local function pack4(packed, idx, val)
+    local shift = 16 ^ (idx - 1)
+    local oldVal = math.floor((packed or 0) / shift) % 16
+    return (packed or 0) + (val - oldVal) * shift
+end
+
+local function readSlotRank(player, jobId, wsId, slot)
+    if slot <= 10 then
+        return unpack3(player:getCharVar(talents.getVarName(jobId, wsId)), slot)
+    else
+        return unpack3(player:getCharVar(talents.getVar2Name(jobId, wsId)), slot - 10)
+    end
+end
+
+local function writeSlotRank(player, jobId, wsId, slot, rank)
+    if slot <= 10 then
+        local vn = talents.getVarName(jobId, wsId)
+        player:setCharVar(vn, pack3(player:getCharVar(vn), slot, rank))
+    else
+        local vn = talents.getVar2Name(jobId, wsId)
+        player:setCharVar(vn, pack3(player:getCharVar(vn), slot - 10, rank))
+    end
+end
+
+function talents.getSCChoice(player, jobId, wsId, scTier)
+    local ws = catalog.byId[wsId]
+    if player ~= nil then
+        local packed = player:getCharVar(talents.getScVarName(jobId, wsId))
+        local raw = unpack4(packed, scTier)
+        if isValidChoiceForTier(scTier, raw) then
+            return raw
+        end
+    end
+    return getDefaultSCForWS(ws, scTier)
+end
+
+function talents.setSCChoice(player, jobId, wsId, scTier, scId)
+    if player == nil or not isValidChoiceForTier(scTier, scId) then
+        return false, 'Invalid skillchain choice for this tier.'
+    end
+    local vn = talents.getScVarName(jobId, wsId)
+    local packed = player:getCharVar(vn)
+    player:setCharVar(vn, pack4(packed, scTier, scId))
+    return true, scId
+end
+
+function talents.cycleSCChoice(player, jobId, wsId, scTier, dir)
+    local list = SC_CHOICES[scTier]
+    if list == nil or #list == 0 then
+        return false, 'No skillchain choices for this tier.'
+    end
+    local cur = talents.getSCChoice(player, jobId, wsId, scTier)
+    local curIdx = 1
+    for i, id in ipairs(list) do
+        if id == cur then
+            curIdx = i
+            break
+        end
+    end
+    local step = (dir and dir < 0) and -1 or 1
+    local nxtIdx = ((curIdx - 1 + step) % #list) + 1
+    return talents.setSCChoice(player, jobId, wsId, scTier, list[nxtIdx])
+end
+
+function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride)
+    local ranks = ranksOverride
+    if ranks == nil then
+        ranks = talents.getWSRanks(player, jobId, wsId)
     end
 
-    local props = plan.ranks[math.min(rank, 3)]
-    local bonus = plan.bonusPct[math.min(rank, 3)] or 0
-    local function toId(name)
-        if name == nil then
-            return 0
+    local chosen = {}
+    local seen = {}
+    local bonus = 0
+
+    -- Collect active properties: prioritize highest unlocked tiers (4 -> 3 -> 1 -> 2)
+    -- so Lv 3 + Lv 2 + primary Lv 1 are preserved if all 4 tiers are invested.
+    local order = { 4, 3, 1, 2 }
+    for _, tier in ipairs(order) do
+        local r = ranks['sc_t' .. tier] or 0
+        if r > 0 then
+            local bTbl = SC_BONUS_BY_TIER[tier]
+            bonus = bonus + (bTbl and bTbl[math.min(r, 2)] or 0)
+            local scId = talents.getSCChoice(player, jobId, wsId, tier)
+            if scId > 0 and not seen[scId] and #chosen < 3 then
+                seen[scId] = true
+                table.insert(chosen, scId)
+            end
         end
-        if xi and xi.skillchainType and xi.skillchainType[name] then
-            return xi.skillchainType[name]
-        end
-        return SC_IDS[name] or 0
     end
 
     return
     {
-        names = props,
-        sc1 = toId(props[1]),
-        sc2 = toId(props[2]),
-        sc3 = toId(props[3]),
+        sc1     = chosen[1] or 0,
+        sc2     = chosen[2] or 0,
+        sc3     = chosen[3] or 0,
         scBonus = bonus,
+        ids     = chosen,
+    }
+end
+
+-----------------------------------
+-- Scaling Helpers
+-----------------------------------
+function talents.calcFtpAtRank(origFtp, rank, maxRank)
+    local mr = maxRank or 5
+    local out = { 1.0, 1.0, 1.0 }
+    if rank <= 0 then
+        return out
+    end
+
+    local t = math.min(rank, mr) / mr
+    local bonusMax = (rank >= mr) and 1.12 or 1.0
+    for i = 1, 3 do
+        local origVal = (origFtp and origFtp[i]) or 1.0
+        if origVal > 1.0 then
+            out[i] = round2(1.0 + (origVal - 1.0) * t * bonusMax)
+        else
+            local add = (0.60 + (i - 1) * 0.35) * t
+            out[i] = round2(1.0 + add)
+        end
+    end
+
+    return out
+end
+
+function talents.calcWscAtRank(origWeight, rank, maxRank)
+    local mr = maxRank or 5
+    if rank <= 0 then
+        return 0
+    end
+
+    local maxWsc = math.max((origWeight or 0) * 1.15, 0.45)
+    return round2(maxWsc * (math.min(rank, mr) / mr))
+end
+
+function talents.calcScaledTable(origTbl, rank, minPerRank)
+    if rank <= 0 then
+        return nil
+    end
+
+    local mults = { 0.34, 0.67, 1.05, 1.30 }
+    local mFactor = mults[rank] or (rank * 0.34)
+    local out = {}
+    for i = 1, 3 do
+        local baseVal = (origTbl and origTbl[i]) or 0
+        local minFloor = minPerRank and (minPerRank[i] * rank) or 0
+        out[i] = round2(math.max(baseVal * mFactor, minFloor))
+    end
+
+    return out
+end
+
+function talents.calcAtkScaleAtRank(origAtk, rank)
+    if rank <= 0 then
+        return nil
+    end
+
+    local mults = { 0.34, 0.67, 1.10, 1.35 }
+    local mFactor = mults[rank] or (rank * 0.34)
+    local out = {}
+    for i = 1, 3 do
+        local origBonus = math.max(0, ((origAtk and origAtk[i]) or 1.0) - 1.0)
+        local bonus = math.max(origBonus * mFactor, 0.12 * rank)
+        out[i] = round2(bonus)
+    end
+
+    return out
+end
+
+-----------------------------------
+-- Node Builders (Skillchain Col 4 in every Tier)
+-----------------------------------
+local function makeSCTierNode(ws, scTier, col)
+    local gate = talents.TIER_GATES[scTier]
+    local tierLabels = { 'SC T1 (Lv1)', 'SC T2 (Lv1)', 'SC T3 (Lv2)', 'SC T4 (Lv3)' }
+    local bonuses = SC_BONUS_BY_TIER[scTier]
+
+    return
+    {
+        key         = 'sc_t' .. scTier,
+        name        = tierLabels[scTier] or ('SC T' .. scTier),
+        tier        = scTier,
+        col         = col or 4,
+        reqWsPoints = gate.reqWsPoints,
+        reqLevel    = gate.reqLevel,
+        maxRank     = 2,
+        scTier      = scTier,
+        describe    = function(rank, wsArg, player, jobId)
+            local pickedId = talents.getSCChoice(player, jobId, ws.id, scTier)
+            local pickedName = SC_NAMES[pickedId] or 'None'
+            if rank == 0 then
+                return string.format('Pick: [%s] | Enables %s SC (+%d/%d%% SC Dmg)', pickedName, scTier <= 2 and 'Lv1' or (scTier == 3 and 'Lv2' or 'Lv3'), bonuses[1], bonuses[2])
+            elseif rank == 1 then
+                return string.format('[%s] ACTIVE (+%d%% SC Dmg) | Next: +%d%%', pickedName, bonuses[1], bonuses[2])
+            end
+            return string.format('[%s] ACTIVE (+%d%% SC Dmg) (MAX)', pickedName, bonuses[2])
+        end,
+    }
+end
+
+local function makeCurveNode(opts)
+    local gate = talents.TIER_GATES[opts.tier]
+    return
+    {
+        key         = opts.key,
+        name        = opts.name,
+        tier        = opts.tier,
+        col         = opts.col,
+        reqWsPoints = opts.reqWsPoints ~= nil and opts.reqWsPoints or gate.reqWsPoints,
+        reqLevel    = opts.reqLevel ~= nil and opts.reqLevel or gate.reqLevel,
+        requires    = opts.requires,
+        maxRank     = opts.maxRank,
+        describe    = function(rank)
+            if rank == 0 then
+                return opts.zeroDesc
+            end
+            return opts.rankDesc(rank)
+        end,
+    }
+end
+
+-----------------------------------
+-- Hand-to-Hand (#1 - #15) Bespoke 4-Tier Trees (~37 pts each -> 4 maxed @ Lv 75)
+-----------------------------------
+local CUSTOM_TREES = {}
+
+-- Helper to assemble 4-tier custom trees cleanly with automatic slot assignment & SC col 4
+local function registerCustomH2H(wsId, spec)
+    CUSTOM_TREES[wsId] = spec
+end
+
+local function h2hFtpCurveNode(ftpCurve, maxRank)
+    return
+    {
+        key      = 'ftp',
+        name     = 'TP Scaling',
+        tier     = 1,
+        col      = 1,
+        maxRank  = maxRank or 4,
+        ftpCurve = ftpCurve,
+        describe = function(rank)
+            local mr = maxRank or 4
+            if rank <= 0 then
+                return string.format('Base fTP 1.00 -> Scales up to %.2f/%.2f/%.2f', ftpCurve[1], ftpCurve[2], ftpCurve[3])
+            end
+            local t = rank / mr
+            local a = round2(1.0 + (ftpCurve[1] - 1.0) * t)
+            local b = round2(1.0 + (ftpCurve[2] - 1.0) * t)
+            local c = round2(1.0 + (ftpCurve[3] - 1.0) * t)
+            return string.format('fTP: %.2f / %.2f / %.2f%s', a, b, c, rank >= mr and ' (MAX)' or '')
+        end,
+    }
+end
+
+-- #1 Combo (Utility Speed Opener, 37 pts)
+registerCustomH2H(1,
+{
+    archetype = 'utility',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.65, 2.25 }, 4),
+        makeCurveNode({ key = 'combo_hits', name = 'Combo Tempo', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: R1:+1 Hit R2:+10% WSC R3:+2 Hits (1->3h)',
+            rankDesc = function(r) local h = ({ 2, 2, 3 })[r]; return string.format('Base Hits: 1->%d (+%d%% WSD)', h, r * 5) end }),
+        makeCurveNode({ key = 'combo_wsc', name = 'STR/DEX WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & DEX WSC: +12/24/35% each',
+            rankDesc = function(r) local v = ({ 12, 24, 35 })[r]; return string.format('STR +%d%% / DEX +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'combo_haste', name = 'Swift Haste', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'Grants +4/8/12/15% JA Haste for 12s after WS',
+            rankDesc = function(r) local h = ({ 4, 8, 12, 15 })[r]; return string.format('Post-WS JA Haste +%d%% (12s)', h) end }),
+        makeCurveNode({ key = 'combo_sb', name = 'Subtle Rhythm', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Grants +8/16/25 Subtle Blow (12s) & +15/30/45 WS Acc',
+            rankDesc = function(r) return string.format('Subtle Blow +%d (12s), +%d Acc', ({ 8, 16, 25 })[r], r * 15) end }),
+        makeCurveNode({ key = 'combo_da', name = 'Double Tempo', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Grants +10/20/30/40% Double Attack for 12s after WS',
+            rankDesc = function(r) return string.format('Post-WS Double Attack +%d%% (12s)', r * 10) end }),
+        makeCurveNode({ key = 'combo_setup', name = 'Opening Edge', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Next WS within 10s deals +8/16/25% extra damage',
+            rankDesc = function(r) return string.format('Next WS +Damage +%d%% (10s)', ({ 8, 16, 25 })[r]) end }),
+        makeCurveNode({ key = 'capstone', name = 'Blitz Tempo', tier = 4, col = 1, maxRank = 2, requires = { key = 'combo_da', rank = 1 },
+            zeroDesc = 'Capstone: +10/18% Triple Attack (12s) & +120/250 TP on next WS',
+            rankDesc = function(r) return string.format('Post-WS +%d%% TA (12s) & +%d Next-WS TP', r == 2 and 18 or 10, r == 2 and 250 or 120) end }),
+        makeCurveNode({ key = 'combo_mast', name = 'Speed Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% WS Atk & +15/30/45 Acc',
+            rankDesc = function(r) return string.format('+%d%% WS Atk, +%d Acc', r * 10, r * 15) end }),
+    },
+})
+
+-- #2 Shoulder Tackle (Pure Interrupt / Chi Setup, 37 pts)
+registerCustomH2H(2,
+{
+    archetype = 'utility',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.25, 1.50 }, 4),
+        makeCurveNode({ key = 'tackle_hits', name = 'Twin Impact', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2:+20 Acc R3:+35 Acc',
+            rankDesc = function(r) return string.format('Base Hits: 1->2, +%d WS Acc', ({ 10, 20, 35 })[r]) end }),
+        makeCurveNode({ key = 'tackle_wsc', name = 'VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'VIT WSC: +25/50/75%',
+            rankDesc = function(r) return string.format('VIT WSC +%d%%', r * 25) end }),
+        makeCurveNode({ key = 'debuff', name = 'Concussive Stun', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+25/50/75/100 Stun MACC & +1/2/2/3s Stun Duration',
+            rankDesc = function(r) return string.format('+%d Stun MACC, +%ds Dur', r * 25, ({ 1, 2, 2, 3 })[r]) end }),
+        makeCurveNode({ key = 'chi_setup', name = 'Focused Chi', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Next Chi Blast +20/40/60% Dmg & trims -10/20/30s CD',
+            rankDesc = function(r) return string.format('Next Chi Blast +%d%% Dmg, -%ds CD', r * 20, r * 10) end }),
+        makeCurveNode({ key = 'tackle_atkdn', name = 'Shoulder Break', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Inflicts Atk Down (-10/16/22/28%) & Drains 100/180/260/350 TP',
+            rankDesc = function(r) return string.format('Atk -%d%% (45s) & Drain %d TP', ({ 10, 16, 22, 28 })[r], ({ 100, 180, 260, 350 })[r]) end }),
+        makeCurveNode({ key = 'tackle_dispel', name = 'Chi Dispel', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Dispels 1/1/2 buffs & inflicts Acc/Eva Down -15/30/45',
+            rankDesc = function(r) return string.format('Dispel %d Buff(s), Acc/Eva -%d', r >= 3 and 2 or 1, r * 15) end }),
+        makeCurveNode({ key = 'capstone', name = 'Grand Breaker', tier = 4, col = 1, maxRank = 2, requires = { key = 'chi_setup', rank = 1 },
+            zeroDesc = 'Capstone: Inflicts Slow+Para & +30/50% extra Chi Blast Dmg',
+            rankDesc = function(r) return string.format('Inflicts Slow+Para, +%d%% extra Chi Blast', r == 2 and 50 or 30) end }),
+        makeCurveNode({ key = 'tackle_mast', name = 'Disruptor Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+20/40/60 WS MACC & +15/30/50% Enmity Control',
+            rankDesc = function(r) return string.format('+%d MACC, +%d%% Enmity Control', r * 20, ({ 15, 30, 50 })[r]) end }),
+    },
+})
+
+-- #3 One Inch Punch (Armor-Crack / Chi Amplifier, 37 pts)
+registerCustomH2H(3,
+{
+    archetype = 'utility',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.35, 1.75 }, 4),
+        makeCurveNode({ key = 'inch_hits', name = 'Twin Strike', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +20/40 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', r == 1 and 10 or (r - 1) * 20, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'def_ignore', name = 'Penetrating Strike', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'Ignores +15/30/50% Target Defense',
+            rankDesc = function(r) return string.format('Ignores %d%% Target DEF', ({ 15, 30, 50 })[r]) end }),
+        makeCurveNode({ key = 'inch_vit_chi', name = 'VIT & Chi Flow', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'VIT WSC +20/40/60/80% & Next Chi Blast +20/40/60/75% Dmg',
+            rankDesc = function(r) return string.format('VIT %d%% WSC, Chi Blast +%d%% Dmg', r * 20, ({ 20, 40, 60, 75 })[r]) end }),
+        makeCurveNode({ key = 'inch_defdn', name = 'Shatter Armor', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Inflicts Defense Down -15/22/30% (60s)',
+            rankDesc = function(r) return string.format('Inflicts DEF Down -%d%% (60s)', ({ 15, 22, 30 })[r]) end }),
+        makeCurveNode({ key = 'inch_skin', name = 'Iron Shell', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Grants self Stoneskin barrier (120/240/360/500 HP)',
+            rankDesc = function(r) return string.format('Grants Stoneskin (%d HP)', ({ 120, 240, 360, 500 })[r]) end }),
+        makeCurveNode({ key = 'inch_plague', name = 'Internal Rupture', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Inflicts Plague (-3/5/8 TP/t) + Light Chi Breath hit',
+            rankDesc = function(r) return string.format('Plague -%d TP/t + Light Chi hit', ({ 3, 5, 8 })[r]) end }),
+        makeCurveNode({ key = 'capstone', name = 'True Inch', tier = 4, col = 1, maxRank = 2, requires = { key = 'inch_vit_chi', rank = 1 },
+            zeroDesc = 'Capstone: 80/100% DEF Ign, MDEF -20% & -25/45s Chi Blast CD',
+            rankDesc = function(r) return string.format('%d%% DEF Ign, MDEF -20%%, -%ds Chi CD', r == 2 and 100 or 80, r == 2 and 45 or 25) end }),
+        makeCurveNode({ key = 'inch_mast', name = 'Chi Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% Chi Blast bonus & +20/40/60 MACC',
+            rankDesc = function(r) return string.format('Chi Blast +%d%%, +%d MACC', r * 10, r * 20) end }),
+    },
+})
+
+-- #4 Backhand Blow (Crit-Primer Utility, 37 pts)
+registerCustomH2H(4,
+{
+    archetype = 'utility',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.45, 1.90 }, 4),
+        makeCurveNode({ key = 'bh_hits', name = 'Follow-Up Blow', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +15/30 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'bh_wsc', name = 'STR/DEX WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & DEX WSC: +25/45/65% each',
+            rankDesc = function(r) local v = ({ 25, 45, 65 })[r]; return string.format('STR +%d%% / DEX +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'crit', name = 'Vicious Arc', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'WS Crit Rate +15/30/45/60% & +5/10/15/20% Crit Dmg',
+            rankDesc = function(r) return string.format('WS Crit +%d%%, +%d%% Crit Dmg', r * 15, r * 5) end }),
+        makeCurveNode({ key = 'bh_postcrit', name = 'Keen Instinct', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Grants +8/14/20% Melee Crit Rate for 12s after WS',
+            rankDesc = function(r) return string.format('Post-WS +%d%% Melee Crit (12s)', ({ 8, 14, 20 })[r]) end }),
+        makeCurveNode({ key = 'bh_enaero', name = 'Gale En-Aero', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Grants +12/22/32/45 En-Aero dmg (12s) & +10/20/30/40% WS Atk',
+            rankDesc = function(r) return string.format('En-Aero +%d (12s), +%d%% WS Atk', ({ 12, 22, 32, 45 })[r], r * 10) end }),
+        makeCurveNode({ key = 'bh_evadn', name = 'Wind Feint', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Inflicts Evasion Down -20/35/50 (45s)',
+            rankDesc = function(r) return string.format('Inflicts Eva Down -%d (45s)', ({ 20, 35, 50 })[r]) end }),
+        makeCurveNode({ key = 'capstone', name = 'Tempest Eye', tier = 4, col = 1, maxRank = 2, requires = { key = 'bh_postcrit', rank = 1 },
+            zeroDesc = 'Capstone: Post-WS +12/22% Crit Dmg (12s) & +15/25% WSD',
+            rankDesc = function(r) return string.format('Post-WS +%d%% Crit Dmg (12s), +%d%% WSD', r == 2 and 22 or 12, r == 2 and 25 or 15) end }),
+        makeCurveNode({ key = 'bh_mast', name = 'Precision Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/50 Acc & +10/20/35 MACC',
+            rankDesc = function(r) return string.format('+%d Acc, +%d MACC', ({ 15, 30, 50 })[r], ({ 10, 20, 35 })[r]) end }),
+    },
+})
+
+-- #5 Raging Fists (Pure 5-Hit Multi-Hit Finisher — leaves DA/TA/Kick headroom below 8 cap, 37 pts)
+registerCustomH2H(5,
+{
+    archetype = 'multihit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.55, 2.20 }, 4),
+        makeCurveNode({ key = 'rf_hits1', name = 'Flurry Hits', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: +1/+2/+3 Hits (1->4h)',
+            rankDesc = function(r) return string.format('Hits: 1->%d (+1 offhand)', r + 1) end }),
+        makeCurveNode({ key = 'rf_wsc', name = 'STR/DEX WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & DEX WSC: +15/30/45% each',
+            rankDesc = function(r) local v = r * 15; return string.format('STR +%d%% / DEX +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'rf_hits2', name = 'Relentless Strike', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'R1:+1 Hit (4->5h) | R2-4: +15/30/45 Acc & +10/20/30% Atk',
+            rankDesc = function(r) return string.format('+1 Hit (up to 5h), +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'rf_force', name = 'Pummel Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% WS Attack & +10/20/30 Acc',
+            rankDesc = function(r) return string.format('+%d%% WS Atk, +%d Acc', r * 15, r * 10) end }),
+        makeCurveNode({ key = 'rf_mftp', name = 'Raging fTP', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'R1-3:+8/16/24% WSD | R4: fTP applies to ALL Hits!',
+            rankDesc = function(r) return r >= 4 and 'fTP ALL HITS + +24% WSD (MAX)' or string.format('+%d%% WSD (R4: fTP all hits)', r * 8) end }),
+        makeCurveNode({ key = 'rf_stance', name = 'Focus/Impetus Fury', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+12/24/36% WS Damage while Focus or Impetus is active',
+            rankDesc = function(r) return string.format('+%d%% WSD w/ Focus or Impetus', r * 12) end }),
+        makeCurveNode({ key = 'capstone', name = 'Raging Barrage', tier = 4, col = 1, maxRank = 2, requires = { key = 'rf_mftp', rank = 1 },
+            zeroDesc = 'Capstone: +15/28% WS Dmg & +15/30% Attack',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d%% WS Atk', r == 2 and 28 or 15, r * 15) end }),
+        makeCurveNode({ key = 'rf_mast', name = 'Brawler Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+5/10/15% Crit Rate & +8/16/25% Crit Damage',
+            rankDesc = function(r) return string.format('+%d%% Crit Rate, +%d%% Crit Dmg', r * 5, ({ 8, 16, 25 })[r]) end }),
+    },
+})
+
+-- #6 Spinning Attack (Pure Mob-Count Scaling AoE Pack Blender, 37 pts)
+registerCustomH2H(6,
+{
+    archetype = 'multihit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.30, 1.60 }, 4),
+        makeCurveNode({ key = 'spin_hits', name = 'Whirlwind Hits', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2:+15 Acc R3:+1 Hit (2->3h)',
+            rankDesc = function(r) local h = r >= 3 and 3 or 2; return string.format('Hits: 1->%d, +%d Acc', h, r >= 2 and 15 or 5) end }),
+        makeCurveNode({ key = 'spin_wsc', name = 'STR WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR WSC: +35/65/100%',
+            rankDesc = function(r) return string.format('STR WSC +%d%%', ({ 35, 65, 100 })[r]) end }),
+        makeCurveNode({ key = 'spin_pack', name = 'Pack Momentum', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+10/20/30/40% AoE Dmg PER extra enemy around you (up to 5)',
+            rankDesc = function(r) return string.format('+%d%% Dmg per extra mob (max 5)', r * 10) end }),
+        makeCurveNode({ key = 'spin_force', name = 'Cyclone Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% AoE Attack & +15/30/45 Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', r * 15, r * 15) end }),
+        makeCurveNode({ key = 'spin_fire', name = 'Firestorm Spin', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Adds Fire follow-up hit scaling with mob count',
+            rankDesc = function(r) return string.format('Fire AoE Splash x%d%% (+mob scale)', r * 20) end }),
+        makeCurveNode({ key = 'spin_mftp', name = 'Sweep fTP', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'R1-2:+8/16% WSD | R3: fTP applies to ALL Hits!',
+            rankDesc = function(r) return r >= 3 and 'fTP ALL HITS + +16% WSD (MAX)' or string.format('+%d%% WSD (R3: fTP all hits)', r * 8) end }),
+        makeCurveNode({ key = 'capstone', name = 'Maelstrom', tier = 4, col = 1, maxRank = 2, requires = { key = 'spin_pack', rank = 1 },
+            zeroDesc = 'Capstone: +15/30% AoE WSD & +1 Hit when >=2 enemies nearby',
+            rankDesc = function(r) return string.format('+%d%% AoE WSD, +1 Hit in packs', r * 15) end }),
+        makeCurveNode({ key = 'spin_mast', name = 'Pack Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% Crit Rate & +8/16/25% Crit Dmg in AoE',
+            rankDesc = function(r) return string.format('+%d%% Crit, +%d%% Crit Dmg', r * 10, ({ 8, 16, 25 })[r]) end }),
+    },
+})
+
+-- #7 Howling Fist (Pure Heavy High-TP / High-DEF Buster, 37 pts)
+registerCustomH2H(7,
+{
+    archetype = 'heavy',
+    nodes =
+    {
+        h2hFtpCurveNode({ 2.25, 3.60, 5.20 }, 4),
+        makeCurveNode({ key = 'hf_hits', name = 'Heavy Twin', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +15/30 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'hf_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR +10/20/30% & VIT +20/40/60% WSC',
+            rankDesc = function(r) return string.format('STR +%d%% / VIT +%d%% WSC', r * 10, r * 20) end }),
+        makeCurveNode({ key = 'hf_atk', name = 'Crushing Howl', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+15/30/45/65% WS Attack',
+            rankDesc = function(r) return string.format('+%d%% WS Attack', ({ 15, 30, 45, 65 })[r]) end }),
+        makeCurveNode({ key = 'def_ignore', name = 'Sonic Crack', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Ignores +10/18/28% Target Defense',
+            rankDesc = function(r) return string.format('Ignores %d%% Target DEF', ({ 10, 18, 28 })[r]) end }),
+        makeCurveNode({ key = 'hf_tp', name = 'TP Overflow', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = '+125/250/375/500 effective TP Bonus on WS',
+            rankDesc = function(r) return string.format('+%d effective TP Bonus', r * 125) end }),
+        makeCurveNode({ key = 'hf_sonic', name = 'Sonic Breath', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Adds Wind Sonic follow-up hit (12/24/38% of WS dmg)',
+            rankDesc = function(r) return string.format('Sonic Breath +%d%% follow-up hit', ({ 12, 24, 38 })[r]) end }),
+        makeCurveNode({ key = 'capstone', name = 'Howling Execution', tier = 4, col = 1, maxRank = 2, requires = { key = 'hf_tp', rank = 1 },
+            zeroDesc = 'Capstone: fTP on ALL Hits + +12/24% WS Dmg',
+            rankDesc = function(r) return string.format('fTP ALL HITS + +%d%% WSD', r * 12) end }),
+        makeCurveNode({ key = 'hf_mast', name = 'Heavy Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/50 Acc & +8/16/25% Crit Rate',
+            rankDesc = function(r) return string.format('+%d Acc, +%d%% Crit Rate', ({ 15, 30, 50 })[r], ({ 8, 16, 25 })[r]) end }),
+    },
+})
+
+-- #8 Dragon Kick (Pure Footwork Kick Finisher, 37 pts)
+registerCustomH2H(8,
+{
+    archetype = 'heavy',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.50, 2.50, 3.80 }, 4),
+        makeCurveNode({ key = 'dk_hits', name = 'Twin Kick', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +15/30 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'dk_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & VIT WSC: +20/40/60% each',
+            rankDesc = function(r) local v = r * 20; return string.format('STR +%d%% / VIT +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'dk_fw', name = 'Footwork Stance', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'While Footwork active: +0.20/0.35/0.50/0.70 fTP & +10/20/30/40% Atk',
+            rankDesc = function(r) return string.format('Footwork: +%.2f fTP, +%d%% Atk', ({ 0.20, 0.35, 0.50, 0.70 })[r], r * 10) end }),
+        makeCurveNode({ key = 'dk_force', name = 'Dragon Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% WS Attack',
+            rankDesc = function(r) return string.format('+%d%% WS Attack', r * 15) end }),
+        makeCurveNode({ key = 'dk_crit', name = 'Shatter Kick', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = '+8/16/24/32% Crit Rate & +10/20/30/45 Acc',
+            rankDesc = function(r) return string.format('+%d%% Crit, +%d Acc', r * 8, ({ 10, 20, 30, 45 })[r]) end }),
+        makeCurveNode({ key = 'dk_flame', name = 'Wyrm Flame', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Adds Fire follow-up kick hit (10/20/32% WS dmg)',
+            rankDesc = function(r) return string.format('Wyrm Flame +%d%% follow-up hit', ({ 10, 20, 32 })[r]) end }),
+        makeCurveNode({ key = 'capstone', name = 'True Dragon Kick', tier = 4, col = 1, maxRank = 2, requires = { key = 'dk_fw', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +15/30% extra Footwork WSD',
+            rankDesc = function(r) return string.format('fTP ALL HITS + +%d%% Footwork WSD', r * 15) end }),
+        makeCurveNode({ key = 'dk_mast', name = 'Kick Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% WSD & +150/300/450 TP Bonus under Footwork',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d Footwork TP Bonus', ({ 8, 16, 25 })[r], r * 150) end }),
+    },
+})
+
+-- #9 Asuran Fists (8-Hit 1000-TP / Anti-Evasion Specialist, 37 pts)
+registerCustomH2H(9,
+{
+    archetype = 'multihit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 0.85, 1.00, 1.15 }, 4),
+        makeCurveNode({ key = 'af_hits1', name = 'Asuran Rush I', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: +1/+2/+4 Hits (1->5h)',
+            rankDesc = function(r) return string.format('Hits: 1->%d (+1 offhand)', ({ 2, 3, 5 })[r]) end }),
+        makeCurveNode({ key = 'af_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & VIT WSC: +10/18/25% each',
+            rankDesc = function(r) local v = ({ 10, 18, 25 })[r]; return string.format('STR +%d%% / VIT +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'af_hits2', name = 'Asuran Rush II', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'R1-3:+1/+2/+3 Hits (5->8h!) | R4:+15% Atk',
+            rankDesc = function(r) local add = math.min(r, 3); return string.format('+%d Hits (up to 8h)%s', add, r >= 4 and ', +15% Atk' or '') end }),
+        makeCurveNode({ key = 'acc_mult', name = 'True Accuracy', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'TP-scaling WS Accuracy: up to +60/90/140 Acc',
+            rankDesc = function(r) return string.format('+%d/%d/%d WS Accuracy', r * 20, r * 30, ({ 45, 90, 140 })[r]) end }),
+        makeCurveNode({ key = 'af_mftp', name = 'Hundred-Hand fTP', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'R1-3:+8/16/24% Atk | R4: fTP applies to ALL Hits!',
+            rankDesc = function(r) return r >= 4 and 'fTP ALL HITS + +24% Atk (MAX)' or string.format('+%d%% Atk (R4: fTP all hits)', r * 8) end }),
+        makeCurveNode({ key = 'af_focus', name = 'Focus Resonance', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% Crit Rate while Focus is active',
+            rankDesc = function(r) return string.format('+%d%% Crit Rate w/ Focus', r * 10) end }),
+        makeCurveNode({ key = 'capstone', name = 'Asuran Zenith', tier = 4, col = 1, maxRank = 2, requires = { key = 'af_mftp', rank = 1 },
+            zeroDesc = 'Capstone: +0.08/0.15 flat fTP & +10/20% WSD',
+            rankDesc = function(r) return string.format('+%.2f flat fTP & +%d%% WSD', r == 2 and 0.15 or 0.08, r * 10) end }),
+        makeCurveNode({ key = 'af_mast', name = 'Relentless Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% Atk & +20/40/60 WS Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', ({ 8, 16, 25 })[r], r * 20) end }),
+    },
+})
+
+-- #10 Final Heaven (Relic High-Subtle-Blow Light Finisher, 37 pts)
+registerCustomH2H(10,
+{
+    archetype = 'heavy',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.80, 2.25, 2.75 }, 4),
+        makeCurveNode({ key = 'fh_hits', name = 'Twin Heaven', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +15/30 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'fh_wsc', name = 'VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'VIT WSC: +30/55/85%',
+            rankDesc = function(r) return string.format('VIT WSC +%d%%', ({ 30, 55, 85 })[r]) end }),
+        makeCurveNode({ key = 'fh_sb', name = 'Subtle Soul', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+10/20/30/40 Subtle Blow & -15/30/45/60 Enmity on WS',
+            rankDesc = function(r) return string.format('+%d Subtle Blow, -%d Enmity on WS', r * 10, r * 15) end }),
+        makeCurveNode({ key = 'def_ignore', name = 'Heavenly Pierce', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'Ignores +12/24/35% Target Defense',
+            rankDesc = function(r) return string.format('Ignores %d%% Target DEF', ({ 12, 24, 35 })[r]) end }),
+        makeCurveNode({ key = 'fh_light', name = 'Heavenly Radiance', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Adds Light elemental follow-up burst (10/20/30/40% Dmg)',
+            rankDesc = function(r) return string.format('Light Breath +%d%% follow-up hit', r * 10) end }),
+        makeCurveNode({ key = 'aftermath_echo', name = 'Relic Echo', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% WSD & +100/200/300 TP Bonus',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d TP Bonus', ({ 8, 16, 25 })[r], r * 100) end }),
+        makeCurveNode({ key = 'capstone', name = 'Final Ascension', tier = 4, col = 1, maxRank = 2, requires = { key = 'fh_light', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +15/25% WSD & +10/20% SC Dmg',
+            rankDesc = function(r) return string.format('fTP ALL HITS, +%d%% WSD, +%d%% SC Dmg', r == 2 and 25 or 15, r * 10) end }),
+        makeCurveNode({ key = 'fh_mast', name = 'Relic Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% WS Atk & +15/30/50 Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', r * 15, ({ 15, 30, 50 })[r]) end }),
+    },
+})
+
+-- #11 Ascetics Fury (Mythic High-DEF / Crit Executioner, 37 pts)
+registerCustomH2H(11,
+{
+    archetype = 'crit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.10, 1.50, 2.00 }, 4),
+        makeCurveNode({ key = 'afury_hits', name = 'Twin Fury', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2-3: +15/30 Acc & +10/20% Atk',
+            rankDesc = function(r) return string.format('Hits: 1->2, +%d Acc, +%d%% Atk', (r - 1) * 15, (r - 1) * 10) end }),
+        makeCurveNode({ key = 'afury_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & VIT WSC: +25/45/65% each',
+            rankDesc = function(r) local v = ({ 25, 45, 65 })[r]; return string.format('STR +%d%% / VIT +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'afury_atk', name = 'Ascetic Attack', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+35/70/110/150% WS Attack (cuts capped DEF)',
+            rankDesc = function(r) return string.format('+%d%% WS Attack', ({ 35, 70, 110, 150 })[r]) end }),
+        makeCurveNode({ key = 'crit', name = 'Merciless Crit', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'TP Crit Rate: +15/30/55% max TP crit scaling',
+            rankDesc = function(r) local t = ({ { 10, 15, 25 }, { 18, 28, 40 }, { 25, 40, 55 } })[r]; return string.format('Crit +%d/%d/%d%%', t[1], t[2], t[3]) end }),
+        makeCurveNode({ key = 'afury_critdmg', name = 'Lethal Edge', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = '+8/16/24/32% Critical Hit Damage on WS',
+            rankDesc = function(r) return string.format('+%d%% WS Crit Damage', r * 8) end }),
+        makeCurveNode({ key = 'aftermath_echo', name = 'Mythic Echo', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% WSD & +100/200/300 TP Bonus',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d TP Bonus', ({ 8, 16, 25 })[r], r * 100) end }),
+        makeCurveNode({ key = 'capstone', name = 'Ascetics Zenith', tier = 4, col = 1, maxRank = 2, requires = { key = 'afury_atk', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +15% Crit & +10/22% WSD',
+            rankDesc = function(r) return string.format('fTP ALL HITS, +15%% Crit, +%d%% WSD', r == 2 and 22 or 10) end }),
+        makeCurveNode({ key = 'afury_mast', name = 'Fury Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% DEF Ignore & +20/40/60 Acc',
+            rankDesc = function(r) return string.format('%d%% DEF Ign, +%d Acc', r * 10, r * 20) end }),
+    },
+})
+
+-- #12 Stringing Pummel (Mythic 6-Hit Crit Barrage, 37 pts)
+registerCustomH2H(12,
+{
+    archetype = 'crit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.00, 1.15, 1.35 }, 4),
+        makeCurveNode({ key = 'sp_hits1', name = 'Pummel Rush I', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: +1/+2/+3 Hits (1->4h)',
+            rankDesc = function(r) return string.format('Hits: 1->%d (+1 offhand)', r + 1) end }),
+        makeCurveNode({ key = 'sp_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & VIT WSC: +15/28/40% each',
+            rankDesc = function(r) local v = ({ 15, 28, 40 })[r]; return string.format('STR +%d%% / VIT +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'sp_hits2', name = 'Pummel Rush II', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'R1-2:+1/+2 Hits (4->6h) | R3-4:+12/24% Atk',
+            rankDesc = function(r) local h = math.min(r, 2); return string.format('+%d Hits (up to 6h)%s', h, r > 2 and string.format(', +%d%% Atk', (r - 2) * 12) or '') end }),
+        makeCurveNode({ key = 'crit', name = 'Pummel Crit', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = 'TP Crit Rate: up to +15/25/38% max TP crit scaling',
+            rankDesc = function(r) local t = ({ { 8, 12, 18 }, { 12, 18, 28 }, { 16, 26, 38 } })[r]; return string.format('Crit +%d/%d/%d%%', t[1], t[2], t[3]) end }),
+        makeCurveNode({ key = 'sp_critdmg', name = 'Barrage Crit Dmg', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = '+8/16/24/32% Critical Hit Damage on WS',
+            rankDesc = function(r) return string.format('+%d%% WS Crit Damage', r * 8) end }),
+        makeCurveNode({ key = 'aftermath_echo', name = 'Mythic Echo', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% WSD & +100/200/300 TP Bonus',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d TP Bonus', ({ 8, 16, 25 })[r], r * 100) end }),
+        makeCurveNode({ key = 'capstone', name = 'Grand Pummel', tier = 4, col = 1, maxRank = 2, requires = { key = 'crit', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +10/20% WSD',
+            rankDesc = function(r) return string.format('fTP ALL HITS + +%d%% WSD', r * 10) end }),
+        makeCurveNode({ key = 'sp_mast', name = 'Barrage Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+12/24/36% WS Atk & +15/30/50 Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', r * 12, ({ 15, 30, 50 })[r]) end }),
+    },
+})
+
+-- #13 Tornado Kick (Multi-Kick Footwork / Wind Specialist, 37 pts)
+registerCustomH2H(13,
+{
+    archetype = 'multihit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.15, 1.75, 2.65 }, 4),
+        makeCurveNode({ key = 'tk_hits', name = 'Gale Kicks', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'R1:+1 Hit (1->2h) R2:+15 Acc R3:+1 Hit (2->3h)',
+            rankDesc = function(r) local h = r >= 3 and 3 or 2; return string.format('Hits: 1->%d, +%d Acc', h, r >= 2 and 15 or 5) end }),
+        makeCurveNode({ key = 'tk_wsc', name = 'STR/VIT WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR & VIT WSC: +20/35/50% each',
+            rankDesc = function(r) local v = ({ 20, 35, 50 })[r]; return string.format('STR +%d%% / VIT +%d%% WSC', v, v) end }),
+        makeCurveNode({ key = 'tk_fw', name = 'Cyclone Footwork', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+12/24/36/48% WSD & +10/20/30/40% Atk while Footwork active',
+            rankDesc = function(r) return string.format('Footwork: +%d%% WSD, +%d%% Atk', r * 12, r * 10) end }),
+        makeCurveNode({ key = 'tk_force', name = 'Gale Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% WS Atk & +15/30/45 Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', r * 15, r * 15) end }),
+        makeCurveNode({ key = 'tk_wind', name = 'Tempest Splash', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'Adds Wind elemental kick follow-up hit (8/16/24/35% Dmg)',
+            rankDesc = function(r) return string.format('Wind Kick +%d%% follow-up hit', ({ 8, 16, 24, 35 })[r]) end }),
+        makeCurveNode({ key = 'tk_tp', name = 'Cyclone Stance TP', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+150/300/450 TP Bonus while Footwork or Dodge active',
+            rankDesc = function(r) return string.format('+%d TP Bonus w/ Footwork/Dodge', r * 150) end }),
+        makeCurveNode({ key = 'capstone', name = 'Eye of Tornado', tier = 4, col = 1, maxRank = 2, requires = { key = 'tk_fw', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +12/22% WSD',
+            rankDesc = function(r) return string.format('fTP ALL HITS + +%d%% WSD', r == 2 and 22 or 12) end }),
+        makeCurveNode({ key = 'tk_mast', name = 'Gale Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% Crit Rate & +8/16/25% Crit Dmg',
+            rankDesc = function(r) return string.format('+%d%% Crit, +%d%% Crit Dmg', r * 10, ({ 8, 16, 25 })[r]) end }),
+    },
+})
+
+-- #14 Victory Smite (Empyrean 4-Hit Pure STR Crit Finisher, 37 pts)
+registerCustomH2H(14,
+{
+    archetype = 'crit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.15, 1.35, 1.60 }, 4),
+        makeCurveNode({ key = 'vs_hits', name = 'Smite Flurry', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: +1/+2/+3 Hits (1->4h)',
+            rankDesc = function(r) return string.format('Hits: 1->%d (+1 offhand)', r + 1) end }),
+        makeCurveNode({ key = 'vs_wsc', name = 'STR WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'STR WSC: +35/65/90%',
+            rankDesc = function(r) return string.format('STR WSC +%d%%', ({ 35, 65, 90 })[r]) end }),
+        makeCurveNode({ key = 'crit', name = 'Smite Crit', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = 'TP Crit Rate: up to +15/25/35/45% max TP crit scaling',
+            rankDesc = function(r) local t = ({ { 8, 12, 15 }, { 12, 18, 25 }, { 16, 26, 35 }, { 20, 32, 45 } })[r]; return string.format('Crit +%d/%d/%d%%', t[1], t[2], t[3]) end }),
+        makeCurveNode({ key = 'vs_force', name = 'Empyrean Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+15/30/45% WS Atk & +15/30/45 Acc',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d Acc', r * 15, r * 15) end }),
+        makeCurveNode({ key = 'vs_critdmg', name = 'Keen Smite', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = '+8/16/24/32% Critical Hit Damage on WS',
+            rankDesc = function(r) return string.format('+%d%% WS Crit Damage', r * 8) end }),
+        makeCurveNode({ key = 'aftermath_echo', name = 'Empyrean Echo', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = '+8/16/25% WSD & +100/200/300 TP Bonus',
+            rankDesc = function(r) return string.format('+%d%% WSD, +%d TP Bonus', ({ 8, 16, 25 })[r], r * 100) end }),
+        makeCurveNode({ key = 'capstone', name = 'Triumphant Smite', tier = 4, col = 1, maxRank = 2, requires = { key = 'crit', rank = 1 },
+            zeroDesc = 'Capstone: fTP ALL HITS + +10/20% WSD',
+            rankDesc = function(r) return string.format('fTP ALL HITS + +%d%% WSD', r * 10) end }),
+        makeCurveNode({ key = 'vs_mast', name = 'Victor Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+12/24/40% WSD w/ Impetus or Focus & +20/40/60 Acc',
+            rankDesc = function(r) return string.format('+%d%% Impetus/Focus WSD, +%d Acc', ({ 12, 24, 40 })[r], r * 20) end }),
+    },
+})
+
+-- #15 Shijin Spiral (Merit 5-Hit Pure DEX Fusion Finisher, 37 pts)
+registerCustomH2H(15,
+{
+    archetype = 'multihit',
+    nodes =
+    {
+        h2hFtpCurveNode({ 1.05, 1.35, 1.65 }, 4),
+        makeCurveNode({ key = 'ss_hits', name = 'Spiral Flurry', tier = 1, col = 2, maxRank = 3,
+            zeroDesc = 'Earn back multi-hits: +1/+2/+4 Hits (1->5h)',
+            rankDesc = function(r) return string.format('Hits: 1->%d (+1 offhand)', ({ 2, 3, 5 })[r]) end }),
+        makeCurveNode({ key = 'ss_wsc', name = 'DEX WSC', tier = 1, col = 3, maxRank = 3,
+            zeroDesc = 'DEX WSC: +30/55/85%',
+            rankDesc = function(r) return string.format('DEX WSC +%d%%', ({ 30, 55, 85 })[r]) end }),
+        makeCurveNode({ key = 'ss_acc', name = 'Spiral Precision', tier = 2, col = 1, maxRank = 4,
+            zeroDesc = '+20/40/60/85 WS Accuracy & +8/16/24/32% Atk',
+            rankDesc = function(r) return string.format('+%d Acc, +%d%% WS Atk', ({ 20, 40, 60, 85 })[r], r * 8) end }),
+        makeCurveNode({ key = 'ss_force', name = 'Four-Gods Force', tier = 2, col = 2, maxRank = 3,
+            zeroDesc = '+12/24/38% WS Attack & +5/10/15% WSD',
+            rankDesc = function(r) return string.format('+%d%% Atk, +%d%% WSD', ({ 12, 24, 38 })[r], r * 5) end }),
+        makeCurveNode({ key = 'ss_mftp', name = 'Spiral fTP', tier = 3, col = 1, maxRank = 4,
+            zeroDesc = 'R1-3:+8/16/24% WSD | R4: fTP applies to ALL Hits!',
+            rankDesc = function(r) return r >= 4 and 'fTP ALL HITS + +24% WSD (MAX)' or string.format('+%d%% WSD (R4: fTP all hits)', r * 8) end }),
+        makeCurveNode({ key = 'ss_wind', name = 'Wind Spiral', tier = 3, col = 2, maxRank = 3,
+            zeroDesc = 'Wind Burst +10/20/30% & +10/20/30% Impetus/Focus WSD',
+            rankDesc = function(r) return string.format('Wind +%d%% hit, +%d%% Stance WSD', r * 10, r * 10) end }),
+        makeCurveNode({ key = 'capstone', name = 'Shijin Zenith', tier = 4, col = 1, maxRank = 2, requires = { key = 'ss_mftp', rank = 1 },
+            zeroDesc = 'Capstone: +15/30% SC Damage & +12/24% WSD',
+            rankDesc = function(r) return string.format('+%d%% SC Dmg, +%d%% WSD', r * 15, r * 12) end }),
+        makeCurveNode({ key = 'ss_mast', name = 'Spiral Mastery', tier = 4, col = 2, maxRank = 3,
+            zeroDesc = '+10/20/30% Crit Rate & +8/16/25% Crit Dmg',
+            rankDesc = function(r) return string.format('+%d%% Crit, +%d%% Crit Dmg', r * 10, ({ 8, 16, 25 })[r]) end }),
+    },
+})
+
+-----------------------------------
+-- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
+-----------------------------------
+local treeCache = {}
+
+local function finalizeTree(ws, archetype, rawNodes)
+    local nodes = {}
+    local colUsed = { {}, {}, {}, {} }
+
+    for _, n in ipairs(rawNodes) do
+        colUsed[n.tier][n.col] = true
+        table.insert(nodes, n)
+    end
+
+    -- Add Skillchain Augment selector node on Col 4 in EVERY tier (1..4)
+    for scTier = 1, 4 do
+        table.insert(nodes, makeSCTierNode(ws, scTier, 4))
+    end
+
+    -- Sort cleanly by tier, then col, and assign deterministic storage slots (1..20)
+    table.sort(nodes, function(a, b)
+        if a.tier ~= b.tier then
+            return a.tier < b.tier
+        end
+        return a.col < b.col
+    end)
+
+    local byKey = {}
+    for idx, node in ipairs(nodes) do
+        node.slot = idx
+        local gate = talents.TIER_GATES[node.tier] or talents.TIER_GATES[1]
+        node.reqWsPoints = node.reqWsPoints ~= nil and node.reqWsPoints or gate.reqWsPoints
+        node.reqLevel    = node.reqLevel ~= nil and node.reqLevel or gate.reqLevel
+        byKey[node.key]  = node
+    end
+
+    return
+    {
+        ws        = ws,
+        archetype = archetype,
+        nodes     = nodes,
+        byKey     = byKey,
     }
 end
 
@@ -371,240 +1137,126 @@ local function determineArchetype(ws)
     return 'heavy'
 end
 
-local T2_SLOTS = { 5, 6, 9 }
-
-local function buildTreeForWS(ws)
+local function buildGenericTreeForWS(ws)
     local orig = ws.orig
     local nodes = {}
     local archetype = determineArchetype(ws)
 
-    -- Tier 1, Col 1 (Slot 1): fTP Scaling
+    -- Tier 1 (Lv 1+, 0+ WS pts): TP Scaling (4) + WSC/Potency (6 or 3+3) + Hits recovery
     table.insert(nodes,
     {
-        slot = 1,
         key = 'ftp',
         name = 'TP Scaling',
         tier = 1,
         col = 1,
-        reqWsPoints = 0,
-        maxRank = 5,
+        maxRank = 4,
         describe = function(rank)
-            local f = calcFtpAtRank(orig.ftp, rank)
-            local nxt = rank < 5 and calcFtpAtRank(orig.ftp, rank + 1) or nil
-            local curStr = string.format('fTP: %.2f/%.2f/%.2f', f[1], f[2], f[3])
-            if nxt then
-                return string.format('%s | Next: %.2f/%.2f', curStr, nxt[1], nxt[3])
-            end
-            return curStr .. ' (MAX)'
+            local f = talents.calcFtpAtRank(orig.ftp, rank, 4)
+            return string.format('fTP: %.2f/%.2f/%.2f%s', f[1], f[2], f[3], rank >= 4 and ' (MAX)' or '')
         end,
     })
 
-    -- Tier 1, Col 2..4 (Slots 2..4): Original Stat WSC (or Utility Potency)
     local nextCol = 2
-    local wscSlot = 2
-    local hasWsc = false
+    local wscCount = 0
     for _, stat in ipairs(STAT_ORDER) do
         local weight = orig.wsc[stat]
-        if weight ~= nil and weight > 0 and wscSlot <= 4 then
-            hasWsc = true
+        if weight ~= nil and weight > 0 and nextCol <= 3 then
+            wscCount = wscCount + 1
             local statUpper = STAT_LABELS[stat]
             local capturedStat = stat
             local capturedWeight = weight
             table.insert(nodes,
             {
-                slot = wscSlot,
                 key = 'wsc_' .. capturedStat,
                 stat = capturedStat,
                 origWeight = capturedWeight,
                 name = statUpper .. ' WSC',
                 tier = 1,
                 col = nextCol,
-                reqWsPoints = 0,
-                maxRank = 5,
+                maxRank = 3,
                 describe = function(rank)
-                    local cur = calcWscAtRank(capturedWeight, rank)
-                    local nxt = rank < 5 and calcWscAtRank(capturedWeight, rank + 1) or nil
-                    if nxt then
-                        return string.format('%s WSC %s (orig %s) | Next: %s', statUpper, fmtPct(cur), fmtPct(capturedWeight), fmtPct(nxt))
-                    end
-                    return string.format('%s WSC %s (MAX)', statUpper, fmtPct(cur))
+                    local cur = talents.calcWscAtRank(capturedWeight, rank, 3)
+                    return string.format('%s WSC %s (orig %s)%s', statUpper, fmtPct(cur), fmtPct(capturedWeight), rank >= 3 and ' (MAX)' or '')
                 end,
             })
-            wscSlot = wscSlot + 1
             nextCol = nextCol + 1
         end
     end
 
-    if not hasWsc then
+    if wscCount == 0 then
         table.insert(nodes,
         {
-            slot = 2,
             key = 'potency',
             name = 'Potency Scaling',
             tier = 1,
             col = 2,
-            reqWsPoints = 0,
-            maxRank = 5,
+            maxRank = 3,
             describe = function(rank)
-                local cur = rank * 20
-                if rank < 5 then
-                    return string.format('+%d%% HP/MP potency | Next: +%d%%', cur, (rank + 1) * 20)
-                end
-                return string.format('+%d%% HP/MP potency (MAX)', cur)
+                return string.format('+%d%% HP/MP potency', rank * 25)
+            end,
+        })
+        nextCol = 3
+    end
+
+    if orig.numHits >= 2 and nextCol <= 3 then
+        local targetHits = orig.numHits
+        table.insert(nodes,
+        {
+            key = 'hits_t1',
+            name = 'Strike Rhythm',
+            tier = 1,
+            col = nextCol,
+            maxRank = 3,
+            describe = function(rank)
+                local h = 1 + math.min(targetHits - 1, math.ceil((targetHits - 1) * (rank / 3)))
+                return rank == 0 and string.format('Earn back hits (1->%dh)', targetHits) or string.format('Hits: 1->%d, +%d Acc', h, rank * 10)
             end,
         })
     end
 
-    -- Tier 2 (Slots 5, 6, 9, requires >= 3 pts in this WS, prereq ftp >= 1)
-    local t2Idx = 1
-
-    local function addT2Node(node)
-        if t2Idx > #T2_SLOTS then
+    -- Tier 2 (Lv 25+, 7+ WS pts)
+    local t2Col = 1
+    local function addT2(node)
+        if t2Col > 3 then
             return
         end
-        node.slot = T2_SLOTS[t2Idx]
         node.tier = 2
-        node.col = t2Idx
-        node.reqWsPoints = 3
-        node.requires = { key = 'ftp', rank = 1 }
+        node.col = t2Col
+        node.requires = node.requires or { key = 'ftp', rank = 1 }
         table.insert(nodes, node)
-        t2Idx = t2Idx + 1
+        t2Col = t2Col + 1
     end
 
-    -- Priority 1: Unique WS signature traits based on what the WS originally did
-    if orig.drainHp then
-        addT2Node(
+    if orig.numHits >= 2 then
+        addT2(
         {
-            key = 'siphon',
-            name = ws.key == 'sanguine_blade' and 'Crimson Siphon' or 'Soul Siphon',
-            maxRank = 3,
+            key = 'multihit',
+            name = 'Flurry Strikes',
+            maxRank = 4,
             describe = function(rank)
-                local pcts = { 15, 30, 50 }
                 if rank == 0 then
-                    return '+15/30/50% HP Drain & drains dmg as MP'
+                    return 'R1-2:+Acc/Atk | R3:fTP ALL Hits | R4:+1 Hit'
                 end
-                local p = pcts[rank] or 50
-                return string.format('+%d%% HP Drain & drains %d%% dmg as MP', p, p)
-            end,
-        })
-    end
-
-    if orig.drainMp or orig.restoreMp then
-        addT2Node(
-        {
-            key = 'mana_leech',
-            name = orig.restoreMp and 'Font of Aether' or 'Aether Siphon',
-            maxRank = 3,
-            describe = function(rank)
-                local mps = { 25, 50, 100 }
-                local hps = { 25, 50, 75 }
-                if rank == 0 then
-                    return '+25/50/100% MP & heals 25/50/75% MP as HP'
-                end
-                return string.format('+%d%% MP gained & +%d%% MP healed as HP', mps[rank] or 100, hps[rank] or 75)
+                return string.format('+%d Acc, +%d%% Atk%s%s', rank * 12, rank * 8, rank >= 3 and ', fTP ALL' or '', rank >= 4 and ', +1 Hit' or '')
             end,
         })
     end
 
     if orig.debuff ~= nil then
         local deb = orig.debuff
-        addT2Node(
+        addT2(
         {
             key = 'debuff',
             name = deb.label .. ' +',
             maxRank = 3,
             describe = function(rank)
-                local durs = { 35, 70, 120 }
-                local maccs = { 25, 50, 80 }
-                if deb.binary then
-                    local atks = { 10, 20, 35 }
-                    if rank == 0 then
-                        return '+35/70/120% Dur, +25-80 MACC, +10-35% Atk'
-                    end
-                    return string.format('+%d%% Dur, +%d MACC, +%d%% WS Atk', durs[rank], maccs[rank], atks[rank])
-                else
-                    local pots = { 20, 40, 65 }
-                    if rank == 0 then
-                        return '+20/40/65% Pot, +35-120% Dur, +25-80 MACC'
-                    end
-                    return string.format('+%d%% Potency, +%d%% Dur, +%d MACC', pots[rank], durs[rank], maccs[rank])
-                end
-            end,
-        })
-    end
-
-    if orig.aoe then
-        addT2Node(
-        {
-            key = 'aoe_cleave',
-            name = 'Tempest Cleave',
-            maxRank = 3,
-            describe = function(rank)
-                local atks = { 10, 20, 35 }
-                local accs = { 15, 30, 50 }
-                local wsds = { 8, 16, 25 }
-                if rank == 0 then
-                    return '+10-35% Atk, +15-50 Acc, +8-25% AoE WSD'
-                end
-                return string.format('+%d%% Atk, +%d Acc, +%d%% AoE WSD', atks[rank], accs[rank], wsds[rank])
-            end,
-        })
-    end
-
-    if orig.enmity == 'high' then
-        addT2Node(
-        {
-            key = 'enmity_ctrl',
-            name = 'Vanguard Oath',
-            maxRank = 3,
-            describe = function(rank)
-                local enms = { 50, 100, 175 }
-                local heals = { 15, 30, 50 }
-                if rank == 0 then
-                    return '+50/100/175% Enmity & 15/30/50% HP drain'
-                end
-                return string.format('+%d%% Enmity & +%d%% dmg self-heal', enms[rank], heals[rank])
-            end,
-        })
-    elseif orig.enmity == 'low' then
-        addT2Node(
-        {
-            key = 'enmity_ctrl',
-            name = 'Phantom Shot',
-            maxRank = 3,
-            describe = function(rank)
-                local enms = { 30, 60, 90 }
-                local wsds = { 10, 20, 35 }
-                if rank == 0 then
-                    return '-30/60/90 Enmity & +10/20/35% WS Damage'
-                end
-                return string.format('-%d Enmity & +%d%% WS Damage', enms[rank], wsds[rank])
-            end,
-        })
-    end
-
-    -- Priority 2: Combat curve traits matching original WS math
-    if orig.numHits >= 2 then
-        addT2Node(
-        {
-            key = 'multihit',
-            name = 'Flurry Strikes',
-            maxRank = 3,
-            describe = function(rank)
-                if rank == 0 then
-                    return 'R1:+Acc/Atk R2:fTP all hits R3:+1 Hit'
-                elseif rank == 1 then
-                    return '+15 Acc/+10% Atk | Next: fTP all hits'
-                elseif rank == 2 then
-                    return '+30 Acc/+20% Atk, fTP all | Next: +1 Hit'
-                end
-                return '+45 Acc/+30% Atk, fTP all, +1 Hit (MAX)'
+                return rank == 0 and '+35/70/120% Dur, +25-80 MACC' or string.format('+%d%% Dur, +%d MACC', ({ 35, 70, 120 })[rank], ({ 25, 50, 80 })[rank])
             end,
         })
     end
 
     if orig.critVaries ~= nil then
-        addT2Node(
+        addT2(
         {
             key = 'crit',
             name = 'Critical Edge',
@@ -613,244 +1265,165 @@ local function buildTreeForWS(ws)
                 if rank == 0 then
                     return 'TP crit scaling (+10-30% crit, +5-15% dmg)'
                 end
-                local c = calcScaledTable(orig.critVaries, rank, { 0.10, 0.15, 0.20 })
+                local c = talents.calcScaledTable(orig.critVaries, rank, { 0.10, 0.15, 0.20 })
                 return string.format('Crit %s/%s/%s, +%d%% Crit Dmg', fmtPct(c[1]), fmtPct(c[2]), fmtPct(c[3]), rank * 5)
             end,
         })
     end
 
     if orig.ignoredDefense ~= nil then
-        addT2Node(
+        addT2(
         {
             key = 'def_ignore',
             name = 'Armor Piercer',
             maxRank = 3,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores & boosts Defense Ignore (up to 120%)'
+                    return 'Restores & boosts Defense Ignore'
                 end
-                local d = calcScaledTable(orig.ignoredDefense, rank, { 0.08, 0.12, 0.16 })
+                local d = talents.calcScaledTable(orig.ignoredDefense, rank, { 0.08, 0.12, 0.16 })
                 return string.format('Ignores %s/%s/%s DEF', fmtPct(d[1]), fmtPct(d[2]), fmtPct(d[3]))
             end,
         })
     end
 
+    if t2Col <= 2 then
+        addT2(
+        {
+            key = 'focused',
+            name = 'Focused Power',
+            maxRank = 3,
+            describe = function(rank)
+                return string.format('+%d%% WS Atk, +%d Acc', rank * 15, rank * 15)
+            end,
+        })
+    end
+
+    -- Tier 3 (Lv 45+, 15+ WS pts)
+    local t3Col = 1
+    local function addT3(node)
+        if t3Col > 3 then
+            return
+        end
+        node.tier = 3
+        node.col = t3Col
+        table.insert(nodes, node)
+        t3Col = t3Col + 1
+    end
+
     if orig.atkVaries ~= nil then
-        addT2Node(
+        addT3(
         {
             key = 'atk_mult',
             name = 'Crushing Force',
-            maxRank = 3,
+            maxRank = 4,
             describe = function(rank)
                 if rank == 0 then
-                    return 'Restores & boosts WS Attack multiplier'
+                    return 'TP-varying WS Attack multiplier'
                 end
-                local a = calcAtkScaleAtRank(orig.atkVaries, rank)
+                local a = talents.calcAtkScaleAtRank(orig.atkVaries, rank)
                 return string.format('WS Atk +%s/+%s/+%s', fmtPct(a[1]), fmtPct(a[2]), fmtPct(a[3]))
-            end,
-        })
-    end
-
-    if orig.accVaries ~= nil then
-        addT2Node(
-        {
-            key = 'acc_mult',
-            name = 'True Strike',
-            maxRank = 3,
-            describe = function(rank)
-                if rank == 0 then
-                    return 'Restores & boosts TP-varying Accuracy'
-                end
-                local ac = calcScaledTable(orig.accVaries, rank, { 20, 25, 30 })
-                return string.format('WS Acc +%d/+%d/+%d', math.floor(ac[1]), math.floor(ac[2]), math.floor(ac[3]))
-            end,
-        })
-    end
-
-    if ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil or orig.drainHp then
-        local elemText = ws.elementName or (ws.key == 'sanguine_blade' and 'Dark' or 'Elemental')
-        addT2Node(
-        {
-            key = 'elemental',
-            name = elemText .. ' Surge',
-            maxRank = 3,
-            describe = function(rank)
-                if rank == 0 then
-                    return string.format('+15/+30/+50 MAB & MACC for %s WS', elemText)
-                end
-                local val = rank == 3 and 50 or (rank * 15)
-                return string.format('+%d MAB and +%d MACC on WS', val, val)
             end,
         })
     end
 
     if orig.aftermath ~= nil then
         local amNames = { relic = 'Relic Echo', mythic = 'Mythic Echo', empyrean = 'Empyrean Echo' }
-        addT2Node(
+        addT3(
         {
             key = 'aftermath_echo',
             name = amNames[orig.aftermath] or 'RMEA Echo',
             maxRank = 3,
             describe = function(rank)
-                local wsds = { 8, 16, 25 }
-                local tps = { 50, 100, 175 }
-                if rank == 0 then
-                    return '+8/16/25% WSD & +50/100/175 TP Bonus'
-                end
-                return string.format('+%d%% WS Dmg & +%d TP Bonus', wsds[rank], tps[rank])
+                return string.format('+%d%% WS Dmg, +%d TP Bonus', ({ 8, 16, 25 })[rank] or 0, rank * 100)
             end,
         })
     end
 
-    if t2Idx == 1 then
-        addT2Node(
+    if ws.wsType == 'magic' or ws.wsType == 'hybrid' or ws.element ~= nil or orig.drainHp then
+        addT3(
         {
-            key = 'focused',
-            name = 'Focused Power',
+            key = 'elemental',
+            name = (ws.elementName or 'Elemental') .. ' Surge',
             maxRank = 3,
             describe = function(rank)
-                if rank == 0 then
-                    return '+12/24/40% WS Atk & +15/30/50 WS Acc'
-                end
-                local atkPct = rank == 3 and 40 or (rank * 12)
-                local accVal = rank == 3 and 50 or (rank * 15)
-                return string.format('+%d%% WS Atk, +%d WS Acc', atkPct, accVal)
+                return string.format('+%d MAB and +%d MACC on WS', rank * 18, rank * 18)
             end,
         })
     end
 
-    -- Tier 3 (Slots 7, 10, 8, requires >= 6 pts in this WS)
-    local firstT2Key = 'ftp'
-    for _, n in ipairs(nodes) do
-        if n.tier == 2 then
-            firstT2Key = n.key
-            break
-        end
-    end
-
-    table.insert(nodes,
-    {
-        slot = 7,
-        key = 'tp_refund',
-        name = 'TP Momentum',
-        tier = 3,
-        col = 1,
-        reqWsPoints = 6,
-        requires = { key = 'ftp', rank = 3 },
-        maxRank = 3,
-        describe = function(rank)
-            local refund = rank == 3 and 350 or (rank * 100)
-            if rank == 0 then
-                return 'Refunds 100/200/350 TP after using WS'
-            end
-            return string.format('Refunds +%d TP after using WS', refund)
-        end,
-    })
-
-    local scPlan = talents.getSkillchainPlan(ws)
-    if scPlan ~= nil then
-        table.insert(nodes,
+    if t3Col == 1 then
+        addT3(
         {
-            slot = 10,
-            key = 'skillchain',
-            name = 'Skillchain Trait',
-            tier = 3,
-            col = 2,
-            reqWsPoints = 6,
-            requires = { key = 'ftp', rank = 2 },
+            key = 'master_force',
+            name = 'Heavy Force',
+            maxRank = 4,
+            describe = function(rank)
+                return string.format('+%d%% WSD, +%d%% WS Atk', rank * 7, rank * 10)
+            end,
+        })
+    end
+    if t3Col == 2 then
+        addT3(
+        {
+            key = 'master_prec',
+            name = 'Precision Instinct',
             maxRank = 3,
             describe = function(rank)
-                if rank == 0 then
-                    local nextProps = formatScNames(scPlan.ranks[1])
-                    return string.format('R1: %s (+10%% SC) | R3: %s', nextProps, formatScNames(scPlan.ranks[3]))
-                end
-                local cur = talents.getSkillchainAtRank(ws, rank)
-                return string.format('SC: %s (+%d%% SC Dmg)', formatScNames(cur.names), cur.scBonus)
-            end,
-        })
-    else
-        table.insert(nodes,
-        {
-            slot = 10,
-            key = 'aether_pulse',
-            name = 'Aether Pulse',
-            tier = 3,
-            col = 2,
-            reqWsPoints = 6,
-            requires = { key = 'ftp', rank = 2 },
-            maxRank = 3,
-            describe = function(rank)
-                local hps = { 10, 20, 35 }
-                local refs = { 3, 5, 8 }
-                if rank == 0 then
-                    return 'Restores 10/20/35% Max HP & grants Refresh'
-                end
-                return string.format('+%d%% Max HP heal & Refresh %d MP/t', hps[rank], refs[rank])
+                return string.format('+%d Acc, +%d%% Crit Rate', rank * 20, rank * 6)
             end,
         })
     end
 
+    -- Tier 4 (Lv 65+, 24+ WS pts): Capstone + Mastery
     local capstoneSpecs =
     {
-        magic =
-        {
-            name = 'Arcane Overcharge',
-            desc = '+30 MAB, +30 MACC, +25% WS Damage',
-        },
-        crit =
-        {
-            name = 'Fatal Execution',
-            desc = '+15% Crit Rate, +20% Crit DMG, +1.0 fTP',
-        },
-        multihit =
-        {
-            name = 'Relentless Flurry',
-            desc = 'fTP on all hits, +1 Hit, +10% WS Damage',
-        },
-        heavy =
-        {
-            name = 'Brutal Impact',
-            desc = '+35% WS Atk, 25% DEF Ign, +15% WS Dmg',
-        },
-        utility =
-        {
-            name = 'Masters Efficiency',
-            desc = '+50% WS Potency and +200 TP Refund',
-        },
+        magic    = { name = 'Arcane Overcharge', desc = '+30/50 MAB, +30/50 MACC, +15/28% WSD' },
+        crit     = { name = 'Fatal Execution',   desc = '+10/18% Crit Rate, +12/24% Crit DMG, +0.5/1.0 fTP' },
+        multihit = { name = 'Relentless Flurry', desc = 'fTP ALL Hits, +15/28% WSD' },
+        heavy    = { name = 'Brutal Impact',     desc = '+25/45% WS Atk, 15/25% DEF Ign, +12/24% WSD' },
+        utility  = { name = 'Masters Utility',   desc = '+30/55% WS Potency, +15/30% Subtle Blow' },
     }
-
     local capInfo = capstoneSpecs[archetype] or capstoneSpecs.heavy
     table.insert(nodes,
     {
-        slot = 8,
         key = 'capstone',
         name = capInfo.name,
         archetype = archetype,
-        tier = 3,
-        col = 3,
-        reqWsPoints = 6,
-        requires = { key = firstT2Key, rank = 1 },
-        maxRank = 1,
+        tier = 4,
+        col = 1,
+        requires = { key = 'ftp', rank = 2 },
+        maxRank = 2,
         describe = function(rank)
-            if rank > 0 then
-                return capInfo.desc .. ' (ACTIVE)'
-            end
-            return capInfo.desc
+            return rank > 0 and (capInfo.desc .. (rank >= 2 and ' (MAX)' or ' (R1)')) or capInfo.desc
         end,
     })
 
-    local byKey = {}
-    for _, node in ipairs(nodes) do
-        byKey[node.key] = node
-    end
-
-    return
+    table.insert(nodes,
     {
-        ws = ws,
-        archetype = archetype,
-        nodes = nodes,
-        byKey = byKey,
-    }
+        key = 'ws_mastery',
+        name = 'Combat Mastery',
+        tier = 4,
+        col = 2,
+        maxRank = 3,
+        describe = function(rank)
+            return string.format('+%d%% WSD, +%d Acc', rank * 8, rank * 15)
+        end,
+    })
+
+    return finalizeTree(ws, archetype, nodes)
+end
+
+local function buildTreeForWS(ws)
+    local custom = CUSTOM_TREES[ws.id]
+    if custom ~= nil then
+        local copied = {}
+        for _, n in ipairs(custom.nodes) do
+            table.insert(copied, n)
+        end
+        return finalizeTree(ws, custom.archetype, copied)
+    end
+    return buildGenericTreeForWS(ws)
 end
 
 function talents.getTreeForWS(wsId)
@@ -876,7 +1449,7 @@ function talents.getEarnedPoints(player, jobId)
     end
 
     local jid = jobId or player:getMainJob()
-    return math.max(1, player:getJobLevel(jid))
+    return math.max(1, player:getJobLevel(jid)) * 2
 end
 
 function talents.getWSRanks(player, jobId, wsId)
@@ -885,11 +1458,10 @@ function talents.getWSRanks(player, jobId, wsId)
         return {}, 0
     end
 
-    local packed = player:getCharVar(talents.getVarName(jobId, wsId))
     local ranks = {}
     local spent = 0
     for _, node in ipairs(tree.nodes) do
-        local r = math.min(node.maxRank, unpackSlot(packed, node.slot))
+        local r = math.min(node.maxRank, readSlotRank(player, jobId, wsId, node.slot))
         ranks[node.key] = r
         spent = spent + r
     end
@@ -908,23 +1480,29 @@ function talents.getTotalSpent(player, jobId)
     end
 
     local jid = jobId or player:getMainJob()
-    local prefix = talents.getVarPrefix(jid)
-    local vars = player:getCharVarsWithPrefix(prefix)
     local total = 0
     local perWs = {}
+    local seenWs = {}
 
-    for varName, packed in pairs(vars) do
-        if packed > 0 then
-            local wsId = tonumber(string.sub(varName, #prefix + 1))
-            if wsId ~= nil and catalog.byId[wsId] ~= nil then
-                local _, wsSpent = talents.getWSRanks(player, jid, wsId)
-                if wsSpent > 0 then
-                    perWs[wsId] = wsSpent
-                    total = total + wsSpent
+    local function scanPrefix(prefix)
+        local vars = player:getCharVarsWithPrefix(prefix)
+        for varName, packed in pairs(vars) do
+            if packed > 0 then
+                local wsId = tonumber(string.sub(varName, #prefix + 1))
+                if wsId ~= nil and not seenWs[wsId] and catalog.byId[wsId] ~= nil then
+                    seenWs[wsId] = true
+                    local _, wsSpent = talents.getWSRanks(player, jid, wsId)
+                    if wsSpent > 0 then
+                        perWs[wsId] = wsSpent
+                        total = total + wsSpent
+                    end
                 end
             end
         end
     end
+
+    scanPrefix(talents.getVarPrefix(jid))
+    scanPrefix(talents.getVar2Prefix(jid))
 
     return total, perWs
 end
@@ -958,6 +1536,12 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
         return false, 'Talent is already at max rank.'
     end
 
+    local reqLevel = node.reqLevel or 1
+    local jobLvl = math.max(1, player:getJobLevel(jobId or player:getMainJob()))
+    if jobLvl < reqLevel then
+        return false, string.format('Requires Level %d %s (currently %d).', reqLevel, talents.getJobKey(jobId or player:getMainJob()), jobLvl)
+    end
+
     if wsSpent < (node.reqWsPoints or 0) then
         return false, string.format('Requires %d points invested in %s.', node.reqWsPoints, tree.ws.name)
     end
@@ -982,12 +1566,10 @@ function talents.invest(player, jobId, wsId, nodeKey)
 
     local tree = talents.getTreeForWS(wsId)
     local node = tree.byKey[nodeKey]
-    local varName = talents.getVarName(jobId, wsId)
-    local packed = player:getCharVar(varName)
-    local curRank = unpackSlot(packed, node.slot)
+    local curRank = readSlotRank(player, jobId, wsId, node.slot)
     local newRank = curRank + 1
 
-    player:setCharVar(varName, packSlot(packed, node.slot, newRank))
+    writeSlotRank(player, jobId, wsId, node.slot, newRank)
     return true, newRank
 end
 
@@ -1008,7 +1590,6 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         return false, 'Talent rank is already 0.'
     end
 
-    -- Verify removing 1 point does not invalidate higher tiers or dependents
     local newRanks = {}
     for k, v in pairs(ranks) do
         newRanks[k] = v
@@ -1028,9 +1609,7 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         end
     end
 
-    local varName = talents.getVarName(jobId, wsId)
-    local packed = player:getCharVar(varName)
-    player:setCharVar(varName, packSlot(packed, node.slot, curRank - 1))
+    writeSlotRank(player, jobId, wsId, node.slot, curRank - 1)
     return true, curRank - 1
 end
 
@@ -1040,21 +1619,28 @@ function talents.resetWS(player, jobId, wsId)
     end
 
     player:setCharVar(talents.getVarName(jobId, wsId), 0)
+    player:setCharVar(talents.getVar2Name(jobId, wsId), 0)
+    player:setCharVar(talents.getScVarName(jobId, wsId), 0)
     return true
 end
 
 function talents.resetAll(player, jobId)
     local jid = jobId or player:getMainJob()
-    local prefix = talents.getVarPrefix(jid)
-    local vars = player:getCharVarsWithPrefix(prefix)
     local count = 0
 
-    for varName, val in pairs(vars) do
-        if val ~= 0 then
-            player:setCharVar(varName, 0)
-            count = count + 1
+    local function clearPrefix(prefix)
+        local vars = player:getCharVarsWithPrefix(prefix)
+        for varName, val in pairs(vars) do
+            if val ~= 0 then
+                player:setCharVar(varName, 0)
+                count = count + 1
+            end
         end
     end
+
+    clearPrefix(talents.getVarPrefix(jid))
+    clearPrefix(talents.getVar2Prefix(jid))
+    clearPrefix(talents.getScVarPrefix(jid))
 
     return count
 end
@@ -1062,48 +1648,19 @@ end
 -----------------------------------
 -- Ashita Protocol Sync Helpers
 -----------------------------------
-function talents.formatOrigSummary(ws)
-    local orig = ws.orig
-    local ftpStr = string.format('fTP %.2g/%.2g/%.2g', orig.ftp[1], orig.ftp[2], orig.ftp[3])
-    local wscParts = {}
-    for _, stat in ipairs(STAT_ORDER) do
-        if orig.wsc[stat] and orig.wsc[stat] > 0 then
-            table.insert(wscParts, string.format('%s %d%%', STAT_LABELS[stat], math.floor(orig.wsc[stat] * 100 + 0.5)))
-        end
+function talents.formatActiveSummary(player, jobId, ws, ranks)
+    local scData = talents.getActiveSkillchains(player, jobId, ws.id, ranks)
+    local scParts = {}
+    for _, scId in ipairs(scData.ids) do
+        table.insert(scParts, SC_SHORT[scId] or SC_NAMES[scId] or tostring(scId))
     end
-    local wscStr = #wscParts > 0 and table.concat(wscParts, ' ') or 'None'
-    local extraParts = {}
-    if orig.numHits > 1 then
-        table.insert(extraParts, string.format('%dh', orig.numHits))
+    local scText = #scParts > 0 and table.concat(scParts, '/') or 'NONE'
+    local tree = talents.getTreeForWS(ws.id)
+    local maxPts = 0
+    for _, n in ipairs(tree and tree.nodes or {}) do
+        maxPts = maxPts + n.maxRank
     end
-    if orig.drainHp then
-        table.insert(extraParts, 'DrainHP')
-    end
-    if orig.drainMp or orig.restoreMp then
-        table.insert(extraParts, orig.restoreMp and 'RestMP' or 'DrainMP')
-    end
-    if orig.debuff then
-        table.insert(extraParts, orig.debuff.label)
-    end
-    if orig.aoe then
-        table.insert(extraParts, 'AoE')
-    end
-    if orig.critVaries then
-        table.insert(extraParts, 'Crit')
-    end
-    if orig.ignoredDefense then
-        table.insert(extraParts, 'DefIgn')
-    end
-    if ws.elementName then
-        table.insert(extraParts, ws.elementName)
-    end
-    local scStr = formatScNames(orig.skillchain)
-    table.insert(extraParts, 'SC:' .. scStr)
-    local summary = string.format('%s | %s | %s', ftpStr, wscStr, table.concat(extraParts, ','))
-    if #summary > 86 then
-        summary = string.sub(summary, 1, 83) .. '...'
-    end
-    return summary
+    return string.format('Base: 1h fTP 1.0 | Active SC: %s (+%d%%) | Max: %d pts', scText, scData.scBonus, maxPts)
 end
 
 local function sendChunked(player, tag, items)
@@ -1183,20 +1740,24 @@ function talents.sendWSDetail(player, wsId)
     local ws = tree.ws
     local ranks, wsSpent = talents.getWSRanks(player, jobId, wsId)
     local avail = talents.getAvailablePoints(player, jobId)
+    local summary = talents.formatActiveSummary(player, jobId, ws, ranks)
 
-    sendProto(player, string.format('WS|%u|%s|%s|%s|%u|%s', ws.id, sanitizeField(ws.name), sanitizeField(ws.skillName), ws.wsType, wsSpent, sanitizeField(talents.formatOrigSummary(ws))))
+    sendProto(player, string.format('WS|%u|%s|%s|%s|%u|%s', ws.id, sanitizeField(ws.name), sanitizeField(ws.skillName), ws.wsType, wsSpent, sanitizeField(summary)))
 
     for _, node in ipairs(tree.nodes) do
         local r = ranks[node.key] or 0
         local canLearn = talents.canInvest(player, jobId, wsId, node.key)
         local reqKey = node.requires and node.requires.key or ''
         local reqRank = node.requires and node.requires.rank or 0
-        local desc = sanitizeField(node.describe(r, ws))
-        if #desc > 58 then
-            desc = string.sub(desc, 1, 55) .. '...'
+        local desc = sanitizeField(node.describe(r, ws, player, jobId))
+        if #desc > 60 then
+            desc = string.sub(desc, 1, 57) .. '...'
         end
+        local scTier = node.scTier or 0
+        local scId = scTier > 0 and talents.getSCChoice(player, jobId, ws.id, scTier) or 0
+        local scName = scId > 0 and (SC_SHORT[scId] or SC_NAMES[scId] or '') or ''
 
-        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s',
+        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s',
             ws.id,
             node.key,
             node.tier,
@@ -1208,7 +1769,11 @@ function talents.sendWSDetail(player, wsId)
             reqKey,
             reqRank,
             sanitizeField(node.name),
-            desc
+            desc,
+            node.reqLevel or 1,
+            scTier,
+            scId,
+            scName
         ))
     end
 

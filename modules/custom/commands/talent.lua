@@ -343,7 +343,7 @@ local function combineArgs(a, b)
     return a .. ' ' .. b
 end
 
-commandObj.onTrigger = function(player, action, arg1, arg2)
+commandObj.onTrigger = function(player, action, arg1, arg2, arg3)
     local cmd = action and string.lower(action) or nil
     local jobId = player:getMainJob()
 
@@ -407,6 +407,23 @@ commandObj.onTrigger = function(player, action, arg1, arg2)
         return
     end
 
+    if cmd == 'uscc' then
+        local ws = catalog.resolve(arg1)
+        local scTier = tonumber(arg2)
+        local dir = tonumber(arg3) or 1
+        if ws == nil or scTier == nil then
+            sendProtoErr(player, 'Invalid uscc arguments.')
+            return
+        end
+        local ok, res = talents.cycleSCChoice(player, jobId, ws.id, scTier, dir)
+        if not ok then
+            sendProtoErr(player, res)
+            return
+        end
+        talents.sendWSDetail(player, ws.id)
+        return
+    end
+
     if cmd == 'uresetws' then
         local ws = catalog.resolve(arg1)
         if ws == nil then
@@ -442,11 +459,11 @@ commandObj.onTrigger = function(player, action, arg1, arg2)
         local tree = talents.getTreeForWS(ws.id)
         local ranks, wsSpent = talents.getWSRanks(player, jobId, ws.id)
         local avail, earned = talents.getAvailablePoints(player, jobId)
-        tell(player, string.format('%s (%s) - WS Pts: %d | Job Avail: %d/%d | Orig: %s',
-            ws.name, ws.skillName, wsSpent, avail, earned, talents.formatOrigSummary(ws)))
+        tell(player, string.format('%s (%s) - WS Pts: %d | Job Avail: %d/%d | %s',
+            ws.name, ws.skillName, wsSpent, avail, earned, talents.formatActiveSummary(player, jobId, ws, ranks)))
         for _, node in ipairs(tree.nodes) do
             local r = ranks[node.key] or 0
-            tell(player, string.format('  %s (%s) [%d/%d] - %s', node.key, node.name, r, node.maxRank, node.describe(r, ws)))
+            tell(player, string.format('  %s (%s) [Lv%d+ %d/%d] - %s', node.key, node.name, node.reqLevel or 1, r, node.maxRank, node.describe(r, ws, player, jobId)))
         end
         return
     end

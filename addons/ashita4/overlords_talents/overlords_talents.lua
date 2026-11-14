@@ -360,7 +360,7 @@ local function drawTreeCanvas()
     imgui.SameLine()
     imgui.TextDisabled(string.format('(%s | %s)', detail.skillName, detail.wsType))
 
-    imgui.TextColored({ 0.72, 0.86, 1.0, 1.0 }, 'Original: ' .. detail.orig)
+    imgui.TextColored({ 0.72, 0.86, 1.0, 1.0 }, detail.orig)
     imgui.Text(string.format('Points in %s: %d   |   Available Job Points: %d', detail.name, detail.spent, state.avail))
     imgui.SameLine()
     if detail.spent > 0 then
@@ -369,34 +369,39 @@ local function drawTreeCanvas()
         end
     end
 
-    imgui.TextDisabled('Left-Click node: +1 Rank   |   Right-Click node: -1 Rank')
+    imgui.TextDisabled('Left-Click node: +1 Rank  |  Right-Click node: -1 Rank  |  Col 4 < >: Pick Skillchain')
     imgui.Separator()
 
-    -- Draw Tree Grid
+    -- Draw Tree Grid (4 Tiers x 4 Columns)
     local canvasPosX, canvasPosY = toXY(imgui.GetCursorScreenPos())
     local availW, availH = toXY(imgui.GetContentRegionAvail())
-    local cardW = 166
-    local cardH = 68
-    local gapX  = 18
-    local gapY  = 40
+    local cardW = 160
+    local cardH = 74
+    local gapX  = 14
+    local gapY  = 34
 
     local tierLabels =
     {
-        [1] = 'Tier 1: Foundation (0+ pts)',
-        [2] = 'Tier 2: Specialization (3+ pts in WS)',
-        [3] = 'Tier 3: Mastery & Capstone (6+ pts in WS)',
+        [1] = 'Tier 1: Foundation (Lv 1+, 0+ WS pts)',
+        [2] = 'Tier 2: Signature (Lv 25+, 7+ WS pts)',
+        [3] = 'Tier 3: Mastery (Lv 45+, 15+ WS pts)',
+        [4] = 'Tier 4: Capstone (Lv 65+, 24+ WS pts)',
     }
 
     -- Compute node screen coordinates
     local coords = {}
     local maxCol = 1
+    local maxTier = 1
     for _, node in ipairs(detail.nodes) do
         local tierRow = node.tier - 1
         local colIdx  = node.col - 1
         if node.col > maxCol then
             maxCol = node.col
         end
-        local x = canvasPosX + 12 + colIdx * (cardW + gapX)
+        if node.tier > maxTier then
+            maxTier = node.tier
+        end
+        local x = canvasPosX + 10 + colIdx * (cardW + gapX)
         local y = canvasPosY + 24 + tierRow * (cardH + gapY)
         coords[node.key] = { x = x, y = y }
     end
@@ -404,10 +409,10 @@ local function drawTreeCanvas()
     local dl = imgui.GetWindowDrawList()
 
     -- Draw Tier Headers
-    for t = 1, 3 do
+    for t = 1, maxTier do
         local hy = canvasPosY + 4 + (t - 1) * (cardH + gapY)
-        imgui.SetCursorScreenPos({ canvasPosX + 12, hy })
-        imgui.TextDisabled(tierLabels[t])
+        imgui.SetCursorScreenPos({ canvasPosX + 10, hy })
+        imgui.TextDisabled(tierLabels[t] or ('Tier ' .. tostring(t)))
     end
 
     -- Draw Prerequisite Connector Lines
@@ -416,7 +421,9 @@ local function drawTreeCanvas()
             local p = coords[node.reqKey]
             local c = coords[node.key]
             local parentNode = detail.byKey[node.reqKey]
-            local activeLink = (parentNode ~= nil and parentNode.rank >= node.reqRank) and (detail.spent >= node.reqWsPoints)
+            local activeLink = (parentNode ~= nil and parentNode.rank >= node.reqRank)
+                and (detail.spent >= node.reqWsPoints)
+                and (state.jobLevel >= (node.reqLevel or 1))
             local lineCol = activeLink and abgr(0.95, 0.78, 0.25, 0.90) or abgr(0.38, 0.42, 0.48, 0.65)
             local x1 = p.x + cardW * 0.5
             local y1 = p.y + cardH
@@ -457,8 +464,10 @@ local function drawTreeCanvas()
         dl:AddRectFilled({ x, y }, { x + cardW, y + cardH }, bgCol, 6.0)
         dl:AddRect({ x, y }, { x + cardW, y + cardH }, borderCol, 6.0, 0, 2.0)
 
+        local isScNode = (node.scTier or 0) > 0
+        local btnH = isScNode and (cardH - 22) or cardH
         imgui.SetCursorScreenPos({ x, y })
-        imgui.InvisibleButton('##node_' .. node.key, { cardW, cardH })
+        imgui.InvisibleButton('##node_' .. node.key, { cardW, btnH })
         local hovered = imgui.IsItemHovered()
 
         if imgui.IsItemClicked(0) then
@@ -468,22 +477,40 @@ local function drawTreeCanvas()
         end
 
         -- Card Text Overlay
-        imgui.SetCursorScreenPos({ x + 8, y + 6 })
+        imgui.SetCursorScreenPos({ x + 7, y + 5 })
         imgui.TextColored(titleCol, node.name)
-        imgui.SetCursorScreenPos({ x + 8, y + 25 })
+        imgui.SetCursorScreenPos({ x + 7, y + 23 })
         imgui.Text(string.format('Rank: %d / %d', node.rank, node.maxRank))
-        imgui.SetCursorScreenPos({ x + 8, y + 44 })
-        local shortDesc = #node.desc > 24 and (string.sub(node.desc, 1, 21) .. '...') or node.desc
-        imgui.TextDisabled(shortDesc)
+
+        if isScNode then
+            imgui.SetCursorScreenPos({ x + 7, y + 48 })
+            if imgui.SmallButton('<##sc_prev_' .. node.key) then
+                queueServerCmd(string.format('uscc %u %u -1', detail.id, node.scTier))
+            end
+            imgui.SameLine()
+            imgui.TextColored({ 0.85, 0.92, 1.0, 1.0 }, node.scName ~= '' and node.scName or 'Pick')
+            imgui.SameLine()
+            imgui.SetCursorScreenPos({ x + cardW - 24, y + 48 })
+            if imgui.SmallButton('>##sc_next_' .. node.key) then
+                queueServerCmd(string.format('uscc %u %u 1', detail.id, node.scTier))
+            end
+        else
+            imgui.SetCursorScreenPos({ x + 7, y + 42 })
+            local shortDesc = #node.desc > 23 and (string.sub(node.desc, 1, 20) .. '...') or node.desc
+            imgui.TextDisabled(shortDesc)
+        end
 
         if hovered then
             imgui.BeginTooltip()
             local okTip, errTip = pcall(function()
                 imgui.TextColored(titleCol, string.format('%s (%d/%d)', node.name, node.rank, node.maxRank))
                 imgui.Separator()
-                imgui.PushTextWrapPos(280)
+                imgui.PushTextWrapPos(290)
                 local okWrap, errWrap = pcall(function()
                     imgui.Text(node.desc)
+                    if (node.reqLevel or 1) > 1 and state.jobLevel < node.reqLevel then
+                        imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires Level %d %s (currently %d).', node.reqLevel, state.jobKey, state.jobLevel))
+                    end
                     if node.reqWsPoints > 0 and detail.spent < node.reqWsPoints then
                         imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %d points invested in %s.', node.reqWsPoints, detail.name))
                     end
@@ -492,6 +519,9 @@ local function drawTreeCanvas()
                         if pNode ~= nil and pNode.rank < node.reqRank then
                             imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %s Rank %d.', pNode.name, node.reqRank))
                         end
+                    end
+                    if isScNode then
+                        imgui.TextDisabled('Use < / > at bottom of card to choose Skillchain property.')
                     end
                 end)
                 imgui.PopTextWrapPos()
@@ -508,7 +538,7 @@ local function drawTreeCanvas()
 
     -- Reserve canvas bounds for scrolling
     local contentW = 24 + maxCol * cardW + math.max(0, maxCol - 1) * gapX
-    local contentH = 24 + 3 * (cardH + gapY)
+    local contentH = 24 + maxTier * (cardH + gapY)
     imgui.SetCursorScreenPos({ canvasPosX, canvasPosY + math.max(availH - 10, contentH) })
     imgui.Dummy({ math.max(availW - 10, contentW), 4 })
 end

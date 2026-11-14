@@ -1,0 +1,37 @@
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+index 16b5626..a8e2c11 100644
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -1779,28 +1779,16 @@ void CCharEntity::OnWeaponSkillFinished(CWeaponSkillState& state, action_t& acti
+ 
+             if (primary)
+             {
++                const auto scSet = static_cast<uint8>(this->GetLocalVar("OX_WS_SC_SET"));
+                 const auto sc1 = static_cast<uint8>(this->GetLocalVar("OX_WS_SC1"));
+                 const auto sc2 = static_cast<uint8>(this->GetLocalVar("OX_WS_SC2"));
+                 const auto sc3 = static_cast<uint8>(this->GetLocalVar("OX_WS_SC3"));
+-                if (sc1 > 0 || sc2 > 0 || sc3 > 0)
++                if (scSet > 0 || sc1 > 0 || sc2 > 0 || sc3 > 0)
+                 {
+-                    if (sc1 > 0)
+-                    {
+-                        PWeaponSkill->setPrimarySkillchain(sc1);
+-                    }
+-                    if (sc2 > 0)
+-                    {
+-                        PWeaponSkill->setSecondarySkillchain(sc2);
+-                    }
+-                    if (sc3 > 0)
+-                    {
+-                        PWeaponSkill->setTertiarySkillchain(sc3);
+-                    }
++                    PWeaponSkill->setPrimarySkillchain(sc1);
++                    PWeaponSkill->setSecondarySkillchain(sc2);
++                    PWeaponSkill->setTertiarySkillchain(sc3);
++                    this->SetLocalVar("OX_WS_SC_SET", 0);
+                     this->SetLocalVar("OX_WS_SC1", 0);
+                     this->SetLocalVar("OX_WS_SC2", 0);
+                     this->SetLocalVar("OX_WS_SC3", 0);
+                 }
+ 
+                 // See battleentity.h for REACTION class
