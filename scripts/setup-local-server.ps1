@@ -79,24 +79,41 @@ try {
         return $files
     }
 
+    function Test-PatchApplied([string]$PatchPath) {
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        git apply --reverse --check $PatchPath 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $ErrorActionPreference = $prev
+            return $true
+        }
+        git apply --reverse --check --ignore-space-change $PatchPath 2>&1 | Out-Null
+        $ok = ($LASTEXITCODE -eq 0)
+        $ErrorActionPreference = $prev
+        return $ok
+    }
+
     for ($i = 0; $i -lt $patchFiles.Count; $i++) {
         $patch = $patchFiles[$i]
         Write-Host "==> Checking patch: $($patch.Name)" -ForegroundColor Cyan
 
-        $prevEap = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        git apply --reverse --check $patch.FullName 2>&1 | Out-Null
-        $isReversed = ($LASTEXITCODE -eq 0)
-        $ErrorActionPreference = $prevEap
-
-        if ($isReversed) {
+        if (Test-PatchApplied $patch.FullName) {
             Write-Host "    Already applied, skipping." -ForegroundColor DarkGray
             continue
         }
 
+        $prevEap = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
+        $useIgnoreSpace = $false
         git apply --check $patch.FullName 2>&1 | Out-Null
         $checkCode = $LASTEXITCODE
+        if ($checkCode -ne 0) {
+            git apply --check --ignore-space-change $patch.FullName 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                $checkCode = 0
+                $useIgnoreSpace = $true
+            }
+        }
         $ErrorActionPreference = $prevEap
 
         if ($checkCode -ne 0) {
@@ -107,16 +124,9 @@ try {
                 $later = $patchFiles[$j]
                 $laterTargets = Get-PatchTargetFiles $later.FullName
                 $overlaps = (@($curTargets | Where-Object { $laterTargets -contains $_ })).Count -gt 0
-                if ($overlaps) {
-                    $prevEap2 = $ErrorActionPreference
-                    $ErrorActionPreference = 'Continue'
-                    git apply --reverse --check $later.FullName 2>&1 | Out-Null
-                    $laterApplied = ($LASTEXITCODE -eq 0)
-                    $ErrorActionPreference = $prevEap2
-                    if ($laterApplied) {
-                        $supersededBy = $later.Name
-                        break
-                    }
+                if ($overlaps -and (Test-PatchApplied $later.FullName)) {
+                    $supersededBy = $later.Name
+                    break
                 }
             }
 
@@ -130,7 +140,11 @@ try {
         }
 
         $ErrorActionPreference = 'Continue'
-        git apply $patch.FullName
+        if ($useIgnoreSpace) {
+            git apply --ignore-space-change $patch.FullName
+        } else {
+            git apply $patch.FullName
+        }
         $applyCode = $LASTEXITCODE
         $ErrorActionPreference = $prevEap
         if ($applyCode -ne 0) {
