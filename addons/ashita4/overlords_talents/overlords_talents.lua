@@ -16,9 +16,12 @@ addon.version = '1.0.0'
 addon.desc    = 'Per-weaponskill talent tree UI for OverlordsXI.'
 
 require('common')
+local bit   = require('bit')
 local imgui = require('imgui')
 
-local PROTO_TAG = '[OXTAL]|'
+local PROTO_TAG     = '[OXTAL]|'
+local CHILD_NONE    = ImGuiChildFlags_None or 0
+local CHILD_BORDERS = ImGuiChildFlags_Borders or ImGuiChildFlags_Border or 1
 
 local SKILL_LIST =
 {
@@ -70,15 +73,23 @@ local state =
     lastKnownJob    = nil,
     lastKnownLvl    = nil,
     lastAutoCheck   = 0,
+    renderError     = nil,
 }
 
 local function abgr(r, g, b, a)
-    return bit.bor(
+    if imgui.ColorConvertFloat4ToU32 then
+        return imgui.ColorConvertFloat4ToU32({ r, g, b, a or 1.0 })
+    end
+    local val = bit.bor(
         bit.lshift(math.floor((a or 1) * 255), 24),
         bit.lshift(math.floor(b * 255), 16),
         bit.lshift(math.floor(g * 255), 8),
         math.floor(r * 255)
     )
+    if val < 0 then
+        val = val + 4294967296
+    end
+    return val
 end
 
 local function toXY(a, b)
@@ -290,7 +301,7 @@ ashita.events.register('packet_in', 'ox_talents_packet_in', function(e)
         return
     end
 
-    local msg = string.sub(e.data, 24):match('^([^\0]*)')
+    local msg = string.sub(e.data, 24):match('^([^%z]*)')
     if msg == nil or string.sub(msg, 1, #PROTO_TAG) ~= PROTO_TAG then
         return
     end
@@ -304,7 +315,8 @@ end)
 -----------------------------------
 local function getFilteredCatalog()
     local list = {}
-    local query = string.lower(state.searchBuf[1] or '')
+    local rawQuery = (state.searchBuf[1] or ''):gsub('%z.*$', '')
+    local query = string.lower(rawQuery)
     local sk = state.selectedSkill
 
     for _, ws in ipairs(state.catalog) do
@@ -346,7 +358,7 @@ local function drawTreeCanvas()
     -- WS Header
     imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s', detail.name))
     imgui.SameLine()
-    imgui.TextDisabled(string.format('(%s • %s)', detail.skillName, detail.wsType))
+    imgui.TextDisabled(string.format('(%s | %s)', detail.skillName, detail.wsType))
 
     imgui.TextColored({ 0.72, 0.86, 1.0, 1.0 }, 'Original: ' .. detail.orig)
     imgui.Text(string.format('Points in %s: %d   |   Available Job Points: %d', detail.name, detail.spent, state.avail))
@@ -466,21 +478,31 @@ local function drawTreeCanvas()
 
         if hovered then
             imgui.BeginTooltip()
-            imgui.TextColored(titleCol, string.format('%s (%d/%d)', node.name, node.rank, node.maxRank))
-            imgui.Separator()
-            imgui.PushTextWrapPos(280)
-            imgui.Text(node.desc)
-            if node.reqWsPoints > 0 and detail.spent < node.reqWsPoints then
-                imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %d points invested in %s.', node.reqWsPoints, detail.name))
-            end
-            if node.reqKey ~= nil then
-                local pNode = detail.byKey[node.reqKey]
-                if pNode ~= nil and pNode.rank < node.reqRank then
-                    imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %s Rank %d.', pNode.name, node.reqRank))
+            local okTip, errTip = pcall(function()
+                imgui.TextColored(titleCol, string.format('%s (%d/%d)', node.name, node.rank, node.maxRank))
+                imgui.Separator()
+                imgui.PushTextWrapPos(280)
+                local okWrap, errWrap = pcall(function()
+                    imgui.Text(node.desc)
+                    if node.reqWsPoints > 0 and detail.spent < node.reqWsPoints then
+                        imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %d points invested in %s.', node.reqWsPoints, detail.name))
+                    end
+                    if node.reqKey ~= nil then
+                        local pNode = detail.byKey[node.reqKey]
+                        if pNode ~= nil and pNode.rank < node.reqRank then
+                            imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %s Rank %d.', pNode.name, node.reqRank))
+                        end
+                    end
+                end)
+                imgui.PopTextWrapPos()
+                if not okWrap then
+                    error(errWrap)
                 end
-            end
-            imgui.PopTextWrapPos()
+            end)
             imgui.EndTooltip()
+            if not okTip then
+                state.renderError = tostring(errTip)
+            end
         end
     end
 
@@ -489,6 +511,132 @@ local function drawTreeCanvas()
     local contentH = 24 + 3 * (cardH + gapY)
     imgui.SetCursorScreenPos({ canvasPosX, canvasPosY + math.max(availH - 10, contentH) })
     imgui.Dummy({ math.max(availW - 10, contentW), 4 })
+end
+
+local function drawSidebar()
+    local curSkillName = 'Equipped'
+    for _, sk in ipairs(SKILL_LIST) do
+        if sk.id == state.selectedSkill then
+            curSkillName = sk.name
+            break
+        end
+    end
+
+    imgui.PushItemWidth(-1)
+    local okFilter, errFilter = pcall(function()
+        if imgui.BeginCombo('##skill_filter', curSkillName) then
+            local okCombo, errCombo = pcall(function()
+                for _, sk in ipairs(SKILL_LIST) do
+                    local isSel = (sk.id == state.selectedSkill)
+                    if imgui.Selectable(sk.name, isSel) then
+                        state.selectedSkill = sk.id
+                    end
+                end
+            end)
+            imgui.EndCombo()
+            if not okCombo then
+                error(errCombo)
+            end
+        end
+        imgui.InputText('##ws_search', state.searchBuf, 64)
+    end)
+    imgui.PopItemWidth()
+    if not okFilter then
+        error(errFilter)
+    end
+
+    imgui.Checkbox('Invested Only', state.investedOnly)
+    imgui.Separator()
+
+    local filtered = getFilteredCatalog()
+    if imgui.BeginChild('ox_ws_list', { 0, 0 }, CHILD_NONE) then
+        local okList, errList = pcall(function()
+            for _, ws in ipairs(filtered) do
+                local pts = state.spentByWs[ws.id] or 0
+                local eqMark = (ws.skill == state.mainSkill or (state.rangedSkill ~= 0 and ws.skill == state.rangedSkill)) and '* ' or ''
+                local label = pts > 0 and string.format('%s%s [%d]##ws_%u', eqMark, ws.name, pts, ws.id)
+                                      or string.format('%s%s##ws_%u', eqMark, ws.name, ws.id)
+                local isSelected = (state.selectedWsId == ws.id)
+                if imgui.Selectable(label, isSelected) then
+                    requestWS(ws.id)
+                end
+            end
+        end)
+        if not okList then
+            state.renderError = tostring(errList)
+        end
+    end
+    imgui.EndChild()
+end
+
+local function drawMainContents()
+    -- Top Header Bar
+    imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s Lv.%d', state.jobKey, state.jobLevel))
+    imgui.SameLine()
+    imgui.Text(string.format('  |  Available Points: %d  (Spent: %d / Earned: %d)', state.avail, state.spent, state.earned))
+    imgui.SameLine()
+    if imgui.Button('Sync') then
+        requestFullSync()
+    end
+    imgui.SameLine()
+    if not state.confirmResetAll then
+        if imgui.Button('Reset All') then
+            state.confirmResetAll = true
+            state.confirmResetAt = os.clock()
+        end
+    else
+        if os.clock() - state.confirmResetAt > 5.0 then
+            state.confirmResetAll = false
+        else
+            if imgui.Button('Confirm Reset All!') then
+                state.confirmResetAll = false
+                queueServerCmd('ureset')
+                if state.selectedWsId ~= nil then
+                    requestWS(state.selectedWsId)
+                end
+                setStatus('Reset all weaponskill talents for ' .. state.jobKey .. '.')
+            end
+            imgui.SameLine()
+            if imgui.Button('Cancel') then
+                state.confirmResetAll = false
+            end
+        end
+    end
+
+    if state.statusText ~= nil then
+        if os.clock() - state.statusTime > 4.0 then
+            state.statusText = nil
+        else
+            imgui.SameLine()
+            imgui.TextColored({ 1.0, 0.65, 0.35, 1.0 }, '  ' .. state.statusText)
+        end
+    end
+
+    if state.renderError ~= nil then
+        imgui.TextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
+    end
+
+    imgui.Separator()
+
+    -- Left Sidebar: Weapon Type + WS List
+    if imgui.BeginChild('ox_ws_sidebar', { 255, 0 }, CHILD_BORDERS) then
+        local okSide, errSide = xpcall(drawSidebar, debug.traceback)
+        if not okSide then
+            state.renderError = tostring(errSide)
+        end
+    end
+    imgui.EndChild()
+
+    imgui.SameLine()
+
+    -- Right Canvas: Selected WS Talent Tree
+    if imgui.BeginChild('ox_ws_canvas', { 0, 0 }, CHILD_BORDERS) then
+        local okCanvas, errCanvas = xpcall(drawTreeCanvas, debug.traceback)
+        if not okCanvas then
+            state.renderError = tostring(errCanvas)
+        end
+    end
+    imgui.EndChild()
 end
 
 ashita.events.register('d3d_present', 'ox_talents_present', function()
@@ -517,96 +665,11 @@ ashita.events.register('d3d_present', 'ox_talents_present', function()
 
     imgui.SetNextWindowSize({ 940, 570 }, ImGuiCond_FirstUseEver or 4)
     if imgui.Begin('OverlordsXI - Weaponskill Talents###OXTalentsWin', state.open) then
-        -- Top Header Bar
-        imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s Lv.%d', state.jobKey, state.jobLevel))
-        imgui.SameLine()
-        imgui.Text(string.format('  |  Available Points: %d  (Spent: %d / Earned: %d)', state.avail, state.spent, state.earned))
-        imgui.SameLine()
-        if imgui.Button('Sync') then
-            requestFullSync()
+        local okWin, errWin = xpcall(drawMainContents, debug.traceback)
+        if not okWin then
+            state.renderError = tostring(errWin)
+            imgui.TextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
         end
-        imgui.SameLine()
-        if not state.confirmResetAll then
-            if imgui.Button('Reset All') then
-                state.confirmResetAll = true
-                state.confirmResetAt = os.clock()
-            end
-        else
-            if os.clock() - state.confirmResetAt > 5.0 then
-                state.confirmResetAll = false
-            else
-                if imgui.Button('Confirm Reset All!') then
-                    state.confirmResetAll = false
-                    queueServerCmd('ureset')
-                    if state.selectedWsId ~= nil then
-                        requestWS(state.selectedWsId)
-                    end
-                    setStatus('Reset all weaponskill talents for ' .. state.jobKey .. '.')
-                end
-                imgui.SameLine()
-                if imgui.Button('Cancel') then
-                    state.confirmResetAll = false
-                end
-            end
-        end
-
-        if state.statusText ~= nil then
-            if os.clock() - state.statusTime > 4.0 then
-                state.statusText = nil
-            else
-                imgui.SameLine()
-                imgui.TextColored({ 1.0, 0.65, 0.35, 1.0 }, '  ' .. state.statusText)
-            end
-        end
-
-        imgui.Separator()
-
-        -- Left Sidebar: Weapon Type + WS List
-        imgui.BeginChild('ox_ws_sidebar', { 255, 0 }, true)
-        local curSkillName = 'Equipped'
-        for _, sk in ipairs(SKILL_LIST) do
-            if sk.id == state.selectedSkill then
-                curSkillName = sk.name
-                break
-            end
-        end
-
-        imgui.PushItemWidth(-1)
-        if imgui.BeginCombo('##skill_filter', curSkillName) then
-            for _, sk in ipairs(SKILL_LIST) do
-                local isSel = (sk.id == state.selectedSkill)
-                if imgui.Selectable(sk.name, isSel) then
-                    state.selectedSkill = sk.id
-                end
-            end
-            imgui.EndCombo()
-        end
-        imgui.InputText('##ws_search', state.searchBuf, 64)
-        imgui.PopItemWidth()
-        imgui.Checkbox('Invested Only', state.investedOnly)
-        imgui.Separator()
-
-        local filtered = getFilteredCatalog()
-        imgui.BeginChild('ox_ws_list', { 0, 0 }, false)
-        for _, ws in ipairs(filtered) do
-            local pts = state.spentByWs[ws.id] or 0
-            local eqMark = (ws.skill == state.mainSkill or (state.rangedSkill ~= 0 and ws.skill == state.rangedSkill)) and '* ' or ''
-            local label = pts > 0 and string.format('%s%s [%d]##ws_%u', eqMark, ws.name, pts, ws.id)
-                                  or string.format('%s%s##ws_%u', eqMark, ws.name, ws.id)
-            local isSelected = (state.selectedWsId == ws.id)
-            if imgui.Selectable(label, isSelected) then
-                requestWS(ws.id)
-            end
-        end
-        imgui.EndChild()
-        imgui.EndChild()
-
-        imgui.SameLine()
-
-        -- Right Canvas: Selected WS Talent Tree
-        imgui.BeginChild('ox_ws_canvas', { 0, 0 }, true)
-        drawTreeCanvas()
-        imgui.EndChild()
     end
     imgui.End()
 end)
