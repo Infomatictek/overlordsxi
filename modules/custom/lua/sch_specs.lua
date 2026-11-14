@@ -36,11 +36,24 @@ local helixSpellIds =
 }
 
 local function isScholarSpec(entity, specKey)
-    return
-        entity ~= nil and
-        entity:isPC() and
-        entity:getMainJob() == xi.job.SCH and
-        xi.overlords.spec.is(entity, xi.job.SCH, specKey)
+    if entity == nil or not entity:isPC() or entity:getMainJob() ~= xi.job.SCH then
+        return false
+    end
+
+    xi.overlords.spec.ensureUpToDate(entity)
+    return xi.overlords.spec.is(entity, xi.job.SCH, specKey)
+end
+
+local schJob = xi.overlords.spec.jobs[xi.job.SCH]
+if schJob and schJob.byKey and schJob.byKey[medicSpecKey] then
+    schJob.byKey[medicSpecKey].onRemove = function(player)
+        if player ~= nil and player.hasPet and player:hasPet() then
+            local pet = player:getPet()
+            if pet ~= nil and pet:getPetID() == 128 and player.despawnPet then
+                player:despawnPet()
+            end
+        end
+    end
 end
 
 local function isMedic(entity)

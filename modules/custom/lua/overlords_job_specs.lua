@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Job Specs
+-- OverlordsXI Job Crystal / Spec System
 -----------------------------------
 xi = xi or {}
 xi.overlords = xi.overlords or {}
@@ -7,8 +7,59 @@ xi.overlords.spec = xi.overlords.spec or {}
 
 local spec = xi.overlords.spec
 
-spec.jobs = spec.jobs or {}
-spec.jobKeys = spec.jobKeys or {}
+spec.jobs            = spec.jobs or {}
+spec.jobKeys         = spec.jobKeys or {}
+spec.itemIndex       = spec.itemIndex or {}
+spec.appliedByCharId = spec.appliedByCharId or {}
+
+-- Default minimum job level required to unlock / socket any soul crystal.
+spec.DEFAULT_REQ_LEVEL = spec.DEFAULT_REQ_LEVEL or 10
+
+-- Set to false to disallow swapping crystals while the player holds enmity.
+spec.ALLOW_SWAP_IN_COMBAT = spec.ALLOW_SWAP_IN_COMBAT ~= false
+
+spec.PROTO_TAG = '[OXSPEC]|'
+
+local JOB_KEYS = {}
+local JOB_NAMES = {}
+
+local function initJobMaps()
+    local jobEnum = xi.job or {}
+    local defs =
+    {
+        { jobEnum.WAR, 'WAR', 'Warrior' },
+        { jobEnum.MNK, 'MNK', 'Monk' },
+        { jobEnum.WHM, 'WHM', 'White Mage' },
+        { jobEnum.BLM, 'BLM', 'Black Mage' },
+        { jobEnum.RDM, 'RDM', 'Red Mage' },
+        { jobEnum.THF, 'THF', 'Thief' },
+        { jobEnum.PLD, 'PLD', 'Paladin' },
+        { jobEnum.DRK, 'DRK', 'Dark Knight' },
+        { jobEnum.BST, 'BST', 'Beastmaster' },
+        { jobEnum.BRD, 'BRD', 'Bard' },
+        { jobEnum.RNG, 'RNG', 'Ranger' },
+        { jobEnum.SAM, 'SAM', 'Samurai' },
+        { jobEnum.NIN, 'NIN', 'Ninja' },
+        { jobEnum.DRG, 'DRG', 'Dragoon' },
+        { jobEnum.SMN, 'SMN', 'Summoner' },
+        { jobEnum.BLU, 'BLU', 'Blue Mage' },
+        { jobEnum.COR, 'COR', 'Corsair' },
+        { jobEnum.PUP, 'PUP', 'Puppetmaster' },
+        { jobEnum.DNC, 'DNC', 'Dancer' },
+        { jobEnum.SCH, 'SCH', 'Scholar' },
+        { jobEnum.GEO, 'GEO', 'Geomancer' },
+        { jobEnum.RUN, 'RUN', 'Rune Fencer' },
+    }
+
+    for _, d in ipairs(defs) do
+        if d[1] ~= nil then
+            JOB_KEYS[d[1]] = d[2]
+            JOB_NAMES[d[1]] = d[3]
+        end
+    end
+end
+
+initJobMaps()
 
 local function normalizeKey(value)
     if value == nil then
@@ -18,27 +69,141 @@ local function normalizeKey(value)
     return string.lower(tostring(value))
 end
 
+local function sanitizeField(text)
+    local s = tostring(text or '')
+    s = string.gsub(s, '|', '/')
+    s = string.gsub(s, '[\r\n]', ' ')
+    return s
+end
+
+local function getCharKey(player)
+    if player == nil then
+        return nil
+    end
+    if player.getID then
+        return player:getID()
+    end
+    return player
+end
+
+function spec.getJobKey(jobId)
+    if spec.jobKeys[jobId] ~= nil then
+        return spec.jobKeys[jobId]
+    end
+    if JOB_KEYS[jobId] ~= nil then
+        return JOB_KEYS[jobId]
+    end
+    return string.format('J%u', tonumber(jobId) or 0)
+end
+
+function spec.getJobName(jobId)
+    if JOB_NAMES[jobId] ~= nil then
+        return JOB_NAMES[jobId]
+    end
+    if xi.jobName and xi.jobName[jobId] then
+        return xi.jobName[jobId][2]
+    end
+    return spec.getJobKey(jobId)
+end
+
+local function buildEntry(entry)
+    local out = {}
+    for k, v in pairs(entry or {}) do
+        out[k] = v
+    end
+    out.id          = tonumber(out.id) or 0
+    out.key         = normalizeKey(out.key)
+    out.name        = out.name or out.key or 'Unknown'
+    out.role        = out.role or 'Job Specialization'
+    out.icon        = out.icon or (out.key and (out.key .. '_crystal') or 'crystal')
+    out.itemId      = tonumber(out.itemId) or 0
+    out.reqLevel    = tonumber(out.reqLevel) or spec.DEFAULT_REQ_LEVEL
+    out.description = out.description or ''
+    out.highlights  = out.highlights or {}
+    return out
+end
+
+local function indexEntry(job, jobId, entry)
+    job.byId[entry.id] = entry
+    if entry.key ~= nil then
+        job.byKey[entry.key] = entry
+    end
+    if entry.name ~= nil then
+        job.byName[normalizeKey(entry.name)] = entry
+    end
+    if entry.itemId ~= nil and entry.itemId > 0 then
+        job.byItemId[entry.itemId] = entry
+        spec.itemIndex[entry.itemId] = { jobId = jobId, entry = entry }
+    end
+end
+
 function spec.registerJob(jobId, jobKey, specs)
+    if jobId == nil then
+        return
+    end
+
+    local normalizedJobKey = jobKey or spec.getJobKey(jobId)
     local job =
     {
-        key = jobKey,
-        byId = {},
-        byKey = {},
-        ordered = {},
+        jobId    = jobId,
+        key      = normalizedJobKey,
+        byId     = {},
+        byKey    = {},
+        byName   = {},
+        byItemId = {},
+        ordered  = {},
     }
 
-    for _, entry in ipairs(specs) do
-        job.byId[entry.id] = entry
-        job.byKey[normalizeKey(entry.key)] = entry
+    -- Preserve any itemIndex cleanup if re-registering the same job
+    local prevJob = spec.jobs[jobId]
+    if prevJob ~= nil then
+        for itemId, _ in pairs(prevJob.byItemId or {}) do
+            spec.itemIndex[itemId] = nil
+        end
+    end
+
+    for _, rawEntry in ipairs(specs or {}) do
+        local entry = buildEntry(rawEntry)
+        indexEntry(job, jobId, entry)
         table.insert(job.ordered, entry)
     end
 
     spec.jobs[jobId] = job
-    spec.jobKeys[jobId] = jobKey
+    spec.jobKeys[jobId] = normalizedJobKey
+end
+
+function spec.registerCrystal(jobId, rawEntry)
+    if jobId == nil or rawEntry == nil then
+        return nil
+    end
+
+    if spec.jobs[jobId] == nil then
+        spec.registerJob(jobId, spec.getJobKey(jobId), {})
+    end
+
+    local job = spec.jobs[jobId]
+    local entry = buildEntry(rawEntry)
+    local replaced = false
+    for idx, existing in ipairs(job.ordered) do
+        if existing.id == entry.id or (entry.key ~= nil and existing.key == entry.key) then
+            if existing.itemId and existing.itemId > 0 then
+                job.byItemId[existing.itemId] = nil
+                spec.itemIndex[existing.itemId] = nil
+            end
+            job.ordered[idx] = entry
+            replaced = true
+            break
+        end
+    end
+    if not replaced then
+        table.insert(job.ordered, entry)
+    end
+    indexEntry(job, jobId, entry)
+    return entry
 end
 
 function spec.getVarName(jobId)
-    local jobKey = spec.jobKeys[jobId]
+    local jobKey = spec.jobKeys[jobId] or JOB_KEYS[jobId]
     if jobKey == nil then
         return nil
     end
@@ -53,50 +218,86 @@ function spec.resolve(jobId, specKeyOrId)
     end
 
     if type(specKeyOrId) == 'number' then
-        return job.byId[specKeyOrId]
+        if specKeyOrId <= 0 then
+            return nil
+        end
+        return job.byId[specKeyOrId] or job.byItemId[specKeyOrId]
     end
 
-    local numericId = tonumber(specKeyOrId)
-    if numericId ~= nil and job.byId[numericId] ~= nil then
-        return job.byId[numericId]
+    local text = tostring(specKeyOrId)
+    local itemStr = string.match(string.lower(text), '^item:(%d+)$')
+    if itemStr ~= nil then
+        return job.byItemId[tonumber(itemStr)]
     end
 
-    return job.byKey[normalizeKey(specKeyOrId)]
+    local numericId = tonumber(text)
+    if numericId ~= nil and numericId > 0 then
+        return job.byId[numericId] or job.byItemId[numericId]
+    end
+
+    local norm = normalizeKey(text)
+    return job.byKey[norm] or job.byName[norm]
+end
+
+function spec.resolveByItemId(jobId, itemId)
+    local job = spec.jobs[jobId]
+    if job == nil or itemId == nil or itemId <= 0 then
+        return nil
+    end
+    return job.byItemId[tonumber(itemId)]
+end
+
+function spec.findByItemId(itemId)
+    if itemId == nil or itemId <= 0 then
+        return nil
+    end
+    return spec.itemIndex[tonumber(itemId)]
 end
 
 function spec.get(player, jobId)
-    local varName = spec.getVarName(jobId or player:getMainJob())
+    if player == nil then
+        return nil
+    end
+
+    local targetJob = jobId or player:getMainJob()
+    local varName = spec.getVarName(targetJob)
     if varName == nil then
         return nil
     end
 
-    return spec.resolve(jobId or player:getMainJob(), player:getCharVar(varName))
+    return spec.resolve(targetJob, player:getCharVar(varName))
+end
+
+function spec.getPlayerJobLevel(player, jobId)
+    if player == nil then
+        return 1
+    end
+
+    local targetJob = jobId or player:getMainJob()
+    if player.getMainJob and targetJob == player:getMainJob() then
+        return player.getMainLvl and player:getMainLvl() or 1
+    end
+
+    if player.getJobLevel then
+        return player:getJobLevel(targetJob) or 1
+    end
+
+    return player.getMainLvl and player:getMainLvl() or 1
+end
+
+function spec.isLevelEligible(player, jobId, entry)
+    local reqLvl = (entry and tonumber(entry.reqLevel)) or spec.DEFAULT_REQ_LEVEL
+    local curLvl = spec.getPlayerJobLevel(player, jobId)
+    return curLvl >= reqLvl, reqLvl, curLvl
 end
 
 function spec.is(player, jobId, specKey)
     local activeSpec = spec.get(player, jobId)
-    return activeSpec ~= nil and normalizeKey(activeSpec.key) == normalizeKey(specKey)
-end
-
-function spec.set(player, jobId, specKeyOrId)
-    local resolved = spec.resolve(jobId, specKeyOrId)
-    local varName = spec.getVarName(jobId)
-    if resolved == nil or varName == nil then
-        return nil
-    end
-
-    player:setCharVar(varName, resolved.id)
-    return resolved
-end
-
-function spec.clear(player, jobId)
-    local varName = spec.getVarName(jobId)
-    if varName == nil then
+    if activeSpec == nil or normalizeKey(activeSpec.key) ~= normalizeKey(specKey) then
         return false
     end
 
-    player:setCharVar(varName, 0)
-    return true
+    return spec.isLevelEligible(player, jobId or player:getMainJob(), activeSpec)
 end
 
 function spec.list(jobId)
@@ -108,20 +309,378 @@ function spec.list(jobId)
     return job.ordered
 end
 
-spec.registerJob(xi.job.SCH, 'SCH',
-{
+function spec.listAllJobs()
+    local out = {}
+    for jobId, job in pairs(spec.jobs) do
+        table.insert(out, { jobId = jobId, key = job.key, name = spec.getJobName(jobId), count = #job.ordered })
+    end
+    table.sort(out, function(a, b) return a.jobId < b.jobId end)
+    return out
+end
+
+function spec.canSwap(player)
+    if player == nil then
+        return false, 'Invalid player.'
+    end
+
+    if not spec.ALLOW_SWAP_IN_COMBAT and player.hasEnmity and player:hasEnmity() then
+        return false, 'Cannot swap job crystals while holding enmity.'
+    end
+
+    return true, nil
+end
+
+function spec.evaluateMods(player, entry)
+    if entry == nil or entry.mods == nil then
+        return {}
+    end
+
+    local raw = entry.mods
+    if type(raw) == 'function' then
+        local lvl = (player ~= nil and player.getMainLvl) and player:getMainLvl() or 1
+        raw = raw(player, lvl)
+    end
+
+    if type(raw) ~= 'table' then
+        return {}
+    end
+
+    local out = {}
+    for _, pair in ipairs(raw) do
+        local modId = pair.mod or pair[1]
+        local val = pair.val or pair[2]
+        if modId ~= nil and type(val) == 'number' and val ~= 0 then
+            table.insert(out, { mod = modId, val = val })
+        end
+    end
+
+    return out
+end
+
+function spec.removeAppliedMods(player, invokeOnRemove)
+    local charKey = getCharKey(player)
+    if charKey == nil then
+        return
+    end
+
+    local state = spec.appliedByCharId[charKey]
+    if state == nil then
+        return
+    end
+
+    if player.delMod then
+        for _, m in ipairs(state.mods or {}) do
+            player:delMod(m.mod, m.val)
+        end
+    end
+
+    spec.appliedByCharId[charKey] = nil
+
+    if invokeOnRemove and state.jobId ~= nil and state.specId ~= nil then
+        local prevEntry = spec.resolve(state.jobId, state.specId)
+        if prevEntry ~= nil and type(prevEntry.onRemove) == 'function' then
+            prevEntry.onRemove(player, prevEntry)
+        end
+    end
+end
+
+function spec.refreshPlayer(player)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return nil
+    end
+
+    local charKey = getCharKey(player)
+    local jobId = player:getMainJob()
+    local lvl = player.getMainLvl and player:getMainLvl() or 1
+    local stored = spec.get(player, jobId)
+    local eligible = (stored ~= nil) and spec.isLevelEligible(player, jobId, stored)
+    local active = eligible and stored or nil
+    local activeId = active and active.id or 0
+    local prev = spec.appliedByCharId[charKey]
+
+    if
+        prev ~= nil and
+        prev.jobId == jobId and
+        prev.specId == activeId and
+        prev.level == lvl
+    then
+        return active
+    end
+
+    local specChanged = (prev ~= nil) and (prev.jobId ~= jobId or prev.specId ~= activeId)
+    spec.removeAppliedMods(player, specChanged)
+
+    if active == nil then
+        return nil
+    end
+
+    local mods = spec.evaluateMods(player, active)
+    if player.addMod then
+        for _, m in ipairs(mods) do
+            player:addMod(m.mod, m.val)
+        end
+    end
+
+    spec.appliedByCharId[charKey] =
     {
-        id = 1,
-        key = 'medic',
-        name = 'Medic',
-        description = 'Light Arts spec: safer Sublimation and automatic Accession for Cure and Regen spells.',
-    },
+        jobId  = jobId,
+        specId = active.id,
+        level  = lvl,
+        mods   = mods,
+    }
+
+    if (prev == nil or specChanged) and type(active.onApply) == 'function' then
+        active.onApply(player, active)
+    end
+
+    return active
+end
+
+function spec.ensureUpToDate(player)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return nil
+    end
+
+    local charKey = getCharKey(player)
+    local jobId = player:getMainJob()
+    local lvl = player.getMainLvl and player:getMainLvl() or 1
+    local stored = spec.get(player, jobId)
+    local eligible = (stored ~= nil) and spec.isLevelEligible(player, jobId, stored)
+    local active = eligible and stored or nil
+    local activeId = active and active.id or 0
+    local prev = spec.appliedByCharId[charKey]
+
+    if
+        prev == nil or
+        prev.jobId ~= jobId or
+        prev.specId ~= activeId or
+        prev.level ~= lvl
+    then
+        return spec.refreshPlayer(player)
+    end
+
+    return active
+end
+
+function spec.set(player, jobId, specKeyOrId, opts)
+    opts = opts or {}
+    if player == nil then
+        return nil, 'Invalid player.'
+    end
+
+    local targetJob = jobId or player:getMainJob()
+    local resolved = spec.resolve(targetJob, specKeyOrId)
+    local varName = spec.getVarName(targetJob)
+    if resolved == nil or varName == nil then
+        return nil, 'Unknown crystal or job.'
+    end
+
+    local eligible, reqLvl, curLvl = spec.isLevelEligible(player, targetJob, resolved)
+    if not eligible then
+        return nil, string.format('%s soul requires %s Lv.%d (currently Lv.%d).', resolved.name, spec.getJobName(targetJob), reqLvl, curLvl)
+    end
+
+    local okSwap, swapErr = spec.canSwap(player)
+    if not okSwap then
+        return nil, swapErr
+    end
+
+    local prevId = player:getCharVar(varName)
+    if prevId ~= resolved.id then
+        local prevEntry = spec.resolve(targetJob, prevId)
+        if
+            prevEntry ~= nil and
+            type(prevEntry.onRemove) == 'function' and
+            targetJob == player:getMainJob()
+        then
+            -- Remove old mods first so onRemove sees clean state; avoid double onRemove
+            spec.removeAppliedMods(player, false)
+            prevEntry.onRemove(player, prevEntry)
+        end
+
+        player:setCharVar(varName, resolved.id)
+    end
+
+    if targetJob == player:getMainJob() then
+        spec.refreshPlayer(player)
+    end
+
+    if opts.protoSync then
+        spec.sendState(player)
+    end
+
+    return resolved, nil
+end
+
+function spec.clear(player, jobId, opts)
+    opts = opts or {}
+    if player == nil then
+        return false, 'Invalid player.'
+    end
+
+    local targetJob = jobId or player:getMainJob()
+    local varName = spec.getVarName(targetJob)
+    if varName == nil then
+        return false, 'No crystals configured for this job.'
+    end
+
+    local okSwap, swapErr = spec.canSwap(player)
+    if not okSwap then
+        return false, swapErr
+    end
+
+    local prevId = player:getCharVar(varName)
+    if prevId > 0 and targetJob == player:getMainJob() then
+        local prevEntry = spec.resolve(targetJob, prevId)
+        spec.removeAppliedMods(player, false)
+        if prevEntry ~= nil and type(prevEntry.onRemove) == 'function' then
+            prevEntry.onRemove(player, prevEntry)
+        end
+    end
+
+    player:setCharVar(varName, 0)
+
+    if targetJob == player:getMainJob() then
+        spec.refreshPlayer(player)
+    end
+
+    if opts.protoSync then
+        spec.sendState(player)
+    end
+
+    return true, nil
+end
+
+-----------------------------------
+-- Silent Ashita v4 UI Sync Protocol ([OXSPEC]|...)
+-----------------------------------
+local function sendProto(player, payload)
+    if player == nil then
+        return
+    end
+
+    player:printToPlayer(spec.PROTO_TAG .. payload, xi.msg.channel.SYSTEM_3, '')
+end
+
+function spec.sendError(player, message)
+    sendProto(player, 'ERR|' .. sanitizeField(message or 'Unknown error'))
+end
+
+function spec.sendState(player, optJobId)
+    if player == nil then
+        return
+    end
+
+    local jobId = optJobId or player:getMainJob()
+    local lvl = spec.getPlayerJobLevel(player, jobId)
+    local active = spec.get(player, jobId)
+    local activeId = active and active.id or 0
+    local activeKey = active and active.key or ''
+    local activeName = active and active.name or 'None'
+    local activeIcon = active and active.icon or ''
+    local activeUnlocked = (active ~= nil and spec.isLevelEligible(player, jobId, active)) and 1 or 0
+
+    sendProto(player, string.format(
+        'STATE|%u|%s|%s|%u|%u|%s|%s|%s|%u',
+        jobId,
+        sanitizeField(spec.getJobKey(jobId)),
+        sanitizeField(spec.getJobName(jobId)),
+        lvl,
+        activeId,
+        sanitizeField(activeKey),
+        sanitizeField(activeName),
+        sanitizeField(activeIcon),
+        activeUnlocked
+    ))
+end
+
+function spec.sendSync(player, optJobId)
+    if player == nil then
+        return
+    end
+
+    local jobId = optJobId or player:getMainJob()
+    local lvl = spec.getPlayerJobLevel(player, jobId)
+    local active = spec.get(player, jobId)
+    local activeId = active and active.id or 0
+    local crystals = spec.list(jobId)
+
+    spec.sendState(player, jobId)
+    sendProto(player, string.format('BEGIN|%u|%s|%u|%u',
+        jobId,
+        sanitizeField(spec.getJobName(jobId)),
+        lvl,
+        #crystals))
+
+    for _, entry in ipairs(crystals) do
+        local socketed = (entry.id == activeId) and 1 or 0
+        local reqLvl = tonumber(entry.reqLevel) or spec.DEFAULT_REQ_LEVEL
+        local unlocked = (lvl >= reqLvl) and 1 or 0
+        sendProto(player, string.format(
+            'CRYSTAL|%u|%u|%s|%s|%s|%s|%u|%u|%s|%u|%u',
+            jobId,
+            entry.id,
+            sanitizeField(entry.key),
+            sanitizeField(entry.name),
+            sanitizeField(entry.role),
+            sanitizeField(entry.icon),
+            tonumber(entry.itemId) or 0,
+            socketed,
+            sanitizeField(entry.description),
+            reqLvl,
+            unlocked
+        ))
+        for idx, line in ipairs(entry.highlights or {}) do
+            sendProto(player, string.format(
+                'HIGHLIGHT|%u|%u|%u|%s',
+                jobId,
+                entry.id,
+                idx,
+                sanitizeField(line)
+            ))
+        end
+    end
+
+    sendProto(player, string.format('END|%u', jobId))
+end
+
+-----------------------------------
+-- Built-in Scholar Crystals
+-----------------------------------
+if xi.job and xi.job.SCH then
+    spec.registerJob(xi.job.SCH, 'SCH',
     {
-        id = 2,
-        key = 'sage',
-        name = 'Sage',
-        description = 'Dark Arts spec: permanent Ebullience, stronger Helix spells, and improved elemental casting.',
-    },
-})
+        {
+            id          = 1,
+            key         = 'medic',
+            name        = 'Medic',
+            role        = 'Light Arts / Eos Support',
+            icon        = 'white_prism',
+            description = 'Light Arts spec: safer Sublimation and automatic Accession for Cure and Regen spells.',
+            highlights  =
+            {
+                'Unlocks Call Eos faerie companion (auto -na/Erase & stackable Regen).',
+                'Addendum: White lasts 2 hours.',
+                'Sublimation charges 2x faster with no HP drain.',
+                'Cure & Regen spells gain free 10y Accession AoE without Stratagem cost.',
+            },
+        },
+        {
+            id          = 2,
+            key         = 'sage',
+            name        = 'Sage',
+            role        = 'Dark Arts / Helix Master',
+            icon        = 'onyx_tome',
+            description = 'Dark Arts spec: permanent Ebullience, stronger Helix spells, and improved elemental casting.',
+            highlights  =
+            {
+                'Addendum: Black lasts 2 hours.',
+                'Permanent Ebullience active for black magic.',
+                'Helix damage +50% and Helix duration extended to 2 hours.',
+                'Magic Attack Bonus +30 and elemental spells bypass 10% target MEVA.',
+            },
+        },
+    })
+end
 
 return spec
