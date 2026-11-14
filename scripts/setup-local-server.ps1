@@ -168,7 +168,12 @@ try {
     }
 
     $existingLines = [System.Collections.Generic.List[string]]::new()
+    $removedStale = $false
     foreach ($l in (Get-Content -Path $initPath -ErrorAction SilentlyContinue)) {
+        if ($l.Trim() -eq 'custom/sql/ws_strip_skillchains.sql') {
+            $removedStale = $true
+            continue
+        }
         $existingLines.Add($l)
     }
     $trimmedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
@@ -185,7 +190,7 @@ try {
             $addedCount++
         }
     }
-    if ($addedCount -gt 0) {
+    if ($addedCount -gt 0 -or $removedStale) {
         Set-Content -Path $initPath -Value $existingLines -Encoding UTF8
     }
     Write-Host "==> modules/init.txt updated ($addedCount new entries added)." -ForegroundColor Green
