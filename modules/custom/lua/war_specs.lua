@@ -5,6 +5,7 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
+require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/warrior')
 -----------------------------------
 local m = Module:new('overlords_war_specs')
@@ -25,6 +26,7 @@ local COMMANDER_STANCES =
 }
 
 local pendingWarcryMods = {}
+local pendingBloodRageMods = {}
 
 local function scaleTier(lvl, low, mid, high)
     local l = lvl or 1
@@ -43,6 +45,143 @@ local function isWarriorSpec(entity, specKey)
 
     spec.ensureUpToDate(entity)
     return spec.is(entity, xi.job.WAR, specKey)
+end
+
+local function hasShieldEquipped(player)
+    if player == nil then
+        return false
+    end
+
+    if player.getEquippedItem and xi.slot and xi.slot.SUB then
+        local sub = player:getEquippedItem(xi.slot.SUB)
+        if sub ~= nil and sub.isShield then
+            return sub:isShield()
+        end
+    end
+
+    if player.getShieldSize then
+        return (player:getShieldSize() or 0) > 0
+    end
+
+    return false
+end
+
+local function isClubAndShield(player)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return false
+    end
+
+    if not player.getWeaponSkillType or not xi.slot or not xi.skill then
+        return false
+    end
+
+    if player:getWeaponSkillType(xi.slot.MAIN) ~= xi.skill.CLUB then
+        return false
+    end
+
+    return hasShieldEquipped(player)
+end
+
+local function isBloodthirsty(player)
+    if player == nil or not player.hasStatusEffect then
+        return false
+    end
+
+    return player:hasStatusEffect(xi.effect.BLOOD_RAGE) or player:hasStatusEffect(xi.effect.MIGHTY_STRIKES)
+end
+
+local function healBloodthirsty(player, baseAmount)
+    if
+        player == nil or
+        not isWarriorSpec(player, GLADIATOR_KEY) or
+        not isClubAndShield(player)
+    then
+        return 0
+    end
+
+    local amount = math.max(0, math.floor(tonumber(baseAmount) or 0))
+    if amount <= 0 then
+        return 0
+    end
+
+    if isBloodthirsty(player) then
+        amount = amount * 2
+    end
+
+    if player.addHP then
+        player:addHP(amount)
+    end
+
+    return amount
+end
+
+local function applyGladiatorBloodRage(target, origin, duration)
+    if target == nil then
+        return
+    end
+
+    local lvl = origin and origin.getMainLvl and origin:getMainLvl() or (target.getMainLvl and target:getMainLvl() or 10)
+    local targetId = target:getID()
+    pendingBloodRageMods[targetId] =
+    {
+        { xi.mod.DMG,    -1000 },
+        { xi.mod.ENMITY, 25 },
+        { xi.mod.REGEN,  scaleTier(lvl, 8, 16, 28) },
+    }
+    target:addStatusEffect(xi.effect.BLOOD_RAGE, { power = 5, duration = duration, origin = origin or target, subPower = 1 })
+    pendingBloodRageMods[targetId] = nil
+end
+
+local function detachGladiatorListeners(player)
+    if player ~= nil and player.removeListener then
+        player:removeListener('OX_GLAD_MELEE')
+        player:removeListener('OX_GLAD_WS')
+    end
+end
+
+local function attachGladiatorListeners(player)
+    if player == nil or not player.addListener then
+        return
+    end
+
+    detachGladiatorListeners(player)
+
+    player:addListener('MELEE_SWING_HIT', 'OX_GLAD_MELEE', function(actor, target)
+        if
+            actor == nil or
+            target == nil or
+            target == actor or
+            not isWarriorSpec(actor, GLADIATOR_KEY) or
+            not isClubAndShield(actor)
+        then
+            return
+        end
+
+        local maxHp = actor.getMaxHP and actor:getMaxHP() or 0
+        local lvl = actor.getMainLvl and actor:getMainLvl() or 10
+        local baseHeal = math.max(4, math.floor(maxHp * 0.01) + math.floor(lvl * 0.2))
+        healBloodthirsty(actor, baseHeal)
+    end)
+
+    player:addListener('WEAPONSKILL_USE', 'OX_GLAD_WS', function(actor, target, _ws, tp, _action, dmg)
+        if
+            actor == nil or
+            target == nil or
+            target == actor or
+            (dmg ~= nil and dmg <= 0) or
+            not isWarriorSpec(actor, GLADIATOR_KEY) or
+            not isClubAndShield(actor)
+        then
+            return
+        end
+
+        local maxHp = actor.getMaxHP and actor:getMaxHP() or 0
+        local spentTp = tonumber(tp) or 1000
+        local extraSteps = math.min(2, math.max(0, (spentTp - 1000) / 1000))
+        local pct = 0.03 + (0.01 * extraSteps)
+        local baseHeal = math.max(12, math.floor(maxHp * pct))
+        healBloodthirsty(actor, baseHeal)
+    end)
 end
 
 local function clearOtherCommanderStances(player, keepEffectId)
@@ -155,29 +294,43 @@ if xi.job and xi.job.WAR then
             id          = 3,
             key         = GLADIATOR_KEY,
             name        = 'Gladiator',
-            role        = 'Arena Duelist / Crit & Combo',
+            role        = 'Bloodthirsty Club & Shield Tank',
             icon        = 'amber_crescent',
             reqLevel    = 10,
-            description = 'Relentless duelist (Lv10+): focuses on Critical Hits, Counter, Skillchains, Dual Wield speed, and Fencer bursts.',
+            description = 'Bloodthirsty Club & Shield tank (Lv10+): extreme sturdiness, Shield Mastery, high enmity, and Bloodthirsty self-healing at the cost of much lower damage output.',
             highlights  =
             {
-                'Passives (Lv10/30/50+): +5/8/12% Crit Rate, +6/10/15% Crit Dmg, +6/10/14% Counter, +8/10/15% SC Bonus.',
-                'Dual Wield & Fencer: -5/10/15% Dual Wield delay, +100/200/300 Fencer TP Bonus, +2/4/6% Fencer Crit.',
-                'Aggressor: Grants +15 Accuracy, +10% Double Attack, and +5% Triple Attack.',
-                "Warrior's Charge: Guarantees >=15% Triple Attack and triggers +15% Blood Rage Crit for 30s.",
-                'Mighty Strikes: +15s duration (60s total) and +15% Critical Hit Damage.',
+                'Passives (Lv10/30/50+): +10/15/22% Max HP, +6/12/20 VIT, +12/20/30% DEF, -6/10/15% Damage Taken, +15/25/40 Enmity, +10/15/20% Cure Rcvd.',
+                'Club & Shield Mastery: +10/20/35 Club & Shield skill, +12/24/40 Shield DEF, +8/14/22% Block Rate, +15/25/40 Shield TP (+10% Block w/ Club+Shield).',
+                'Lower Damage Output: -25% Attack%, -25% Ranged Attack%, and -20% Weaponskill Damage.',
+                'Bloodthirsty Leech (Club+Shield): Club hits heal 1% Max HP + 0.2*Lv, Club WSs heal 3-5% Max HP, Shield Blocks heal 1.5% Max HP (2x under Blood Rage or Mighty Strikes).',
+                'Tank JAs: Defender (+35% DEF, -10% PDT, +15% Block), Blood Rage (-10% DT, +25 Enmity, Regen, 2x Leech), Warcry (-8% DT, +12 Enmity, 15% HP heal), Mighty Strikes (-25% DT, +50 Enmity, 2x Leech).',
             },
             mods = function(_player, lvl)
                 return
                 {
-                    { xi.mod.CRITHITRATE,        scaleTier(lvl, 5, 8, 12) },
-                    { xi.mod.CRIT_DMG_INCREASE,  scaleTier(lvl, 6, 10, 15) },
-                    { xi.mod.COUNTER,            scaleTier(lvl, 6, 10, 14) },
-                    { xi.mod.DUAL_WIELD,         scaleTier(lvl, 5, 10, 15) },
-                    { xi.mod.SKILLCHAINBONUS,    scaleTier(lvl, 8, 10, 15) },
-                    { xi.mod.FENCER_TP_BONUS,    scaleTier(lvl, 100, 200, 300) },
-                    { xi.mod.FENCER_CRITHITRATE, scaleTier(lvl, 2, 4, 6) },
+                    { xi.mod.HPP,                  scaleTier(lvl, 10, 15, 22) },
+                    { xi.mod.VIT,                  scaleTier(lvl, 6, 12, 20) },
+                    { xi.mod.DEFP,                 scaleTier(lvl, 12, 20, 30) },
+                    { xi.mod.DMG,                  scaleTier(lvl, -600, -1000, -1500) },
+                    { xi.mod.ENMITY,               scaleTier(lvl, 15, 25, 40) },
+                    { xi.mod.CURE_POTENCY_RCVD,    scaleTier(lvl, 10, 15, 20) },
+                    { xi.mod.CLUB,                 scaleTier(lvl, 10, 20, 35) },
+                    { xi.mod.SHIELD,               scaleTier(lvl, 10, 20, 35) },
+                    { xi.mod.SHIELD_DEF_BONUS,     scaleTier(lvl, 12, 24, 40) },
+                    { xi.mod.PALISADE_BLOCK_BONUS, scaleTier(lvl, 8, 14, 22) },
+                    { xi.mod.SHIELD_MASTERY_TP,    scaleTier(lvl, 15, 25, 40) },
+                    -- Substantially lower damage output tradeoff
+                    { xi.mod.ATTP,                 -25 },
+                    { xi.mod.RATTP,                -25 },
+                    { xi.mod.ALL_WSDMG_ALL_HITS,   -20 },
                 }
+            end,
+            onApply = function(player)
+                attachGladiatorListeners(player)
+            end,
+            onRemove = function(player)
+                detachGladiatorListeners(player)
             end,
         },
     })
@@ -243,6 +396,10 @@ m:addOverride('xi.job_utils.warrior.useDefender', function(player, target, abili
         local duration = 180 + player:getMod(xi.mod.DEFENDER_DURATION)
         player:addStatusEffect(xi.effect.DEFENDER, { power = 15, duration = duration, origin = player, subPower = 1 })
         return xi.effect.DEFENDER
+    elseif isWarriorSpec(player, GLADIATOR_KEY) then
+        local duration = 180 + player:getMod(xi.mod.DEFENDER_DURATION)
+        player:addStatusEffect(xi.effect.DEFENDER, { power = 35, duration = duration, origin = player, subPower = 2 })
+        return xi.effect.DEFENDER
     end
 
     return super(player, target, ability)
@@ -251,10 +408,20 @@ end)
 m:addOverride('xi.effects.defender.onEffectGain', function(target, effect)
     super(target, effect)
 
-    -- Commander Defender: +15% DEFP with only -10% ATTP/RATTP penalty (vs retail -25%)
-    if effect ~= nil and effect:getSubPower() == 1 then
+    if effect == nil then
+        return
+    end
+
+    local tag = effect:getSubPower()
+    if tag == 1 then
+        -- Commander Defender: +15% DEFP with only -10% ATTP/RATTP penalty (vs retail -25%)
         effect:addMod(xi.mod.ATTP, 15)
         effect:addMod(xi.mod.RATTP, 15)
+    elseif tag == 2 then
+        -- Gladiator Defender (Iron Bastion): +35% DEFP, -10% PDT, +15% Block Rate, +20 Shield DEF
+        effect:addMod(xi.mod.DMGPHYS, -1000)
+        effect:addMod(xi.mod.PALISADE_BLOCK_BONUS, 15)
+        effect:addMod(xi.mod.SHIELD_DEF_BONUS, 20)
     end
 end)
 
@@ -290,10 +457,10 @@ m:addOverride('xi.effects.aggressor.onEffectGain', function(target, effect)
         effect:addMod(xi.mod.EVA, 25)
         effect:addMod(xi.mod.CRITHITRATE, 5)
     elseif tag == 2 then
-        -- Gladiator Aggressor: +15 Acc, +10% DA, +5% TA
-        effect:addMod(xi.mod.ACC, 15)
-        effect:addMod(xi.mod.DOUBLE_ATTACK, 10)
-        effect:addMod(xi.mod.TRIPLE_ATTACK, 5)
+        -- Gladiator Aggressor (Challenger's Stance): no EVA penalty, +20 Enmity, +10% Shield Block Rate
+        effect:addMod(xi.mod.EVA, 25)
+        effect:addMod(xi.mod.ENMITY, 20)
+        effect:addMod(xi.mod.PALISADE_BLOCK_BONUS, 10)
     elseif tag == 3 then
         -- Commander Aggressor: self +15 ACC/RACC and only -10 EVA (vs +25/-25)
         effect:addMod(xi.mod.ACC, -10)
@@ -307,23 +474,34 @@ m:addOverride('xi.job_utils.warrior.useRetaliation', function(player, target, ab
         clearOtherCommanderStances(player, xi.effect.RETALIATION)
         player:addStatusEffect(xi.effect.RETALIATION, { power = 1, duration = 180, origin = player, subPower = 2 })
         return xi.effect.RETALIATION
+    elseif isWarriorSpec(player, GLADIATOR_KEY) then
+        player:addStatusEffect(xi.effect.RETALIATION, { power = 1, duration = 180, origin = player, subPower = 3 })
+        return xi.effect.RETALIATION
     end
 
     return super(player, target, ability)
 end)
 
 m:addOverride('xi.effects.retaliation.onEffectGain', function(target, effect)
-    if effect ~= nil and effect:getSubPower() == 2 then
-        -- Commander Retaliation: no movement speed penalty + 8% Counter
-        effect:addMod(xi.mod.COUNTER, 8)
-        return
+    if effect ~= nil then
+        local tag = effect:getSubPower()
+        if tag == 2 then
+            -- Commander Retaliation: no movement speed penalty + 8% Counter
+            effect:addMod(xi.mod.COUNTER, 8)
+            return
+        elseif tag == 3 then
+            -- Gladiator Retaliation: no movement speed penalty + 12% Counter + 15 Enmity
+            effect:addMod(xi.mod.COUNTER, 12)
+            effect:addMod(xi.mod.ENMITY, 15)
+            return
+        end
     end
 
     super(target, effect)
 end)
 
 m:addOverride('xi.effects.retaliation.onEffectLose', function(target, effect)
-    if effect ~= nil and effect:getSubPower() == 2 then
+    if effect ~= nil and (effect:getSubPower() == 2 or effect:getSubPower() == 3) then
         return
     end
 
@@ -339,26 +517,53 @@ m:addOverride('xi.job_utils.warrior.useRestraint', function(player, target, abil
 end)
 
 m:addOverride('xi.job_utils.warrior.useBloodRage', function(player, target, ability)
-    if not isWarriorSpec(player, BERSERKER_KEY) then
-        return super(player, target, ability)
+    if isWarriorSpec(player, GLADIATOR_KEY) then
+        local duration = 45 + player:getMod(xi.mod.ENHANCES_BLOOD_RAGE)
+        applyGladiatorBloodRage(target, player, duration)
+
+        if player:getID() ~= target:getID() then
+            ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
+        end
+
+        return xi.effect.BLOOD_RAGE
+    elseif isWarriorSpec(player, BERSERKER_KEY) then
+        local power    = 30 + player:getJobPointLevel(xi.jp.BLOOD_RAGE_EFFECT)
+        local duration = 45 + player:getMod(xi.mod.ENHANCES_BLOOD_RAGE)
+
+        target:addStatusEffect(xi.effect.BLOOD_RAGE, { power = power, duration = duration, origin = player })
+
+        if player:getID() ~= target:getID() then
+            ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
+        end
+
+        return xi.effect.BLOOD_RAGE
     end
 
-    local power    = 30 + player:getJobPointLevel(xi.jp.BLOOD_RAGE_EFFECT)
-    local duration = 45 + player:getMod(xi.mod.ENHANCES_BLOOD_RAGE)
+    return super(player, target, ability)
+end)
 
-    target:addStatusEffect(xi.effect.BLOOD_RAGE, { power = power, duration = duration, origin = player })
+m:addOverride('xi.effects.blood_rage.onEffectGain', function(target, effect)
+    super(target, effect)
 
-    if player:getID() ~= target:getID() then
-        ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
+    if target == nil or effect == nil then
+        return
     end
 
-    return xi.effect.BLOOD_RAGE
+    if effect:getSubPower() == 1 then
+        local extra = pendingBloodRageMods[target:getID()]
+        if extra ~= nil then
+            for _, pair in ipairs(extra) do
+                effect:addMod(pair[1], pair[2])
+            end
+        end
+    end
 end)
 
 m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability)
-    local isCmd = isWarriorSpec(player, COMMANDER_KEY)
-    local isBrk = isWarriorSpec(player, BERSERKER_KEY)
-    if not isCmd and not isBrk then
+    local isCmd  = isWarriorSpec(player, COMMANDER_KEY)
+    local isBrk  = isWarriorSpec(player, BERSERKER_KEY)
+    local isGlad = isWarriorSpec(player, GLADIATOR_KEY)
+    if not isCmd and not isBrk and not isGlad then
         return super(player, target, ability)
     end
 
@@ -426,6 +631,34 @@ m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability
         return xi.effect.WARCRY
     end
 
+    if isGlad then
+        local isSelf   = (player:getID() == target:getID())
+        local merit    = player:getMerit(xi.merit.SAVAGERY)
+        local duration = 30 + player:getMod(xi.mod.WARCRY_DURATION)
+
+        if target:hasStatusEffect(xi.effect.WARCRY) then
+            target:delStatusEffectSilent(xi.effect.WARCRY)
+        end
+
+        local targetId = target:getID()
+        pendingWarcryMods[targetId] =
+        {
+            { xi.mod.DMG,    -800 },
+            { xi.mod.ENMITY, 12 },
+        }
+        target:addStatusEffect(xi.effect.WARCRY, { power = 0, duration = duration, origin = player, subPower = merit })
+        pendingWarcryMods[targetId] = nil
+
+        if isSelf and player.addHP and player.getMaxHP then
+            local selfHeal = math.max(15, math.floor(player:getMaxHP() * 0.15))
+            player:addHP(selfHeal)
+        else
+            ability:setMsg(xi.msg.basic.JA_ATK_ENHANCED)
+        end
+
+        return xi.effect.WARCRY
+    end
+
     -- Berserker Warcry
     local merit    = player:getMerit(xi.merit.SAVAGERY)
     local warLevel = utils.getActiveJobLevel(player, xi.job.WAR)
@@ -462,11 +695,12 @@ m:addOverride('xi.job_utils.warrior.useWarriorsCharge', function(player, target,
     end
 
     local merits = player:getMerit(xi.merit.WARRIORS_CHARGE)
-    local power  = math.max(merits - 5, 15)
+    player:addStatusEffect(xi.effect.WARRIORS_CHARGE, { power = math.max(merits - 5, 5), duration = 60, origin = player })
+    applyGladiatorBloodRage(player, player, 20)
 
-    player:addStatusEffect(xi.effect.WARRIORS_CHARGE, { power = power, duration = 60, origin = player })
-    if not player:hasStatusEffect(xi.effect.BLOOD_RAGE) then
-        player:addStatusEffect(xi.effect.BLOOD_RAGE, { power = 15, duration = 30, origin = player })
+    if player.addHP and player.getMaxHP then
+        local selfHeal = math.max(10, math.floor(player:getMaxHP() * 0.10))
+        player:addHP(selfHeal)
     end
 
     return xi.effect.WARRIORS_CHARGE
@@ -477,7 +711,7 @@ m:addOverride('xi.job_utils.warrior.useMightyStrikes', function(player, target, 
         return super(player, target, ability)
     end
 
-    player:addStatusEffect(xi.effect.MIGHTY_STRIKES, { power = 1, duration = 60, origin = player, subPower = 1 })
+    player:addStatusEffect(xi.effect.MIGHTY_STRIKES, { power = 1, duration = 60, origin = player, subPower = 2 })
 
     return xi.effect.MIGHTY_STRIKES
 end)
@@ -485,16 +719,51 @@ end)
 m:addOverride('xi.effects.mighty_strikes.onEffectGain', function(target, effect)
     super(target, effect)
 
-    if effect ~= nil and effect:getSubPower() == 1 then
-        target:addMod(xi.mod.CRIT_DMG_INCREASE, 15)
+    if effect ~= nil and effect:getSubPower() == 2 then
+        target:addMod(xi.mod.DMG, -2500)
+        target:addMod(xi.mod.ENMITY, 50)
     end
 end)
 
 m:addOverride('xi.effects.mighty_strikes.onEffectLose', function(target, effect)
     super(target, effect)
 
-    if effect ~= nil and effect:getSubPower() == 1 then
-        target:delMod(xi.mod.CRIT_DMG_INCREASE, 15)
+    if effect ~= nil and effect:getSubPower() == 2 then
+        target:delMod(xi.mod.DMG, -2500)
+        target:delMod(xi.mod.ENMITY, 50)
+    end
+end)
+
+-----------------------------------
+-- Gladiator Club & Shield Block Mastery + Bloodthirsty Sustain
+-----------------------------------
+m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attacker)
+    local rate = super(defender, attacker)
+
+    if isWarriorSpec(defender, GLADIATOR_KEY) and isClubAndShield(defender) then
+        rate = utils.clamp((tonumber(rate) or 0) + 10, 5, 100)
+    end
+
+    return rate
+end)
+
+m:addOverride('xi.combat.physical.isBlocked', function(defender, attacker)
+    local blocked = super(defender, attacker)
+
+    if blocked and isWarriorSpec(defender, GLADIATOR_KEY) and isClubAndShield(defender) then
+        local maxHp = defender.getMaxHP and defender:getMaxHP() or 0
+        local baseHeal = math.max(6, math.floor(maxHp * 0.015))
+        healBloodthirsty(defender, baseHeal)
+    end
+
+    return blocked
+end)
+
+m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
+    super(player, firstLogin, zoning)
+
+    if isWarriorSpec(player, GLADIATOR_KEY) then
+        attachGladiatorListeners(player)
     end
 end)
 
