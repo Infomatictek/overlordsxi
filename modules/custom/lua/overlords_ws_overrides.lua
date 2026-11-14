@@ -20,7 +20,7 @@ local talents = xi.overlords.wsTalents
 
 local activeWsContext = {}
 local pendingScBonus  = {}
-local spinPackCache   = {}
+local packExtrasCache = {}
 
 local DEBUFF_POWER_CAPS =
 {
@@ -31,12 +31,14 @@ local DEBUFF_POWER_CAPS =
     [xi.effect.MAGIC_DEF_DOWN]        = 40,
     [xi.effect.MAGIC_ATK_DOWN]        = 40,
     [xi.effect.MAGIC_EVASION_DOWN]    = 40,
+    [xi.effect.MAGIC_ACC_DOWN]        = 50,
     [xi.effect.PARALYSIS]             = 50,
     [xi.effect.SLOW]                  = 4500,
     [xi.effect.WEIGHT]                = 60,
     [xi.effect.BLINDNESS]             = 60,
     [xi.effect.PLAGUE]                = 12,
     [xi.effect.POISON]                = 30,
+    [xi.effect.BURN]                  = 35,
     [xi.effect.INT_DOWN]              = 35,
     [xi.effect.CHOKE]                 = 25,
     [xi.effect.CRIT_HIT_EVASION_DOWN] = 20,
@@ -48,6 +50,68 @@ local MP_DRAIN_BASE_RATIO =
     [171] = 1.00, -- Mystic Boon
     [183] = 1.00, -- Spirit Taker
 }
+
+local function pickRankVal(val, rank)
+    if type(val) == 'table' then
+        return val[rank] or val[#val]
+    end
+    return val
+end
+
+local function resolveDamageType(eleName)
+    if xi.damageType and xi.damageType[eleName] then
+        return xi.damageType[eleName]
+    end
+    local base = (xi.damageType and xi.damageType.ELEMENTAL) or 5
+    local elem = (xi.element and xi.element[eleName]) or 0
+    return base + elem
+end
+
+local function isSchSpecActive(player, schSpec)
+    if player == nil or schSpec == nil then
+        return false
+    end
+    if player:getMainJob() ~= xi.job.SCH then
+        return false
+    end
+    local specMod = xi.overlords and xi.overlords.spec
+    if specMod == nil or specMod.is == nil then
+        return false
+    end
+    if type(schSpec) == 'string' then
+        return specMod.is(player, xi.job.SCH, schSpec)
+    elseif type(schSpec) == 'table' then
+        for _, sk in ipairs(schSpec) do
+            if specMod.is(player, xi.job.SCH, sk) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function isStanceActive(attacker, stance)
+    if attacker == nil or type(stance) ~= 'table' then
+        return false
+    end
+    if type(stance.effects) == 'table' then
+        for _, effId in ipairs(stance.effects) do
+            if effId ~= nil and attacker:hasStatusEffect(effId) then
+                return true
+            end
+        end
+    end
+    if stance.schSpec ~= nil and isSchSpecActive(attacker, stance.schSpec) then
+        return true
+    end
+    if stance.petAlive then
+        local pet = attacker.getPet and attacker:getPet() or nil
+        if pet ~= nil and pet:isAlive() then
+            return true
+        end
+    end
+    return false
+end
 
 local function copyParams(src)
     local dst = {}
@@ -73,23 +137,26 @@ local function addToTriple(tbl, addVal, defaultBase)
     return out
 end
 
-local function countSpinningPackExtras(attacker, target, primaryMsg)
+local function countPackExtras(attacker, target, primaryMsg, packCenter)
     if attacker == nil then
         return 0
     end
+    local mode = packCenter == 'target' and 'target' or 'self'
     local actorId = attacker:getID()
+    local cacheKey = actorId .. ':' .. mode
     local now = os.time()
-    local cached = spinPackCache[actorId]
+    local cached = packExtrasCache[cacheKey]
     if not primaryMsg and cached ~= nil and (now - cached.at) <= 1 then
         return cached.extra
     end
 
+    local center = (mode == 'target' and target ~= nil) and target or attacker
     local count = 0
-    if attacker.getNearbyEntities then
-        local nearby = attacker:getNearbyEntities(8)
+    if center ~= nil and center.getNearbyEntities then
+        local nearby = center:getNearbyEntities(8)
         if type(nearby) == 'table' then
             for _, ent in pairs(nearby) do
-                if ent ~= nil and ent:isMob() and ent:isAlive() and ent:checkDistance(attacker) <= 7.5 then
+                if ent ~= nil and ent:isMob() and ent:isAlive() and ent:checkDistance(center) <= 7.5 then
                     count = count + 1
                 end
             end
@@ -99,8 +166,12 @@ local function countSpinningPackExtras(attacker, target, primaryMsg)
         count = 1
     end
     local extra = math.max(0, math.min(5, count - 1))
-    spinPackCache[actorId] = { at = now, extra = extra }
+    packExtrasCache[cacheKey] = { at = now, extra = extra }
     return extra
+end
+
+local function countSpinningPackExtras(attacker, target, primaryMsg)
+    return countPackExtras(attacker, target, primaryMsg, 'self')
 end
 
 local function applyTimedBuffMods(player, effectId, durationSec, modPairs)
@@ -197,23 +268,38 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     local extraCtx = { extraScBonus = 0, packExtras = 0 }
     local effectiveTp = tp
 
-    -- Consume Combo's "Opening Edge" / "Blitz Tempo" Next-WS buffs if active
-    local nextWsd = attacker:getLocalVar('OX_NEXT_WS_WSD')
+    -- Consume Next-WS Primer buffs if active
     local nextExp = attacker:getLocalVar('OX_NEXT_WS_EXP')
-    if nextWsd > 0 and os.time() <= nextExp then
-        addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, nextWsd)
-    end
-    local nextTpBonus = attacker:getLocalVar('OX_NEXT_WS_TP')
-    if nextTpBonus > 0 and os.time() <= nextExp then
-        effectiveTp = math.min(3000, effectiveTp + nextTpBonus)
+    if nextExp > 0 and os.time() <= nextExp then
+        local nextWsd = attacker:getLocalVar('OX_NEXT_WS_WSD')
+        if nextWsd > 0 then
+            addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, nextWsd)
+        end
+        local nextTpBonus = attacker:getLocalVar('OX_NEXT_WS_TP')
+        if nextTpBonus > 0 then
+            effectiveTp = math.min(3000, effectiveTp + nextTpBonus)
+        end
+        local nextAcc = attacker:getLocalVar('OX_NEXT_WS_ACC')
+        if nextAcc > 0 then
+            params.accVaries = addToTriple(params.accVaries, nextAcc, 0)
+            if ws.wsType == 'ranged' then
+                addTempMod(xi.mod.RACC, nextAcc)
+            end
+        end
+        local nextMacc = attacker:getLocalVar('OX_NEXT_WS_MACC')
+        if nextMacc > 0 then
+            addTempMod(xi.mod.MACC, nextMacc)
+        end
     end
     if nextExp > 0 then
         attacker:setLocalVar('OX_NEXT_WS_WSD', 0)
         attacker:setLocalVar('OX_NEXT_WS_TP', 0)
+        attacker:setLocalVar('OX_NEXT_WS_ACC', 0)
+        attacker:setLocalVar('OX_NEXT_WS_MACC', 0)
         attacker:setLocalVar('OX_NEXT_WS_EXP', 0)
     end
 
-    -- Tier 1: fTP Scaling (supports combined Tier 1 fTP + utility nodes on #2/#3/#4)
+    -- Tier 1: fTP Scaling (supports combined Tier 1 fTP + utility nodes)
     local ftpRank = ranks.ftp or 0
     local ftpNode = tree and tree.byKey and tree.byKey.ftp
     if ftpNode == nil and tree and tree.nodes then
@@ -226,21 +312,23 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
     end
     if ftpRank > 0 then
-        if ftpNode and ftpNode.ftpCurve then
-            params.ftpMod = applyCustomFtpCurve(ftpNode.ftpCurve, ftpRank, ftpNode.maxRank or 6)
+        local curve = (ftpNode and (ftpNode.ftpCurve or (type(ftpNode.effect) == 'table' and ftpNode.effect.ftpCurve))) or nil
+        if curve then
+            params.ftpMod = applyCustomFtpCurve(curve, ftpRank, (ftpNode and ftpNode.maxRank) or 6)
         else
             params.ftpMod = talents.calcFtpAtRank(orig.ftp, ftpRank, (ftpNode and ftpNode.maxRank) or 6)
         end
     end
 
-    -- Generic Fallback Stat WSC / Curves (for weapon #16-#207 until curated)
-    for _, stat in ipairs(talents.STAT_ORDER) do
-        local r = ranks['wsc_' .. stat] or 0
-        if r > 0 and orig.wsc[stat] then
-            local node = tree and tree.byKey and tree.byKey['wsc_' .. stat]
-            params[stat .. '_wsc'] = talents.calcWscAtRank(orig.wsc[stat], r, (node and node.maxRank) or 7)
+    if wsID <= 15 then
+        -- H2H (#1 - #15) Stat WSC / Shared Curves
+        for _, stat in ipairs(talents.STAT_ORDER) do
+            local r = ranks['wsc_' .. stat] or 0
+            if r > 0 and orig.wsc[stat] then
+                local node = tree and tree.byKey and tree.byKey['wsc_' .. stat]
+                params[stat .. '_wsc'] = talents.calcWscAtRank(orig.wsc[stat], r, (node and node.maxRank) or 7)
+            end
         end
-    end
 
     local hitsT1 = ranks.hits_t1 or 0
     if hitsT1 > 0 and orig.numHits >= 2 then
@@ -970,33 +1058,187 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
             addTempMod(xi.mod.CRIT_DMG_INCREASE, rMast * 5)
         end
 
+        end
     else
-        -- Generic 4-Tier Capstone (#16-#207 fallback, 3 ranks)
-        local capRank = ranks.capstone or 0
-        if capRank > 0 then
-            local r = math.min(capRank, 3)
-            local arch = tree and tree.archetype or 'heavy'
-            if arch == 'magic' then
-                local m = ({ 20, 35, 50 })[r]
-                addTempMod(xi.mod.MATT, m)
-                addTempMod(xi.mod.MACC, m)
-                addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, r * 10)
-            elseif arch == 'crit' then
-                params.critVaries = addToTriple(params.critVaries, ({ 0.08, 0.14, 0.20 })[r], 0)
-                local critDmgMod = (ws.wsType == 'ranged') and xi.mod.RANGED_CRIT_DMG_INCREASE or xi.mod.CRIT_DMG_INCREASE
-                addTempMod(critDmgMod, ({ 10, 18, 26 })[r])
-                params.ftpMod = addToTriple(params.ftpMod, ({ 0.3, 0.7, 1.0 })[r], 1.0)
-            elseif arch == 'multihit' then
-                params.multiHitfTP = true
-                addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, ({ 10, 18, 28 })[r])
-            elseif arch == 'utility' then
-                addTempMod(xi.mod.SUBTLE_BLOW, r * 10)
-                addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, r * 12)
-            else
-                params.atkVaries = addToTriple(params.atkVaries, r * 0.15, 1.0)
-                params.ignoredDefense = addToTriple(params.ignoredDefense, ({ 0.10, 0.18, 0.25 })[r], 0)
-                addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, r * 8)
+        -----------------------------------
+        -- Declarative Bespoke WS Effects (#16 - #235, Pre-WS)
+        -----------------------------------
+        local critDmgMod = (ws.wsType == 'ranged') and xi.mod.RANGED_CRIT_DMG_INCREASE or xi.mod.CRIT_DMG_INCREASE
+        local nativeDebuffRank = 0
+        local function applyStatEffects(tbl, rank)
+            if tbl.wsd then
+                local v = pickRankVal(tbl.wsd, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, v)
+                end
             end
+            if tbl.atkPct then
+                local v = pickRankVal(tbl.atkPct, rank)
+                if v and v ~= 0 then
+                    params.atkVaries = addToTriple(params.atkVaries, v / 100, 1.0)
+                end
+            end
+            if tbl.acc then
+                local v = pickRankVal(tbl.acc, rank)
+                if v and v ~= 0 then
+                    params.accVaries = addToTriple(params.accVaries, v, 0)
+                end
+            end
+            if tbl.racc then
+                local v = pickRankVal(tbl.racc, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.RACC, v)
+                    params.accVaries = addToTriple(params.accVaries, v, 0)
+                end
+            end
+            if tbl.crit then
+                local v = pickRankVal(tbl.crit, rank)
+                if v and v ~= 0 then
+                    params.critVaries = addToTriple(params.critVaries, v / 100, 0)
+                end
+            end
+            if tbl.critCurve then
+                local c = pickRankVal(tbl.critCurve, rank)
+                if type(c) == 'table' then
+                    params.critVaries = params.critVaries or { 0, 0, 0 }
+                    for i = 1, 3 do
+                        params.critVaries[i] = params.critVaries[i] + (c[i] or 0)
+                    end
+                end
+            end
+            if tbl.critDmg then
+                local v = pickRankVal(tbl.critDmg, rank)
+                if v and v ~= 0 then
+                    addTempMod(critDmgMod, v)
+                end
+            end
+            if tbl.defIgnore then
+                local v = pickRankVal(tbl.defIgnore, rank)
+                if v and v ~= 0 then
+                    params.ignoredDefense = addToTriple(params.ignoredDefense, v, 0)
+                    for i = 1, 3 do
+                        params.ignoredDefense[i] = math.min(1.0, params.ignoredDefense[i])
+                    end
+                end
+            end
+            if tbl.tpBonus then
+                local v = pickRankVal(tbl.tpBonus, rank)
+                if v and v ~= 0 then
+                    effectiveTp = math.min(3000, effectiveTp + v)
+                end
+            end
+            if tbl.matt then
+                local v = pickRankVal(tbl.matt, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.MATT, v)
+                end
+            end
+            if tbl.macc then
+                local v = pickRankVal(tbl.macc, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.MACC, v)
+                end
+            end
+            if tbl.ftpAdd then
+                local v = pickRankVal(tbl.ftpAdd, rank)
+                if v and v ~= 0 then
+                    params.ftpMod = addToTriple(params.ftpMod, v, 1.0)
+                end
+            end
+        end
+
+        for _, node in ipairs(tree and tree.nodes or {}) do
+            local r = ranks[node.key] or 0
+            local eff = node.effect
+            if r > 0 and type(eff) == 'table' then
+                if type(eff.wsc) == 'table' then
+                    for stat, tbl in pairs(eff.wsc) do
+                        local addW = pickRankVal(tbl, r)
+                        if addW and addW ~= 0 then
+                            params[stat .. '_wsc'] = (params[stat .. '_wsc'] or 0) + addW
+                        end
+                    end
+                end
+
+                if eff.hits then
+                    local h = pickRankVal(eff.hits, r)
+                    if h and h > (params.numHits or 1) then
+                        params.numHits = h
+                    end
+                end
+
+                if eff.multiHitfTPAt and r >= eff.multiHitfTPAt then
+                    params.multiHitfTP = true
+                end
+
+                applyStatEffects(eff, r)
+
+                if eff.subtleBlow then
+                    local v = pickRankVal(eff.subtleBlow, r)
+                    if v and v ~= 0 then
+                        addTempMod(xi.mod.SUBTLE_BLOW, v)
+                    end
+                end
+
+                if eff.enmity then
+                    local v = pickRankVal(eff.enmity, r)
+                    if v and v ~= 0 then
+                        addTempMod(xi.mod.ENMITY, v)
+                    end
+                end
+
+                if eff.storeTp then
+                    local v = pickRankVal(eff.storeTp, r)
+                    if v and v ~= 0 then
+                        addTempMod(xi.mod.STORETP, v)
+                    end
+                end
+
+                if eff.scBonus then
+                    local v = pickRankVal(eff.scBonus, r)
+                    if v and v ~= 0 then
+                        extraCtx.extraScBonus = extraCtx.extraScBonus + v
+                    end
+                end
+
+                if eff.nativeDebuff then
+                    if type(eff.nativeDebuff) == 'table' then
+                        nativeDebuffRank = nativeDebuffRank + (pickRankVal(eff.nativeDebuff, r) or 0)
+                    elseif eff.nativeDebuff == true then
+                        nativeDebuffRank = nativeDebuffRank + math.max(1, math.floor((r + 1) / 2))
+                    end
+                end
+
+                if eff.packWsdPerMob or eff.packBonusHitAt then
+                    local packExtras = countPackExtras(attacker, target, primaryMsg, eff.packCenter)
+                    extraCtx.packExtras = math.max(extraCtx.packExtras or 0, packExtras)
+                    if eff.packWsdPerMob then
+                        local perMob = pickRankVal(eff.packWsdPerMob, r)
+                        if perMob and perMob > 0 and packExtras > 0 then
+                            addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, perMob * packExtras)
+                        end
+                    end
+                    if eff.packBonusHitAt and r >= eff.packBonusHitAt and packExtras >= 1 then
+                        params.numHits = (params.numHits or 1) + 1
+                    end
+                end
+
+                if eff.stance and isStanceActive(attacker, eff.stance) then
+                    applyStatEffects(eff.stance, r)
+                end
+            end
+        end
+
+        if nativeDebuffRank > 0 then
+            activeWsContext[attacker:getID()] =
+            {
+                wsID       = wsID,
+                debuffRank = math.min(7, nativeDebuffRank),
+                isBinary   = orig.debuff and orig.debuff.binary or false,
+                expiresAt  = os.time() + 2,
+            }
+        else
+            activeWsContext[attacker:getID()] = nil
         end
     end
 
@@ -1027,206 +1269,471 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     end
 
     local totalDmg = dmg or 0
+    local baseDmg  = totalDmg
 
-    -----------------------------------
-    -- Utility Self-Buffs / Debuffs / Chi Blast Setup (#1 - #4)
-    -----------------------------------
-    if wsID == 1 then -- Combo
-        local mods = {}
-        local rTempo = ranks.combo_tempo or 0
-        if rTempo > 0 then
-            local jaHaste = ({ 300, 500, 700, 900, 1100, 1300, 1500 })[rTempo] or 1500
-            table.insert(mods, { xi.mod.HASTE_ABILITY, jaHaste })
-        end
-        local rSb = ranks.combo_sb or 0
-        if rSb > 0 then
-            table.insert(mods, { xi.mod.SUBTLE_BLOW, rSb * 6 })
-        end
-        local rDa = ranks.combo_da or 0
-        if rDa > 0 then
-            table.insert(mods, { xi.mod.DOUBLE_ATTACK, rDa * 8 })
-        end
-        local rCap = ranks.capstone or 0
-        if rCap > 0 then
-            table.insert(mods, { xi.mod.TRIPLE_ATTACK, ({ 8, 14, 20 })[rCap] or 20 })
-        end
-        if #mods > 0 then
-            applyTimedBuffMods(attacker, xi.effect.SUBTLE_BLOW_PLUS, 12, mods)
-        end
-        local rEdge = ranks.combo_edge or 0
-        local rFlow = ranks.combo_flow or 0
-        if rEdge > 0 or rFlow > 0 then
-            if rEdge > 0 then
-                attacker:setLocalVar('OX_NEXT_WS_WSD', ({ 4, 8, 12, 16, 19, 22, 25 })[rEdge] or 25)
+    if wsID <= 15 then
+        -----------------------------------
+        -- Utility Self-Buffs / Debuffs / Chi Blast Setup (#1 - #4)
+        -----------------------------------
+        if wsID == 1 then -- Combo
+            local mods = {}
+            local rTempo = ranks.combo_tempo or 0
+            if rTempo > 0 then
+                local jaHaste = ({ 300, 500, 700, 900, 1100, 1300, 1500 })[rTempo] or 1500
+                table.insert(mods, { xi.mod.HASTE_ABILITY, jaHaste })
             end
-            if rFlow > 0 then
-                attacker:setLocalVar('OX_NEXT_WS_TP', rFlow * 60)
+            local rSb = ranks.combo_sb or 0
+            if rSb > 0 then
+                table.insert(mods, { xi.mod.SUBTLE_BLOW, rSb * 6 })
             end
-            attacker:setLocalVar('OX_NEXT_WS_EXP', os.time() + 10)
-        end
-
-    elseif wsID == 2 then -- Shoulder Tackle
-        local rChi = ranks.chi_setup or 0
-        local rCap = ranks.capstone or 0
-        local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 50, 58, 65 })[rChi] or 65) or 0
-        local chiFromCap = rCap > 0 and (({ 20, 35, 50 })[rCap] or 50) or 0
-        local chiPct = chiFromT1 + chiFromCap
-        if chiPct > 0 then
-            attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
-        end
-        if rChi > 0 then
-            attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', ({ 6, 10, 14, 18, 22, 26, 30 })[rChi] or 30)
-        end
-        if totalDmg > 0 and target ~= nil and target:isAlive() then
-            local rBreak = ranks.tackle_break or 0
-            local rDrain = ranks.tackle_drain or 0
-            local atkDnBase = rBreak > 0 and (({ 5, 8, 11, 13, 15, 18, 20 })[rBreak] or 20) or 0
-            local atkDnTotal = atkDnBase + (rDrain * 2)
-            if atkDnTotal > 0 then
-                target:delStatusEffectSilent(xi.effect.ATTACK_DOWN)
-                target:addStatusEffect(xi.effect.ATTACK_DOWN, { power = atkDnTotal, duration = 45, origin = attacker })
-            end
-            if rDrain > 0 then
-                target:delTP(({ 80, 150, 220, 290, 360 })[rDrain] or 360)
-            end
-            local rDispel = ranks.tackle_dispel or 0
-            if rDispel > 0 then
-                local count = rDispel >= 5 and 3 or (rDispel >= 3 and 2 or 1)
-                for _ = 1, count do
-                    target:dispelStatusEffect()
-                end
-                local deb = rDispel * 10
-                target:delStatusEffectSilent(xi.effect.ACCURACY_DOWN)
-                target:addStatusEffect(xi.effect.ACCURACY_DOWN, { power = deb, duration = 45, origin = attacker })
-                target:delStatusEffectSilent(xi.effect.EVASION_DOWN)
-                target:addStatusEffect(xi.effect.EVASION_DOWN, { power = deb, duration = 45, origin = attacker })
-            end
-            if rCap > 0 then
-                target:delStatusEffectSilent(xi.effect.SLOW)
-                target:addStatusEffect(xi.effect.SLOW, { power = ({ 1500, 2000, 2500 })[rCap] or 2500, duration = 45, origin = attacker })
-                target:delStatusEffectSilent(xi.effect.PARALYSIS)
-                target:addStatusEffect(xi.effect.PARALYSIS, { power = ({ 15, 20, 25 })[rCap] or 25, duration = 45, origin = attacker })
-            end
-        end
-
-    elseif wsID == 3 then -- One Inch Punch
-        local rChi  = ranks.inch_vit_chi or 0
-        local rMast = ranks.inch_mast or 0
-        local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 54, 65, 75 })[rChi] or 75) or 0
-        local chiPct = chiFromT1 + (rMast * 8)
-        if chiPct > 0 then
-            attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
-        end
-        local rCd = ranks.inch_cd or 0
-        if rCd > 0 then
-            attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', rCd * 8)
-        end
-        local rSkin = ranks.inch_skin or 0
-        if rSkin > 0 then
-            attacker:delStatusEffectSilent(xi.effect.STONESKIN)
-            attacker:addStatusEffect(xi.effect.STONESKIN, { power = ({ 100, 200, 300, 400, 520 })[rSkin] or 520, duration = 120, origin = attacker, tier = 3 })
-        end
-        if totalDmg > 0 and target ~= nil and target:isAlive() then
-            local rShatter = ranks.inch_shatter or 0
-            if rShatter > 0 then
-                target:delStatusEffectSilent(xi.effect.DEFENSE_DOWN)
-                target:addStatusEffect(xi.effect.DEFENSE_DOWN, { power = ({ 8, 12, 16, 20, 24, 27, 30 })[rShatter] or 30, duration = 60, origin = attacker })
-            end
-            local rPlague = ranks.inch_plague or 0
-            if rPlague > 0 then
-                target:delStatusEffectSilent(xi.effect.PLAGUE)
-                target:addStatusEffect(xi.effect.PLAGUE, { power = rPlague * 2, duration = 45, origin = attacker })
-                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * rPlague * 0.08, xi.damageType.LIGHT)
+            local rDa = ranks.combo_da or 0
+            if rDa > 0 then
+                table.insert(mods, { xi.mod.DOUBLE_ATTACK, rDa * 8 })
             end
             local rCap = ranks.capstone or 0
             if rCap > 0 then
-                target:delStatusEffectSilent(xi.effect.MAGIC_DEF_DOWN)
-                target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, { power = ({ 10, 15, 20 })[rCap] or 20, duration = 60, origin = attacker })
+                table.insert(mods, { xi.mod.TRIPLE_ATTACK, ({ 8, 14, 20 })[rCap] or 20 })
+            end
+            if #mods > 0 then
+                applyTimedBuffMods(attacker, xi.effect.SUBTLE_BLOW_PLUS, 12, mods)
+            end
+            local rEdge = ranks.combo_edge or 0
+            local rFlow = ranks.combo_flow or 0
+            if rEdge > 0 or rFlow > 0 then
+                if rEdge > 0 then
+                    attacker:setLocalVar('OX_NEXT_WS_WSD', ({ 4, 8, 12, 16, 19, 22, 25 })[rEdge] or 25)
+                end
+                if rFlow > 0 then
+                    attacker:setLocalVar('OX_NEXT_WS_TP', rFlow * 60)
+                end
+                attacker:setLocalVar('OX_NEXT_WS_EXP', os.time() + 10)
+            end
+
+        elseif wsID == 2 then -- Shoulder Tackle
+            local rChi = ranks.chi_setup or 0
+            local rCap = ranks.capstone or 0
+            local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 50, 58, 65 })[rChi] or 65) or 0
+            local chiFromCap = rCap > 0 and (({ 20, 35, 50 })[rCap] or 50) or 0
+            local chiPct = chiFromT1 + chiFromCap
+            if chiPct > 0 then
+                attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
+            end
+            if rChi > 0 then
+                attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', ({ 6, 10, 14, 18, 22, 26, 30 })[rChi] or 30)
+            end
+            if totalDmg > 0 and target ~= nil and target:isAlive() then
+                local rBreak = ranks.tackle_break or 0
+                local rDrain = ranks.tackle_drain or 0
+                local atkDnBase = rBreak > 0 and (({ 5, 8, 11, 13, 15, 18, 20 })[rBreak] or 20) or 0
+                local atkDnTotal = atkDnBase + (rDrain * 2)
+                if atkDnTotal > 0 then
+                    target:delStatusEffectSilent(xi.effect.ATTACK_DOWN)
+                    target:addStatusEffect(xi.effect.ATTACK_DOWN, { power = atkDnTotal, duration = 45, origin = attacker })
+                end
+                if rDrain > 0 then
+                    target:delTP(({ 80, 150, 220, 290, 360 })[rDrain] or 360)
+                end
+                local rDispel = ranks.tackle_dispel or 0
+                if rDispel > 0 then
+                    local count = rDispel >= 5 and 3 or (rDispel >= 3 and 2 or 1)
+                    for _ = 1, count do
+                        target:dispelStatusEffect()
+                    end
+                    local deb = rDispel * 10
+                    target:delStatusEffectSilent(xi.effect.ACCURACY_DOWN)
+                    target:addStatusEffect(xi.effect.ACCURACY_DOWN, { power = deb, duration = 45, origin = attacker })
+                    target:delStatusEffectSilent(xi.effect.EVASION_DOWN)
+                    target:addStatusEffect(xi.effect.EVASION_DOWN, { power = deb, duration = 45, origin = attacker })
+                end
+                if rCap > 0 then
+                    target:delStatusEffectSilent(xi.effect.SLOW)
+                    target:addStatusEffect(xi.effect.SLOW, { power = ({ 1500, 2000, 2500 })[rCap] or 2500, duration = 45, origin = attacker })
+                    target:delStatusEffectSilent(xi.effect.PARALYSIS)
+                    target:addStatusEffect(xi.effect.PARALYSIS, { power = ({ 15, 20, 25 })[rCap] or 25, duration = 45, origin = attacker })
+                end
+            end
+
+        elseif wsID == 3 then -- One Inch Punch
+            local rChi  = ranks.inch_vit_chi or 0
+            local rMast = ranks.inch_mast or 0
+            local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 54, 65, 75 })[rChi] or 75) or 0
+            local chiPct = chiFromT1 + (rMast * 8)
+            if chiPct > 0 then
+                attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
+            end
+            local rCd = ranks.inch_cd or 0
+            if rCd > 0 then
+                attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', rCd * 8)
+            end
+            local rSkin = ranks.inch_skin or 0
+            if rSkin > 0 then
+                attacker:delStatusEffectSilent(xi.effect.STONESKIN)
+                attacker:addStatusEffect(xi.effect.STONESKIN, { power = ({ 100, 200, 300, 400, 520 })[rSkin] or 520, duration = 120, origin = attacker, tier = 3 })
+            end
+            if totalDmg > 0 and target ~= nil and target:isAlive() then
+                local rShatter = ranks.inch_shatter or 0
+                if rShatter > 0 then
+                    target:delStatusEffectSilent(xi.effect.DEFENSE_DOWN)
+                    target:addStatusEffect(xi.effect.DEFENSE_DOWN, { power = ({ 8, 12, 16, 20, 24, 27, 30 })[rShatter] or 30, duration = 60, origin = attacker })
+                end
+                local rPlague = ranks.inch_plague or 0
+                if rPlague > 0 then
+                    target:delStatusEffectSilent(xi.effect.PLAGUE)
+                    target:addStatusEffect(xi.effect.PLAGUE, { power = rPlague * 2, duration = 45, origin = attacker })
+                    totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * rPlague * 0.08, xi.damageType.LIGHT)
+                end
+                local rCap = ranks.capstone or 0
+                if rCap > 0 then
+                    target:delStatusEffectSilent(xi.effect.MAGIC_DEF_DOWN)
+                    target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, { power = ({ 10, 15, 20 })[rCap] or 20, duration = 60, origin = attacker })
+                end
+            end
+
+        elseif wsID == 4 then -- Backhand Blow
+            local critMods = {}
+            local rGale = ranks.bh_gale or 0
+            if rGale > 0 then
+                table.insert(critMods, { xi.mod.CRITHITRATE, ({ 4, 7, 10, 13, 15, 18, 20 })[rGale] or 20 })
+            end
+            local rRhythm = ranks.bh_rhythm or 0
+            local rCap = ranks.capstone or 0
+            local extraCritDmg = (rRhythm * 4) + (rCap > 0 and (({ 8, 15, 22 })[rCap] or 22) or 0)
+            if extraCritDmg > 0 then
+                table.insert(critMods, { xi.mod.CRIT_DMG_INCREASE, extraCritDmg })
+            end
+            if #critMods > 0 then
+                applyTimedBuffMods(attacker, xi.effect.POTENCY, 12, critMods)
+            end
+            local rAero = ranks.bh_enaero or 0
+            if rAero > 0 then
+                attacker:delStatusEffectSilent(xi.effect.ENAERO)
+                attacker:addStatusEffect(xi.effect.ENAERO, { power = rAero * 10, duration = 12, origin = attacker })
+            end
+            if totalDmg > 0 and target ~= nil and target:isAlive() then
+                local rFeint = ranks.bh_feint or 0
+                local rPrec  = ranks.bh_prec or 0
+                local evaDn  = (rFeint > 0 and (({ 8, 14, 20, 26, 31, 36, 40 })[rFeint] or 40) or 0) + (rPrec * 4)
+                if evaDn > 0 then
+                    target:delStatusEffectSilent(xi.effect.EVASION_DOWN)
+                    target:addStatusEffect(xi.effect.EVASION_DOWN, { power = evaDn, duration = 45, origin = attacker })
+                end
+                local rWind = ranks.bh_wind or 0
+                if rWind > 0 then
+                    totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * rWind * 0.10, xi.damageType.WIND)
+                end
             end
         end
 
-    elseif wsID == 4 then -- Backhand Blow
-        local critMods = {}
-        local rGale = ranks.bh_gale or 0
-        if rGale > 0 then
-            table.insert(critMods, { xi.mod.CRITHITRATE, ({ 4, 7, 10, 13, 15, 18, 20 })[rGale] or 20 })
-        end
-        local rRhythm = ranks.bh_rhythm or 0
-        local rCap = ranks.capstone or 0
-        local extraCritDmg = (rRhythm * 4) + (rCap > 0 and (({ 8, 15, 22 })[rCap] or 22) or 0)
-        if extraCritDmg > 0 then
-            table.insert(critMods, { xi.mod.CRIT_DMG_INCREASE, extraCritDmg })
-        end
-        if #critMods > 0 then
-            applyTimedBuffMods(attacker, xi.effect.POTENCY, 12, critMods)
-        end
-        local rAero = ranks.bh_enaero or 0
-        if rAero > 0 then
-            attacker:delStatusEffectSilent(xi.effect.ENAERO)
-            attacker:addStatusEffect(xi.effect.ENAERO, { power = rAero * 10, duration = 12, origin = attacker })
-        end
+        -----------------------------------
+        -- Elemental Follow-Up Hits on Damage H2H WSs (Zero Buffs/Debuffs)
+        -----------------------------------
         if totalDmg > 0 and target ~= nil and target:isAlive() then
-            local rFeint = ranks.bh_feint or 0
-            local rPrec  = ranks.bh_prec or 0
-            local evaDn  = (rFeint > 0 and (({ 8, 14, 20, 26, 31, 36, 40 })[rFeint] or 40) or 0) + (rPrec * 4)
-            if evaDn > 0 then
-                target:delStatusEffectSilent(xi.effect.EVASION_DOWN)
-                target:addStatusEffect(xi.effect.EVASION_DOWN, { power = evaDn, duration = 45, origin = attacker })
+            if wsID == 6 and (ranks.spin_fire or 0) > 0 then
+                local mult = (ranks.spin_fire * 0.16) * (1 + 0.25 * (extraCtx and extraCtx.packExtras or 0))
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.FIRE)
+            elseif wsID == 7 and (ranks.hf_sonic or 0) > 0 then
+                local mult = ranks.hf_sonic * 0.08
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.WIND)
+            elseif wsID == 8 and (ranks.dk_flame or 0) > 0 then
+                local mult = ranks.dk_flame * 0.07
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.FIRE)
+            elseif wsID == 10 and (ranks.fh_light or 0) > 0 then
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.fh_light * 0.08, xi.damageType.LIGHT)
+            elseif wsID == 13 and (ranks.tk_wind or 0) > 0 then
+                local mult = ({ 0.07, 0.14, 0.21, 0.28, 0.36 })[ranks.tk_wind] or 0.36
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.WIND)
+            elseif wsID == 15 and (ranks.ss_wind or 0) > 0 then
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.ss_wind * 0.06, xi.damageType.WIND)
             end
-            local rWind = ranks.bh_wind or 0
-            if rWind > 0 then
-                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * rWind * 0.10, xi.damageType.WIND)
+        end
+
+        return totalDmg
+    end
+
+    -----------------------------------
+    -- Declarative Bespoke Post-WS Effects (#16 - #235)
+    -----------------------------------
+    local tree = talents.getTreeForWS(wsID)
+    local ws   = catalog.byId[wsID]
+
+    local nextWsAccum = { wsd = 0, tp = 0, acc = 0, macc = 0, dur = 0 }
+    local modsByEffect = {}
+    local storeTpBuffVal = 0
+    local selfBuffsByEffect = {}
+    local elemQueue = {}
+    local debuffsByEffect = {}
+    local dispelTotal = 0
+    local tpDrainTotal = 0
+    local tpStealMaxPct = 0
+    local hpDrainPct = 0
+    local mpDrainPct = 0
+    local selfHealPct = 0
+    local selfMaxHpHealPct = 0
+    local partyHealPct = 0
+    local eosHealPct = 0
+    local mpToHpPct = 0
+
+    for _, node in ipairs(tree and tree.nodes or {}) do
+        local r = ranks[node.key] or 0
+        local eff = node.effect
+        if r > 0 and type(eff) == 'table' then
+            if type(eff.nextWs) == 'table' then
+                local nw = eff.nextWs
+                nextWsAccum.wsd  = nextWsAccum.wsd  + (nw.wsd  and (pickRankVal(nw.wsd, r)  or 0) or 0)
+                nextWsAccum.tp   = nextWsAccum.tp   + (nw.tp   and (pickRankVal(nw.tp, r)   or 0) or 0)
+                nextWsAccum.acc  = nextWsAccum.acc  + (nw.acc  and (pickRankVal(nw.acc, r)  or 0) or 0)
+                nextWsAccum.macc = nextWsAccum.macc + (nw.macc and (pickRankVal(nw.macc, r) or 0) or 0)
+                nextWsAccum.dur  = math.max(nextWsAccum.dur, nw.dur or 12)
+            end
+
+            if type(eff.postBuff) == 'table' and eff.postBuff.effect ~= nil then
+                local pb = eff.postBuff
+                local entry = modsByEffect[pb.effect]
+                if entry == nil then
+                    entry = { dur = pb.duration or 12, mods = {} }
+                    modsByEffect[pb.effect] = entry
+                else
+                    entry.dur = math.max(entry.dur, pb.duration or 12)
+                end
+                for _, pair in ipairs(pb.mods or {}) do
+                    local modId = pair.mod or pair[1]
+                    local rawVal = pair.val ~= nil and pair.val or pair[2]
+                    local val = pickRankVal(rawVal, r)
+                    if modId ~= nil and val and val ~= 0 then
+                        table.insert(entry.mods, { modId, val })
+                    end
+                end
+            end
+
+            if eff.storeTp then
+                local stp = pickRankVal(eff.storeTp, r)
+                if stp and stp > 0 then
+                    storeTpBuffVal = storeTpBuffVal + stp
+                end
+            end
+
+            if type(eff.statusBuffs) == 'table' then
+                for _, sb in ipairs(eff.statusBuffs) do
+                    if sb.effect ~= nil then
+                        local pwr = pickRankVal(sb.power, r) or 1
+                        local dur = sb.duration or 30
+                        local cur = selfBuffsByEffect[sb.effect]
+                        if cur == nil then
+                            selfBuffsByEffect[sb.effect] = { power = pwr, duration = dur, tier = sb.tier }
+                        else
+                            cur.power = math.max(cur.power, pwr)
+                            cur.duration = math.max(cur.duration, dur)
+                            cur.tier = cur.tier or sb.tier
+                        end
+                    end
+                end
+            end
+
+            if type(eff.elemFollow) == 'table' then
+                local ef = eff.elemFollow
+                local pct = pickRankVal(ef.pct, r) or 0
+                if pct > 0 then
+                    table.insert(elemQueue, {
+                        ele = ef.ele or 'ELEMENTAL',
+                        pct = pct,
+                        scaleWithPack = ef.scaleWithPack == true,
+                    })
+                end
+            end
+
+            if type(eff.targetDebuffs) == 'table' then
+                for _, td in ipairs(eff.targetDebuffs) do
+                    if td.effect ~= nil then
+                        local pwr = pickRankVal(td.power, r) or 1
+                        local dur = td.duration or 45
+                        local cur = debuffsByEffect[td.effect]
+                        if cur == nil then
+                            debuffsByEffect[td.effect] = { power = pwr, duration = dur }
+                        else
+                            cur.power = math.max(cur.power, pwr)
+                            cur.duration = math.max(cur.duration, dur)
+                        end
+                    end
+                end
+            end
+
+            if eff.dispel then
+                dispelTotal = dispelTotal + (pickRankVal(eff.dispel, r) or 0)
+            end
+            if eff.tpDrain then
+                tpDrainTotal = tpDrainTotal + (pickRankVal(eff.tpDrain, r) or 0)
+            end
+            if eff.tpStealPct then
+                local sp = pickRankVal(eff.tpStealPct, r) or 0
+                if sp > tpStealMaxPct then
+                    tpStealMaxPct = sp
+                end
+            end
+            if eff.hpDrain then
+                hpDrainPct = hpDrainPct + (pickRankVal(eff.hpDrain, r) or 0)
+            end
+            if eff.mpDrain then
+                mpDrainPct = mpDrainPct + (pickRankVal(eff.mpDrain, r) or 0)
+            end
+            if eff.selfHeal then
+                selfHealPct = selfHealPct + (pickRankVal(eff.selfHeal, r) or 0)
+            end
+            if eff.selfMaxHpHealPct then
+                selfMaxHpHealPct = selfMaxHpHealPct + (pickRankVal(eff.selfMaxHpHealPct, r) or 0)
+            end
+            if eff.partyHealPct then
+                partyHealPct = partyHealPct + (pickRankVal(eff.partyHealPct, r) or 0)
+            end
+            if eff.eosHeal then
+                eosHealPct = math.min(100, eosHealPct + (pickRankVal(eff.eosHeal, r) or 0))
+            end
+            if eff.mpToHpPct then
+                mpToHpPct = mpToHpPct + (pickRankVal(eff.mpToHpPct, r) or 0)
             end
         end
     end
 
-    -----------------------------------
-    -- Elemental Follow-Up Hits on Damage H2H WSs (Zero Buffs/Debuffs)
-    -----------------------------------
-    if totalDmg > 0 and target ~= nil and target:isAlive() then
-        if wsID == 6 and (ranks.spin_fire or 0) > 0 then
-            local mult = (ranks.spin_fire * 0.16) * (1 + 0.25 * (extraCtx and extraCtx.packExtras or 0))
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.FIRE)
-        elseif wsID == 7 and (ranks.hf_sonic or 0) > 0 then
-            local mult = ranks.hf_sonic * 0.08
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.WIND)
-        elseif wsID == 8 and (ranks.dk_flame or 0) > 0 then
-            local mult = ranks.dk_flame * 0.07
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.FIRE)
-        elseif wsID == 10 and (ranks.fh_light or 0) > 0 then
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.fh_light * 0.08, xi.damageType.LIGHT)
-        elseif wsID == 13 and (ranks.tk_wind or 0) > 0 then
-            local mult = ({ 0.07, 0.14, 0.21, 0.28, 0.36 })[ranks.tk_wind] or 0.36
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * mult, xi.damageType.WIND)
-        elseif wsID == 15 and (ranks.ss_wind or 0) > 0 then
-            totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.ss_wind * 0.06, xi.damageType.WIND)
+    if nextWsAccum.wsd > 0 or nextWsAccum.tp > 0 or nextWsAccum.acc > 0 or nextWsAccum.macc > 0 then
+        if nextWsAccum.wsd > 0 then
+            attacker:setLocalVar('OX_NEXT_WS_WSD', nextWsAccum.wsd)
+        end
+        if nextWsAccum.tp > 0 then
+            attacker:setLocalVar('OX_NEXT_WS_TP', nextWsAccum.tp)
+        end
+        if nextWsAccum.acc > 0 then
+            attacker:setLocalVar('OX_NEXT_WS_ACC', nextWsAccum.acc)
+        end
+        if nextWsAccum.macc > 0 then
+            attacker:setLocalVar('OX_NEXT_WS_MACC', nextWsAccum.macc)
+        end
+        attacker:setLocalVar('OX_NEXT_WS_EXP', os.time() + (nextWsAccum.dur > 0 and nextWsAccum.dur or 12))
+    end
+
+    if storeTpBuffVal > 0 then
+        local sbEntry = modsByEffect[xi.effect.SUBTLE_BLOW_PLUS]
+        if sbEntry == nil then
+            sbEntry = { dur = 12, mods = {} }
+            modsByEffect[xi.effect.SUBTLE_BLOW_PLUS] = sbEntry
+        end
+        table.insert(sbEntry.mods, { xi.mod.STORETP, storeTpBuffVal })
+    end
+
+    for effId, entry in pairs(modsByEffect) do
+        if #entry.mods > 0 then
+            applyTimedBuffMods(attacker, effId, entry.dur, entry.mods)
         end
     end
 
-    -----------------------------------
-    -- Generic Drain/Leech Traits (Non-H2H Fallback)
-    -----------------------------------
-    if totalDmg > 0 then
-        local siphonRank = ranks.siphon or 0
-        if siphonRank > 0 and (target == nil or not target:isUndead()) then
-            local pct = ({ 0.15, 0.30, 0.50 })[siphonRank] or 0
-            attacker:addHP(math.floor(totalDmg * pct))
-            attacker:addMP(math.floor(totalDmg * pct))
+    for effId, sb in pairs(selfBuffsByEffect) do
+        attacker:delStatusEffectSilent(effId)
+        local opts = { power = sb.power, duration = sb.duration, origin = attacker }
+        if sb.tier ~= nil then
+            opts.tier = sb.tier
+        elseif effId == xi.effect.STONESKIN then
+            opts.tier = 3
+        end
+        attacker:addStatusEffect(effId, opts)
+    end
+
+    if selfMaxHpHealPct > 0 then
+        local amt = math.floor(attacker:getMaxHP() * (selfMaxHpHealPct / 100))
+        if amt > 0 then
+            attacker:addHP(amt)
+        end
+    end
+
+    if partyHealPct > 0 then
+        local party = attacker.getParty and attacker:getParty() or nil
+        if type(party) == 'table' and #party > 0 then
+            for _, member in ipairs(party) do
+                if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
+                    local amt = math.floor(member:getMaxHP() * (partyHealPct / 100))
+                    if amt > 0 then
+                        member:addHP(amt)
+                    end
+                end
+            end
+        else
+            local amt = math.floor(attacker:getMaxHP() * (partyHealPct / 100))
+            if amt > 0 then
+                attacker:addHP(amt)
+            end
+        end
+    end
+
+    if eosHealPct > 0 and attacker.getPet then
+        local pet = attacker:getPet()
+        if pet ~= nil and pet:isAlive() then
+            local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
+            if petHp > 0 and pet.addHP then
+                pet:addHP(petHp)
+            end
+            if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
+                local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
+                if petMp > 0 then
+                    pet:addMP(petMp)
+                end
+            end
+        end
+    end
+
+    if baseDmg > 0 then
+        if hpDrainPct > 0 and (target == nil or not target:isUndead()) then
+            local amt = math.floor(baseDmg * (hpDrainPct / 100))
+            if amt > 0 then
+                attacker:addHP(amt)
+            end
+        end
+        if mpDrainPct > 0 then
+            local amt = math.floor(baseDmg * (mpDrainPct / 100))
+            if amt > 0 then
+                attacker:addMP(amt)
+            end
+        end
+        if selfHealPct > 0 then
+            local amt = math.floor(baseDmg * (selfHealPct / 100))
+            if amt > 0 then
+                attacker:addHP(amt)
+            end
+        end
+        if mpToHpPct > 0 then
+            local amt = math.floor(baseDmg * (mpToHpPct / 100))
+            if amt > 0 then
+                attacker:addHP(amt)
+            end
+        end
+    end
+
+    local isDrainStealUtil = (wsID == 21 or wsID == 22)
+    if target ~= nil and target ~= attacker and target:isAlive() and (baseDmg > 0 or isDrainStealUtil) then
+        for effId, td in pairs(debuffsByEffect) do
+            target:delStatusEffectSilent(effId)
+            target:addStatusEffect(effId, { power = td.power, duration = td.duration, origin = attacker })
         end
 
-        local manaRank = ranks.mana_leech or 0
-        local baseMpRatio = MP_DRAIN_BASE_RATIO[wsID]
-        if manaRank > 0 and baseMpRatio ~= nil then
-            local mpBoost = ({ 0.25, 0.50, 1.00 })[manaRank] or 0
-            local hpShare = ({ 0.25, 0.50, 0.75 })[manaRank] or 0
-            local extraMp = math.floor(totalDmg * baseMpRatio * mpBoost)
-            local totalMp = math.floor(totalDmg * baseMpRatio * (1 + mpBoost))
-            if extraMp > 0 then
-                attacker:addMP(extraMp)
+        if dispelTotal > 0 and target.dispelStatusEffect then
+            for _ = 1, dispelTotal do
+                target:dispelStatusEffect()
             end
-            local hpHeal = math.floor(totalMp * hpShare)
-            if hpHeal > 0 then
-                attacker:addHP(hpHeal)
+        end
+
+        if tpDrainTotal > 0 and target.delTP then
+            local prevTp = target.getTP and target:getTP() or tpDrainTotal
+            target:delTP(tpDrainTotal)
+            local postTp = target.getTP and target:getTP() or 0
+            local drained = math.max(0, prevTp - postTp)
+            if tpStealMaxPct > 0 and drained > 0 then
+                local gain = math.floor(drained * (tpStealMaxPct / 100))
+                if gain > 0 then
+                    attacker:addTP(gain)
+                end
+            end
+        end
+
+        if baseDmg > 0 then
+            for _, ef in ipairs(elemQueue) do
+                local mult = (ef.pct / 100) * (ef.scaleWithPack and (1 + 0.25 * (extraCtx and extraCtx.packExtras or 0)) or 1.0)
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, baseDmg * mult, resolveDamageType(ef.ele))
             end
         end
     end
@@ -1355,65 +1862,184 @@ end)
 -----------------------------------
 -- Special / Utility Weaponskill Overrides (No default TP refund)
 -----------------------------------
+local moonlightMultCache = {}
+
+local function collectUtilityNodeData(player, wsID, tp, consumeNextWs)
+    local ws    = catalog.byId[wsID]
+    local tree  = talents.getTreeForWS(wsID)
+    local ranks = talents.getWSRanks(player, player:getMainJob(), wsID)
+
+    local data =
+    {
+        ws         = ws,
+        tree       = tree,
+        ranks      = ranks,
+        potencyPct = 0,
+        nextWsd    = 0,
+        effTp      = tp or 1000,
+        tpScale    = 1.0,
+        scBonus    = 0,
+        enmity     = 0,
+        subtleBlow = 0,
+        macc       = 0,
+        hits       = 1,
+        wscMnd     = 0,
+        ftpCurve   = nil,
+        ftpRank    = 0,
+        ftpMaxRank = 6,
+    }
+
+    if consumeNextWs ~= false then
+        local nextExp = player:getLocalVar('OX_NEXT_WS_EXP')
+        if nextExp > 0 and os.time() <= nextExp then
+            local nextWsd = player:getLocalVar('OX_NEXT_WS_WSD')
+            if nextWsd > 0 then
+                data.nextWsd = nextWsd
+            end
+            local nextTp = player:getLocalVar('OX_NEXT_WS_TP')
+            if nextTp > 0 then
+                data.effTp = math.min(3000, data.effTp + nextTp)
+            end
+            local nextMacc = player:getLocalVar('OX_NEXT_WS_MACC')
+            if nextMacc > 0 then
+                data.macc = data.macc + nextMacc
+            end
+        end
+        if nextExp > 0 then
+            player:setLocalVar('OX_NEXT_WS_WSD', 0)
+            player:setLocalVar('OX_NEXT_WS_TP', 0)
+            player:setLocalVar('OX_NEXT_WS_ACC', 0)
+            player:setLocalVar('OX_NEXT_WS_MACC', 0)
+            player:setLocalVar('OX_NEXT_WS_EXP', 0)
+        end
+    end
+
+    for _, node in ipairs(tree and tree.nodes or {}) do
+        local r   = ranks[node.key] or 0
+        local eff = node.effect
+        if r > 0 and type(eff) == 'table' then
+            if eff.ftpCurve then
+                data.ftpCurve   = eff.ftpCurve
+                data.ftpRank    = r
+                data.ftpMaxRank = node.maxRank or 6
+            end
+            if eff.potencyPct then
+                data.potencyPct = data.potencyPct + (pickRankVal(eff.potencyPct, r) or 0)
+            end
+            if eff.wsd then
+                data.potencyPct = data.potencyPct + (pickRankVal(eff.wsd, r) or 0)
+            end
+            if eff.tpBonus then
+                local addTp = pickRankVal(eff.tpBonus, r) or 0
+                if addTp ~= 0 then
+                    data.effTp = math.min(3000, data.effTp + addTp)
+                end
+            end
+            if eff.scBonus then
+                data.scBonus = data.scBonus + (pickRankVal(eff.scBonus, r) or 0)
+            end
+            if eff.enmity then
+                data.enmity = data.enmity + (pickRankVal(eff.enmity, r) or 0)
+            end
+            if eff.subtleBlow then
+                data.subtleBlow = data.subtleBlow + (pickRankVal(eff.subtleBlow, r) or 0)
+            end
+            if eff.macc then
+                data.macc = data.macc + (pickRankVal(eff.macc, r) or 0)
+            end
+            if eff.hits then
+                local h = pickRankVal(eff.hits, r) or 1
+                if h > data.hits then
+                    data.hits = h
+                end
+            end
+            if type(eff.wsc) == 'table' and eff.wsc.mnd then
+                data.wscMnd = data.wscMnd + (pickRankVal(eff.wsc.mnd, r) or 0)
+            end
+            if eff.stance and isStanceActive(player, eff.stance) then
+                if eff.stance.wsd then
+                    data.potencyPct = data.potencyPct + (pickRankVal(eff.stance.wsd, r) or 0)
+                end
+                if eff.stance.tpBonus then
+                    local addTp = pickRankVal(eff.stance.tpBonus, r) or 0
+                    if addTp ~= 0 then
+                        data.effTp = math.min(3000, data.effTp + addTp)
+                    end
+                end
+                if eff.stance.macc then
+                    data.macc = data.macc + (pickRankVal(eff.stance.macc, r) or 0)
+                end
+            end
+        end
+    end
+
+    data.tpScale = 1.0 + math.max(0, data.effTp - (tp or 1000)) / 2000
+    if consumeNextWs ~= false then
+        applySkillchainVars(player, ws, ranks, data.scBonus)
+    end
+    return data
+end
+
+local function withUtilityTempMods(player, data, fn)
+    local applied = {}
+    local function pushMod(modId, val)
+        if modId ~= nil and val ~= nil and val ~= 0 then
+            table.insert(applied, { mod = modId, amount = val })
+            player:addMod(modId, val)
+        end
+    end
+
+    pushMod(xi.mod.ENMITY, data.enmity)
+    pushMod(xi.mod.SUBTLE_BLOW, data.subtleBlow)
+    pushMod(xi.mod.MACC, data.macc)
+
+    local ok, r1, r2, r3, r4 = pcall(fn)
+    for i = #applied, 1, -1 do
+        player:delMod(applied[i].mod, applied[i].amount)
+    end
+    if not ok then
+        error(r1)
+    end
+    return r1, r2, r3, r4
+end
+
 m:addOverride('xi.actions.weaponskills.atonement.onUseWeaponSkill', function(player, target, wsID, tp, primary, action, taChar)
     if player == nil or not player:isPC() then
         return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    local ws = catalog.byId[wsID]
-    local ranks = talents.getWSRanks(player, player:getMainJob(), wsID)
-    applySkillchainVars(player, ws, ranks, 0)
-
-    local capRank = ranks.capstone or 0
-    local ftpRank = ranks.ftp or 0
-    local wsdBonus = capRank * 10
-
-    if wsdBonus > 0 then
-        player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, wsdBonus)
+    if target == nil or target:getObjType() ~= xi.objType.MOB then
+        return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    local ok, tpHits, extraHits, crit, dmg = pcall(super, player, target, wsID, tp, primary, action, taChar)
+    local data = collectUtilityNodeData(player, wsID, tp, true)
+    local tpHits, extraHits, crit, dmg = withUtilityTempMods(player, data, function()
+        return super(player, target, wsID, data.effTp, primary, action, taChar)
+    end)
 
-    if wsdBonus > 0 then
-        player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, wsdBonus)
-    end
-
-    if not ok then
-        error(tpHits)
-    end
-
-    if dmg and dmg > 0 and ftpRank > 0 and target:getObjType() == xi.objType.MOB then
-        local bonusDmg = math.floor(dmg * ftpRank * 0.10)
-        if bonusDmg > 0 then
+    local totalPct = data.potencyPct + data.nextWsd
+    if dmg and dmg > 0 and totalPct > 0 then
+        local bonusDmg = math.floor(dmg * totalPct / 100)
+        if bonusDmg > 0 and target:isAlive() then
             target:takeDamage(bonusDmg, player, xi.attackType.BREATH, xi.damageType.ELEMENTAL)
             dmg = dmg + bonusDmg
         end
     end
 
+    dmg = applyPostDamageTraits(player, target, wsID, data.ranks, dmg or 0, {})
     return tpHits, extraHits, crit, dmg
 end)
-
-local function getUtilityScale(player, wsID)
-    local ranks = talents.getWSRanks(player, player:getMainJob(), wsID)
-    local ftpRank = ranks.ftp or 0
-    local potRank = ranks.potency or 0
-    local capRank = ranks.capstone or 0
-
-    local mult = 1.0 + (ftpRank * 0.10) + (potRank * 0.15) + (capRank * 0.18)
-    return mult, ranks
-end
 
 m:addOverride('xi.actions.weaponskills.spirits_within.onUseWeaponSkill', function(player, target, wsID, tp, primary, action, taChar)
     if player == nil or not player:isPC() then
         return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    local mult, ranks = getUtilityScale(player, wsID)
-    applySkillchainVars(player, catalog.byId[wsID], ranks, 0)
-
-    local ftpCurve = talents.calcFtpAtRank({ 1.0, 4.0, 8.0 }, ranks.ftp or 0, 6)
-    local tpRatio = xi.weaponskills.fTP(tp, ftpCurve)
-    local dmg = math.floor(player:getHP() * 0.125 * tpRatio * mult)
+    local data = collectUtilityNodeData(player, wsID, tp, true)
+    local ftpCurve = data.ftpRank > 0 and data.ftpCurve and applyCustomFtpCurve(data.ftpCurve, data.ftpRank, data.ftpMaxRank) or { 1.0, 1.0, 1.0 }
+    local tpRatio  = xi.weaponskills.fTP(data.effTp, ftpCurve)
+    local mult     = 1.0 + (data.potencyPct + data.nextWsd) / 100
+    local dmg      = math.floor(player:getHP() * 0.125 * tpRatio * mult)
 
     dmg = math.floor(dmg * xi.combat.damage.calculateDamageAdjustment(target, false, false, false, true))
     dmg = math.floor(dmg * xi.spells.damage.calculateAbsorption(target, xi.element.NONE, false, false, false, true))
@@ -1445,16 +2071,27 @@ m:addOverride('xi.actions.weaponskills.spirits_within.onUseWeaponSkill', functio
         finalDmg        = dmg,
     }
 
-    dmg = xi.weaponskills.takeWeaponskillDamage(target, player, {}, primary, attack, calcParams, action)
+    dmg = withUtilityTempMods(player, data, function()
+        return xi.weaponskills.takeWeaponskillDamage(target, player, {}, primary, attack, calcParams, action)
+    end)
+
+    dmg = applyPostDamageTraits(player, target, wsID, data.ranks, dmg or 0, {})
     return calcParams.tpHitsLanded, calcParams.extraHitsLanded, calcParams.criticalHit, dmg
 end)
 
 m:addOverride('xi.actions.weaponskills.myrkr.onUseWeaponSkill', function(player, target, wsID, tp, primary, action, taChar)
-    local tpHits, extraHits, crit, mp = super(player, target, wsID, tp, primary, action, taChar)
-    if player ~= nil and player:isPC() then
-        local mult = getUtilityScale(player, wsID)
-        mp = math.floor(player:getMaxMP() * 0.20 * mult)
+    if player == nil or not player:isPC() then
+        return super(player, target, wsID, tp, primary, action, taChar)
     end
+
+    local data = collectUtilityNodeData(player, wsID, tp, true)
+    local tpHits, extraHits, crit = withUtilityTempMods(player, data, function()
+        return super(player, target, wsID, data.effTp, primary, action, taChar)
+    end)
+
+    local mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
+    local mp   = math.floor(player:getMaxMP() * 0.20 * mult)
+    applyPostDamageTraits(player, target, wsID, data.ranks, mp, {})
     return tpHits, extraHits, crit, mp
 end)
 
@@ -1463,10 +2100,15 @@ m:addOverride('xi.actions.weaponskills.dagan.onUseWeaponSkill', function(player,
         return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    xi.aftermath.addStatusEffect(player, tp, xi.slot.MAIN, xi.aftermath.type.EMPYREAN)
-    local mult = getUtilityScale(player, wsID)
+    local data = collectUtilityNodeData(player, wsID, tp, true)
+    withUtilityTempMods(player, data, function()
+        xi.aftermath.addStatusEffect(player, data.effTp, xi.slot.MAIN, xi.aftermath.type.EMPYREAN)
+    end)
+
+    local mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
     player:addHP(math.floor(player:getMaxHP() * 0.22 * mult))
     local mp = math.floor(player:getMaxMP() * 0.15 * mult)
+    applyPostDamageTraits(player, target, wsID, data.ranks, mp, {})
     return 0, 0, false, mp
 end)
 
@@ -1475,9 +2117,11 @@ m:addOverride('xi.actions.weaponskills.starlight.onUseWeaponSkill', function(pla
         return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    local mult = getUtilityScale(player, wsID)
-    local lvl = math.max(10, player:getSkillLevel(xi.skill.CLUB))
-    local mp = math.floor(math.max(10, lvl * 0.11) * 2.0 * mult * xi.settings.main.WEAPON_SKILL_POWER)
+    local data = collectUtilityNodeData(player, wsID, tp, true)
+    local mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
+    local lvl  = math.max(10, player:getSkillLevel(xi.skill.CLUB))
+    local mp   = math.floor(math.max(10, lvl * 0.11) * 2.0 * mult * xi.settings.main.WEAPON_SKILL_POWER)
+    applyPostDamageTraits(player, target, wsID, data.ranks, mp, {})
     return 1, 0, false, mp
 end)
 
@@ -1486,36 +2130,44 @@ m:addOverride('xi.actions.weaponskills.moonlight.onUseWeaponSkill', function(pla
         return super(player, target, wsID, tp, primary, action, taChar)
     end
 
-    local mult = getUtilityScale(player, wsID)
-    local lvl = math.max(10, player:getSkillLevel(xi.skill.CLUB))
-    local mp = math.floor(math.max(10, lvl * 0.11) * 2.25 * mult * xi.settings.main.WEAPON_SKILL_POWER)
-    return 1, 0, false, mp
+    local actorId = player:getID()
+    local isPrimary = (primary == true) or (target == player) or (moonlightMultCache[actorId] == nil) or ((os.time() - moonlightMultCache[actorId].at) > 1)
+    local mult
+    if isPrimary then
+        local data = collectUtilityNodeData(player, wsID, tp, true)
+        mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
+        moonlightMultCache[actorId] = { at = os.time(), mult = mult }
+        local lvl = math.max(10, player:getSkillLevel(xi.skill.CLUB))
+        local mp  = math.floor(math.max(10, lvl * 0.11) * 2.25 * mult * xi.settings.main.WEAPON_SKILL_POWER)
+        applyPostDamageTraits(player, target, wsID, data.ranks, mp, {})
+        return 1, 0, false, mp
+    else
+        mult = moonlightMultCache[actorId].mult
+        local lvl = math.max(10, player:getSkillLevel(xi.skill.CLUB))
+        local mp  = math.floor(math.max(10, lvl * 0.11) * 2.25 * mult * xi.settings.main.WEAPON_SKILL_POWER)
+        return 1, 0, false, mp
+    end
 end)
 
-local function overrideEnergyDrainOrSteal(player, target, wsID, action, baseMult)
-    local ws = catalog.byId[wsID]
-    local ranks = talents.getWSRanks(player, player:getMainJob(), wsID)
-    applySkillchainVars(player, ws, ranks, 0)
-
-    local ftpRank = ranks.ftp or 0
-    local wscRank = ranks.wsc_mnd or 0
-    local capRank = ranks.capstone or 0
-
+local function overrideEnergyDrainOrSteal(player, target, wsID, tp, action, baseMult)
+    local data = collectUtilityNodeData(player, wsID, tp, true)
     local skill = math.max(10, player:getSkillLevel(xi.skill.DAGGER))
-    local wscWeight = talents.calcWscAtRank(1.0, wscRank, 7)
-    local wsc = player:getStat(xi.mod.MND) * wscWeight
-    local mult = baseMult + (ftpRank * 0.22) + (capRank * 0.30)
+    local wsc   = player:getStat(xi.mod.MND) * (data.wscMnd or 0)
+    local mult  = baseMult * (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
     local mpRestored = math.floor((math.floor(skill * 0.11) + wsc) * mult)
 
-    if target:isUndead() then
-        mpRestored = 0
-    else
-        mpRestored = target:delMP(mpRestored)
-        mpRestored = player:addMP(mpRestored)
-    end
+    withUtilityTempMods(player, data, function()
+        if target:isUndead() then
+            mpRestored = 0
+        else
+            mpRestored = target:delMP(mpRestored)
+            mpRestored = player:addMP(mpRestored)
+        end
+    end)
 
     action:messageID(target:getID(), xi.msg.basic.SKILL_DRAIN_MP)
     action:param(target:getID(), mpRestored)
+    applyPostDamageTraits(player, target, wsID, data.ranks, mpRestored, {})
     return 1, 0, false, mpRestored
 end
 
@@ -1523,15 +2175,16 @@ m:addOverride('xi.actions.weaponskills.energy_steal.onUseWeaponSkill', function(
     if player == nil or not player:isPC() then
         return super(player, target, wsID, tp, primary, action, taChar)
     end
-    return overrideEnergyDrainOrSteal(player, target, wsID, action, 1.0)
+    return overrideEnergyDrainOrSteal(player, target, wsID, tp, action, 1.0)
 end)
 
 m:addOverride('xi.actions.weaponskills.energy_drain.onUseWeaponSkill', function(player, target, wsID, tp, primary, action, taChar)
     if player == nil or not player:isPC() then
         return super(player, target, wsID, tp, primary, action, taChar)
     end
-    return overrideEnergyDrainOrSteal(player, target, wsID, action, 1.25)
+    return overrideEnergyDrainOrSteal(player, target, wsID, tp, action, 1.25)
 end)
+
 
 -----------------------------------
 -- Player Lifecycle Auto-Sync for Ashita UI
