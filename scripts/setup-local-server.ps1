@@ -69,7 +69,18 @@ Push-Location $ServerDir
 try {
     # 2. Apply OverlordsXI engine patches idempotently
     $patchFiles = Get-ChildItem -Path (Join-Path $RepoRoot 'patches') -Filter '*.patch' | Sort-Object Name
-    foreach ($patch in $patchFiles) {
+    function Get-PatchTargetFiles([string]$PatchPath) {
+        $files = @()
+        foreach ($line in (Get-Content -Path $PatchPath)) {
+            if ($line -match '^\+\+\+ b/(.+)$') {
+                $files += $matches[1].Trim()
+            }
+        }
+        return $files
+    }
+
+    for ($i = 0; $i -lt $patchFiles.Count; $i++) {
+        $patch = $patchFiles[$i]
         Write-Host "==> Checking patch: $($patch.Name)" -ForegroundColor Cyan
 
         $prevEap = $ErrorActionPreference
@@ -84,10 +95,37 @@ try {
         }
 
         $ErrorActionPreference = 'Continue'
-        git apply --check $patch.FullName
+        git apply --check $patch.FullName 2>&1 | Out-Null
         $checkCode = $LASTEXITCODE
         $ErrorActionPreference = $prevEap
+
         if ($checkCode -ne 0) {
+            # If a later patch modifying the same file is already applied (e.g. 0005 superseding 0004), skip cleanly
+            $curTargets = Get-PatchTargetFiles $patch.FullName
+            $supersededBy = $null
+            for ($j = $i + 1; $j -lt $patchFiles.Count; $j++) {
+                $later = $patchFiles[$j]
+                $laterTargets = Get-PatchTargetFiles $later.FullName
+                $overlaps = (@($curTargets | Where-Object { $laterTargets -contains $_ })).Count -gt 0
+                if ($overlaps) {
+                    $prevEap2 = $ErrorActionPreference
+                    $ErrorActionPreference = 'Continue'
+                    git apply --reverse --check $later.FullName 2>&1 | Out-Null
+                    $laterApplied = ($LASTEXITCODE -eq 0)
+                    $ErrorActionPreference = $prevEap2
+                    if ($laterApplied) {
+                        $supersededBy = $later.Name
+                        break
+                    }
+                }
+            }
+
+            if ($supersededBy) {
+                Write-Host "    Already applied (superseded by $supersededBy), skipping." -ForegroundColor DarkGray
+                continue
+            }
+
+            git apply --check $patch.FullName
             throw "Patch $($patch.Name) failed --check against $ServerDir."
         }
 

@@ -2,7 +2,7 @@ diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
 index 16b5626..a8e2c11 100644
 --- a/src/map/entities/char_entity.cpp
 +++ b/src/map/entities/char_entity.cpp
-@@ -1779,28 +1779,16 @@ void CCharEntity::OnWeaponSkillFinished(CWeaponSkillState& state, action_t& acti
+@@ -1779,23 +1779,16 @@ void CCharEntity::OnWeaponSkillFinished(CWeaponSkillState& state, action_t& acti
  
              if (primary)
              {
@@ -32,6 +32,3 @@ index 16b5626..a8e2c11 100644
                      this->SetLocalVar("OX_WS_SC1", 0);
                      this->SetLocalVar("OX_WS_SC2", 0);
                      this->SetLocalVar("OX_WS_SC3", 0);
-                 }
- 
-                 // See battleentity.h for REACTION class
