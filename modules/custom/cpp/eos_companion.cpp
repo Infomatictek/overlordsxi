@@ -109,7 +109,7 @@ bool IsSupportTarget(CPetEntity* PPet, CBattleEntity* PTarget)
 
 std::optional<SpellID> GetNaSpell(CBattleEntity* PTarget)
 {
-    auto* PEffects = PTarget->StatusEffectContainer;
+    auto* PEffects = PTarget->StatusEffectContainer.get();
 
     if (PEffects->HasStatusEffect(xi::StatusEffect::Petrification))
     {
@@ -345,9 +345,13 @@ void MaintainOrphicRefresh(CPetEntity* PPet, timer::time_point tick)
         PPet->StatusEffectContainer->DelStatusEffectSilent(EosRefreshEffect);
     }
 
-    auto PEosRefresh = std::make_unique<CStatusEffect>(EosRefreshEffect, 0, 0, 0s, EosRefreshDuration, 0, desired);
-    PEosRefresh->addMod(xi::Mod::REFRESH, static_cast<int16>(desired));
-    PPet->StatusEffectContainer->AddStatusEffect(std::move(PEosRefresh), EffectNotice::Silent);
+    if (PPet->StatusEffectContainer->AddStatusEffectSilent(EosRefreshEffect, 0, 0, 0s, EosRefreshDuration, 0, desired))
+    {
+        if (auto* PEosRefresh = PPet->StatusEffectContainer->GetStatusEffect(EosRefreshEffect))
+        {
+            PEosRefresh->addMod(xi::Mod::REFRESH, static_cast<int16>(desired));
+        }
+    }
 }
 
 } // namespace
