@@ -544,8 +544,13 @@ end
 -- T4 (Lv 62+, 35+ pts): 3 + 5 + 2 (SC)     = 10 pts
 -----------------------------------
 local CUSTOM_TREES = {}
+talents._customTrees = CUSTOM_TREES
 
 local function registerCustomH2H(wsId, spec)
+    CUSTOM_TREES[wsId] = spec
+end
+
+function talents.registerCustomWS(wsId, spec)
     CUSTOM_TREES[wsId] = spec
 end
 
@@ -568,6 +573,55 @@ local function h2hFtpCurveNode(ftpCurve, maxRank, customName, extraZeroDesc)
             local b = round2(1.0 + (ftpCurve[2] - 1.0) * t)
             local c = round2(1.0 + (ftpCurve[3] - 1.0) * t)
             return string.format('fTP: %.2f / %.2f / %.2f%s', a, b, c, rank >= mr and ' (MAX)' or '')
+        end,
+    }
+end
+
+function talents.makeCustomFtpNode(opts)
+    local mr = opts.maxRank or 6
+    local curve = opts.ftpCurve or { 1.00, 1.50, 2.00 }
+    local suffixFn = opts.suffixFn
+    return
+    {
+        key      = opts.key or 'ftp',
+        name     = opts.name or 'TP Scaling',
+        tier     = 1,
+        col      = 1,
+        maxRank  = mr,
+        ftpCurve = curve,
+        effect   = opts.effect,
+        describe = function(rank)
+            if rank <= 0 then
+                return opts.zeroDesc or string.format('fTP 1.0 -> %.2f/%.2f/%.2f%s', curve[1], curve[2], curve[3], opts.zeroSuffix or '')
+            end
+            local t = math.min(rank, mr) / mr
+            local a = round2(1.0 + (curve[1] - 1.0) * t)
+            local b = round2(1.0 + (curve[2] - 1.0) * t)
+            local c = round2(1.0 + (curve[3] - 1.0) * t)
+            local sfx = suffixFn and suffixFn(rank) or (rank >= mr and ' (MAX)' or '')
+            return string.format('fTP %.2f/%.2f/%.2f%s', a, b, c, sfx)
+        end,
+    }
+end
+
+function talents.makeSpecNode(opts)
+    local gate = talents.TIER_GATES[opts.tier]
+    return
+    {
+        key         = opts.key,
+        name        = opts.name,
+        tier        = opts.tier,
+        col         = opts.col,
+        reqWsPoints = opts.reqWsPoints ~= nil and opts.reqWsPoints or gate.reqWsPoints,
+        reqLevel    = opts.reqLevel ~= nil and opts.reqLevel or gate.reqLevel,
+        requires    = opts.requires,
+        maxRank     = opts.maxRank,
+        effect      = opts.effect,
+        describe    = function(rank)
+            if rank == 0 then
+                return opts.zeroDesc
+            end
+            return opts.rankDesc(rank)
         end,
     }
 end
@@ -1225,6 +1279,22 @@ registerCustomH2H(15,
             rankDesc = function(r) return string.format('+%d%% Crit, +%d%% Crit Dmg', r * 6, r * 5) end }),
     },
 })
+
+-----------------------------------
+-- Load Bespoke WS Trees (#16-#235, 192 WSs across 12 weapon/group modules)
+-----------------------------------
+require('modules/custom/lua/overlords_ws_trees_dagger')
+require('modules/custom/lua/overlords_ws_trees_sword')
+require('modules/custom/lua/overlords_ws_trees_gs')
+require('modules/custom/lua/overlords_ws_trees_axe')
+require('modules/custom/lua/overlords_ws_trees_gaxe')
+require('modules/custom/lua/overlords_ws_trees_scythe')
+require('modules/custom/lua/overlords_ws_trees_polearm')
+require('modules/custom/lua/overlords_ws_trees_katana')
+require('modules/custom/lua/overlords_ws_trees_gkatana')
+require('modules/custom/lua/overlords_ws_trees_club')
+require('modules/custom/lua/overlords_ws_trees_staff')
+require('modules/custom/lua/overlords_ws_trees_ranged')
 
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
