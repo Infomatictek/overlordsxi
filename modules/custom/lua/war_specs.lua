@@ -245,7 +245,7 @@ if xi.job and xi.job.WAR then
             description = 'Inspiring tactician: unlocks at Lv10 with Warcry on a 60s cooldown and shares your active Warrior JA buff with the entire party. Only 1 WAR JA stance active at a time.',
             highlights  =
             {
-                'Passives (Lv10/30/50+): +5/8/12% Max HP, +8/16/28 Attack, +6/12/20 Acc, +4/8/12 Store TP, +5/8/12 Enmity.',
+                'Passives (Lv10/30/50+): +5/8/12% Max HP, +8/16/28 Attack, +6/12/20 Acc, +4/8/12 Store TP.',
                 'Early & Rapid Warcry: Unlocked at Lv10 with a 60s cooldown (45s duration); shares your active JA buff to all allies.',
                 'Single-Stance Rule: Only 1 WAR JA buff (Berserk, Defender, Aggressor, Retaliation, Restraint) can be active at a time.',
                 'Berserk -> Warcry: Self +10% Atk (-10% DEF); Warcry brings Commander & all allies to +15% Attack & +100 TP Bonus.',
@@ -259,7 +259,6 @@ if xi.job and xi.job.WAR then
                     { xi.mod.ATT,     scaleTier(lvl, 8, 16, 28) },
                     { xi.mod.ACC,     scaleTier(lvl, 6, 12, 20) },
                     { xi.mod.STORETP, scaleTier(lvl, 4, 8, 12) },
-                    { xi.mod.ENMITY,  scaleTier(lvl, 5, 8, 12) },
                 }
             end,
             onApply = function(player)
