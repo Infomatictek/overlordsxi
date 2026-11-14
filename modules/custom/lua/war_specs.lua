@@ -304,7 +304,7 @@ if xi.job and xi.job.WAR then
                 'Club & Shield Mastery: +10/20/35 Club & Shield skill, +12/24/40 Shield DEF, +8/14/22% Block Rate, +15/25/40 Shield TP (+10% Block w/ Club+Shield).',
                 'Lower Damage Output: -25% Attack%, -25% Ranged Attack%, and -20% Weaponskill Damage.',
                 'Bloodthirsty Leech (Club+Shield): Club hits heal 1% Max HP + 0.2*Lv, Club WSs heal 3-5% Max HP, Shield Blocks heal 1.5% Max HP (2x under Blood Rage or Mighty Strikes).',
-                'Tank JAs: Defender (+35% DEF, -10% PDT, +15% Block), Blood Rage (-10% DT, +25 Enmity, Regen, 2x Leech), Warcry (-8% DT, +12 Enmity, 15% HP heal), Mighty Strikes (-25% DT, +50 Enmity, 2x Leech).',
+                'Tank JAs: Defender (+35% DEF, -10% PDT, +15% Block), Blood Rage (-10% DT, +25 Enmity, Regen, 2x Leech), Warcry (party -8% DT; self +12 Enmity & 15% HP heal), Mighty Strikes (-25% DT, +50 Enmity, 2x Leech).',
             },
             mods = function(_player, lvl)
                 return
@@ -641,11 +641,14 @@ m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability
         end
 
         local targetId = target:getID()
-        pendingWarcryMods[targetId] =
+        local mods =
         {
-            { xi.mod.DMG,    -800 },
-            { xi.mod.ENMITY, 12 },
+            { xi.mod.DMG, -800 },
         }
+        if isSelf then
+            table.insert(mods, { xi.mod.ENMITY, 12 })
+        end
+        pendingWarcryMods[targetId] = mods
         target:addStatusEffect(xi.effect.WARCRY, { power = 0, duration = duration, origin = player, subPower = merit })
         pendingWarcryMods[targetId] = nil
 
