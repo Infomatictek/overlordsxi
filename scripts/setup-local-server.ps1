@@ -151,9 +151,16 @@ try {
             Copy-Item -Path (Join-Path $srcSub '*') -Destination $dstSub -Recurse -Force
         }
     }
-    $staleWsSql = Join-Path $dstModules 'sql\ws_strip_skillchains.sql'
-    if (Test-Path $staleWsSql) {
-        Remove-Item -Path $staleWsSql -Force
+    $staleSqlFiles = @(
+        'sql\ws_strip_skillchains.sql',
+        'sql\war_specs.sql',
+        'sql\mnk_specs.sql'
+    )
+    foreach ($relSql in $staleSqlFiles) {
+        $stalePath = Join-Path $dstModules $relSql
+        if (Test-Path $stalePath) {
+            Remove-Item -Path $stalePath -Force
+        }
     }
 
     # 4. Update modules/init.txt idempotently
@@ -170,11 +177,16 @@ try {
     $initBytes = [System.IO.File]::ReadAllBytes($initPath)
     $hasBom = ($initBytes.Length -ge 3 -and $initBytes[0] -eq 0xEF -and $initBytes[1] -eq 0xBB -and $initBytes[2] -eq 0xBF)
 
+    $staleInitLines = @(
+        'custom/sql/ws_strip_skillchains.sql',
+        'custom/sql/war_specs.sql',
+        'custom/sql/mnk_specs.sql'
+    )
     $existingLines = [System.Collections.Generic.List[string]]::new()
     $removedStale = $false
     foreach ($l in (Get-Content -Path $initPath -ErrorAction SilentlyContinue)) {
         $clean = $l.TrimStart([char]0xFEFF)
-        if ($clean.Trim() -eq 'custom/sql/ws_strip_skillchains.sql') {
+        if ($staleInitLines -contains $clean.Trim()) {
             $removedStale = $true
             continue
         }

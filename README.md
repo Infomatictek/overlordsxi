@@ -24,17 +24,17 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/cpp/eos_companion.cpp` defines Eos support AI and Orphic Egg's Eos-only Refresh behavior.
 - `modules/custom/sql/eos_companion.sql` defines the ability row, pet row, mob pool, Eos spell list, custom status rows, and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
-- `modules/custom/sql/mnk_specs.sql` sets Counterstance to level 10 for Sensei MNK (non-Sensei MNK and `/MNK` subjobs below Lv45 remain gated in Lua).
 - Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
-Four small engine patches are still required:
+Five small engine patches are still required:
 
 - `patches/0001-allow-eos-custom-pet-and-effect-ids.patch` raises `MAX_PETID` from `128` to `129` and `MAX_EFFECTID` from `814` to `815`.
 - `patches/0002-eos-deterministic-level-and-subjob.patch` makes Eos spawn at the master's level and correctly initializes her SCH main job / SMN subjob levels.
 - `patches/0003-unlock-all-player-weaponskills.patch` unlocks all implemented player weaponskills at level 1 for any job wielding that weapon type (excluding NPC/event/unimplemented WSes).
 - `patches/0004-dynamic-ws-skillchain-traits.patch` reads per-cast `OX_WS_SC1..3` localVars inside `CCharEntity::OnWeaponSkillFinished` so talent-upgraded skillchain properties apply dynamically on each weaponskill.
+- `patches/0005-spec-ability-unlocks.patch` hooks `xi.overlords.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated early job abilities like Commander WAR's **Warcry** and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
 
-The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility. The fourth patch allows per-character talent ranks to customize or add skillchain properties (such as giving Sanguine Blade Compression / Gravitation / Darkness) without mutating shared server WS definitions.
+The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility. The fourth patch allows per-character talent ranks to customize or add skillchain properties (such as giving Sanguine Blade Compression / Gravitation / Darkness) without mutating shared server WS definitions. The fifth patch allows job crystals to dynamically grant and hide ability menu entries per character without lowering global retail `abilities.sql` levels.
 
 ## Client Launcher & Client Files
 
@@ -70,6 +70,7 @@ git apply C:\path\to\overlordsxi\patches\0001-allow-eos-custom-pet-and-effect-id
 git apply C:\path\to\overlordsxi\patches\0002-eos-deterministic-level-and-subjob.patch
 git apply C:\path\to\overlordsxi\patches\0003-unlock-all-player-weaponskills.patch
 git apply C:\path\to\overlordsxi\patches\0004-dynamic-ws-skillchain-traits.patch
+git apply C:\path\to\overlordsxi\patches\0005-spec-ability-unlocks.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_catalog.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_talents.lua .\modules\custom\lua\
@@ -87,8 +88,6 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\talent.
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\eos_companion.cpp .\modules\custom\cpp\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companion.sql .\modules\custom\sql\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\sch_specs.sql .\modules\custom\sql\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\war_specs.sql .\modules\custom\sql\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\mnk_specs.sql .\modules\custom\sql\
 ```
 
 Add these lines to `modules/init.txt`:
@@ -106,8 +105,6 @@ custom/lua/overlords_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
-custom/sql/war_specs.sql
-custom/sql/mnk_specs.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua

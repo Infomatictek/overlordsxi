@@ -1,0 +1,95 @@
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index abb04d9..c3719d7 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -11744,6 +11744,7 @@ void CLuaBaseEntity::recalculateAbilitiesTable()
+         charutils::BuildingCharPetAbilityTable(PChar, PPetEntity, PPetEntity->petID());
+     }
+ 
++    PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+     PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
+ }
+ 
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index ea78c77..f2b19f5 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6773,4 +6773,43 @@ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table
+     return table;
+ }
+ 
++auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>
++{
++    std::vector<uint16> abilities;
++    if (PChar == nullptr)
++    {
++        return abilities;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.getExtraAbilities");
++    if (!func.valid())
++    {
++        return abilities;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetExtraSpecAbilities: %s", err.what());
++        return abilities;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.get_type() == sol::type::table)
++    {
++        const sol::table retTbl = retObj.as<sol::table>();
++        for (std::size_t i = 1; i <= retTbl.size(); ++i)
++        {
++            const sol::object entry = retTbl[i];
++            if (entry.valid() && entry.is<uint16>())
++            {
++                abilities.push_back(entry.as<uint16>());
++            }
++        }
++    }
++
++    return abilities;
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index e4fbd7d..426eeaf 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -584,6 +584,8 @@ auto invokeBattlefieldEvent(uint16 battlefieldId, const std::string& eventName,
+ auto GetSynergyRecipeByID(uint32 id) -> sol::table;
+ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table;
+ 
++auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>;
++
+ }; // namespace luautils
+ 
+ //
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index 9338b24..93b5ec8 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -3478,6 +3478,17 @@ void BuildingCharAbilityTable(CCharEntity* PChar)
+         }
+     }
+ 
++    for (const auto extraAbilityId : luautils::GetExtraSpecAbilities(PChar))
++    {
++        if (auto* PAbility = ability::GetAbility(extraAbilityId); PAbility != nullptr)
++        {
++            if (PAbility->getID() < ABILITY_HEALING_RUBY && PAbility->getID() != ABILITY_PET_COMMANDS && CheckAbilityAddtype(PChar, PAbility))
++            {
++                learn(PAbility);
++            }
++        }
++    }
++
+     // To stop a character with no SJob to receive the traits with job = 0 in the DB.
+     if (PChar->GetSJob() == xi::Job::NONE)
+     {

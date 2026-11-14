@@ -10,8 +10,6 @@ custom/lua/overlords_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
-custom/sql/war_specs.sql
-custom/sql/mnk_specs.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua

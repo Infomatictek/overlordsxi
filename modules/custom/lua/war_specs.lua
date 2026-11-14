@@ -240,6 +240,7 @@ if xi.job and xi.job.WAR then
             role        = 'Support DPS / Party Tactician',
             icon        = 'blue_crystal',
             reqLevel    = 10,
+            extraAbilities = xi.jobAbility and xi.jobAbility.WARCRY and { xi.jobAbility.WARCRY } or nil,
             description = 'Inspiring tactician: unlocks at Lv10 with Warcry on a 60s cooldown and shares your active Warrior JA buff with the entire party. Only 1 WAR JA stance active at a time.',
             highlights  =
             {

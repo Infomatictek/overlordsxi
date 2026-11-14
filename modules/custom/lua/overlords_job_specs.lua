@@ -330,6 +330,48 @@ function spec.canSwap(player)
     return true, nil
 end
 
+local function syncAbilitiesTable(player)
+    if player ~= nil and player.recalculateAbilitiesTable then
+        player:recalculateAbilitiesTable()
+    end
+end
+
+function spec.getExtraAbilities(player)
+    local out = {}
+    if player == nil or (player.isPC and not player:isPC()) then
+        return out
+    end
+
+    local jobId = player.getMainJob and player:getMainJob() or nil
+    if jobId == nil then
+        return out
+    end
+
+    local active = spec.get(player, jobId)
+    if active == nil or not spec.isLevelEligible(player, jobId, active) then
+        return out
+    end
+
+    local raw = active.extraAbilities
+    if type(raw) == 'function' then
+        local lvl = player.getMainLvl and player:getMainLvl() or 1
+        raw = raw(player, lvl)
+    end
+
+    if type(raw) ~= 'table' then
+        return out
+    end
+
+    for _, abilId in ipairs(raw) do
+        local num = tonumber(abilId)
+        if num ~= nil and num > 0 then
+            table.insert(out, num)
+        end
+    end
+
+    return out
+end
+
 function spec.evaluateMods(player, entry)
     if entry == nil or entry.mods == nil then
         return {}
@@ -408,9 +450,13 @@ function spec.refreshPlayer(player)
     end
 
     local specChanged = (prev ~= nil) and (prev.jobId ~= jobId or prev.specId ~= activeId)
+    local abilitiesChanged = (prev == nil and activeId > 0) or specChanged
     spec.removeAppliedMods(player, specChanged)
 
     if active == nil then
+        if abilitiesChanged then
+            syncAbilitiesTable(player)
+        end
         return nil
     end
 
@@ -431,6 +477,10 @@ function spec.refreshPlayer(player)
 
     if (prev == nil or specChanged) and type(active.onApply) == 'function' then
         active.onApply(player, active)
+    end
+
+    if abilitiesChanged then
+        syncAbilitiesTable(player)
     end
 
     return active
@@ -542,6 +592,9 @@ function spec.clear(player, jobId, opts)
 
     if targetJob == player:getMainJob() then
         spec.refreshPlayer(player)
+        if prevId > 0 then
+            syncAbilitiesTable(player)
+        end
     end
 
     if opts.protoSync then
