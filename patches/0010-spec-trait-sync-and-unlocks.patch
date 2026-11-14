@@ -1,0 +1,156 @@
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+index b6a2dde..7597fff 100644
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -1353,6 +1353,11 @@ void CCharEntity::delTrait(CTrait* PTrait)
+     charutils::delTrait(this, PTrait->getID());
+ }
+ 
++auto CCharEntity::hasTrait(uint16 traitID) -> bool
++{
++    return CBattleEntity::hasTrait(traitID) || charutils::hasTrait(this, traitID) != 0;
++}
++
+ auto CCharEntity::ValidTarget(CBattleEntity* PInitiator, uint16 targetFlags) -> bool
+ {
+     TracyZoneScopedN("CCharEntity::ValidTarget");
+diff --git a/src/map/entities/char_entity.h b/src/map/entities/char_entity.h
+index 7ce59b9..2c95579 100644
+--- a/src/map/entities/char_entity.h
++++ b/src/map/entities/char_entity.h
+@@ -421,7 +421,7 @@ public:
+     uint8            m_Abilities[64]{};        // List of current abilities
+     uint8            m_LearnedAbilities[49]{}; // Learnable abilities (corsair rolls)
+     xi::bitset<128>  m_LearnedWeaponskills{};  // Learnable Weaponskills
+-    uint8            m_TraitList[18]{};        // List of active job traits in the form of a bit mask
++    uint8            m_TraitList[32]{};        // List of active job traits in the form of a bit mask
+     uint8            m_PetCommands[64]{};
+     uint8            m_WeaponSkills[32]{};
+     questlog_t       m_questLog[MAX_QUESTAREA]{};     // Quest List
+@@ -766,6 +766,7 @@ public:
+ 
+     void addTrait(CTrait*) override;
+     void delTrait(CTrait*) override;
++    auto hasTrait(uint16 traitID) -> bool override;
+ 
+     auto ValidTarget(CBattleEntity* PInitiator, uint16 targetFlags) -> bool override;
+     auto CanUseSpell(CSpell*) -> bool override;
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index a13e852..2683ae9 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6812,4 +6812,64 @@ auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>
+     return abilities;
+ }
+ 
++auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>
++{
++    std::vector<uint16> traitsList;
++    if (PChar == nullptr)
++    {
++        return traitsList;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.getExtraTraits");
++    if (!func.valid())
++    {
++        return traitsList;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetExtraSpecTraits: %s", err.what());
++        return traitsList;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.get_type() == sol::type::table)
++    {
++        const sol::table retTbl = retObj.as<sol::table>();
++        for (std::size_t i = 1; i <= retTbl.size(); ++i)
++        {
++            const sol::object entry = retTbl[i];
++            if (entry.valid() && entry.is<uint16>())
++            {
++                traitsList.push_back(entry.as<uint16>());
++            }
++        }
++    }
++
++    return traitsList;
++}
++
++void OnTraitsTableBuilt(CCharEntity* PChar)
++{
++    if (PChar == nullptr)
++    {
++        return;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.onTraitsRebuild");
++    if (!func.valid())
++    {
++        return;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::OnTraitsTableBuilt: %s", err.what());
++    }
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index 426eeaf..6542c9f 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -585,6 +585,8 @@ auto GetSynergyRecipeByID(uint32 id) -> sol::table;
+ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table;
+ 
+ auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>;
++auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>;
++void OnTraitsTableBuilt(CCharEntity* PChar);
+ 
+ }; // namespace luautils
+ 
+diff --git a/src/map/trait.h b/src/map/trait.h
+index 2abac2c..9c082e5 100644
+--- a/src/map/trait.h
++++ b/src/map/trait.h
+@@ -159,7 +159,7 @@ enum TRAITTYPE
+     TRAIT_TANDEM_BLOW         = 138,
+ };
+ 
+-#define MAX_TRAIT_ID 139
++#define MAX_TRAIT_ID 256
+ 
+ class CTrait
+ {
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index 262763d..d9dfbb8 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -3807,6 +3807,19 @@ void BuildingCharTraitsTable(CCharEntity* PChar)
+ 
+     PChar->m_magicEvasion = battleutils::GetMaxSkill(12, mlvl); // Player MEVA is Rank G
+     PChar->addModifier(xi::Mod::MEVA, PChar->m_magicEvasion);
++
++    if (PChar->GetLocalVar("OX_SPEC_SYNCED") != 0)
++    {
++        luautils::OnTraitsTableBuilt(PChar);
++    }
++
++    for (const auto extraTraitId : luautils::GetExtraSpecTraits(PChar))
++    {
++        if (extraTraitId > 0 && extraTraitId < MAX_TRAIT_ID)
++        {
++            charutils::addTrait(PChar, extraTraitId);
++        }
++    }
+ }
+ 
+ /************************************************************************

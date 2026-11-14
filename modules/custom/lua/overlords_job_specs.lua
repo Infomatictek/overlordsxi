@@ -336,23 +336,13 @@ local function syncAbilitiesTable(player)
     end
 end
 
-function spec.getExtraAbilities(player)
+local function evalIdList(player, entry, fieldName)
     local out = {}
-    if player == nil or (player.isPC and not player:isPC()) then
+    if entry == nil or player == nil then
         return out
     end
 
-    local jobId = player.getMainJob and player:getMainJob() or nil
-    if jobId == nil then
-        return out
-    end
-
-    local active = spec.get(player, jobId)
-    if active == nil or not spec.isLevelEligible(player, jobId, active) then
-        return out
-    end
-
-    local raw = active.extraAbilities
+    local raw = entry[fieldName]
     if type(raw) == 'function' then
         local lvl = player.getMainLvl and player:getMainLvl() or 1
         raw = raw(player, lvl)
@@ -362,14 +352,55 @@ function spec.getExtraAbilities(player)
         return out
     end
 
-    for _, abilId in ipairs(raw) do
-        local num = tonumber(abilId)
+    for _, entryId in ipairs(raw) do
+        local num = tonumber(entryId)
         if num ~= nil and num > 0 then
             table.insert(out, num)
         end
     end
 
     return out
+end
+
+local function listsEqual(a, b)
+    if a == b then
+        return true
+    end
+    if type(a) ~= 'table' or type(b) ~= 'table' or #a ~= #b then
+        return false
+    end
+    for i = 1, #a do
+        if a[i] ~= b[i] then
+            return false
+        end
+    end
+    return true
+end
+
+local function getActiveEntryExtraIds(player, fieldName)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return {}
+    end
+
+    local jobId = player.getMainJob and player:getMainJob() or nil
+    if jobId == nil then
+        return {}
+    end
+
+    local active = spec.get(player, jobId)
+    if active == nil or not spec.isLevelEligible(player, jobId, active) then
+        return {}
+    end
+
+    return evalIdList(player, active, fieldName)
+end
+
+function spec.getExtraAbilities(player)
+    return getActiveEntryExtraIds(player, 'extraAbilities')
+end
+
+function spec.getExtraTraits(player)
+    return getActiveEntryExtraIds(player, 'extraTraits')
 end
 
 function spec.evaluateMods(player, entry)
@@ -426,10 +457,29 @@ function spec.removeAppliedMods(player, invokeOnRemove)
     end
 end
 
-function spec.refreshPlayer(player)
+local function ensureSessionInitialized(player)
+    if player == nil or not player.getLocalVar then
+        return
+    end
+
+    if player:getLocalVar('OX_SPEC_SYNCED') == 0 then
+        local charKey = getCharKey(player)
+        if charKey ~= nil then
+            spec.appliedByCharId[charKey] = nil
+        end
+        if player.setLocalVar then
+            player:setLocalVar('OX_SPEC_SYNCED', 1)
+        end
+    end
+end
+
+function spec.refreshPlayer(player, opts)
+    opts = opts or {}
     if player == nil or (player.isPC and not player:isPC()) then
         return nil
     end
+
+    ensureSessionInitialized(player)
 
     local charKey = getCharKey(player)
     local jobId = player:getMainJob()
@@ -439,22 +489,33 @@ function spec.refreshPlayer(player)
     local active = eligible and stored or nil
     local activeId = active and active.id or 0
     local prev = spec.appliedByCharId[charKey]
+    local extraAbilities = active and evalIdList(player, active, 'extraAbilities') or {}
+    local extraTraits = active and evalIdList(player, active, 'extraTraits') or {}
 
     if
         prev ~= nil and
         prev.jobId == jobId and
         prev.specId == activeId and
-        prev.level == lvl
+        prev.level == lvl and
+        listsEqual(prev.extraAbilities or {}, extraAbilities) and
+        listsEqual(prev.extraTraits or {}, extraTraits)
     then
         return active
     end
 
     local specChanged = (prev ~= nil) and (prev.jobId ~= jobId or prev.specId ~= activeId)
-    local abilitiesChanged = (prev == nil and activeId > 0) or specChanged
+    local prevAbilities = prev and prev.extraAbilities or {}
+    local prevTraits = prev and prev.extraTraits or {}
+    local tablesChanged =
+        (not listsEqual(prevAbilities, extraAbilities)) or
+        (not listsEqual(prevTraits, extraTraits)) or
+        (prev == nil and activeId > 0) or
+        specChanged
+
     spec.removeAppliedMods(player, specChanged)
 
     if active == nil then
-        if abilitiesChanged then
+        if tablesChanged and not opts.skipSync then
             syncAbilitiesTable(player)
         end
         return nil
@@ -469,18 +530,51 @@ function spec.refreshPlayer(player)
 
     spec.appliedByCharId[charKey] =
     {
-        jobId  = jobId,
-        specId = active.id,
-        level  = lvl,
-        mods   = mods,
+        jobId          = jobId,
+        specId         = active.id,
+        level          = lvl,
+        mods           = mods,
+        extraAbilities = extraAbilities,
+        extraTraits    = extraTraits,
     }
 
     if (prev == nil or specChanged) and type(active.onApply) == 'function' then
         active.onApply(player, active)
     end
 
-    if abilitiesChanged then
+    if tablesChanged and not opts.skipSync then
         syncAbilitiesTable(player)
+    end
+
+    return active
+end
+
+function spec.onTraitsRebuild(player)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return nil
+    end
+
+    local charKey = getCharKey(player)
+    local prev = spec.appliedByCharId[charKey]
+    local prevJobId = prev and prev.jobId or nil
+    local prevLvl = prev and prev.level or nil
+    local prevSpecId = prev and prev.specId or nil
+
+    local active = spec.refreshPlayer(player, { skipSync = true })
+    local curJobId = player.getMainJob and player:getMainJob() or nil
+    local curLvl = player.getMainLvl and player:getMainLvl() or 1
+    local curSpecId = active and active.id or 0
+
+    if
+        prev == nil or
+        prevJobId ~= curJobId or
+        prevLvl ~= curLvl or
+        prevSpecId ~= curSpecId
+    then
+        spec.sendState(player, curJobId)
+        if xi.overlords.wsTalents and xi.overlords.wsTalents.sendMetaAndSpent then
+            xi.overlords.wsTalents.sendMetaAndSpent(player)
+        end
     end
 
     return active
@@ -490,6 +584,8 @@ function spec.ensureUpToDate(player)
     if player == nil or (player.isPC and not player:isPC()) then
         return nil
     end
+
+    ensureSessionInitialized(player)
 
     local charKey = getCharKey(player)
     local jobId = player:getMainJob()
@@ -824,6 +920,7 @@ if xi.job and xi.job.SCH then
             role           = 'Light Arts / Eos Support',
             icon           = 'white_prism',
             extraAbilities = { 231 },
+            extraTraits    = { 144 },
             description    = 'Light Arts spec: Call Eos faerie companion, safer Sublimation, and automatic Accession for Cure and Regen spells.',
             highlights     =
             {
@@ -840,6 +937,7 @@ if xi.job and xi.job.SCH then
             role           = 'Dark Arts / Titania & Helix',
             icon           = 'onyx_tome',
             extraAbilities = { 289 },
+            extraTraits    = { 145 },
             description    = 'Dark Arts spec: Call Titania dark faerie companion, permanent Ebullience, stronger Helix spells, and improved elemental casting.',
             highlights     =
             {

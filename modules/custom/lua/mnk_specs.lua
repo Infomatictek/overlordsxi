@@ -151,6 +151,7 @@ if xi.job and xi.job.MNK then
             icon        = 'jade_orb',
             reqLevel    = 10,
             extraAbilities = xi.jobAbility and xi.jobAbility.COUNTERSTANCE and { xi.jobAbility.COUNTERSTANCE } or nil,
+            extraTraits    = { 143 },
             description = 'Agile staff master (Lv10+): evades and parries incoming blows with a Staff, ripostes missed or parried strikes, and anchors aggro through Counterstance.',
             highlights  =
             {

@@ -10,7 +10,7 @@ Most of the customization is packaged as LandSandBoat modules:
 
 - `modules/custom/lua/eos_companion.lua` defines the new ability behavior and the Eos-only Regen spell override.
 - `modules/custom/lua/overlords_job_specs.lua` defines the reusable Job Crystal / Spec registry, session-safe passive mod engine, item ID resolver, `[OXSPEC]` sync helpers, and Crystal Socket `0x11F`/`0x1FF` Lua bridge helpers (`getCrystalSnapshot`, `getCrystalCatalog`, `handleCrystalSelect`).
-- `modules/custom/lua/overlords_job_spec_runtime.lua` refreshes active job crystal passive mods across login, zoning, and level changes.
+- `modules/custom/lua/overlords_job_spec_runtime.lua` refreshes active job crystal passive mods across login, zoning, job changes, level changes, and level syncs (coordinated with `patches/0010-spec-trait-sync-and-unlocks.patch`).
 - `modules/custom/lua/overlords_ws_catalog.lua` stores the original LandSandBoat profiles (including skillchains, drains, debuffs, AoE, enmity, and RMEA flags) for all 207 implemented player weaponskills.
 - `modules/custom/lua/overlords_ws_talents.lua` defines the per-weaponskill 4-tier (56-point) talent tree engine, bespoke tree registration API, bit-packed `char_vars` persistence, and Ashita v4 sync protocol.
 - `modules/custom/lua/overlords_ws_tree_helpers.lua` & `modules/custom/lua/overlords_ws_trees_*.lua` define all 192 bespoke post-H2H (`#16`–`#235`) 4-tier job-themed weaponskill trees across Dagger, Sword, Great Sword, Axe, Great Axe, Scythe, Polearm, Katana, Great Katana, Club, Staff, and Archery/Marksmanship (plus `Maru Kala`).
@@ -26,7 +26,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
-Nine small engine patches are required:
+Ten small engine patches are required:
 
 - `patches/0001-allow-eos-custom-pet-and-effect-ids.patch` raises `MAX_PETID` from `128` to `129` and `MAX_EFFECTID` from `814` to `815`.
 - `patches/0002-eos-deterministic-level-and-subjob.patch` makes Eos spawn at the master's level and correctly initializes her SCH main job / SMN subjob levels.
@@ -37,8 +37,9 @@ Nine small engine patches are required:
 - `patches/0007-spec-ability-unlocks.patch` hooks `xi.overlords.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated JAs like **Call Eos**, **Call Titania**, Commander WAR's **Warcry**, and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
 - `patches/0008-titania-sage-pet.patch` raises `MAX_PETID` to `130` (`PETID_FAERIE_TITANIA = 129`) and deterministically spawns Titania at the master's level with `BLM` main job and `RDM` subjob.
 - `patches/0009-crystal-socket-packets.patch` adds custom packets `0x11F` (`GP_CLI_COMMAND_CRYSTAL_SOCKET`, C2S) and `0x1FF` (`GP_SERV_COMMAND_CRYSTAL_COLLECTION` `CRYS` / `GP_SERV_COMMAND_CRYSTAL_CATALOG` `CRYC`, S2C) backed by `xi.overlords.spec` for the Ashita v4 `crystalsocket` Equipment UI.
+- `patches/0010-spec-trait-sync-and-unlocks.patch` expands `MAX_TRAIT_ID` / `CCharEntity::m_TraitList` to `256` (`32` bytes matching `GP_SERV_COMMAND_COMMAND_DATA`), overrides `CCharEntity::hasTrait`, refreshes spec crystal mods/listeners/UI on every `charutils::BuildingCharTraitsTable` rebuild (job change, subjob change, level change, level sync), and injects crystal-gated custom Job Traits (`xi.overlords.spec.getExtraTraits`) directly into the Traits menu.
 
-The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`–`0005` power the per-character weaponskill unlock and talent skillchain system. Patch `0007` allows job crystals to dynamically grant and hide ability menu entries per character without lowering global retail `abilities.sql` levels.
+The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`–`0005` power the per-character weaponskill unlock and talent skillchain system. Patches `0007` and `0010` allow job crystals to dynamically grant and hide ability and trait menu entries per character and keep crystal passives synchronized across all job/level/sync transitions.
 
 ## Client Launcher & Client Files
 
@@ -79,6 +80,7 @@ git apply C:\path\to\overlordsxi\patches\0006-eos-status-effect-params.patch
 git apply C:\path\to\overlordsxi\patches\0007-spec-ability-unlocks.patch
 git apply C:\path\to\overlordsxi\patches\0008-titania-sage-pet.patch
 git apply C:\path\to\overlordsxi\patches\0009-crystal-socket-packets.patch
+git apply C:\path\to\overlordsxi\patches\0010-spec-trait-sync-and-unlocks.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_catalog.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_talents.lua .\modules\custom\lua\
@@ -136,6 +138,7 @@ The overlay updates:
 - ability display ID `801` (`289 + 512`) to show `Call Titania`
 - Call Eos / Call Titania target metadata to self (`validTarget = Self`)
 - Call Eos / Call Titania client recast metadata to the DAT-safe cap
+- custom Job Trait IDs `140`–`145` (display IDs `1676`–`1681`, `1536 + traitId`) to show crystal traits in the in-game Job Traits menu (`Commander's Tactics`, `Berserker's Fury`, `Gladiator's Bastion`, `Sensei's Flow`, `Medic's Grace`, `Sage's Wisdom`; up to Trait ID `255` supported)
 - Orphic Egg item text to show Eos & Titania Refresh scaling
 
 The server enforces the real 5 minute recast.

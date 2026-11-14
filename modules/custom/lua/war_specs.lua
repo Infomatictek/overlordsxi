@@ -241,6 +241,7 @@ if xi.job and xi.job.WAR then
             icon        = 'blue_crystal',
             reqLevel    = 10,
             extraAbilities = xi.jobAbility and xi.jobAbility.WARCRY and { xi.jobAbility.WARCRY } or nil,
+            extraTraits    = { 140 },
             description = 'Inspiring tactician: unlocks at Lv10 with Warcry on a 60s cooldown and shares your active Warrior JA buff with the entire party. Only 1 WAR JA stance active at a time.',
             highlights  =
             {
@@ -272,6 +273,7 @@ if xi.job and xi.job.WAR then
             role        = 'Fury / Heavy Burst DPS',
             icon        = 'crimson_shard',
             reqLevel    = 10,
+            extraTraits = { 141 },
             description = 'Unrelenting fury (Lv10+): amplifies Berserk, Blood Rage, and Warcry with heavy Attack, Double Attack, and WSD.',
             highlights  =
             {
@@ -298,6 +300,7 @@ if xi.job and xi.job.WAR then
             role        = 'Bloodthirsty Club & Shield Tank',
             icon        = 'amber_crescent',
             reqLevel    = 10,
+            extraTraits = { 142 },
             description = 'Bloodthirsty Club & Shield tank (Lv10+): extreme sturdiness, Shield Mastery, high enmity, and Bloodthirsty self-healing at the cost of much lower damage output.',
             highlights  =
             {

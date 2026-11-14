@@ -12,15 +12,25 @@ local m = Module:new('overlords_job_spec_runtime')
 local spec = xi.overlords.spec
 
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
+    if player ~= nil and player:isPC() then
+        -- Reset cached session state before any super() hooks run when CCharEntity
+        -- is newly created (fresh login or cross-process zoning), while preserving
+        -- same-process zoning state.
+        if player.getLocalVar and player:getLocalVar('OX_SPEC_SYNCED') == 0 then
+            if player.getID then
+                spec.appliedByCharId[player:getID()] = nil
+            end
+            if player.setLocalVar then
+                player:setLocalVar('OX_SPEC_SYNCED', 1)
+            end
+        elseif not player.getLocalVar and not zoning and player.getID then
+            spec.appliedByCharId[player:getID()] = nil
+        end
+    end
+
     super(player, firstLogin, zoning)
 
     if player ~= nil and player:isPC() then
-        -- On fresh login (not zoning), clear any stale cached table entry for this char ID
-        -- because server/zone session recreated CCharEntity base stats cleanly.
-        if not zoning and player.getID then
-            spec.appliedByCharId[player:getID()] = nil
-        end
-
         spec.refreshPlayer(player)
     end
 end)
