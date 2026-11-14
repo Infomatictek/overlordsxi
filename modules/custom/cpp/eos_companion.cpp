@@ -14,6 +14,7 @@
 #include "map/entities/battle_entity.h"
 #include "map/entities/char_entity.h"
 #include "map/entities/pet_entity.h"
+#include "map/entities/trust_entity.h"
 #include "map/mob_spell_container.h"
 #include "map/modifier.h"
 #include "map/spell.h"
