@@ -639,7 +639,10 @@ registerCustomH2H(1,
                 local h = r >= 4 and 3 or 2
                 local ja = ({ 3, 5, 7, 9, 11, 13, 15 })[r]
                 local wsd = ({ 0, 3, 6, 9, 11, 13, 15 })[r]
-                return string.format('Hits: 1->%d, +%d%% JA Haste (12s), +%d%% WSD', h, ja, wsd)
+                if wsd > 0 then
+                    return string.format('Hits: 1->%d, +%d%% JA Haste (12s), +%d%% WSD', h, ja, wsd)
+                end
+                return string.format('Hits: 1->%d, +%d%% JA Haste (12s)', h, ja)
             end }),
         makeCurveNode({ key = 'combo_edge', name = 'Opening Edge & WSC', tier = 1, col = 3, maxRank = 7,
             zeroDesc = 'Next WS deals +4->25% extra dmg (10s) & STR/DEX +5->35% WSC',
@@ -751,7 +754,10 @@ registerCustomH2H(3,
                 local defdn = ({ 8, 12, 16, 20, 24, 27, 30 })[r]
                 local acc = ({ 6, 12, 18, 24, 30, 35, 40 })[r]
                 local atk = ({ 0, 4, 8, 12, 16, 20, 25 })[r]
-                return string.format('Hits: 1->2, DEF -%d%%, +%d Acc, +%d%% Atk', defdn, acc, atk)
+                if atk > 0 then
+                    return string.format('Hits: 1->2, DEF -%d%%, +%d Acc, +%d%% Atk', defdn, acc, atk)
+                end
+                return string.format('Hits: 1->2, DEF -%d%%, +%d Acc', defdn, acc)
             end }),
         makeCurveNode({ key = 'inch_vit_chi', name = 'VIT & Chi Flow', tier = 1, col = 3, maxRank = 7,
             zeroDesc = 'VIT +12->80% WSC & Next Chi Blast +12->75% Dmg',
@@ -807,7 +813,10 @@ registerCustomH2H(4,
                 local pc = ({ 4, 7, 10, 13, 15, 18, 20 })[r]
                 local acc = ({ 5, 10, 15, 20, 24, 27, 30 })[r]
                 local atk = ({ 0, 3, 6, 10, 13, 16, 20 })[r]
-                return string.format('1->2h, Post +%d%% Crit, +%d Acc, +%d%% Atk', pc, acc, atk)
+                if atk > 0 then
+                    return string.format('1->2h, Post +%d%% Crit, +%d Acc, +%d%% Atk', pc, acc, atk)
+                end
+                return string.format('1->2h, Post +%d%% Crit, +%d Acc', pc, acc)
             end }),
         makeCurveNode({ key = 'bh_feint', name = 'Wind Feint & WSC', tier = 1, col = 3, maxRank = 7,
             zeroDesc = 'STR/DEX +10->65% WSC & Inflicts Evasion Down -8->-40 (45s)',
@@ -859,7 +868,12 @@ registerCustomH2H(5,
             end }),
         makeCurveNode({ key = 'rf_hits2', name = 'Relentless Strike', tier = 2, col = 1, maxRank = 5,
             zeroDesc = 'R1: 4->5 Hits | R2-5: +12..48 Acc & +8..32% Atk',
-            rankDesc = function(r) return string.format('+1 Hit (up to 5h), +%d Acc, +%d%% Atk', (r - 1) * 12, (r - 1) * 8) end }),
+            rankDesc = function(r)
+                if r <= 1 then
+                    return '+1 Hit (up to 5h) | Next: +Acc/+Atk'
+                end
+                return string.format('+1 Hit (up to 5h), +%d Acc, +%d%% Atk', (r - 1) * 12, (r - 1) * 8)
+            end }),
         makeCurveNode({ key = 'rf_force', name = 'Pummel Force', tier = 2, col = 2, maxRank = 5,
             zeroDesc = '+9/18/27/36/45% WS Attack & +6/12/18/24/30 Acc',
             rankDesc = function(r) return string.format('+%d%% WS Atk, +%d Acc', r * 9, r * 6) end }),
@@ -1015,7 +1029,14 @@ registerCustomH2H(9,
             end }),
         makeCurveNode({ key = 'af_hits2', name = 'Asuran Rush II', tier = 2, col = 1, maxRank = 5,
             zeroDesc = 'R1-3: +1/+2/+3 Hits (5->8h!) | R4-5: +10/20% Atk',
-            rankDesc = function(r) local add = math.min(r, 3); return string.format('+%d Hits (up to 8h), +%d%% Atk', add, math.max(0, r - 3) * 10) end }),
+            rankDesc = function(r)
+                local add = math.min(r, 3)
+                local atk = math.max(0, r - 3) * 10
+                if atk > 0 then
+                    return string.format('+%d Hits (up to 8h), +%d%% Atk', add, atk)
+                end
+                return string.format('+%d %s (up to 8h)', add, add == 1 and 'Hit' or 'Hits')
+            end }),
         makeCurveNode({ key = 'af_barrage', name = 'Iron Barrage', tier = 2, col = 2, maxRank = 5,
             zeroDesc = '+6/12/18/24/30% WS Atk & +10/20/30/40/50 Acc',
             rankDesc = function(r) return string.format('+%d%% WS Atk, +%d Acc', r * 6, r * 10) end }),
@@ -1138,7 +1159,14 @@ registerCustomH2H(12,
             end }),
         makeCurveNode({ key = 'sp_hits2', name = 'Pummel Rush II', tier = 2, col = 1, maxRank = 5,
             zeroDesc = 'R1-2: 4->6 Hits! | R3-5: +10/20/30% Atk',
-            rankDesc = function(r) local h = math.min(r, 2); return string.format('+%d Hits (up to 6h), +%d%% Atk', h, math.max(0, r - 2) * 10) end }),
+            rankDesc = function(r)
+                local h = math.min(r, 2)
+                local atk = math.max(0, r - 2) * 10
+                if atk > 0 then
+                    return string.format('+%d Hits (up to 6h), +%d%% Atk', h, atk)
+                end
+                return string.format('+%d %s (up to 6h)', h, h == 1 and 'Hit' or 'Hits')
+            end }),
         makeCurveNode({ key = 'crit', name = 'Barrage Crit', tier = 2, col = 2, maxRank = 5,
             zeroDesc = 'TP Crit Rate: up to +12/18/24/32/38% max TP crit scaling',
             rankDesc = function(r)
@@ -1414,6 +1442,9 @@ local function buildGenericTreeForWS(ws)
             col = 2,
             maxRank = 7,
             describe = function(rank)
+                if rank == 0 then
+                    return '+15..105% HP/MP/Utility potency'
+                end
                 return string.format('+%d%% HP/MP/Utility potency', rank * 15)
             end,
         })
@@ -1524,11 +1555,14 @@ local function buildGenericTreeForWS(ws)
             maxRank = 7,
             describe = function(rank)
                 if archetype == 'magic' then
-                    return string.format('+%d MAB, +%d MACC on WS', rank * 5, rank * 6)
+                    return rank == 0 and '+5..35 MAB, +6..42 MACC on WS'
+                        or string.format('+%d MAB, +%d MACC on WS', rank * 5, rank * 6)
                 elseif archetype == 'utility' then
-                    return string.format('+%d%% Atk, +%d Acc, +%d Subtle Blow', rank * 5, rank * 5, rank * 3)
+                    return rank == 0 and '+5..35% Atk, +5..35 Acc, +3..21 Subtle Blow'
+                        or string.format('+%d%% Atk, +%d Acc, +%d Subtle Blow', rank * 5, rank * 5, rank * 3)
                 end
-                return string.format('+%d%% WS Atk, +%d Acc', rank * 6, rank * 6)
+                return rank == 0 and '+6..42% WS Atk, +6..42 Acc'
+                    or string.format('+%d%% WS Atk, +%d Acc', rank * 6, rank * 6)
             end,
         })
     end
@@ -1629,7 +1663,8 @@ local function buildGenericTreeForWS(ws)
             key = 'focused',
             name = 'Focused Power',
             describe = function(rank)
-                return string.format('+%d%% WS Atk, +%d Acc', rank * 10, rank * 12)
+                return rank == 0 and '+10..50% WS Atk & +12..60 Acc'
+                    or string.format('+%d%% WS Atk, +%d Acc', rank * 10, rank * 12)
             end,
         })
     end
@@ -1639,7 +1674,8 @@ local function buildGenericTreeForWS(ws)
             key = 'keen_instinct',
             name = 'Keen Instinct',
             describe = function(rank)
-                return string.format('+%d%% WSD, +%d%% Crit Rate', rank * 4, rank * 4)
+                return rank == 0 and '+4..20% WSD & +4..20% Crit Rate'
+                    or string.format('+%d%% WSD, +%d%% Crit Rate', rank * 4, rank * 4)
             end,
         })
     end
@@ -1679,7 +1715,8 @@ local function buildGenericTreeForWS(ws)
             key = 'aftermath_echo',
             name = amNames[orig.aftermath] or 'RMEA Echo',
             describe = function(rank)
-                return string.format('+%d%% WS Dmg, +%d TP Bonus', rank * 5, rank * 60)
+                return rank == 0 and '+5..25% WS Dmg & +60..300 TP Bonus'
+                    or string.format('+%d%% WS Dmg, +%d TP Bonus', rank * 5, rank * 60)
             end,
         })
     end
@@ -1690,7 +1727,8 @@ local function buildGenericTreeForWS(ws)
             key = 'elemental',
             name = (ws.elementName or 'Elemental') .. ' Surge',
             describe = function(rank)
-                return string.format('+%d MAB and +%d MACC on WS', rank * 12, rank * 12)
+                return rank == 0 and '+12..60 MAB & +12..60 MACC on WS'
+                    or string.format('+%d MAB and +%d MACC on WS', rank * 12, rank * 12)
             end,
         })
     end
@@ -1701,7 +1739,8 @@ local function buildGenericTreeForWS(ws)
             key = 'master_force',
             name = 'Heavy Force',
             describe = function(rank)
-                return string.format('+%d%% WSD, +%d%% WS Atk', rank * 5, rank * 8)
+                return rank == 0 and '+5..25% WSD & +8..40% WS Atk'
+                    or string.format('+%d%% WSD, +%d%% WS Atk', rank * 5, rank * 8)
             end,
         })
     end
@@ -1711,7 +1750,8 @@ local function buildGenericTreeForWS(ws)
             key = 'master_prec',
             name = 'Precision Instinct',
             describe = function(rank)
-                return string.format('+%d Acc, +%d%% Crit Rate', rank * 14, rank * 5)
+                return rank == 0 and '+14..70 Acc & +5..25% Crit Rate'
+                    or string.format('+%d Acc, +%d%% Crit Rate', rank * 14, rank * 5)
             end,
         })
     end
@@ -1748,7 +1788,8 @@ local function buildGenericTreeForWS(ws)
         col = 2,
         maxRank = 5,
         describe = function(rank)
-            return string.format('+%d%% WSD, +%d Acc', rank * 5, rank * 10)
+            return rank == 0 and '+5..25% WSD & +10..50 Acc'
+                or string.format('+%d%% WSD, +%d Acc', rank * 5, rank * 10)
         end,
     })
 
@@ -2001,7 +2042,8 @@ function talents.formatActiveSummary(player, jobId, ws, ranks)
     for _, n in ipairs(tree and tree.nodes or {}) do
         maxPts = maxPts + n.maxRank
     end
-    return string.format('Base: 1h fTP 1.0 | Active SC: %s (+%d%%) | Max: %d pts', scText, scData.scBonus, maxPts)
+    local scBonusText = scData.scBonus > 0 and string.format(' (+%d%%)', scData.scBonus) or ''
+    return string.format('Base: 1h fTP 1.0 | Active SC: %s%s | Max: %d pts', scText, scBonusText, maxPts)
 end
 
 local function sendChunked(player, tag, items)

@@ -184,7 +184,7 @@ function H.stanceNode(tier, col, key, name, maxRank, stanceLabel, effects, opts)
             if cd  then table.insert(parts, string.format('+%d%% CrDmg', pick(cd, r))) end
             if mab then table.insert(parts, string.format('+%d MAB', pick(mab, r))) end
             if mac then table.insert(parts, string.format('+%d MACC', pick(mac, r))) end
-            if di  then table.insert(parts, string.format('-%d%% DEF', pick(di, r))) end
+            if di  then table.insert(parts, string.format('-%d%% DEF', math.floor(pick(di, r) * 100 + 0.5))) end
             if tp  then table.insert(parts, string.format('+%d TP', pick(tp, r))) end
             return string.format('%s: %s', stanceLabel, table.concat(parts, ', '))
         end,

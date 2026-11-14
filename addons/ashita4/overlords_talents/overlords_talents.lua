@@ -19,9 +19,38 @@ require('common')
 local bit   = require('bit')
 local imgui = require('imgui')
 
-local PROTO_TAG     = '[OXTAL]|'
-local CHILD_NONE    = ImGuiChildFlags_None or 0
-local CHILD_BORDERS = ImGuiChildFlags_Borders or ImGuiChildFlags_Border or 1
+local PROTO_TAG         = '[OXTAL]|'
+local CHILD_NONE        = ImGuiChildFlags_None or 0
+local CHILD_BORDERS     = ImGuiChildFlags_Borders or ImGuiChildFlags_Border or 1
+local COL_TEXT          = ImGuiCol_Text or 0
+local COL_TEXT_DISABLED = { 0.62, 0.64, 0.68, 1.00 }
+
+local function drawText(str)
+    local s = tostring(str or '')
+    if imgui.TextUnformatted then
+        imgui.TextUnformatted(s)
+    else
+        imgui.Text((s:gsub('%%', '%%%%')))
+    end
+end
+
+local function drawTextColored(col, str)
+    local s = tostring(str or '')
+    if imgui.TextUnformatted and imgui.PushStyleColor and imgui.PopStyleColor then
+        imgui.PushStyleColor(COL_TEXT, col)
+        local ok, err = pcall(imgui.TextUnformatted, s)
+        imgui.PopStyleColor()
+        if not ok then
+            error(err)
+        end
+    else
+        imgui.TextColored(col, (s:gsub('%%', '%%%%')))
+    end
+end
+
+local function drawTextDisabled(str)
+    drawTextColored(COL_TEXT_DISABLED, str)
+end
 
 local SKILL_LIST =
 {
@@ -360,12 +389,12 @@ local function drawTreeCanvas()
     end
 
     -- WS Header
-    imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s', detail.name))
+    drawTextColored({ 1.0, 0.85, 0.35, 1.0 }, detail.name)
     imgui.SameLine()
-    imgui.TextDisabled(string.format('(%s | %s)', detail.skillName, detail.wsType))
+    drawTextDisabled(string.format('(%s | %s)', detail.skillName, detail.wsType))
 
-    imgui.TextColored({ 0.72, 0.86, 1.0, 1.0 }, detail.orig)
-    imgui.Text(string.format('Points in %s: %d   |   Available Job Points: %d', detail.name, detail.spent, state.avail))
+    drawTextColored({ 0.72, 0.86, 1.0, 1.0 }, detail.orig)
+    drawText(string.format('Points in %s: %d   |   Available Job Points: %d', detail.name, detail.spent, state.avail))
     imgui.SameLine()
     if detail.spent > 0 then
         if imgui.SmallButton('Reset WS') then
@@ -373,7 +402,7 @@ local function drawTreeCanvas()
         end
     end
 
-    imgui.TextDisabled('Left-Click node: +1 Rank  |  Right-Click node: -1 Rank  |  Col 4 < >: Pick Skillchain')
+    drawTextDisabled('Left-Click node: +1 Rank  |  Right-Click node: -1 Rank  |  Col 4 < >: Pick Skillchain')
     imgui.Separator()
 
     -- Draw Tree Grid (4 Tiers x 4 Columns)
@@ -482,9 +511,9 @@ local function drawTreeCanvas()
 
         -- Card Text Overlay
         imgui.SetCursorScreenPos({ x + 7, y + 5 })
-        imgui.TextColored(titleCol, node.name)
+        drawTextColored(titleCol, node.name)
         imgui.SetCursorScreenPos({ x + 7, y + 23 })
-        imgui.Text(string.format('Rank: %d / %d', node.rank, node.maxRank))
+        drawText(string.format('Rank: %d / %d', node.rank, node.maxRank))
 
         if isScNode then
             imgui.SetCursorScreenPos({ x + 7, y + 48 })
@@ -492,7 +521,7 @@ local function drawTreeCanvas()
                 queueServerCmd(string.format('uscc %u %u -1', detail.id, node.scTier))
             end
             imgui.SameLine()
-            imgui.TextColored({ 0.85, 0.92, 1.0, 1.0 }, node.scName ~= '' and node.scName or 'Pick')
+            drawTextColored({ 0.85, 0.92, 1.0, 1.0 }, node.scName ~= '' and node.scName or 'Pick')
             imgui.SameLine()
             imgui.SetCursorScreenPos({ x + cardW - 24, y + 48 })
             if imgui.SmallButton('>##sc_next_' .. node.key) then
@@ -501,31 +530,31 @@ local function drawTreeCanvas()
         else
             imgui.SetCursorScreenPos({ x + 7, y + 42 })
             local shortDesc = #node.desc > 23 and (string.sub(node.desc, 1, 20) .. '...') or node.desc
-            imgui.TextDisabled(shortDesc)
+            drawTextDisabled(shortDesc)
         end
 
         if hovered then
             imgui.BeginTooltip()
             local okTip, errTip = pcall(function()
-                imgui.TextColored(titleCol, string.format('%s (%d/%d)', node.name, node.rank, node.maxRank))
+                drawTextColored(titleCol, string.format('%s (%d/%d)', node.name, node.rank, node.maxRank))
                 imgui.Separator()
                 imgui.PushTextWrapPos(290)
                 local okWrap, errWrap = pcall(function()
-                    imgui.Text(node.desc)
+                    drawText(node.desc)
                     if (node.reqLevel or 1) > 1 and state.jobLevel < node.reqLevel then
-                        imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires Level %d %s (currently %d).', node.reqLevel, state.jobKey, state.jobLevel))
+                        drawTextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires Level %d %s (currently %d).', node.reqLevel, state.jobKey, state.jobLevel))
                     end
                     if node.reqWsPoints > 0 and detail.spent < node.reqWsPoints then
-                        imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %d points invested in %s.', node.reqWsPoints, detail.name))
+                        drawTextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %d points invested in %s.', node.reqWsPoints, detail.name))
                     end
                     if node.reqKey ~= nil then
                         local pNode = detail.byKey[node.reqKey]
                         if pNode ~= nil and pNode.rank < node.reqRank then
-                            imgui.TextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %s Rank %d.', pNode.name, node.reqRank))
+                            drawTextColored({ 1.0, 0.45, 0.45, 1.0 }, string.format('Requires %s Rank %d.', pNode.name, node.reqRank))
                         end
                     end
                     if isScNode then
-                        imgui.TextDisabled('Use < / > at bottom of card to choose Skillchain property.')
+                        drawTextDisabled('Use < / > at bottom of card to choose Skillchain property.')
                     end
                 end)
                 imgui.PopTextWrapPos()
@@ -605,9 +634,9 @@ end
 
 local function drawMainContents()
     -- Top Header Bar
-    imgui.TextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s Lv.%d', state.jobKey, state.jobLevel))
+    drawTextColored({ 1.0, 0.85, 0.35, 1.0 }, string.format('%s Lv.%d', state.jobKey, state.jobLevel))
     imgui.SameLine()
-    imgui.Text(string.format('  |  Available Points: %d  (Spent: %d / Earned: %d)', state.avail, state.spent, state.earned))
+    drawText(string.format('  |  Available Points: %d  (Spent: %d / Earned: %d)', state.avail, state.spent, state.earned))
     imgui.SameLine()
     if imgui.Button('Sync') then
         requestFullSync()
@@ -642,12 +671,12 @@ local function drawMainContents()
             state.statusText = nil
         else
             imgui.SameLine()
-            imgui.TextColored({ 1.0, 0.65, 0.35, 1.0 }, '  ' .. state.statusText)
+            drawTextColored({ 1.0, 0.65, 0.35, 1.0 }, '  ' .. state.statusText)
         end
     end
 
     if state.renderError ~= nil then
-        imgui.TextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
+        drawTextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
     end
 
     imgui.Separator()
@@ -702,7 +731,7 @@ ashita.events.register('d3d_present', 'ox_talents_present', function()
         local okWin, errWin = xpcall(drawMainContents, debug.traceback)
         if not okWin then
             state.renderError = tostring(errWin)
-            imgui.TextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
+            drawTextColored({ 1.0, 0.35, 0.35, 1.0 }, 'UI Error: ' .. state.renderError)
         end
     end
     imgui.End()
