@@ -71,18 +71,31 @@ try {
     $patchFiles = Get-ChildItem -Path (Join-Path $RepoRoot 'patches') -Filter '*.patch' | Sort-Object Name
     foreach ($patch in $patchFiles) {
         Write-Host "==> Checking patch: $($patch.Name)" -ForegroundColor Cyan
-        git apply --reverse --check $patch.FullName 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
+
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        git apply --reverse --check $patch.FullName 2>&1 | Out-Null
+        $isReversed = ($LASTEXITCODE -eq 0)
+        $ErrorActionPreference = $prevEap
+
+        if ($isReversed) {
             Write-Host "    Already applied, skipping." -ForegroundColor DarkGray
             continue
         }
 
+        $ErrorActionPreference = 'Continue'
         git apply --check $patch.FullName
-        if ($LASTEXITCODE -ne 0) {
+        $checkCode = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
+        if ($checkCode -ne 0) {
             throw "Patch $($patch.Name) failed --check against $ServerDir."
         }
+
+        $ErrorActionPreference = 'Continue'
         git apply $patch.FullName
-        if ($LASTEXITCODE -ne 0) {
+        $applyCode = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
+        if ($applyCode -ne 0) {
             throw "Failed to apply patch $($patch.Name)."
         }
         Write-Host "    Applied." -ForegroundColor Green

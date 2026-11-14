@@ -1,45 +1,27 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: OverlordsXI <overlordsxi@example.invalid>
-Date: Thu, 4 Jun 2026 00:00:00 +0000
-Subject: [PATCH] Give Eos deterministic level and SMN subjob
-
----
- src/map/utils/petutils.cpp | 24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
-
 diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
-index f816922..095b719 100644
+index 648c9bc3..04238d03 100644
 --- a/src/map/utils/petutils.cpp
 +++ b/src/map/utils/petutils.cpp
-@@ -1009,9 +1009,18 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
-     }
+@@ -1072,9 +1072,17 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+     highestLvl    = std::min(highestLvl, capLevel);
  
      // Randomize: 0-2 lvls lower, less Monster Gloves(+1/+2) bonus
--    highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(Mod::JUG_LEVEL_RANGE), 0, 2));
+-    highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
 +    if (petID != PETID_FAERIE_COMPANION)
 +    {
-+        highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(Mod::JUG_LEVEL_RANGE), 0, 2));
++        highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
 +    }
  
      PPet->SetMLevel(std::min(PPet->getSpawnLevel(), highestLvl));
 +    if (petID == PETID_FAERIE_COMPANION)
 +    {
-+        PPet->SetSJob(JOB_SMN);
++        PPet->SetSJob(static_cast<uint8>(xi::Job::SMN));
 +        PPet->SetSLevel(PPet->GetMLevel());
 +    }
-+
      LoadJugStats(PPet, PPetData); // follow monster calcs (w/o SJ)
  
-     FinalizePetStatistics(PMaster, PPet);
-@@ -1846,6 +1855,7 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
-     PPet->m_MobSkillList = PPetData->m_MobSkillList;
-     PPet->m_SpellListContainer = mobSpellList::GetMobSpellList(PPetData->spellList);
-     PPet->SetMJob(PPetData->mJob);
-+    PPet->SetSJob(PPetData->sJob);
-     PPet->m_Element = PPetData->m_Element;
-     PPet->m_PetID   = PPetData->PetID;
- 
-@@ -1855,8 +1865,21 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
+     luautils::callGlobal<void>("xi.pets.jug.onPetStatCalculate", PMaster, PPet);
+@@ -1977,8 +1985,20 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
      }
      else if (PPet->getPetType() == PET_TYPE::JUG_PET)
      {
@@ -48,8 +30,8 @@ index f816922..095b719 100644
 +        if (PetID == PETID_FAERIE_COMPANION && PMaster->objtype == TYPE_PC)
 +        {
 +            const auto mainLevel = PMaster->GetMLevel();
-+            PPet->SetMJob(JOB_SCH);
-+            PPet->SetSJob(JOB_SMN);
++            PPet->SetMJob(static_cast<uint8>(xi::Job::SCH));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::SMN));
 +            PPet->SetMLevel(mainLevel);
 +            PPet->SetSLevel(mainLevel);
 +            PPet->setSpawnLevel(mainLevel);
@@ -59,10 +41,6 @@ index f816922..095b719 100644
 +            uint8 spawnLevel = static_cast<CCharEntity*>(PMaster)->petZoningInfo.petLevel;
 +            PPet->setSpawnLevel(spawnLevel > 0 ? spawnLevel : UINT8_MAX);
 +        }
-+
          PPet->setJugDuration(PPetData->time);
          CalculateJugPetStats(PMaster, PPet);
      }
--- 
-2.50.0
-

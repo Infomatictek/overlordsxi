@@ -1,16 +1,28 @@
 diff --git a/src/map/status_effect.h b/src/map/status_effect.h
-index 0000000000..0000000000 100644
+index 481e8df4..3b02412e 100644
 --- a/src/map/status_effect.h
 +++ b/src/map/status_effect.h
-@@
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
 -#define MAX_EFFECTID 814 // 768 real + 46 custom
 +#define MAX_EFFECTID 815 // 768 real + 47 custom
- DECLARE_FORMAT_AS_UNDERLYING(EFFECT);
+ 
+ /************************************************************************
+  *                                                                       *
 diff --git a/src/map/utils/petutils.h b/src/map/utils/petutils.h
-index 0000000000..0000000000 100644
+index 7939cdcc..5cff6b84 100644
 --- a/src/map/utils/petutils.h
 +++ b/src/map/utils/petutils.h
-@@
+@@ -161,8 +161,9 @@ enum PETID
+     PETID_BRAVE_HERO_GLENN       = 125,
+     PETID_YELLOW_BEETLE_FAMILIAR = 126,
+     PETID_ENERGIZED_SEFINA       = 127,
++    PETID_FAERIE_COMPANION       = 128,
+ 
 -    MAX_PETID = 128,
 +    MAX_PETID = 129,
  };
+ 
+ struct Pet_t
