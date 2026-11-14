@@ -19,22 +19,25 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/lua/war_specs.lua` defines the WAR Commander, Berserker, and Gladiator crystal passives and ability transformations.
 - `modules/custom/lua/mnk_specs.lua` defines the MNK Sensei crystal passives, Staff Evasion/Parry/Counter engine, and ability transformations.
 - `modules/custom/commands/spec.lua` adds `!spec` (`customMenu` crystal selector, CLI subcommands, and `[OXSPEC]` Ashita v4 sync protocol).
-- `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss`.
+- `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss` (for both Eos and Titania).
 - `modules/custom/commands/talent.lua` adds `!talent` (`customMenu` UI, CLI subcommands, and Ashita v4 `[OXTAL]` protocol).
-- `modules/custom/cpp/eos_companion.cpp` defines Eos support AI and Orphic Egg's Eos-only Refresh behavior.
-- `modules/custom/sql/eos_companion.sql` defines the ability row, pet row, mob pool, Eos spell list, custom status rows, and Orphic Egg DB changes.
+- `modules/custom/cpp/eos_companion.cpp` defines Eos (Medic support AI), Titania (Sage enfeebling & elemental nuking AI), and Orphic Egg's fairy Refresh scaling.
+- `modules/custom/sql/eos_companion.sql` defines `Call Eos` (`231`), `Call Titania` (`289`), pet rows (`128`/`129`), mob pools (`6020`/`6021`), spell lists (`566`/`600`), and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
-Five small engine patches are still required:
+Eight small engine patches are required:
 
 - `patches/0001-allow-eos-custom-pet-and-effect-ids.patch` raises `MAX_PETID` from `128` to `129` and `MAX_EFFECTID` from `814` to `815`.
 - `patches/0002-eos-deterministic-level-and-subjob.patch` makes Eos spawn at the master's level and correctly initializes her SCH main job / SMN subjob levels.
 - `patches/0003-unlock-all-player-weaponskills.patch` unlocks all implemented player weaponskills at level 1 for any job wielding that weapon type (excluding NPC/event/unimplemented WSes).
 - `patches/0004-dynamic-ws-skillchain-traits.patch` reads per-cast `OX_WS_SC1..3` localVars inside `CCharEntity::OnWeaponSkillFinished` so talent-upgraded skillchain properties apply dynamically on each weaponskill.
-- `patches/0005-spec-ability-unlocks.patch` hooks `xi.overlords.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated early job abilities like Commander WAR's **Warcry** and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
+- `patches/0005-clear-ws-skillchains-dynamically.patch` clears/overrides WS skillchain slots cleanly when `OX_WS_SC_SET` is present.
+- `patches/0006-eos-status-effect-params.patch` configures status effect IDs `789` (stackable Eos Regen) and `814` (hidden faerie Refresh/buff carrier) in C++.
+- `patches/0007-spec-ability-unlocks.patch` hooks `xi.overlords.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated JAs like **Call Eos**, **Call Titania**, Commander WAR's **Warcry**, and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
+- `patches/0008-titania-sage-pet.patch` raises `MAX_PETID` to `130` (`PETID_FAERIE_TITANIA = 129`) and deterministically spawns Titania at the master's level with `BLM` main job and `RDM` subjob.
 
-The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility. The fourth patch allows per-character talent ranks to customize or add skillchain properties (such as giving Sanguine Blade Compression / Gravitation / Darkness) without mutating shared server WS definitions. The fifth patch allows job crystals to dynamically grant and hide ability menu entries per character without lowering global retail `abilities.sql` levels.
+The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`–`0005` power the per-character weaponskill unlock and talent skillchain system. Patch `0007` allows job crystals to dynamically grant and hide ability menu entries per character without lowering global retail `abilities.sql` levels.
 
 ## Client Launcher & Client Files
 
@@ -70,7 +73,10 @@ git apply C:\path\to\overlordsxi\patches\0001-allow-eos-custom-pet-and-effect-id
 git apply C:\path\to\overlordsxi\patches\0002-eos-deterministic-level-and-subjob.patch
 git apply C:\path\to\overlordsxi\patches\0003-unlock-all-player-weaponskills.patch
 git apply C:\path\to\overlordsxi\patches\0004-dynamic-ws-skillchain-traits.patch
-git apply C:\path\to\overlordsxi\patches\0005-spec-ability-unlocks.patch
+git apply C:\path\to\overlordsxi\patches\0005-clear-ws-skillchains-dynamically.patch
+git apply C:\path\to\overlordsxi\patches\0006-eos-status-effect-params.patch
+git apply C:\path\to\overlordsxi\patches\0007-spec-ability-unlocks.patch
+git apply C:\path\to\overlordsxi\patches\0008-titania-sage-pet.patch
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_catalog.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_talents.lua .\modules\custom\lua\
@@ -124,10 +130,11 @@ The DAT overlay lives in **[Infomatictek/overlordsxi-launcher](https://github.co
 
 The overlay updates:
 
-- ability display ID `743` to show `Call Eos`
-- Call Eos target metadata to self
-- Call Eos client recast metadata to the DAT-safe cap
-- Orphic Egg item text to show Eos Refresh scaling
+- ability display ID `743` (`231 + 512`) to show `Call Eos`
+- ability display ID `801` (`289 + 512`) to show `Call Titania`
+- Call Eos / Call Titania target metadata to self (`validTarget = Self`)
+- Call Eos / Call Titania client recast metadata to the DAT-safe cap
+- Orphic Egg item text to show Eos & Titania Refresh scaling
 
 The server enforces the real 5 minute recast.
 
@@ -161,8 +168,8 @@ Players can use:
 
 ### Scholar Crystals (`OX_SPEC_SCH`, Lv10+)
 
-- `medic` / **Medic** (*Light Arts / Eos Support*): Addendum: White remains a 2 hour stance, Sublimation charging stores MP twice as fast without HP drain, Cure/Regen spells use Accession-style 10y AoE without consuming Stratagem charges, and Call Eos is unlocked (Eos despawns if removing the Medic crystal).
-- `sage` / **Sage** (*Dark Arts / Helix Master*): Addendum: Black remains a 2 hour stance, Ebullience is permanent for black magic, Helix damage is increased by 50%, Helix duration is extended to 2 hours, magic attack bonus is increased by 30, and elemental magic gets a 10% target Magic Evasion bypass as bonus accuracy.
+- `medic` / **Medic** (*Light Arts / Eos Support*): Addendum: White remains a 2 hour stance, Sublimation charging stores MP twice as fast without HP drain, Cure/Regen spells use Accession-style 10y AoE without consuming Stratagem charges, and **Call Eos** (`231`) is dynamically unlocked at Lv.10+ (hidden otherwise; Eos despawns if removing or suspending the Medic crystal).
+- `sage` / **Sage** (*Dark Arts / Helix Master & Titania*): Addendum: Black remains a 2 hour stance, Ebullience is permanent for black magic, Helix damage is increased by 50%, Helix duration is extended to 2 hours, magic attack bonus is increased by 30, elemental magic gets a 10% target Magic Evasion bypass as bonus accuracy, and **Call Titania** (`289`) is dynamically unlocked at Lv.10+ (summons a Dark Pixie companion that enfeebles, drains/aspirs, and elemental nukes; Titania despawns if removing or suspending the Sage crystal).
 
 Spell and ability modules can branch with:
 
@@ -170,6 +177,7 @@ Spell and ability modules can branch with:
 xi.overlords.spec.is(player, xi.job.WAR, 'commander')
 xi.overlords.spec.is(player, xi.job.MNK, 'sensei')
 xi.overlords.spec.is(player, xi.job.SCH, 'medic')
+xi.overlords.spec.is(player, xi.job.SCH, 'sage')
 ```
 
 ### Ashita v4 Custom Crystal Addon Protocol (`[OXSPEC]`)
@@ -192,12 +200,9 @@ Server responses:
 
 ## IDs
 
-- Ability ID: `231`
-- Client ability display ID: `743`
-- Pet ID: `128`
-- Pet pool ID: `6020`
-- Eos spell list ID: `566`
+- **Call Eos**: Ability ID `231` (display `743`), Pet ID `128`, Pool ID `6020` (Light Pixie `0x07EE`), Spell List ID `566`
+- **Call Titania**: Ability ID `289` (display `801`), Pet ID `129`, Pool ID `6021` (Dark Pixie `0x07F0`), Spell List ID `600`
 - Eos Regen status ID: `789`
-- Eos hidden Refresh carrier status ID: `814`
+- Faerie hidden Refresh/buff carrier status ID: `814`
 - Orphic Egg item ID: `18256`
-- Orphic Egg Eos Refresh mod ID: `1198`
+- Orphic Egg Faerie Refresh mod ID: `1198`

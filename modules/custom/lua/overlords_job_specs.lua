@@ -704,13 +704,14 @@ if xi.job and xi.job.SCH then
     spec.registerJob(xi.job.SCH, 'SCH',
     {
         {
-            id          = 1,
-            key         = 'medic',
-            name        = 'Medic',
-            role        = 'Light Arts / Eos Support',
-            icon        = 'white_prism',
-            description = 'Light Arts spec: safer Sublimation and automatic Accession for Cure and Regen spells.',
-            highlights  =
+            id             = 1,
+            key            = 'medic',
+            name           = 'Medic',
+            role           = 'Light Arts / Eos Support',
+            icon           = 'white_prism',
+            extraAbilities = { 231 },
+            description    = 'Light Arts spec: Call Eos faerie companion, safer Sublimation, and automatic Accession for Cure and Regen spells.',
+            highlights     =
             {
                 'Unlocks Call Eos faerie companion (auto -na/Erase & stackable Regen).',
                 'Addendum: White lasts 2 hours.',
@@ -719,14 +720,16 @@ if xi.job and xi.job.SCH then
             },
         },
         {
-            id          = 2,
-            key         = 'sage',
-            name        = 'Sage',
-            role        = 'Dark Arts / Helix Master',
-            icon        = 'onyx_tome',
-            description = 'Dark Arts spec: permanent Ebullience, stronger Helix spells, and improved elemental casting.',
-            highlights  =
+            id             = 2,
+            key            = 'sage',
+            name           = 'Sage',
+            role           = 'Dark Arts / Titania & Helix',
+            icon           = 'onyx_tome',
+            extraAbilities = { 289 },
+            description    = 'Dark Arts spec: Call Titania dark faerie companion, permanent Ebullience, stronger Helix spells, and improved elemental casting.',
+            highlights     =
             {
+                'Unlocks Call Titania dark faerie companion (enfeebling & elemental nuking).',
                 'Addendum: Black lasts 2 hours.',
                 'Permanent Ebullience active for black magic.',
                 'Helix damage +50% and Helix duration extended to 2 hours.',

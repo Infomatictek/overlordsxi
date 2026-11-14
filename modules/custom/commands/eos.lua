@@ -1,6 +1,6 @@
 -----------------------------------
 -- func: eos
--- desc: Controls the player's Eos companion.
+-- desc: Controls the player's Eos or Titania faerie companion.
 -----------------------------------
 require('modules/custom/lua/overlords_job_specs')
 -----------------------------------
@@ -13,27 +13,34 @@ commandObj.cmdprops =
     parameters = 's'
 }
 
-local eosPetId = 128
+local eosPetId     = 128
+local titaniaPetId = 129
 
 local function tell(player, message)
     player:printToPlayer(message, xi.msg.channel.SYSTEM_3, '')
 end
 
-local function isEosPet(pet)
-    return pet ~= nil and pet:getPetID() == eosPetId
+local function getFaerieInfo(pet)
+    if pet == nil then
+        return nil, nil
+    end
+
+    local pid = pet:getPetID()
+    if pid == eosPetId then
+        return pet, 'Eos'
+    elseif pid == titaniaPetId then
+        return pet, 'Titania'
+    end
+
+    return nil, nil
 end
 
-local function getEosPet(player)
+local function getFaeriePet(player)
     if not player:hasPet() then
-        return nil
+        return nil, nil
     end
 
-    local pet = player:getPet()
-    if isEosPet(pet) then
-        return pet
-    end
-
-    return nil
+    return getFaerieInfo(player:getPet())
 end
 
 local function printUsage(player)
@@ -48,27 +55,27 @@ commandObj.onTrigger = function(player, action)
         return
     end
 
-    local pet = getEosPet(player)
+    local pet, petLabel = getFaeriePet(player)
     if pet == nil then
-        tell(player, 'Eos is not currently summoned.')
+        tell(player, 'Eos or Titania is not currently summoned.')
         return
     end
 
     if action == 'heal' or action == 'mend' then
         local missingHp = pet:getMaxHP() - pet:getHP()
         if missingHp <= 0 then
-            tell(player, 'Eos is already at full HP.')
+            tell(player, petLabel .. ' is already at full HP.')
             return
         end
 
         pet:addHP(missingHp)
-        tell(player, 'Eos has been healed.')
+        tell(player, petLabel .. ' has been healed.')
         return
     end
 
     if action == 'dismiss' or action == 'release' then
         player:despawnPet()
-        tell(player, 'Eos has been dismissed.')
+        tell(player, petLabel .. ' has been dismissed.')
         return
     end
 

@@ -1,0 +1,59 @@
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+index 04238d03..b2c79a12 100644
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -1072,17 +1072,22 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+     highestLvl    = std::min(highestLvl, capLevel);
+ 
+     // Randomize: 0-2 lvls lower, less Monster Gloves(+1/+2) bonus
+-    if (petID != PETID_FAERIE_COMPANION)
++    if (petID != PETID_FAERIE_COMPANION && petID != PETID_FAERIE_TITANIA)
+     {
+         highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
+     }
+ 
+     PPet->SetMLevel(std::min(PPet->getSpawnLevel(), highestLvl));
+     if (petID == PETID_FAERIE_COMPANION)
+     {
+         PPet->SetSJob(static_cast<uint8>(xi::Job::SMN));
+         PPet->SetSLevel(PPet->GetMLevel());
+     }
++    else if (petID == PETID_FAERIE_TITANIA)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::RDM));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
+     LoadJugStats(PPet, PPetData); // follow monster calcs (w/o SJ)
+ 
+     luautils::callGlobal<void>("xi.pets.jug.onPetStatCalculate", PMaster, PPet);
+@@ -1992,6 +1997,15 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
+             PPet->SetSLevel(mainLevel);
+             PPet->setSpawnLevel(mainLevel);
+         }
++        else if (PetID == PETID_FAERIE_TITANIA && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::BLM));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::RDM));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
+         else
+         {
+             uint8 spawnLevel = static_cast<CCharEntity*>(PMaster)->petZoningInfo.petLevel;
+diff --git a/src/map/utils/petutils.h b/src/map/utils/petutils.h
+index 5cff6b84..9d41e210 100644
+--- a/src/map/utils/petutils.h
++++ b/src/map/utils/petutils.h
+@@ -162,8 +162,9 @@ enum PETID
+     PETID_YELLOW_BEETLE_FAMILIAR = 126,
+     PETID_ENERGIZED_SEFINA       = 127,
+     PETID_FAERIE_COMPANION       = 128,
++    PETID_FAERIE_TITANIA         = 129,
+ 
+-    MAX_PETID = 129,
++    MAX_PETID = 130,
+ };
+ 
+ struct Pet_t

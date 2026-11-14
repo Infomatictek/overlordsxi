@@ -45,14 +45,42 @@ local function isScholarSpec(entity, specKey)
 end
 
 local schJob = xi.overlords.spec.jobs[xi.job.SCH]
-if schJob and schJob.byKey and schJob.byKey[medicSpecKey] then
-    schJob.byKey[medicSpecKey].onRemove = function(player)
-        if player ~= nil and player.hasPet and player:hasPet() then
-            local pet = player:getPet()
-            if pet ~= nil and pet:getPetID() == 128 and player.despawnPet then
-                player:despawnPet()
+if schJob and schJob.byKey then
+    if schJob.byKey[medicSpecKey] then
+        schJob.byKey[medicSpecKey].onRemove = function(player)
+            if player ~= nil and player.hasPet and player:hasPet() then
+                local pet = player:getPet()
+                if pet ~= nil and pet:getPetID() == 128 and player.despawnPet then
+                    player:despawnPet()
+                end
             end
         end
+    end
+
+    if schJob.byKey[sageSpecKey] then
+        schJob.byKey[sageSpecKey].onRemove = function(player)
+            if player ~= nil and player.hasPet and player:hasPet() then
+                local pet = player:getPet()
+                if pet ~= nil and pet:getPetID() == 129 and player.despawnPet then
+                    player:despawnPet()
+                end
+            end
+        end
+    end
+end
+
+local function rememberTitaniaTarget(caster, target)
+    if
+        caster ~= nil and
+        target ~= nil and
+        caster.isPC and
+        caster:isPC() and
+        target.isMob and
+        target:isMob() and
+        target.getTargID and
+        caster.setLocalVar
+    then
+        caster:setLocalVar('OX_TITANIA_TARGET', target:getTargID())
     end
 end
 
@@ -174,6 +202,7 @@ m:addOverride('xi.spells.damage.calculateMagicBonusDiff', function(caster, targe
     local adjustedBonusMATT = bonusMATT or 0
 
     if isSage(caster) then
+        rememberTitaniaTarget(caster, target)
         adjustedBonusMATT = adjustedBonusMATT + 30
     end
 
@@ -202,23 +231,29 @@ end)
 m:addOverride('xi.spells.enfeebling.calculateDuration', function(caster, target, spellId, spellEffect, skillType)
     local duration = super(caster, target, spellId, spellEffect, skillType)
 
-    if isSage(caster) and spellEffect == xi.effect.HELIX and helixSpellIds[spellId] then
-        return math.max(duration, sageHelixDuration)
+    if isSage(caster) then
+        rememberTitaniaTarget(caster, target)
+        if spellEffect == xi.effect.HELIX and helixSpellIds[spellId] then
+            return math.max(duration, sageHelixDuration)
+        end
     end
 
     return duration
 end)
 
 m:addOverride('xi.combat.magicHitRate.calculateResistRate', function(actor, target, fedData)
-    if type(fedData) == 'table' and isSage(actor) and fedData.skillType == xi.skill.ELEMENTAL_MAGIC then
-        local bypass = calculateSageMevaBypass(target, fedData.magicalElement)
-        if bypass > 0 then
-            local adjustedFedData = {}
-            for k, v in pairs(fedData) do
-                adjustedFedData[k] = v
+    if type(fedData) == 'table' and isSage(actor) then
+        rememberTitaniaTarget(actor, target)
+        if fedData.skillType == xi.skill.ELEMENTAL_MAGIC then
+            local bypass = calculateSageMevaBypass(target, fedData.magicalElement)
+            if bypass > 0 then
+                local adjustedFedData = {}
+                for k, v in pairs(fedData) do
+                    adjustedFedData[k] = v
+                end
+                adjustedFedData.bonusMacc = (adjustedFedData.bonusMacc or 0) + bypass
+                return super(actor, target, adjustedFedData)
             end
-            adjustedFedData.bonusMacc = (adjustedFedData.bonusMacc or 0) + bypass
-            return super(actor, target, adjustedFedData)
         end
     end
 

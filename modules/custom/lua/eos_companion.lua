@@ -1,5 +1,5 @@
 -----------------------------------
--- Eos Companion
+-- Eos & Titania Faerie Companions
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
@@ -9,9 +9,12 @@ local m = Module:new('eos_companion')
 
 local eosAbilityId      = 231
 local eosPetId          = 128
+local titaniaAbilityId  = 289
+local titaniaPetId      = 129
 local eosRegenEffectId  = 789
 local eosRefreshModId   = 1198
 local eosRequiredSpec   = 'medic'
+local titaniaReqSpec    = 'sage'
 
 local eosRegenSpells =
 {
@@ -43,29 +46,32 @@ local eosRegenSpells =
 }
 
 xi.jobAbility.FAERIE_COMPANION = eosAbilityId
-xi.petId.FAERIE_COMPANION = eosPetId
-xi.effect.EOS_REGEN = eosRegenEffectId
-xi.mod.EOS_REFRESH = eosRefreshModId
+xi.jobAbility.FAERIE_TITANIA   = titaniaAbilityId
+xi.petId.FAERIE_COMPANION      = eosPetId
+xi.petId.FAERIE_TITANIA        = titaniaPetId
+xi.effect.EOS_REGEN            = eosRegenEffectId
+xi.mod.EOS_REFRESH             = eosRefreshModId
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
 xi.actions.abilities.faerie_companion = xi.actions.abilities.faerie_companion or {}
+xi.actions.abilities.faerie_titania   = xi.actions.abilities.faerie_titania or {}
 
 local function tell(player, message)
     player:printToPlayer(message, xi.msg.channel.SYSTEM_3, '')
 end
 
-local function isMedicScholar(player)
+local function isScholarSpec(player, specKey)
     return
         player ~= nil and
         player:isPC() and
         player:getMainJob() == xi.job.SCH and
-        xi.overlords.spec.is(player, xi.job.SCH, eosRequiredSpec)
+        xi.overlords.spec.is(player, xi.job.SCH, specKey)
 end
 
 m:addOverride('xi.actions.abilities.faerie_companion.onAbilityCheck', function(player, target, ability)
-    if not isMedicScholar(player) then
-        tell(player, 'Eos is only available to Scholar Medic spec.')
+    if not isScholarSpec(player, eosRequiredSpec) then
+        tell(player, 'Eos is only available to Scholar Medic spec (Lv.10+).')
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
 
@@ -84,6 +90,29 @@ m:addOverride('xi.actions.abilities.faerie_companion.onUseAbility', function(pla
     xi.pet.spawnPet(player, eosPetId)
 
     return eosAbilityId
+end)
+
+m:addOverride('xi.actions.abilities.faerie_titania.onAbilityCheck', function(player, target, ability)
+    if not isScholarSpec(player, titaniaReqSpec) then
+        tell(player, 'Titania is only available to Scholar Sage spec (Lv.10+).')
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if player:hasPet() then
+        return xi.msg.basic.ALREADY_HAS_A_PET, 0
+    end
+
+    if not player:canUseMisc(xi.zoneMisc.PET) then
+        return xi.msg.basic.CANT_BE_USED_IN_AREA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.faerie_titania.onUseAbility', function(player, target, ability)
+    xi.pet.spawnPet(player, titaniaPetId)
+
+    return titaniaAbilityId
 end)
 
 m:addOverride('xi.actions.spells.white.regen.onSpellCast', function(caster, target, spell)

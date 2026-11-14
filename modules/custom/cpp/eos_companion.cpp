@@ -1,91 +1,141 @@
 /************************************************************************
- * Eos Companion
+ * Eos & Titania Faerie Companions
  *
- * Adds Eos support behavior as a C++ module:
- * - removes priority debuffs from the master, party, and trusts
- * - maintains stackable Eos Regen on the master, party, and trusts
- * - applies Orphic Egg's Eos-only Refresh through a hidden status effect
+ * Adds Eos (SCH Medic Light Arts) and Titania (SCH Sage Dark Arts)
+ * companion behavior as a C++ module:
+ * - Eos: removes priority debuffs and maintains stackable Regen on party/trusts
+ * - Titania: assists in combat by enfeebling, draining, and elemental nuking
+ * - Both: apply Orphic Egg's level-scaling Refresh (and Sage magic bonuses for Titania)
  ************************************************************************/
 
 #include "common/utils.h"
 
 #include "map/ai/ai_container.h"
 #include "map/ai/controllers/controller.h"
+#include "map/enmity_container.h"
 #include "map/entities/battle_entity.h"
 #include "map/entities/char_entity.h"
+#include "map/entities/mob_entity.h"
 #include "map/entities/pet_entity.h"
 #include "map/entities/trust_entity.h"
 #include "map/mob_spell_container.h"
 #include "map/modifier.h"
+#include "map/recast_container.h"
 #include "map/spell.h"
 #include "map/status_effect.h"
 #include "map/status_effect_container.h"
+#include "map/utils/battleutils.h"
 #include "map/utils/moduleutils.h"
 #include "map/utils/petutils.h"
 #include "map/zone.h"
 
 #include <algorithm>
+#include <array>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace std::chrono_literals;
 
 namespace
 {
 
-constexpr uint32           EosPetId           = 128;
-constexpr auto             EosSpecVar         = "OX_SPEC_SCH";
-constexpr int32            EosMedicSpecId     = 1;
-constexpr xi::StatusEffect EosRegenEffect     = static_cast<xi::StatusEffect>(789);
-constexpr xi::StatusEffect EosRefreshEffect   = static_cast<xi::StatusEffect>(814);
-constexpr xi::Mod          EosRefreshMod      = static_cast<xi::Mod>(1198);
-constexpr float            EosSupportRange    = 20.0f;
-constexpr auto             EosCastCooldown    = 5s;
-constexpr auto             EosRefreshDuration = 10s;
-constexpr auto             EosRegenWindow     = 15s;
+constexpr uint32           EosPetId              = 128;
+constexpr uint32           TitaniaPetId          = 129;
+constexpr auto             SchSpecVar            = "OX_SPEC_SCH";
+constexpr int32            SchMedicSpecId        = 1;
+constexpr int32            SchSageSpecId         = 2;
+constexpr uint8            MinSpecLevel          = 10;
+constexpr xi::StatusEffect EosRegenEffect        = static_cast<xi::StatusEffect>(789);
+constexpr xi::StatusEffect FaerieRefreshEffect   = static_cast<xi::StatusEffect>(814);
+constexpr xi::Mod          FaerieRefreshMod      = static_cast<xi::Mod>(1198);
+constexpr float            FaerieActionRange     = 20.0f;
+constexpr auto             FaerieCastCooldown    = 5s;
+constexpr auto             TitaniaEnfeebleWindow = 10s;
+constexpr auto             TitaniaRetryWindow    = 20s;
+constexpr auto             FaerieRefreshDuration = 10s;
+constexpr auto             EosRegenWindow        = 15s;
 
-struct EosSupportAction
+struct FaerieCastAction
 {
     SpellID        spellId;
     CBattleEntity* PTarget;
 };
 
-std::unordered_map<uint32, timer::time_point> nextEosCastTime;
+struct ElementalLine
+{
+    xi::Mod                   resMod;
+    std::array<SpellID, 5>    tiers; // Tier I .. Tier V
+};
+
+constexpr std::array<ElementalLine, 6> TitaniaElements =
+{
+    ElementalLine{ xi::Mod::THUNDER_RES_RANK, { SpellID::Thunder, SpellID::Thunder_II, SpellID::Thunder_III, SpellID::Thunder_IV, SpellID::Thunder_V } },
+    ElementalLine{ xi::Mod::ICE_RES_RANK, { SpellID::Blizzard, SpellID::Blizzard_II, SpellID::Blizzard_III, SpellID::Blizzard_IV, SpellID::Blizzard_V } },
+    ElementalLine{ xi::Mod::FIRE_RES_RANK, { SpellID::Fire, SpellID::Fire_II, SpellID::Fire_III, SpellID::Fire_IV, SpellID::Fire_V } },
+    ElementalLine{ xi::Mod::WIND_RES_RANK, { SpellID::Aero, SpellID::Aero_II, SpellID::Aero_III, SpellID::Aero_IV, SpellID::Aero_V } },
+    ElementalLine{ xi::Mod::WATER_RES_RANK, { SpellID::Water, SpellID::Water_II, SpellID::Water_III, SpellID::Water_IV, SpellID::Water_V } },
+    ElementalLine{ xi::Mod::EARTH_RES_RANK, { SpellID::Stone, SpellID::Stone_II, SpellID::Stone_III, SpellID::Stone_IV, SpellID::Stone_V } },
+};
+
+std::unordered_map<uint32, timer::time_point> nextFaerieCastTime;
+std::unordered_map<uint32, timer::time_point> nextTitaniaEnfeebleTime;
+std::unordered_map<uint64, timer::time_point> nextTitaniaSpellRetryTime;
 
 bool IsEos(CPetEntity* PPet)
 {
     return PPet && PPet->petID() == EosPetId && PPet->isAlive();
 }
 
-bool IsMedicScholar(CCharEntity* PMaster)
+bool IsTitania(CPetEntity* PPet)
 {
-    return PMaster && PMaster->GetMJob() == xi::Job::SCH && PMaster->getCharVar(EosSpecVar) == EosMedicSpecId;
+    return PPet && PPet->petID() == TitaniaPetId && PPet->isAlive();
 }
 
-bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
+bool IsMedicScholar(CCharEntity* PMaster)
+{
+    return PMaster && PMaster->GetMJob() == xi::Job::SCH && PMaster->GetMLevel() >= MinSpecLevel &&
+           PMaster->getCharVar(SchSpecVar) == SchMedicSpecId;
+}
+
+bool IsSageScholar(CCharEntity* PMaster)
+{
+    return PMaster && PMaster->GetMJob() == xi::Job::SCH && PMaster->GetMLevel() >= MinSpecLevel &&
+           PMaster->getCharVar(SchSpecVar) == SchSageSpecId;
+}
+
+bool EnsureOwnerAndJobs(CPetEntity* PPet)
 {
     if (!PPet || !PPet->PMaster || PPet->PMaster->objtype != TYPE_PC)
     {
         return false;
     }
 
-    auto* PMaster = static_cast<CCharEntity*>(PPet->PMaster);
-    if (!IsMedicScholar(PMaster))
+    auto*      PMaster   = static_cast<CCharEntity*>(PPet->PMaster);
+    const bool isEosPet  = IsEos(PPet);
+    const bool authorized = isEosPet ? IsMedicScholar(PMaster) : IsSageScholar(PMaster);
+
+    if (!authorized)
     {
         petutils::DespawnPet(PMaster);
         return false;
     }
 
-    const auto mainLevel = PMaster->GetMLevel();
-    if (PPet->GetMJob() != xi::Job::SCH)
+    const auto expectedMainJob = isEosPet ? xi::Job::SCH : xi::Job::BLM;
+    const auto expectedSubJob  = isEosPet ? xi::Job::SMN : xi::Job::RDM;
+    const auto mainLevel       = PMaster->GetMLevel();
+
+    if (PPet->GetMJob() != expectedMainJob)
     {
-        PPet->SetMJob(static_cast<uint8>(xi::Job::SCH));
+        PPet->SetMJob(static_cast<uint8>(expectedMainJob));
     }
 
-    if (PPet->GetSJob(true) != xi::Job::SMN)
+    if (PPet->GetSJob(true) != expectedSubJob)
     {
-        PPet->SetSJob(static_cast<uint8>(xi::Job::SMN));
+        PPet->SetSJob(static_cast<uint8>(expectedSubJob));
     }
 
     if (PPet->GetMLevel() != mainLevel)
@@ -93,8 +143,7 @@ bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
         PPet->SetMLevel(mainLevel);
     }
 
-    const auto expectedSubLevel = mainLevel == 1 ? 1 : mainLevel / 2;
-    if (PPet->GetSLevel() != expectedSubLevel)
+    if (PPet->GetSLevel() != mainLevel)
     {
         PPet->SetSLevel(mainLevel);
     }
@@ -102,10 +151,52 @@ bool EnsureEosOwnerAndJobs(CPetEntity* PPet)
     return true;
 }
 
-bool IsSupportTarget(CPetEntity* PPet, CBattleEntity* PTarget)
+bool IsInFaerieRange(CPetEntity* PPet, CBattleEntity* PTarget)
 {
     return PPet && PTarget && !PTarget->isDead() && PTarget->loc.zone == PPet->loc.zone &&
-           distance(PPet->loc.p, PTarget->loc.p) <= EosSupportRange;
+           distance(PPet->loc.p, PTarget->loc.p) <= FaerieActionRange;
+}
+
+bool CanCast(CPetEntity* PPet, SpellID spellId, bool checkMp)
+{
+    if (!PPet || !PPet->PAI || !PPet->PAI->CanChangeState() || !PPet->SpellContainer || !PPet->SpellContainer->HasSpells())
+    {
+        return false;
+    }
+
+    if (PPet->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::Silence, xi::StatusEffect::Mute }) ||
+        PPet->StatusEffectContainer->HasPreventActionEffect())
+    {
+        return false;
+    }
+
+    auto* PController = PPet->PAI->GetController();
+    if (PController && !PController->IsMagicCastingEnabled())
+    {
+        return false;
+    }
+
+    if (!PPet->SpellContainer->GetAvailable(spellId).has_value())
+    {
+        return false;
+    }
+
+    auto* PSpell = spell::GetSpell(spellId);
+    if (!PSpell || !PPet->CanUseSpell(PSpell))
+    {
+        return false;
+    }
+
+    if (checkMp && PSpell->hasMPCost())
+    {
+        const auto cost = battleutils::CalculateSpellCost(PPet, PSpell);
+        if (PPet->health.mp < cost)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::optional<SpellID> GetNaSpell(CBattleEntity* PTarget)
@@ -188,7 +279,7 @@ SpellID GetEosRegenSpell(CPetEntity* PPet)
     return SpellID::Regen;
 }
 
-std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_point tick)
+std::optional<FaerieCastAction> GetEosSupportAction(CPetEntity* PPet, timer::time_point tick)
 {
     if (!PPet || !PPet->PMaster || PPet->PMaster->objtype != TYPE_PC)
     {
@@ -197,9 +288,9 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
 
     auto* PMaster = static_cast<CCharEntity*>(PPet->PMaster);
 
-    auto checkNaTarget = [&](CBattleEntity* PTarget) -> std::optional<EosSupportAction>
+    auto checkNaTarget = [&](CBattleEntity* PTarget) -> std::optional<FaerieCastAction>
     {
-        if (!IsSupportTarget(PPet, PTarget))
+        if (!IsInFaerieRange(PPet, PTarget))
         {
             return std::nullopt;
         }
@@ -207,7 +298,7 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
         auto spellId = GetNaSpell(PTarget);
         if (spellId.has_value())
         {
-            return EosSupportAction{ spellId.value(), PTarget };
+            return FaerieCastAction{ spellId.value(), PTarget };
         }
 
         return std::nullopt;
@@ -218,7 +309,7 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
         return masterAction;
     }
 
-    std::optional<EosSupportAction> partyAction;
+    std::optional<FaerieCastAction> partyAction;
     PMaster->ForPartyWithTrusts(
         [&](CBattleEntity* PMember)
         {
@@ -238,14 +329,14 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
         return petAction;
     }
 
-    auto checkRegenTarget = [&](CBattleEntity* PTarget) -> std::optional<EosSupportAction>
+    auto checkRegenTarget = [&](CBattleEntity* PTarget) -> std::optional<FaerieCastAction>
     {
-        if (!IsSupportTarget(PPet, PTarget) || !NeedsEosRegen(PTarget, tick))
+        if (!IsInFaerieRange(PPet, PTarget) || !NeedsEosRegen(PTarget, tick))
         {
             return std::nullopt;
         }
 
-        return EosSupportAction{ GetEosRegenSpell(PPet), PTarget };
+        return FaerieCastAction{ GetEosRegenSpell(PPet), PTarget };
     };
 
     if (auto petRegen = checkRegenTarget(PPet); petRegen.has_value())
@@ -258,7 +349,7 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
         return masterRegen;
     }
 
-    std::optional<EosSupportAction> regenAction;
+    std::optional<FaerieCastAction> regenAction;
     PMaster->ForPartyWithTrusts(
         [&](CBattleEntity* PMember)
         {
@@ -271,86 +362,376 @@ std::optional<EosSupportAction> GetSupportAction(CPetEntity* PPet, timer::time_p
     return regenAction;
 }
 
-bool CanCast(CPetEntity* PPet, SpellID spellId)
+void TryEosCast(CPetEntity* PPet, timer::time_point tick)
 {
-    if (!PPet || !PPet->PAI || !PPet->PAI->CanChangeState() || !PPet->SpellContainer || !PPet->SpellContainer->HasSpells())
-    {
-        return false;
-    }
-
-    if (PPet->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::Silence, xi::StatusEffect::Mute }))
-    {
-        return false;
-    }
-
-    auto* PController = PPet->PAI->GetController();
-    if (PController && !PController->IsMagicCastingEnabled())
-    {
-        return false;
-    }
-
-    return PPet->SpellContainer->GetAvailable(spellId).has_value();
-}
-
-void TrySupportCast(CPetEntity* PPet, timer::time_point tick)
-{
-    if (nextEosCastTime[PPet->id] > tick)
+    if (nextFaerieCastTime[PPet->id] > tick)
     {
         return;
     }
 
-    auto action = GetSupportAction(PPet, tick);
-    if (!action.has_value() || !CanCast(PPet, action->spellId))
+    auto action = GetEosSupportAction(PPet, tick);
+    if (!action.has_value() || !CanCast(PPet, action->spellId, false))
     {
         return;
     }
 
     if (PPet->PAI->Cast(action->PTarget->entityId(), action->spellId))
     {
-        nextEosCastTime[PPet->id] = tick + EosCastCooldown;
+        nextFaerieCastTime[PPet->id] = tick + FaerieCastCooldown;
     }
 }
 
-void MaintainOrphicRefresh(CPetEntity* PPet, timer::time_point tick)
+bool IsValidTitaniaTarget(CPetEntity* PPet, CCharEntity* PMaster, CBattleEntity* PTarget, bool requireEngaged)
+{
+    if (!PPet || !PMaster || !PTarget || !IsInFaerieRange(PPet, PTarget))
+    {
+        return false;
+    }
+
+    if (PTarget->allegiance == PPet->allegiance || !PTarget->PAI || PTarget->PAI->IsUntargetable())
+    {
+        return false;
+    }
+
+    if (auto* PMob = dynamic_cast<CMobEntity*>(PTarget))
+    {
+        if (!PMaster->IsMobOwner(PMob))
+        {
+            return false;
+        }
+
+        if (requireEngaged && !PMob->PAI->IsEngaged() && !PMob->PEnmityContainer->HasID(PMaster->id) && !PMob->PEnmityContainer->HasID(PPet->id))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+CBattleEntity* FindTitaniaTarget(CPetEntity* PPet, CCharEntity* PMaster)
+{
+    if (!PPet || !PMaster || !PPet->loc.zone)
+    {
+        return nullptr;
+    }
+
+    if (auto* PPetTarget = PPet->GetBattleTarget(); IsValidTitaniaTarget(PPet, PMaster, PPetTarget, false))
+    {
+        return PPetTarget;
+    }
+
+    if (auto* PMasterTarget = PMaster->GetBattleTarget(); IsValidTitaniaTarget(PPet, PMaster, PMasterTarget, false))
+    {
+        return PMasterTarget;
+    }
+
+    if (IsValidTitaniaTarget(PPet, PMaster, PMaster->PClaimedMob, true))
+    {
+        return PMaster->PClaimedMob;
+    }
+
+    if (const auto savedTargId = PMaster->GetLocalVar("OX_TITANIA_TARGET"); savedTargId > 0)
+    {
+        if (auto* PSaved = dynamic_cast<CBattleEntity*>(PMaster->GetEntity(static_cast<uint16>(savedTargId), TYPE_MOB));
+            IsValidTitaniaTarget(PPet, PMaster, PSaved, true))
+        {
+            return PSaved;
+        }
+    }
+
+    CMobEntity* PClosestMob   = nullptr;
+    float       closestDistSq = std::numeric_limits<float>::max();
+
+    PPet->loc.zone->ForEachMob(
+        [&](CMobEntity* PMob)
+        {
+            if (!PMob || !IsInFaerieRange(PPet, PMob) || !PMob->PAI || PMob->PAI->IsUntargetable() || !PMob->PAI->IsEngaged())
+            {
+                return;
+            }
+
+            if (!PMaster->IsMobOwner(PMob))
+            {
+                return;
+            }
+
+            const bool masterOrPetOnEnmity =
+                PMob->PEnmityContainer->HasID(PMaster->id) ||
+                PMob->PEnmityContainer->HasID(PPet->id);
+
+            if (!masterOrPetOnEnmity)
+            {
+                return;
+            }
+
+            const float distSq = distanceSquared(PPet->loc.p, PMob->loc.p);
+            if (distSq < closestDistSq)
+            {
+                closestDistSq = distSq;
+                PClosestMob   = PMob;
+            }
+        });
+
+    return PClosestMob;
+}
+
+uint64 MakeRetryKey(uint32 targetId, SpellID spellId)
+{
+    return (static_cast<uint64>(targetId) << 16) | static_cast<uint64>(spellId);
+}
+
+bool WasSpellRecentlyTried(uint32 targetId, SpellID spellId, timer::time_point tick)
+{
+    const auto it = nextTitaniaSpellRetryTime.find(MakeRetryKey(targetId, spellId));
+    return it != nextTitaniaSpellRetryTime.end() && it->second > tick;
+}
+
+void MarkSpellTried(uint32 targetId, SpellID spellId, timer::time_point tick)
+{
+    if (nextTitaniaSpellRetryTime.size() > 256)
+    {
+        for (auto it = nextTitaniaSpellRetryTime.begin(); it != nextTitaniaSpellRetryTime.end();)
+        {
+            if (it->second <= tick)
+            {
+                it = nextTitaniaSpellRetryTime.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
+    nextTitaniaSpellRetryTime[MakeRetryKey(targetId, spellId)] = tick + TitaniaRetryWindow;
+}
+
+std::optional<SpellID> PickTitaniaEnfeeble(CPetEntity* PPet, CBattleEntity* PTarget, timer::time_point tick)
+{
+    auto trySpell = [&](SpellID spellId) -> bool
+    {
+        return !WasSpellRecentlyTried(PTarget->id, spellId, tick) && CanCast(PPet, spellId, true);
+    };
+
+    bool hasDispelable = false;
+    PTarget->StatusEffectContainer->ForEachEffect(
+        [&hasDispelable](const CStatusEffect& PStatus)
+        {
+            if (!hasDispelable && PStatus.GetDuration() > 0s && PStatus.HasEffectFlag(xi::StatusEffectFlag::Dispelable))
+            {
+                hasDispelable = true;
+            }
+        });
+
+    if (hasDispelable && trySpell(SpellID::Dispel))
+    {
+        return SpellID::Dispel;
+    }
+
+    if (nextTitaniaEnfeebleTime[PPet->id] > tick)
+    {
+        return std::nullopt;
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Bio) &&
+        !PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Dia))
+    {
+        if (trySpell(SpellID::Bio_II))
+        {
+            return SpellID::Bio_II;
+        }
+
+        if (trySpell(SpellID::Bio))
+        {
+            return SpellID::Bio;
+        }
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Slow) && trySpell(SpellID::Slow))
+    {
+        return SpellID::Slow;
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Paralysis) && trySpell(SpellID::Paralyze))
+    {
+        return SpellID::Paralyze;
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Blindness) && trySpell(SpellID::Blind))
+    {
+        return SpellID::Blind;
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Poison))
+    {
+        if (trySpell(SpellID::Poison_II))
+        {
+            return SpellID::Poison_II;
+        }
+
+        if (trySpell(SpellID::Poison))
+        {
+            return SpellID::Poison;
+        }
+    }
+
+    if (!PTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Addle) && trySpell(SpellID::Addle))
+    {
+        return SpellID::Addle;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<SpellID> PickTitaniaNuke(CPetEntity* PPet, CBattleEntity* PTarget)
+{
+    std::array<std::pair<std::size_t, int16>, 6> rankedElements;
+    for (std::size_t i = 0; i < TitaniaElements.size(); ++i)
+    {
+        rankedElements[i] = { i, PTarget->getMod(TitaniaElements[i].resMod) };
+    }
+
+    std::stable_sort(
+        rankedElements.begin(),
+        rankedElements.end(),
+        [](const auto& a, const auto& b)
+        {
+            return a.second < b.second;
+        });
+
+    const int maxTierIndex = PTarget->GetHPP() <= 15 ? 1 : 4;
+
+    for (const auto& [idx, _] : rankedElements)
+    {
+        const auto& tiers = TitaniaElements[idx].tiers;
+        for (int tier = maxTierIndex; tier >= 0; --tier)
+        {
+            if (CanCast(PPet, tiers[tier], true))
+            {
+                return tiers[tier];
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+void TryTitaniaCast(CPetEntity* PPet, timer::time_point tick)
+{
+    if (!PPet || !PPet->PMaster || PPet->PMaster->objtype != TYPE_PC || nextFaerieCastTime[PPet->id] > tick)
+    {
+        return;
+    }
+
+    auto* PMaster = static_cast<CCharEntity*>(PPet->PMaster);
+    auto* PTarget = FindTitaniaTarget(PPet, PMaster);
+    if (!PTarget)
+    {
+        return;
+    }
+
+    // Prioritize Aspir/Drain sustain when needed
+    if (PPet->GetMPP() < 55 && PTarget->health.mp > 0)
+    {
+        if (CanCast(PPet, SpellID::Aspir_II, true) && PPet->PAI->Cast(PTarget->entityId(), SpellID::Aspir_II))
+        {
+            nextFaerieCastTime[PPet->id] = tick + FaerieCastCooldown;
+            return;
+        }
+
+        if (CanCast(PPet, SpellID::Aspir, true) && PPet->PAI->Cast(PTarget->entityId(), SpellID::Aspir))
+        {
+            nextFaerieCastTime[PPet->id] = tick + FaerieCastCooldown;
+            return;
+        }
+    }
+
+    if (PPet->GetHPP() < 70 && PTarget->m_EcoSystem != xi::Ecosystem::Undead &&
+        CanCast(PPet, SpellID::Drain, true) && PPet->PAI->Cast(PTarget->entityId(), SpellID::Drain))
+    {
+        nextFaerieCastTime[PPet->id] = tick + FaerieCastCooldown;
+        return;
+    }
+
+    // Weave Enfeebling & Dispel with Elemental nuking
+    if (auto enfeeble = PickTitaniaEnfeeble(PPet, PTarget, tick); enfeeble.has_value())
+    {
+        if (PPet->PAI->Cast(PTarget->entityId(), enfeeble.value()))
+        {
+            MarkSpellTried(PTarget->id, enfeeble.value(), tick);
+            nextTitaniaEnfeebleTime[PPet->id] = tick + TitaniaEnfeebleWindow;
+            nextFaerieCastTime[PPet->id]      = tick + FaerieCastCooldown;
+            return;
+        }
+    }
+
+    if (auto nuke = PickTitaniaNuke(PPet, PTarget); nuke.has_value())
+    {
+        if (PPet->PAI->Cast(PTarget->entityId(), nuke.value()))
+        {
+            nextFaerieCastTime[PPet->id] = tick + FaerieCastCooldown;
+        }
+    }
+}
+
+void MaintainFaerieBuffs(CPetEntity* PPet, timer::time_point tick)
 {
     if (!PPet || !PPet->PMaster)
     {
         return;
     }
 
-    const auto itemRefresh = PPet->PMaster->getMod(EosRefreshMod);
-    const auto eosLevel    = PPet->GetMLevel() > 0 ? PPet->GetMLevel() : 1;
-    const auto levelScale  = 1 + (eosLevel - 1) / 20;
-    const auto desired     = static_cast<uint16>(std::max<int>(0, itemRefresh * levelScale));
-    auto*      PCurrent    = PPet->StatusEffectContainer->GetStatusEffect(EosRefreshEffect);
+    const auto itemRefresh  = PPet->PMaster->getMod(FaerieRefreshMod);
+    const auto petLevel     = PPet->GetMLevel() > 0 ? PPet->GetMLevel() : 1;
+    const auto levelScale   = 1 + (petLevel - 1) / 20;
+    const auto baseRefresh  = IsTitania(PPet) ? static_cast<int>(2 + petLevel / 25) : 0;
+    const auto desiredRefr  = static_cast<uint16>(std::max<int>(0, baseRefresh + itemRefresh * levelScale));
+    const auto desiredMatt  = static_cast<int16>(IsTitania(PPet) ? (15 + petLevel / 4) : 0);
+    const auto desiredMacc  = static_cast<int16>(IsTitania(PPet) ? (15 + petLevel / 3) : 0);
+    const auto stateKey     = static_cast<uint16>((desiredRefr & 0xFF) |
+                                                  ((static_cast<uint16>(petLevel) & 0x7F) << 8) |
+                                                  (IsTitania(PPet) ? 0x8000 : 0));
+    auto*      PCurrent     = PPet->StatusEffectContainer->GetStatusEffect(FaerieRefreshEffect);
 
-    if (desired == 0)
+    if (desiredRefr == 0 && desiredMatt == 0)
     {
         if (PCurrent)
         {
-            PPet->StatusEffectContainer->DelStatusEffectSilent(EosRefreshEffect);
+            PPet->StatusEffectContainer->DelStatusEffectSilent(FaerieRefreshEffect);
         }
 
         return;
     }
 
-    if (PCurrent && PCurrent->GetSubPower() == desired)
+    if (PCurrent && PCurrent->GetSubPower() == stateKey)
     {
-        PCurrent->SetDuration(EosRefreshDuration);
+        PCurrent->SetDuration(FaerieRefreshDuration);
         PCurrent->SetStartTime(tick);
         return;
     }
 
     if (PCurrent)
     {
-        PPet->StatusEffectContainer->DelStatusEffectSilent(EosRefreshEffect);
+        PPet->StatusEffectContainer->DelStatusEffectSilent(FaerieRefreshEffect);
     }
 
-    if (PPet->StatusEffectContainer->AddStatusEffectSilent(EosRefreshEffect, 0, 0, 0s, EosRefreshDuration, 0, desired))
+    if (PPet->StatusEffectContainer->AddStatusEffectSilent(FaerieRefreshEffect, 0, 0, 0s, FaerieRefreshDuration, 0, stateKey))
     {
-        if (auto* PEosRefresh = PPet->StatusEffectContainer->GetStatusEffect(EosRefreshEffect))
+        if (auto* PFairyBuff = PPet->StatusEffectContainer->GetStatusEffect(FaerieRefreshEffect))
         {
-            PEosRefresh->addMod(xi::Mod::REFRESH, static_cast<int16>(desired));
+            if (desiredRefr > 0)
+            {
+                PFairyBuff->addMod(xi::Mod::REFRESH, static_cast<int16>(desiredRefr));
+            }
+            if (desiredMatt > 0)
+            {
+                PFairyBuff->addMod(xi::Mod::MATT, desiredMatt);
+            }
+            if (desiredMacc > 0)
+            {
+                PFairyBuff->addMod(xi::Mod::MACC, desiredMacc);
+            }
         }
     }
 }
@@ -374,18 +755,29 @@ class EosCompanionModule : public CPPModule
         PZone->ForEachPet(
             [tick](CPetEntity* PPet)
             {
-                if (!IsEos(PPet))
+                const bool eosPet     = IsEos(PPet);
+                const bool titaniaPet = IsTitania(PPet);
+
+                if (!eosPet && !titaniaPet)
                 {
                     return;
                 }
 
-                if (!EnsureEosOwnerAndJobs(PPet))
+                if (!EnsureOwnerAndJobs(PPet))
                 {
                     return;
                 }
 
-                MaintainOrphicRefresh(PPet, tick);
-                TrySupportCast(PPet, tick);
+                MaintainFaerieBuffs(PPet, tick);
+
+                if (eosPet)
+                {
+                    TryEosCast(PPet, tick);
+                }
+                else
+                {
+                    TryTitaniaCast(PPet, tick);
+                }
             });
     }
 };
