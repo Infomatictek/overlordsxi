@@ -209,13 +209,15 @@ try {
         Write-Host "==> Copied DAT overlay to $dstDat" -ForegroundColor Green
     }
 
-    # 6. Copy Ashita v4 addon if target specified
+    # 6. Copy Ashita v4 addon if present and target specified
     if ($AshitaAddonsDir -ne '') {
         $srcAddon = Join-Path $RepoRoot 'addons\ashita4\overlords_talents'
-        $dstAddon = Join-Path $AshitaAddonsDir 'overlords_talents'
-        New-Item -ItemType Directory -Path $dstAddon -Force | Out-Null
-        Copy-Item -Path (Join-Path $srcAddon '*') -Destination $dstAddon -Recurse -Force
-        Write-Host "==> Installed Ashita v4 addon to $dstAddon" -ForegroundColor Green
+        if (Test-Path $srcAddon) {
+            $dstAddon = Join-Path $AshitaAddonsDir 'overlords_talents'
+            New-Item -ItemType Directory -Path $dstAddon -Force | Out-Null
+            Copy-Item -Path (Join-Path $srcAddon '*') -Destination $dstAddon -Recurse -Force
+            Write-Host "==> Installed Ashita v4 addon to $dstAddon" -ForegroundColor Green
+        }
     }
 
     # 7. Configure & build server binaries

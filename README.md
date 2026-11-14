@@ -21,7 +21,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/cpp/eos_companion.cpp` defines Eos support AI and Orphic Egg's Eos-only Refresh behavior.
 - `modules/custom/sql/eos_companion.sql` defines the ability row, pet row, mob pool, Eos spell list, custom status rows, and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
-- `addons/ashita4/overlords_talents/overlords_talents.lua` provides the Ashita v4 ImGui talent tree UI (`/talents` or `/tal`).
+- Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
 Four small engine patches are still required:
 
@@ -32,53 +32,26 @@ Four small engine patches are still required:
 
 The first patch is needed because LSB bounds pet IDs and status effect IDs in C++. The second patch keeps Eos from inheriting randomized jug-pet level behavior. The third patch removes skill, quest, level 75, and job gates from player weaponskill eligibility. The fourth patch allows per-character talent ranks to customize or add skillchain properties (such as giving Sanguine Blade Compression / Gravitation / Darkness) without mutating shared server WS definitions.
 
-## Client Launcher (For Players & Server Distribution)
+## Client Launcher & Client Files
 
-The distributable Windows client launcher (`OverlordsLauncher.exe`, C# / .NET 8 WPF) lives in its own repository: **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
+The distributable Windows client launcher (`OverlordsLauncher.exe`), XIPivot DAT overlay, and `overlords_talents` Ashita v4 addon are maintained in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**:
 
-### What the Launcher Automates
-
-- **Prerequisite & FFXI Setup**: Auto-detects an existing FFXI installation from the Windows Registry, checks Windows DirectPlay & x86 VC++ runtime status, and downloads **Ashita v4**, **`xiloader.exe`**, and **XIPivot** (`pivot.dll`) if missing.
-- **Auto-Updates via SHA-256 Manifest**: Syncs `dat-overlay/ROM/...` into XIPivot (`Ashita\polplugins\DATs\overlordsxi\`) and `addons/ashita4/overlords_talents/overlords_talents.lua` into `Ashita\addons\overlords_talents\` from [`launcher/manifest.json`](launcher/manifest.json) in this repository.
-- **Graphics, Settings & Auto-Login**: Configures Ashita boot/registry settings (`config\boot\overlordsxi.ini`), XIPivot overlay (`config\pivot\overlordsxi.ini`), startup script (`scripts\overlordsxi.txt` with `/addon load overlords_talents` and `/fps`), resolution presets, audio, region, and optional DPAPI-encrypted saved credentials.
-- **Live Server Status**: Probes lobby (`54231`) and search (`54002`) TCP ports and lets players toggle a custom host or load a host-provided `overlords-server.json`.
-
-### Sharing Your Server with Players
-
-1. Download `OverlordsLauncher.exe` (or `OverlordsLauncher-win-x64.zip`) from the **[overlordsxi-launcher Releases](https://github.com/Infomatictek/overlordsxi-launcher/releases)** page.
-2. Place an `overlords-server.json` file next to `OverlordsLauncher.exe` (you can generate one from **Graphics & Settings -> Export Shareable overlords-server.json** inside the launcher) to point players to your server host/IP:
-
-```json
-{
-  "ServerName": "OverlordsXI",
-  "DefaultHost": "play.your-server.example",
-  "UseHairpin": true,
-  "LobbyPort": 54231,
-  "SearchPort": 54002
-}
-```
-
-Whenever you update files under `dat-overlay/` or `addons/ashita4/` in this server repository, regenerate [`launcher/manifest.json`](launcher/manifest.json) hashes before pushing so existing `OverlordsLauncher.exe` clients auto-update:
-
-```bash
-python scripts/update-launcher-manifest.py
-```
+- **For Players**: Download `OverlordsLauncher.exe` from **[overlordsxi-launcher Releases](https://github.com/Infomatictek/overlordsxi-launcher/releases)** and click **PLAY OVERLORDSXI** (auto-installs Ashita v4, `xiloader.exe`, XIPivot, the OverlordsXI DAT overlay, and `overlords_talents`).
+- **For Server Hosts**: Place an `overlords-server.json` next to `OverlordsLauncher.exe` (generated via **Graphics & Settings -> Export Shareable overlords-server.json**) to point players to your server host/IP.
 
 ## Install
 
 ### Automated Local Server Setup (Windows)
 
-Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from PowerShell to clone or update `landsandboat/server`, apply `patches/*.patch`, copy `modules/custom/*`, merge `modules/init.append.txt` into `modules/init.txt`, copy `dat-overlay/ROM`, optionally install the Ashita v4 addon, and compile `xi_connect`, `xi_world`, `xi_search`, and `xi_map`:
+Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from PowerShell to clone or update `landsandboat/server`, apply `patches/*.patch`, copy `modules/custom/*`, merge `modules/init.append.txt` into `modules/init.txt`, and compile `xi_connect`, `xi_world`, `xi_search`, and `xi_map`:
 
 ```powershell
-.\scripts\setup-local-server.ps1 -ServerDir C:\dev\server -AshitaAddonsDir C:\Ashita\addons
+.\scripts\setup-local-server.ps1 -ServerDir C:\dev\server
 ```
 
 Supported flags:
 
 - `-ServerDir` (default `C:\dev\server`): target LandSandBoat checkout path.
-- `-AshitaAddonsDir`: if set, copies `addons\ashita4\overlords_talents` into `<AshitaAddonsDir>\overlords_talents`.
-- `-DatOverlayDir` (default `C:\DATs\Overlords`): destination for `dat-overlay\ROM`.
 - `-BuildJobs` (default `4`): parallel CMake build jobs.
 - `-SkipClone` / `-SkipBuild`: update files/patches on an existing checkout without cloning or recompiling.
 - `-RunDbTool`: also executes `python tools\dbtool.py` inside `-ServerDir`.
@@ -134,15 +107,9 @@ Reconfigure/rebuild after adding the C++ module and patches:
 cmd /c '"C:\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64 && cmake --build build --target xi_map -j 4'
 ```
 
-For the Ashita v4 UI, copy `addons\ashita4\overlords_talents` into your Ashita `addons\` directory and load it with `/addon load overlords_talents`, then open it with `/talents` or `/tal`.
-
 ## Client DAT overlay
 
-Copy `dat-overlay\ROM` into your custom DAT loader path:
-
-```text
-C:\DATs\Overlords
-```
+The DAT overlay lives in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)** under `dat-overlay\ROM` and is synced automatically by `OverlordsLauncher.exe` (or can be copied manually into your custom DAT loader path such as `C:\DATs\Overlords`).
 
 The overlay updates:
 
