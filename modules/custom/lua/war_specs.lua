@@ -6,7 +6,9 @@
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
 require('scripts/combat/physical_utilities')
+require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/warrior')
+require('scripts/globals/spells/damage_spell')
 -----------------------------------
 local m = Module:new('overlords_war_specs')
 
@@ -15,6 +17,41 @@ local spec = xi.overlords.spec
 local COMMANDER_KEY = 'commander'
 local BERSERKER_KEY = 'berserker'
 local GLADIATOR_KEY = 'gladiator'
+
+local COMMANDER_BREACH_ABIL_ID  = 396
+local COMMANDER_BULWARK_ABIL_ID = 397
+local COMMANDER_CADENCE_ABIL_ID = 398
+local COMMANDER_HORN_ABIL_ID    = 399
+
+local COMMANDER_BREACH_EFFECT_ID  = 815
+local COMMANDER_BULWARK_EFFECT_ID = 816
+local COMMANDER_CADENCE_EFFECT_ID = 817
+local COMMANDER_REGROUP_EFFECT_ID = 818
+
+xi.jobAbility = xi.jobAbility or {}
+xi.jobAbility.TACTICAL_BREACH   = COMMANDER_BREACH_ABIL_ID
+xi.jobAbility.FORMATION_BULWARK = COMMANDER_BULWARK_ABIL_ID
+xi.jobAbility.BATTLE_CADENCE    = COMMANDER_CADENCE_ABIL_ID
+xi.jobAbility.RALLYING_HORN     = COMMANDER_HORN_ABIL_ID
+
+xi.effect = xi.effect or {}
+xi.effect.COMMANDER_BREACH  = COMMANDER_BREACH_EFFECT_ID
+xi.effect.COMMANDER_BULWARK = COMMANDER_BULWARK_EFFECT_ID
+xi.effect.COMMANDER_CADENCE = COMMANDER_CADENCE_EFFECT_ID
+xi.effect.COMMANDER_REGROUP = COMMANDER_REGROUP_EFFECT_ID
+
+xi.actions = xi.actions or {}
+xi.actions.abilities = xi.actions.abilities or {}
+xi.actions.abilities.tactical_breach   = xi.actions.abilities.tactical_breach or {}
+xi.actions.abilities.formation_bulwark = xi.actions.abilities.formation_bulwark or {}
+xi.actions.abilities.battle_cadence    = xi.actions.abilities.battle_cadence or {}
+xi.actions.abilities.rallying_horn     = xi.actions.abilities.rallying_horn or {}
+
+xi.effects = xi.effects or {}
+xi.effects.commander_breach  = xi.effects.commander_breach or {}
+xi.effects.commander_bulwark = xi.effects.commander_bulwark or {}
+xi.effects.commander_cadence = xi.effects.commander_cadence or {}
+xi.effects.commander_regroup = xi.effects.commander_regroup or {}
 
 local COMMANDER_STANCES =
 {
@@ -27,6 +64,7 @@ local COMMANDER_STANCES =
 
 local pendingWarcryMods = {}
 local pendingBloodRageMods = {}
+local pendingCommanderMods = {}
 
 local function scaleTier(lvl, low, mid, high)
     local l = lvl or 1
@@ -36,6 +74,18 @@ local function scaleTier(lvl, low, mid, high)
         return mid
     end
     return low
+end
+
+local function scaleCommanderTier(lvl, lv10, lv30, lv50, lv70)
+    local l = lvl or 1
+    if l >= 70 then
+        return lv70, 4
+    elseif l >= 50 then
+        return lv50, 3
+    elseif l >= 30 then
+        return lv30, 2
+    end
+    return lv10, 1
 end
 
 local function isWarriorSpec(entity, specKey)
@@ -237,20 +287,27 @@ if xi.job and xi.job.WAR then
             id          = 1,
             key         = COMMANDER_KEY,
             name        = 'Commander',
-            role        = 'Support DPS / Party Tactician',
+            role        = 'Active Tactical Buffer',
             icon        = 'blue_crystal',
             reqLevel    = 10,
-            extraAbilities = xi.jobAbility and xi.jobAbility.WARCRY and { xi.jobAbility.WARCRY } or nil,
+            extraAbilities =
+            {
+                (xi.jobAbility and xi.jobAbility.WARCRY) or 2,
+                COMMANDER_BREACH_ABIL_ID,
+                COMMANDER_BULWARK_ABIL_ID,
+                COMMANDER_CADENCE_ABIL_ID,
+                COMMANDER_HORN_ABIL_ID,
+            },
             extraTraits    = { 140 },
-            description = 'Inspiring tactician: unlocks at Lv10 with Warcry on a 60s cooldown and shares your active Warrior JA buff with the entire party. Only 1 WAR JA stance active at a time.',
+            description = 'Active battlefield tactician (Lv10+): weaves short-cooldown party & mark JAs that scale stronger as you level (Lv10/30/50/70+), shares your active WAR stance with Warcry, and trades swing uptime for JA animation locks.',
             highlights  =
             {
                 'Passives (Lv10/30/50+): +5/8/12% Max HP, +8/16/28 Attack, +6/12/20 Acc, +4/8/12 Store TP.',
-                'Early & Rapid Warcry: Unlocked at Lv10 with a 60s cooldown (45s duration); shares your active JA buff to all allies.',
-                'Single-Stance Rule: Only 1 WAR JA buff (Berserk, Defender, Aggressor, Retaliation, Restraint) can be active at a time.',
-                'Berserk -> Warcry: Self +10% Atk (-10% DEF); Warcry brings Commander & all allies to +15% Attack & +100 TP Bonus.',
-                'Defender -> Warcry: Self +15% DEF (-10% Atk); Warcry grants party +20% DEF, -8% Damage Taken, & +8% Attack.',
-                'Aggressor / Retaliation / Restraint -> Warcry: Shares +25 Acc & +8% DA, +12% Counter & +10 STP, or +12% WSD & +200 TP Bonus.',
+                'Early & Rapid Warcry (Lv10, 60s CD): Shares your single active WAR stance (Berserk, Defender, Aggressor, Retaliation, or Restraint) with the party.',
+                'Tactical Breach (Lv10, 20s CD, 10s, Enemy 15y): +12/18/24/30% Skillchain DMG, +8/12/16/20% Magic Burst & Crit DMG, +100/150/200/250 TP on SC close.',
+                'Formation: Bulwark (Lv10, 25s CD, 15s, Party 10y): Stacking Phalanx (8 + 0.45*Lv), +5/10/15/20 MDEF, +12/18/25/35 Status Resist, +30/50/75/100% Knockback Resist.',
+                'Battle Cadence (Lv10, 20s CD, 12s, Party 10y): +12/18/24/30 Subtle Blow (+0/0/5/10 SB II), +10/15/22/30 Conserve TP, +8/12/16/20% Cure Rcvd.',
+                'Rallying Horn (Lv10, 45s CD, 12s, Party 12y): Cleanses Slow/Bind (Lv30+ Weight/Para; Lv50+ DEF/MDEF Down; Lv70+ Atk/Acc Down), +5/7/9/12% HP, +75/125/175/250 TP, +8/10/12/15% Move Speed.',
             },
             mods = function(_player, lvl)
                 return
@@ -763,6 +820,381 @@ m:addOverride('xi.combat.physical.isBlocked', function(defender, attacker)
     end
 
     return blocked
+end)
+
+-----------------------------------
+-- Commander Custom Active Job Abilities (Lv10+, Scaling Lv10/30/50/70+)
+-----------------------------------
+local BREACH_SC_PCT    = { 12, 18, 24, 30 }
+local BREACH_MB_PCT    = { 8, 12, 16, 20 }
+local BREACH_CRIT_PCT  = { 8, 12, 16, 20 }
+local BREACH_CLOSER_TP = { 100, 150, 200, 250 }
+
+local function getCommanderLevel(player)
+    if player ~= nil and player.getMainLvl then
+        return player:getMainLvl() or 10
+    end
+    return 10
+end
+
+local function listContainsEntityId(list, targetId)
+    if type(list) ~= 'table' or targetId == nil then
+        return false
+    end
+
+    for _, member in ipairs(list) do
+        if member ~= nil and member.getID and member:getID() == targetId then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function isCommanderAlly(origin, originId, actor)
+    if actor == nil then
+        return false
+    end
+
+    local checkActor = actor
+    if actor.getMaster and actor:getMaster() ~= nil then
+        checkActor = actor:getMaster()
+    end
+
+    local resolvedOriginId = originId
+    if origin ~= nil and origin.getID then
+        resolvedOriginId = origin:getID()
+    end
+
+    local actorId = checkActor.getID and checkActor:getID() or nil
+    if resolvedOriginId ~= nil and actorId == resolvedOriginId then
+        return true
+    end
+
+    if origin ~= nil then
+        if origin.isInPartyWith and origin:isInPartyWith(checkActor) then
+            return true
+        end
+        if origin.getAlliance and listContainsEntityId(origin:getAlliance(), actorId) then
+            return true
+        end
+        if origin.getPartyWithTrusts and listContainsEntityId(origin:getPartyWithTrusts(), actorId) then
+            return true
+        end
+        if origin.getParty and listContainsEntityId(origin:getParty(), actorId) then
+            return true
+        end
+    end
+
+    if resolvedOriginId ~= nil then
+        if checkActor.getAlliance and listContainsEntityId(checkActor:getAlliance(), resolvedOriginId) then
+            return true
+        end
+        if checkActor.getPartyWithTrusts and listContainsEntityId(checkActor:getPartyWithTrusts(), resolvedOriginId) then
+            return true
+        end
+        if checkActor.getParty and listContainsEntityId(checkActor:getParty(), resolvedOriginId) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function applyPendingCommanderEffectMods(target, effect)
+    if target == nil or effect == nil then
+        return
+    end
+
+    local mods = pendingCommanderMods[target:getID()]
+    if mods ~= nil then
+        for _, pair in ipairs(mods) do
+            effect:addMod(pair[1], pair[2])
+        end
+    end
+end
+
+local function applyCommanderTimedEffect(target, effectId, power, duration, origin, subPower, iconId, mods)
+    if target == nil then
+        return
+    end
+
+    if target:hasStatusEffect(effectId) then
+        target:delStatusEffectSilent(effectId)
+    end
+
+    local targetId = target:getID()
+    pendingCommanderMods[targetId] = mods
+    target:addStatusEffect(effectId,
+    {
+        power    = power,
+        duration = duration,
+        origin   = origin,
+        subPower = subPower or 0,
+        icon     = iconId,
+    })
+    pendingCommanderMods[targetId] = nil
+end
+
+local function getActiveBreachInfo(target, actor)
+    if target == nil or actor == nil or not target.getStatusEffect then
+        return nil
+    end
+
+    local effect = target:getStatusEffect(COMMANDER_BREACH_EFFECT_ID)
+    if effect == nil then
+        return nil
+    end
+
+    local origin = effect.getOrigin and effect:getOrigin() or nil
+    local originId = effect.getSubPower and effect:getSubPower() or 0
+    if not isCommanderAlly(origin, originId, actor) then
+        return nil
+    end
+
+    local tier = utils.clamp(effect:getPower() or 1, 1, 4)
+    return
+    {
+        tier     = tier,
+        scPct    = BREACH_SC_PCT[tier],
+        mbPct    = BREACH_MB_PCT[tier],
+        closerTp = BREACH_CLOSER_TP[tier],
+    }
+end
+
+-- 1) Tactical Breach (396): 20s CD, 10s Enemy Mark
+m:addOverride('xi.actions.abilities.tactical_breach.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, COMMANDER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if target == nil or target:getID() == player:getID() then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.tactical_breach.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local critPct, tier = scaleCommanderTier(lvl, BREACH_CRIT_PCT[1], BREACH_CRIT_PCT[2], BREACH_CRIT_PCT[3], BREACH_CRIT_PCT[4])
+    local iconId = xi.effect and xi.effect.CONSPIRATOR or COMMANDER_BREACH_EFFECT_ID
+
+    applyCommanderTimedEffect(
+        target,
+        COMMANDER_BREACH_EFFECT_ID,
+        tier,
+        10,
+        player,
+        player:getID(),
+        iconId,
+        {
+            { xi.mod.CRIT_DEF_BONUS, -critPct },
+        }
+    )
+
+    return COMMANDER_BREACH_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.commander_breach.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.commander_breach.onEffectLose', function(target, effect)
+end)
+
+m:addOverride('xi.combat.skillchain.calculateSkillchainDamage', function(actor, target, baseDamage)
+    local breach = getActiveBreachInfo(target, actor)
+    if breach == nil then
+        return super(actor, target, baseDamage)
+    end
+
+    actor:addMod(xi.mod.SKILLCHAINBONUS, breach.scPct)
+    local ok, result = pcall(super, actor, target, baseDamage)
+    actor:delMod(xi.mod.SKILLCHAINBONUS, breach.scPct)
+
+    if not ok then
+        error(result)
+    end
+
+    if (tonumber(result) or 0) > 0 and actor.addTP then
+        actor:addTP(breach.closerTp)
+    end
+
+    return result
+end)
+
+m:addOverride('xi.spells.damage.calculateIfMagicBurstBonus', function(caster, target, spellId, skillType, spellElement)
+    local bonus = super(caster, target, spellId, skillType, spellElement)
+    local breach = getActiveBreachInfo(target, caster)
+    if breach ~= nil then
+        bonus = bonus + (breach.mbPct / 100)
+    end
+    return bonus
+end)
+
+-- 2) Formation: Bulwark (397): 25s CD, 15s Party 10y Mitigation
+m:addOverride('xi.actions.abilities.formation_bulwark.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, COMMANDER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.formation_bulwark.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local phalanxVal = 8 + math.floor(lvl * 0.45)
+    local mdefVal, tier = scaleCommanderTier(lvl, 5, 10, 15, 20)
+    local statusResVal = scaleCommanderTier(lvl, 12, 18, 25, 35)
+    local kbRedVal = scaleCommanderTier(lvl, 30, 50, 75, 100)
+    local iconId = xi.effect and xi.effect.PHALANX or COMMANDER_BULWARK_EFFECT_ID
+
+    applyCommanderTimedEffect(
+        target,
+        COMMANDER_BULWARK_EFFECT_ID,
+        phalanxVal,
+        15,
+        player,
+        tier,
+        iconId,
+        {
+            { xi.mod.PHALANX,             phalanxVal },
+            { xi.mod.MDEF,                mdefVal },
+            { xi.mod.STATUSRES,           statusResVal },
+            { xi.mod.KNOCKBACK_REDUCTION, kbRedVal },
+        }
+    )
+
+    return COMMANDER_BULWARK_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.commander_bulwark.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.commander_bulwark.onEffectLose', function(target, effect)
+end)
+
+-- 3) Battle Cadence (398): 20s CD, 12s Party 10y Subtle Blow / Conserve TP / Cure Rcvd
+m:addOverride('xi.actions.abilities.battle_cadence.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, COMMANDER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.battle_cadence.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local subtleBlow, tier = scaleCommanderTier(lvl, 12, 18, 24, 30)
+    local subtleBlowII = scaleCommanderTier(lvl, 0, 0, 5, 10)
+    local conserveTp = scaleCommanderTier(lvl, 10, 15, 22, 30)
+    local cureRcvd = scaleCommanderTier(lvl, 8, 12, 16, 20)
+    local iconId = xi.effect and xi.effect.HASTE or COMMANDER_CADENCE_EFFECT_ID
+
+    local mods =
+    {
+        { xi.mod.SUBTLE_BLOW,       subtleBlow },
+        { xi.mod.CONSERVE_TP,       conserveTp },
+        { xi.mod.CURE_POTENCY_RCVD, cureRcvd },
+    }
+    if subtleBlowII > 0 and xi.mod.SUBTLE_BLOW_II then
+        table.insert(mods, { xi.mod.SUBTLE_BLOW_II, subtleBlowII })
+    end
+
+    applyCommanderTimedEffect(
+        target,
+        COMMANDER_CADENCE_EFFECT_ID,
+        subtleBlow,
+        12,
+        player,
+        tier,
+        iconId,
+        mods
+    )
+
+    return COMMANDER_CADENCE_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.commander_cadence.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.commander_cadence.onEffectLose', function(target, effect)
+end)
+
+-- 4) Rallying Horn (399): 45s CD, Instant Cleanse/Heal/TP + 12s Move Speed
+m:addOverride('xi.actions.abilities.rallying_horn.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, COMMANDER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.rallying_horn.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local healPct, tier = scaleCommanderTier(lvl, 5, 7, 9, 12)
+    local tpPulse = scaleCommanderTier(lvl, 75, 125, 175, 250)
+    local moveSpeed = scaleCommanderTier(lvl, 8, 10, 12, 15)
+    local iconId = xi.effect and xi.effect.QUICKENING or COMMANDER_REGROUP_EFFECT_ID
+
+    local cleanseList =
+    {
+        xi.effect.SLOW,
+        xi.effect.BIND,
+    }
+    if tier >= 2 then
+        table.insert(cleanseList, xi.effect.WEIGHT)
+        table.insert(cleanseList, xi.effect.PARALYSIS)
+    end
+    if tier >= 3 then
+        table.insert(cleanseList, xi.effect.DEFENSE_DOWN)
+        table.insert(cleanseList, xi.effect.MAGIC_DEF_DOWN)
+    end
+    if tier >= 4 then
+        table.insert(cleanseList, xi.effect.ATTACK_DOWN)
+        table.insert(cleanseList, xi.effect.ACCURACY_DOWN)
+    end
+
+    for _, debuffId in ipairs(cleanseList) do
+        if debuffId ~= nil and target:hasStatusEffect(debuffId) then
+            target:delStatusEffect(debuffId)
+        end
+    end
+
+    local maxHp = target.getMaxHP and target:getMaxHP() or 0
+    local healAmount = math.max(8, math.floor(maxHp * healPct / 100))
+    if maxHp > 0 and target.addHP then
+        target:addHP(healAmount)
+    end
+
+    if target.addTP then
+        target:addTP(tpPulse)
+    end
+
+    applyCommanderTimedEffect(
+        target,
+        COMMANDER_REGROUP_EFFECT_ID,
+        moveSpeed,
+        12,
+        player,
+        tier,
+        iconId,
+        {
+            { xi.mod.MOVE_SPEED_STACKABLE, moveSpeed },
+        }
+    )
+
+    return COMMANDER_REGROUP_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.commander_regroup.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.commander_regroup.onEffectLose', function(target, effect)
 end)
 
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)

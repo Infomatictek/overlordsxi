@@ -1,0 +1,45 @@
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 3b02412..cd639ac 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 815 // 768 real + 47 custom
++#define MAX_EFFECTID 832 // 768 real + 64 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index a80259d..4c4edb9 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -141,6 +141,27 @@ void LoadEffectsParameters()
+     EffectsParams[814].Element          = 7;
+     EffectsParams[814].SortKey          = 10000;
+     EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Commander custom tactical status effects (815-818).
++    EffectsParams[815].Name             = "commander_breach";
++    EffectsParams[815].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[815].SortKey          = 10000;
++    EffectsParams[815].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[816].Name             = "commander_bulwark";
++    EffectsParams[816].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[816].SortKey          = 10000;
++    EffectsParams[816].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[817].Name             = "commander_cadence";
++    EffectsParams[817].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[817].SortKey          = 10000;
++    EffectsParams[817].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[818].Name             = "commander_regroup";
++    EffectsParams[818].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[818].SortKey          = 10000;
++    EffectsParams[818].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
