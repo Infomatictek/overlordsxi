@@ -1,0 +1,363 @@
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 7b04b29..ea78aa6 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -40,7 +40,9 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ 
+ #include <algorithm>
+ #include <array>
++#include <cctype>
+ #include <cstring>
++#include <vector>
+ 
+ #include "map_constants.h"
+ 
+@@ -62,14 +64,18 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ #include "notoriety_container.h"
+ #include "status_effect_container.h"
+ 
++#include "enums/chat_message_type.h"
+ #include "enums/msg_std.h"
+ #include "map_engine.h"
++#include "packets/s2c/0x017_chat_std.h"
+ #include "packets/s2c/0x029_battle_message.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/itemutils.h"
+ #include "utils/petutils.h"
+ #include "utils/puppetutils.h"
++#include "utils/zoneutils.h"
++#include "zone.h"
+ 
+ namespace effects
+ {
+@@ -227,6 +233,174 @@ auto statusOrdering(const std::unique_ptr<CStatusEffect>& AStatus, const std::un
+     return AStatus->GetStatusID() < BStatus->GetStatusID();
+ }
+ 
++struct DotAttributionEntry
++{
++    xi::StatusEffect statusId{ xi::StatusEffect::None };
++    uint32           originId{ 0 };
++    int32            regenDown{ 0 };
++};
++
++auto ResolveDotOrigin(CBattleEntity* PTarget, uint32 originId) -> CBattleEntity*
++{
++    if (originId == 0 || PTarget == nullptr)
++    {
++        return nullptr;
++    }
++
++    CBaseEntity* POrigin = nullptr;
++    if (originId < 0x01000000)
++    {
++        if (PTarget->loc.zone != nullptr)
++        {
++            POrigin = PTarget->loc.zone->GetCharByID(originId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetChar(originId);
++        }
++    }
++    else
++    {
++        if (PTarget->PInstance != nullptr)
++        {
++            const uint16 targId = static_cast<uint16>(originId & 0x00000800 ? (originId & 0x7FF) + 0x700 : originId & 0xFFF);
++            POrigin             = PTarget->GetEntity(targId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetEntity(originId);
++        }
++    }
++
++    if (POrigin != nullptr && POrigin->id != originId)
++    {
++        return nullptr;
++    }
++
++    return dynamic_cast<CBattleEntity*>(POrigin);
++}
++
++auto IsPlayerSideDotOrigin(const CBattleEntity* PTarget, const CBattleEntity* POrigin) -> bool
++{
++    if (PTarget == nullptr || POrigin == nullptr || POrigin == PTarget)
++    {
++        return false;
++    }
++
++    if (POrigin->objtype == TYPE_PC || POrigin->objtype == TYPE_TRUST || POrigin->objtype == TYPE_FELLOW)
++    {
++        return true;
++    }
++
++    if (POrigin->objtype == TYPE_PET)
++    {
++        return POrigin->PMaster == nullptr || POrigin->PMaster->objtype == TYPE_PC;
++    }
++
++    return false;
++}
++
++auto GetDisplayEntityName(const CBattleEntity* PEntity) -> std::string
++{
++    if (PEntity == nullptr)
++    {
++        return "";
++    }
++
++    std::string name = !PEntity->packetName.empty() ? PEntity->packetName : PEntity->getName();
++    std::replace(name.begin(), name.end(), '_', ' ');
++    return name;
++}
++
++auto GetDotDisplayName(xi::StatusEffect statusId) -> std::string
++{
++    switch (statusId)
++    {
++        case xi::StatusEffect::Poison:
++            return "Poison";
++        case xi::StatusEffect::Kaustra:
++            return "Kaustra";
++        case xi::StatusEffect::Burn:
++            return "Burn";
++        case xi::StatusEffect::Frost:
++            return "Frost";
++        case xi::StatusEffect::Choke:
++            return "Choke";
++        case xi::StatusEffect::Rasp:
++            return "Rasp";
++        case xi::StatusEffect::Shock:
++            return "Shock";
++        case xi::StatusEffect::Drown:
++            return "Drown";
++        case xi::StatusEffect::Dia:
++            return "Dia";
++        case xi::StatusEffect::Bio:
++            return "Bio";
++        case xi::StatusEffect::Helix:
++            return "Helix";
++        case xi::StatusEffect::Requiem:
++            return "Requiem";
++        default:
++            break;
++    }
++
++    if (static_cast<uint16>(statusId) == 540)
++    {
++        return "Geo-Poison";
++    }
++
++    std::string raw = effects::GetEffectName(static_cast<uint16>(statusId));
++    if (raw.empty())
++    {
++        return "DoT";
++    }
++
++    bool capitalizeNext = true;
++    for (char& ch : raw)
++    {
++        if (ch == '_')
++        {
++            ch             = ' ';
++            capitalizeNext = true;
++        }
++        else if (capitalizeNext)
++        {
++            ch             = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
++            capitalizeNext = false;
++        }
++    }
++
++    return raw;
++}
++
++void EmitDotDamageLog(CBattleEntity* PTarget, CBattleEntity* POrigin, xi::StatusEffect statusId, int32 damage)
++{
++    if (PTarget == nullptr || PTarget->objtype != TYPE_MOB || PTarget->loc.zone == nullptr || damage <= 0)
++    {
++        return;
++    }
++
++    if (!IsPlayerSideDotOrigin(PTarget, POrigin))
++    {
++        return;
++    }
++
++    const std::string casterName = GetDisplayEntityName(POrigin);
++    const std::string targetName = GetDisplayEntityName(PTarget);
++    if (casterName.empty() || targetName.empty())
++    {
++        return;
++    }
++
++    const std::string effectName = GetDotDisplayName(statusId);
++    const char*       pointWord  = damage == 1 ? "point" : "points";
++    const std::string message    = fmt::format("{}'s {} deals {} {} of damage to {}.", casterName, effectName, damage, pointWord, targetName);
++
++    PTarget->loc.zone->PushPacket(PTarget, CHAR_INRANGE, std::make_unique<GP_SERV_COMMAND_CHAT_STD>("", PTarget->getZone(), MESSAGE_SYSTEM_3, message));
++}
++
+ } // namespace
+ 
+ CStatusEffectContainer::CStatusEffectContainer(CBattleEntity* PEntity)
+@@ -1888,6 +2062,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                     if (PEffect && (PEffect->GetEffectFlags() & xi::StatusEffectFlag::AlwaysExpiring) != xi::StatusEffectFlag::None)
+                     {
+                         PEffect->SetStartTime(timer::now());
++                        PEffect->SetOriginID(PEntity->id);
+ 
+                         // Effect updated, probably from Ecliptic Attrition
+                         // Update status effect with new potency.
+@@ -1911,6 +2086,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                                                     4s);                                                      // Duration
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::NoLossMessage);
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::AlwaysExpiring);
++                        PEffect->SetOriginID(PEntity->id);
+                         PTarget->StatusEffectContainer->AddStatusEffect(std::unique_ptr<CStatusEffect>(PEffect), EffectNotice::Silent);
+                     }
+                 }
+@@ -2041,7 +2217,27 @@ void CStatusEffectContainer::TickEffects(timer::time_point tick)
+                     HandleAura(PStatusEffect.get());
+                 }
+                 PStatusEffect->IncrementElapsedTickCount();
+-                luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                if (m_POwner->objtype == TYPE_MOB &&
++                    (PStatusEffect->GetStatusID() == xi::StatusEffect::Helix ||
++                     (PStatusEffect->GetStatusID() == xi::StatusEffect::Bio && PStatusEffect->GetTier() >= 11)))
++                {
++                    const auto   statusId = PStatusEffect->GetStatusID();
++                    const uint32 originId = PStatusEffect->GetOriginID();
++                    const int32  hpBefore = m_POwner->health.hp;
++
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0)
++                    {
++                        EmitDotDamageLog(m_POwner, ResolveDotOrigin(m_POwner, originId), statusId, dealt);
++                    }
++                }
++                else
++                {
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++                }
+             }
+         }
+     }
+@@ -2085,7 +2281,108 @@ void CStatusEffectContainer::TickRegen(timer::time_point tick)
+             monstrosity::ApplyIdleRegen(PChar);
+         }
+ 
+-        if (poison)
++        if (m_POwner->objtype == TYPE_MOB && poison > 0)
++        {
++            std::vector<DotAttributionEntry> dotEntries;
++            for (const auto& PStatusEffect : m_StatusEffectSet)
++            {
++                if (PStatusEffect == nullptr || PStatusEffect->isDeleted())
++                {
++                    continue;
++                }
++
++                int32 effectRegenDown = 0;
++                for (const auto& mod : PStatusEffect->modList())
++                {
++                    if (mod.getModID() == xi::Mod::REGEN_DOWN)
++                    {
++                        effectRegenDown += mod.getModAmount();
++                    }
++                }
++
++                const auto statusId = PStatusEffect->GetStatusID();
++                if (effectRegenDown <= 0 &&
++                    (statusId == xi::StatusEffect::Poison ||
++                     statusId == xi::StatusEffect::Requiem ||
++                     statusId == xi::StatusEffect::Kaustra))
++                {
++                    effectRegenDown = static_cast<int32>(PStatusEffect->GetPower());
++                }
++
++                if (effectRegenDown <= 0)
++                {
++                    continue;
++                }
++
++                CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, PStatusEffect->GetOriginID());
++                if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                {
++                    continue;
++                }
++
++                dotEntries.push_back({ statusId, PStatusEffect->GetOriginID(), effectRegenDown });
++            }
++
++            int32 remainingPoison = static_cast<int32>(poison);
++            bool  dealtAnyDamage  = false;
++
++            for (const auto& entry : dotEntries)
++            {
++                if (remainingPoison <= 0 || m_POwner->isDead() || m_POwner->health.hp == 0)
++                {
++                    break;
++                }
++
++                const int32 tickPortion = std::min(entry.regenDown, remainingPoison);
++                remainingPoison -= tickPortion;
++
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, tickPortion);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++
++                    CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, entry.originId);
++                    if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                    {
++                        POrigin = nullptr;
++                    }
++
++                    const int32 hpBefore = m_POwner->health.hp;
++                    m_POwner->takeDamage(damage, POrigin);
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0 && POrigin != nullptr)
++                    {
++                        EmitDotDamageLog(m_POwner, POrigin, entry.statusId, dealt);
++                    }
++                }
++            }
++
++            if (remainingPoison > 0 && !m_POwner->isDead() && m_POwner->health.hp > 0)
++            {
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, remainingPoison);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++                    m_POwner->takeDamage(damage);
++                }
++            }
++
++            if (dealtAnyDamage)
++            {
++                // If target has nightmare sleep. Don't break sleep from REGEN_DOWN damage
++                // see mobskills/nightmare.lua for full explanation
++                if (
++                    !(
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI) &&
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI)->GetTier() >= 4)) // Tier 4 = Player Avatar Nightmare
++                {
++                    WakeUp();
++                }
++            }
++        }
++        else if (poison)
+         {
+             int16 damage = battleutils::HandleStoneskin(m_POwner, poison);
+ 

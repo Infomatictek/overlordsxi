@@ -6,6 +6,7 @@ custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/lua/war_specs.lua
 custom/lua/mnk_specs.lua
+custom/lua/dot_damage_log.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql

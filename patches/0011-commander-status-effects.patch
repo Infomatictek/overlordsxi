@@ -15,8 +15,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index a80259d..4c4edb9 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
--@@ -141,6 +141,32 @@ void LoadEffectsParameters()
-+@@ -141,6 +141,38 @@ void LoadEffectsParameters()
+@@ -141,6 +141,39 @@ void LoadEffectsParameters()
      EffectsParams[814].Element          = 7;
      EffectsParams[814].SortKey          = 10000;
      EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
