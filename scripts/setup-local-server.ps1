@@ -18,8 +18,18 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$LogDir = Join-Path $RepoRoot 'logs'
+if (-not (Test-Path $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+$Timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$LogFile = Join-Path $LogDir "setup-$Timestamp.log"
+$LatestLogFile = Join-Path $LogDir 'setup-latest.log'
+Start-Transcript -Path $LogFile -Force | Out-Null
+
 Write-Host "==> OverlordsXI root: $RepoRoot" -ForegroundColor Cyan
 Write-Host "==> Target LandSandBoat dir: $ServerDir" -ForegroundColor Cyan
+Write-Host "==> Logging output to: $LogFile" -ForegroundColor Cyan
 
 function Find-VsDevCmd {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
@@ -284,6 +294,11 @@ try {
 }
 finally {
     Pop-Location
+    try { Stop-Transcript | Out-Null } catch {}
+    if (Test-Path $LogFile) {
+        Copy-Item -Path $LogFile -Destination $LatestLogFile -Force -ErrorAction SilentlyContinue
+        Write-Host "==> Full log saved to: $LatestLogFile (and $LogFile)" -ForegroundColor Cyan
+    }
 }
 
 Write-Host ''
