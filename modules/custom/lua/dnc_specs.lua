@@ -113,6 +113,7 @@ m:addOverride('xi.actions.abilities.throwing_stance.onUseAbility', function(play
     else
         player:printToPlayer('Throwing Stance OFF: melee at close range, throw chakram at range.', xi.msg.channel.SYSTEM_3)
     end
+    return 0
 end)
 
 if xi.job and xi.job.DNC then
