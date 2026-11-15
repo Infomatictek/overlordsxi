@@ -545,15 +545,21 @@ end
 -- T3 (Lv 42+, 22+ pts): 5 + 5 + 2 (SC)     = 12 pts
 -- T4 (Lv 62+, 35+ pts): 3 + 5 + 2 (SC)     = 10 pts
 -----------------------------------
-local CUSTOM_TREES = {}
-talents._customTrees = CUSTOM_TREES
+talents._customTrees = talents._customTrees or {}
+local CUSTOM_TREES = talents._customTrees
 
 local function registerCustomH2H(wsId, spec)
     CUSTOM_TREES[wsId] = spec
+    if talents._treeCache then
+        talents._treeCache[wsId] = nil
+    end
 end
 
 function talents.registerCustomWS(wsId, spec)
     CUSTOM_TREES[wsId] = spec
+    if talents._treeCache then
+        talents._treeCache[wsId] = nil
+    end
 end
 
 local function h2hFtpCurveNode(ftpCurve, maxRank, customName, extraZeroDesc)
@@ -1330,7 +1336,8 @@ require('modules/custom/lua/overlords_ws_trees_throwing')
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
 -----------------------------------
-local treeCache = {}
+talents._treeCache = {}
+local treeCache = talents._treeCache
 
 local function finalizeTree(ws, archetype, rawNodes, opts)
     local nodes = {}
