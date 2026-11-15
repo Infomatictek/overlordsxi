@@ -15,7 +15,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index a80259d..4c4edb9 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -141,6 +141,27 @@ void LoadEffectsParameters()
+@@ -141,6 +141,32 @@ void LoadEffectsParameters()
      EffectsParams[814].Element          = 7;
      EffectsParams[814].SortKey          = 10000;
      EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
@@ -40,6 +40,12 @@ index a80259d..4c4edb9 100644
 +    EffectsParams[818].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
 +    EffectsParams[818].SortKey          = 10000;
 +    EffectsParams[818].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Berserker custom status effect (819).
++    EffectsParams[819].Name             = "berserker_surge";
++    EffectsParams[819].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[819].SortKey          = 10000;
++    EffectsParams[819].WearOffMessageId = MsgStd::EffectWearsOff;
  }
  
  // hacky way to get element from status effect

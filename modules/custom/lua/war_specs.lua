@@ -22,23 +22,29 @@ local COMMANDER_BREACH_ABIL_ID  = 396
 local COMMANDER_BULWARK_ABIL_ID = 397
 local COMMANDER_CADENCE_ABIL_ID = 398
 local COMMANDER_HORN_ABIL_ID    = 399
+local BERSERKER_SURGE_ABIL_ID   = 400
+local BERSERKER_CLEAVE_ABIL_ID  = 401
 
 local COMMANDER_BREACH_EFFECT_ID  = 815
 local COMMANDER_BULWARK_EFFECT_ID = 816
 local COMMANDER_CADENCE_EFFECT_ID = 817
 local COMMANDER_REGROUP_EFFECT_ID = 818
+local BERSERKER_SURGE_EFFECT_ID   = 819
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.TACTICAL_BREACH   = COMMANDER_BREACH_ABIL_ID
 xi.jobAbility.FORMATION_BULWARK = COMMANDER_BULWARK_ABIL_ID
 xi.jobAbility.BATTLE_CADENCE    = COMMANDER_CADENCE_ABIL_ID
 xi.jobAbility.RALLYING_HORN     = COMMANDER_HORN_ABIL_ID
+xi.jobAbility.BLOODLUST_SURGE   = BERSERKER_SURGE_ABIL_ID
+xi.jobAbility.SAVAGE_CLEAVE     = BERSERKER_CLEAVE_ABIL_ID
 
 xi.effect = xi.effect or {}
 xi.effect.COMMANDER_BREACH  = COMMANDER_BREACH_EFFECT_ID
 xi.effect.COMMANDER_BULWARK = COMMANDER_BULWARK_EFFECT_ID
 xi.effect.COMMANDER_CADENCE = COMMANDER_CADENCE_EFFECT_ID
 xi.effect.COMMANDER_REGROUP = COMMANDER_REGROUP_EFFECT_ID
+xi.effect.BERSERKER_SURGE   = BERSERKER_SURGE_EFFECT_ID
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
@@ -46,12 +52,15 @@ xi.actions.abilities.tactical_breach   = xi.actions.abilities.tactical_breach or
 xi.actions.abilities.formation_bulwark = xi.actions.abilities.formation_bulwark or {}
 xi.actions.abilities.battle_cadence    = xi.actions.abilities.battle_cadence or {}
 xi.actions.abilities.rallying_horn     = xi.actions.abilities.rallying_horn or {}
+xi.actions.abilities.bloodlust_surge   = xi.actions.abilities.bloodlust_surge or {}
+xi.actions.abilities.savage_cleave     = xi.actions.abilities.savage_cleave or {}
 
 xi.effects = xi.effects or {}
 xi.effects.commander_breach  = xi.effects.commander_breach or {}
 xi.effects.commander_bulwark = xi.effects.commander_bulwark or {}
 xi.effects.commander_cadence = xi.effects.commander_cadence or {}
 xi.effects.commander_regroup = xi.effects.commander_regroup or {}
+xi.effects.berserker_surge   = xi.effects.berserker_surge or {}
 
 local COMMANDER_STANCES =
 {
@@ -329,11 +338,18 @@ if xi.job and xi.job.WAR then
             role        = 'Fury / Heavy Burst DPS',
             icon        = 'crimson_shard',
             reqLevel    = 10,
+            extraAbilities =
+            {
+                BERSERKER_SURGE_ABIL_ID,
+                BERSERKER_CLEAVE_ABIL_ID,
+            },
             extraTraits = { 141 },
             description = 'Unrelenting fury (Lv10+): amplifies Berserk, Blood Rage, and Warcry with heavy Attack, Double Attack, and WSD.',
             highlights  =
             {
                 'Passives (Lv10/30/50+): +8/12/16% Attack, +6/10/14% Double Attack, +5/8/12% WS Damage, +5/10/15 Store TP.',
+                'Bloodlust Surge (Lv10, 25s CD, 10s, Self): +10/14/18/24% Attack% and +15/22/30/40% Double Attack Damage at -10% DEF%.',
+                'Savage Cleave (Lv10, 20s CD, Enemy 4y): Overstraining physical strike (0 TP gained) that inflicts 6/8/10/12% Max HP recoil.',
                 'Berserk: +10% extra Attack%, +60s duration, and instantly grants +300 TP on activation.',
                 'Aggressor: Removes -25 Evasion penalty and grants +5% Critical Hit Rate.',
                 'Blood Rage: +10% extra Critical Hit Rate and +15s duration.',
@@ -1195,6 +1211,88 @@ m:addOverride('xi.effects.commander_regroup.onEffectGain', function(target, effe
 end)
 
 m:addOverride('xi.effects.commander_regroup.onEffectLose', function(target, effect)
+end)
+
+-----------------------------------
+-- Berserker Custom Active Job Abilities (Lv10+, Scaling Lv10/30/50/70+)
+-----------------------------------
+-- 1) Bloodlust Surge (400): 25s CD, 10s Self (+Attack%, +Double Attack Damage, -10% DEF%)
+m:addOverride('xi.actions.abilities.bloodlust_surge.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, BERSERKER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.bloodlust_surge.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local attp, tier = scaleCommanderTier(lvl, 10, 14, 18, 24)
+    local daDmg = scaleCommanderTier(lvl, 15, 22, 30, 40)
+    local iconId = xi.effect and xi.effect.BERSERK or BERSERKER_SURGE_EFFECT_ID
+
+    applyCommanderTimedEffect(
+        target,
+        BERSERKER_SURGE_EFFECT_ID,
+        attp,
+        10,
+        player,
+        tier,
+        iconId,
+        {
+            { xi.mod.ATTP,   attp },
+            { xi.mod.DA_DMG, daDmg },
+            { xi.mod.DEFP,   -10 },
+        }
+    )
+
+    return BERSERKER_SURGE_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.berserker_surge.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.berserker_surge.onEffectLose', function(target, effect)
+end)
+
+-- 2) Savage Cleave (401): 20s CD, Enemy 4y, Overstraining physical strike (0 TP gained, self-recoil HP)
+m:addOverride('xi.actions.abilities.savage_cleave.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, BERSERKER_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if target == nil or target:getID() == player:getID() then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.savage_cleave.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local mult = scaleCommanderTier(lvl, 1.4, 1.8, 2.2, 2.6)
+    local recoilPct = scaleCommanderTier(lvl, 6, 8, 10, 12)
+
+    local weaponDmg = player.getWeaponDmg and (player:getWeaponDmg() or 0) or 0
+    local strStat = player.getStat and xi.mod and xi.mod.STR and (player:getStat(xi.mod.STR) or 0) or 0
+    local damage = math.max(15, math.floor(weaponDmg * mult + strStat * 0.6 + lvl * 1.5))
+
+    if target ~= nil and target.takeDamage and xi.attackType and xi.damageType then
+        target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING or xi.damageType.BLUNT)
+    end
+
+    -- Overstraining recoil: never kills the Berserker (leaves at least 1 HP)
+    local curHp = player.getHP and (player:getHP() or 0) or 0
+    local maxHp = player.getMaxHP and (player:getMaxHP() or 0) or 0
+    if curHp > 1 and maxHp > 0 and player.takeDamage then
+        local recoil = math.min(curHp - 1, math.max(1, math.floor(maxHp * recoilPct / 100)))
+        if recoil > 0 then
+            player:takeDamage(recoil, player, xi.attackType.NONE, xi.damageType.NONE)
+        end
+    end
+
+    return damage
 end)
 
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
