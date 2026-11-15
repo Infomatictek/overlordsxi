@@ -1,0 +1,195 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+index c7a02fbe..fbf3b238 100644
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -243,6 +243,38 @@ auto CAbilityState::Update(const timer::time_point tick) -> bool
+     return false;
+ }
+ 
++namespace
++{
++auto getEffectiveAbilityRange(CBattleEntity* PEntity, const CAbility* PAbility) -> float
++{
++    if (PEntity == nullptr || PAbility == nullptr)
++    {
++        return 0.0f;
++    }
++
++    float range = PAbility->getRange();
++    if (auto* PChar = dynamic_cast<CCharEntity*>(PEntity);
++        PChar != nullptr && PChar->GetLocalVar("OX_DNC_RANGED") == 1)
++    {
++        switch (PAbility->getID())
++        {
++            case ABILITY_QUICKSTEP:
++            case ABILITY_BOX_STEP:
++            case ABILITY_STUTTER_STEP:
++            case ABILITY_FEATHER_STEP:
++            case ABILITY_DESPERATE_FLOURISH:
++            case ABILITY_VIOLENT_FLOURISH:
++            case ABILITY_WILD_FLOURISH:
++                return std::max(range, 20.0f);
++            default:
++                break;
++        }
++    }
++
++    return range;
++}
++} // namespace
++
+ auto CAbilityState::CanUseAbility() const -> bool
+ {
+     CAbility*    PAbility = GetAbility();
+@@ -280,7 +312,7 @@ auto CAbilityState::CanUseAbility() const -> bool
+                     return false;
+                 }
+             }
+-            else if (PChar != PTarget && distance(PChar->loc.p, PTarget->loc.p) > PAbility->getRange() + PChar->modelHitboxSize + PTarget->modelHitboxSize)
++            else if (PChar != PTarget && distance(PChar->loc.p, PTarget->loc.p) > getEffectiveAbilityRange(PChar, PAbility) + PChar->modelHitboxSize + PTarget->modelHitboxSize)
+             {
+                 PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PTarget, 0, 0, MsgBasic::TooFarAway);
+                 return false;
+@@ -323,7 +355,7 @@ auto CAbilityState::CanUseAbility() const -> bool
+ 
+         if (PTarget && m_PEntity->IsValidTarget(PTarget->targid, PAbility->getValidTarget(), errMsg))
+         {
+-            if (m_PEntity != PTarget && distance(m_PEntity->loc.p, PTarget->loc.p) > PAbility->getRange() + m_PEntity->modelHitboxSize + PTarget->modelHitboxSize)
++            if (m_PEntity != PTarget && distance(m_PEntity->loc.p, PTarget->loc.p) > getEffectiveAbilityRange(m_PEntity, PAbility) + m_PEntity->modelHitboxSize + PTarget->modelHitboxSize)
+             {
+                 cancelAbility = true;
+             }
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index 682027aa..f998a771 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -3400,6 +3400,11 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ 
+         if (isChar)
+         {
++            if (static_cast<CCharEntity*>(this)->GetLocalVar("OX_DNC_RANGED") == 1 && actionResult.param > 0)
++            {
++                battleutils::HandleRangedSamba(this, PTarget, &actionResult, static_cast<uint16>(GetRangedWeaponDelay(false)), actionResult.param);
++            }
++
+             // add additional effects
+             // this should go AFTER damage taken
+             // or else sleep effect won't work
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index e27b61ed..fffa2154 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -1231,6 +1231,101 @@ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntit
+  *                                                                       *
+  ************************************************************************/
+ 
++void HandleRangedSamba(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, uint16 delay, int32 finaldamage)
++{
++    if (PAttacker == nullptr || PDefender == nullptr || Action == nullptr || PDefender->GetHPP() == 0 || finaldamage <= 0)
++    {
++        return;
++    }
++
++    xi::StatusEffect daze      = xi::StatusEffect::None;
++    uint16           dazePower = 0;
++
++    if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainSamba) && PDefender->m_EcoSystem != xi::Ecosystem::Undead)
++    {
++        daze      = xi::StatusEffect::DrainDaze;
++        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::DrainSamba)->GetPower();
++    }
++    else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirSamba))
++    {
++        daze      = xi::StatusEffect::AspirDaze;
++        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::AspirSamba)->GetPower();
++    }
++    else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::HasteSamba))
++    {
++        daze      = xi::StatusEffect::HasteDaze;
++        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::HasteSamba)->GetPower();
++    }
++
++    if (daze == xi::StatusEffect::None || dazePower == 0)
++    {
++        return;
++    }
++
++    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::DrainDaze, PAttacker->id);
++    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::HasteDaze, PAttacker->id);
++    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::AspirDaze, PAttacker->id);
++    PDefender->StatusEffectContainer->AddStatusEffect(new CStatusEffect(daze, 0, dazePower, 0s, 10s, PAttacker->id), EffectNotice::Silent);
++
++    auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
++    const int32 amMult = (PChar != nullptr && PChar->GetLocalVar("OX_CHAKRAM_AM") > 0) ? 2 : 1;
++
++    if (daze == xi::StatusEffect::DrainDaze)
++    {
++        const uint16 multiplier = static_cast<uint16>(3 + 5.5f * (dazePower - 1));
++        int32        samba      = xirand::GetRandomNumber(1, (delay * multiplier) / 100 + 1) * amMult;
++        int8         lvlDiff    = PDefender->GetMLevel() - PAttacker->GetMLevel();
++        if (lvlDiff > 0)
++        {
++            lvlDiff = std::min<int8>(lvlDiff, 10);
++            samba -= static_cast<int32>(std::ceil(samba * lvlDiff * 0.04f));
++        }
++        if (finaldamage <= 2 || samba < 0)
++        {
++            samba = 0;
++        }
++        else if (samba > (finaldamage / 2))
++        {
++            samba = finaldamage / 2;
++        }
++        Action->additionalEffect = ActionProcAddEffect::HPDrain;
++        Action->addEffectMessage = MsgBasic::AddEffectHPDrained;
++        Action->addEffectParam   = samba;
++        PAttacker->addHP(samba);
++        if (PChar != nullptr)
++        {
++            PChar->updatemask |= UPDATE_HP;
++        }
++    }
++    else if (daze == xi::StatusEffect::AspirDaze && PDefender->GetMaxMP() > 0)
++    {
++        const uint16 multiplier = 1 + 2 * (dazePower - 1);
++        int32        samba      = xirand::GetRandomNumber(1, (delay * multiplier) / 100 + 1) * amMult;
++        if (finaldamage <= 2 || samba < 0)
++        {
++            samba = 0;
++        }
++        else if (samba >= finaldamage / 4)
++        {
++            samba = finaldamage / 4;
++        }
++        Action->additionalEffect = ActionProcAddEffect::MPDrain;
++        Action->addEffectMessage = MsgBasic::AddEffectMPDrained;
++        const int16 mpDrained    = PDefender->addMP(-samba);
++        PAttacker->addMP(mpDrained);
++        Action->addEffectParam = mpDrained;
++        if (PChar != nullptr)
++        {
++            PChar->updatemask |= UPDATE_HP;
++        }
++    }
++    else if (daze == xi::StatusEffect::HasteDaze)
++    {
++        Action->additionalEffect = ActionProcAddEffect::Haste;
++        PAttacker->StatusEffectContainer->AddStatusEffect(xi::StatusEffect::HasteSambaHaste, 0, dazePower, 0s, 10s);
++    }
++}
++
+ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 finaldamage, CAttack& attack)
+ {
+     auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
+diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
+index 649635cd..ae75abcb 100644
+--- a/src/map/utils/battleutils.h
++++ b/src/map/utils/battleutils.h
+@@ -169,6 +169,7 @@ auto HandleParrySpikesDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender,
+ auto HandleSpikesEquip(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, uint8 damage, ActionReactKind spikesType, uint8 chance) -> bool;
+ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntity* PDefender, const action_result_t* Action);
+ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 damage, CAttack& attack);
++void HandleRangedSamba(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, uint16 delay, int32 finaldamage);
+ auto GetRangedHitRate(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool isBarrage) -> uint8;
+ auto GetRangedHitRate(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool isBarrage, int16 accBonus) -> uint8;
+ 

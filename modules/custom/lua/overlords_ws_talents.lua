@@ -1323,6 +1323,7 @@ require('modules/custom/lua/overlords_ws_trees_gkatana')
 require('modules/custom/lua/overlords_ws_trees_club')
 require('modules/custom/lua/overlords_ws_trees_staff')
 require('modules/custom/lua/overlords_ws_trees_ranged')
+require('modules/custom/lua/overlords_ws_trees_throwing')
 
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)

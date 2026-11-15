@@ -447,6 +447,13 @@ function spec.removeAppliedMods(player, invokeOnRemove)
         end
     end
 
+    if player.setLocalVar then
+        player:setLocalVar('OX_THROW_WS', 0)
+        player:setLocalVar('OX_AUTO_RANGED', 0)
+        player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
+        player:setLocalVar('OX_DNC_RANGED', 0)
+    end
+
     spec.appliedByCharId[charKey] = nil
 
     if invokeOnRemove and state.jobId ~= nil and state.specId ~= nil then
@@ -526,6 +533,20 @@ function spec.refreshPlayer(player, opts)
         for _, m in ipairs(mods) do
             player:addMod(m.mod, m.val)
         end
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_THROW_WS', active.throwWs and 1 or 0)
+        if active.autoRanged then
+            local arMinLvl = (type(active.autoRanged) == 'table' and active.autoRanged.minLevel) or 1
+            local arRange = (type(active.autoRanged) == 'table' and active.autoRanged.maxRange) or 20
+            player:setLocalVar('OX_AUTO_RANGED', (lvl >= arMinLvl) and 1 or 0)
+            player:setLocalVar('OX_AUTO_RANGED_RANGE', arRange)
+        else
+            player:setLocalVar('OX_AUTO_RANGED', 0)
+            player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
+        end
+        player:setLocalVar('OX_DNC_RANGED', active.rangedDances and 1 or 0)
     end
 
     spec.appliedByCharId[charKey] =

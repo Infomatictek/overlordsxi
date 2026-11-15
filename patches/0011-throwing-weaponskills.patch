@@ -1,0 +1,185 @@
+diff --git a/data/weapon_skills.yaml b/data/weapon_skills.yaml
+index e34fec17..179199c8 100644
+--- a/data/weapon_skills.yaml
++++ b/data/weapon_skills.yaml
+@@ -2399,3 +2399,130 @@ weapon_skills:
+     aoe:
+       affects: [hostile]
+       sphere:  {origin: target, radius: 10}
++
++  pirouette_toss:
++    id:         241
++    skill:      throwing
++    level:      5
++    jobs:       [dnc]
++    animation:  196
++    skillchain: [impaction]
++    range:      20
++    target:     [hostile]
++
++  whirling_waltz:
++    id:         242
++    skill:      throwing
++    level:      40
++    jobs:       [dnc]
++    element:    light
++    animation:  220
++    skillchain: [transfixion]
++    range:      20
++    target:     [hostile]
++
++  ricochet_tango:
++    id:         243
++    skill:      throwing
++    level:      70
++    jobs:       [dnc]
++    animation:  197
++    skillchain: [detonation, scission]
++    range:      20
++    target:     [hostile]
++
++  crimson_samba:
++    id:         244
++    skill:      throwing
++    level:      100
++    jobs:       [dnc]
++    element:    dark
++    animation:  193
++    skillchain: [compression]
++    range:      20
++    target:     [hostile]
++
++  stutter_disc:
++    id:         245
++    skill:      throwing
++    level:      125
++    jobs:       [dnc]
++    animation:  229
++    skillchain: [induration, reverberation]
++    range:      20
++    target:     [hostile]
++
++  feathered_ring:
++    id:         246
++    skill:      throwing
++    level:      150
++    jobs:       [dnc]
++    animation:  198
++    skillchain: [gravitation, scission]
++    range:      20
++    target:     [hostile]
++
++  bolero_cyclone:
++    id:         247
++    skill:      throwing
++    level:      175
++    jobs:       [dnc]
++    element:    wind
++    animation:  219
++    skillchain: [detonation, impaction]
++    range:      20
++    target:     [hostile]
++    aoe:
++      affects: [hostile]
++      sphere:  {origin: target, radius: 8}
++
++  flamenco_finale:
++    id:         248
++    skill:      throwing
++    level:      200
++    jobs:       [dnc]
++    animation:  222
++    skillchain: [fusion, liquefaction]
++    range:      20
++    target:     [hostile]
++
++  tarantella_storm:
++    id:         249
++    skill:      throwing
++    level:      225
++    jobs:       [dnc]
++    animation:  223
++    skillchain: [gravitation, transfixion]
++    range:      20
++    target:     [hostile]
++
++  grand_jete:
++    id:         250
++    skill:      throwing
++    level:      240
++    jobs:       [dnc]
++    animation:  241
++    skillchain: [fragmentation, scission]
++    range:      20
++    target:     [hostile]
++
++  aurora_fandango:
++    id:         251
++    skill:      throwing
++    level:      250
++    jobs:       [dnc]
++    animation:  232
++    skillchain: [fragmentation, distortion]
++    range:      20
++    target:     [hostile]
++
++  terpsichores_halo:
++    id:         252
++    skill:      throwing
++    level:      255
++    jobs:       [dnc]
++    element:    light
++    animation:  234
++    skillchain: [light, fusion]
++    range:      20
++    target:     [hostile]
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+index 7597fff6..bfc8d8f3 100644
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -1729,7 +1729,7 @@ void CCharEntity::OnWeaponSkillFinished(CWeaponSkillState& state, action_t& acti
+ 
+     if (distance(loc.p, PBattleTarget->loc.p) <= (PWeaponSkill->getRange() + this->modelHitboxSize + PBattleTarget->modelHitboxSize))
+     {
+-        if (PWeaponSkill->getID() >= 192 && PWeaponSkill->getID() <= 221)
++        if ((PWeaponSkill->getID() >= 192 && PWeaponSkill->getID() <= 221) || (PWeaponSkill->getID() >= 241 && PWeaponSkill->getID() <= 252))
+         {
+             damslot = SLOT_RANGED;
+         }
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index 75d23c66..e27b61ed 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -400,6 +400,19 @@ auto CanUseWeaponskill(CCharEntity* PChar, CWeaponSkill* PSkill) -> bool
+         case 239: // Glory Slash (NPC)
+         case 240: // Tartarus Torpor (NPC)
+             return false;
++        case 241:
++        case 242:
++        case 243:
++        case 244:
++        case 245:
++        case 246:
++        case 247:
++        case 248:
++        case 249:
++        case 250:
++        case 251:
++        case 252:
++            return PChar->GetLocalVar("OX_THROW_WS") == 1;
+         default:
+             return true;
+     }
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index d9dfbb81..e003bb0a 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -3303,7 +3303,7 @@ void BuildingCharWeaponSkills(CCharEntity* PChar)
+ 
+     // add in ranged ws
+     PItem = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_RANGED));
+-    if (PItem != nullptr && PItem->isType(ITEM_WEAPON) && PItem->getSkillType() != xi::SkillType::Throwing)
++    if (PItem != nullptr && PItem->isType(ITEM_WEAPON))
+     {
+         skill                             = PItem ? static_cast<uint8>(PItem->getSkillType()) : 0;
+         const auto& RangedWeaponSkillList = battleutils::GetWeaponSkills(skill);

@@ -1,0 +1,40 @@
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+index 6aae57f6..fe55d4c5 100644
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -109,9 +109,33 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+                 }
+             }
+         }
+-        else if (m_PEntity->OnAttackError(*this))
++        else
+         {
+-            m_PEntity->HandleErrorMessage(m_errorMsg);
++            if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity);
++                PChar != nullptr && PChar->GetLocalVar("OX_AUTO_RANGED") == 1 && m_PEntity->battleTarget().isSet())
++            {
++                const auto* PRanged  = PChar->getEquip(SLOT_RANGED);
++                const float maxRange = PChar->GetLocalVar("OX_AUTO_RANGED_RANGE") > 0
++                                           ? static_cast<float>(PChar->GetLocalVar("OX_AUTO_RANGED_RANGE"))
++                                           : 20.0f;
++                const float dist = distance(PChar->loc.p, PTarget->loc.p);
++                if (PRanged != nullptr &&
++                    dist > PChar->GetMeleeRange(PTarget) &&
++                    dist <= maxRange + PChar->modelHitboxSize + PTarget->modelHitboxSize &&
++                    facing(PChar->loc.p, PTarget->loc.p, 64) &&
++                    PChar->CanSeeTarget(PTarget) &&
++                    PChar->PAI->Internal_RangedAttack(PTarget->entityId()))
++                {
++                    m_errorMsg.reset();
++                    m_attackTime = std::chrono::milliseconds(std::max<int16>(PChar->GetRangedWeaponDelay(false), 1000));
++                    return false;
++                }
++            }
++
++            if (m_PEntity->OnAttackError(*this))
++            {
++                m_PEntity->HandleErrorMessage(m_errorMsg);
++            }
+         }
+         if (!m_PEntity->battleTarget().isSet())
+         {

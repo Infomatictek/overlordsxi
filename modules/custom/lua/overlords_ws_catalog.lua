@@ -25,6 +25,7 @@ catalog.skillOrder =
     { skill = xi.skill.STAFF, name = 'Staff' },
     { skill = xi.skill.ARCHERY, name = 'Archery' },
     { skill = xi.skill.MARKSMANSHIP, name = 'Marksmanship' },
+    { skill = xi.skill.THROWING, name = 'Throwing' },
 }
 
 catalog.byId =
@@ -3649,6 +3650,200 @@ catalog.byId =
             wsc = { int = 0.45, mnd = 0.45 },
             numHits = 1,
             skillchain = { 'INDURATION', 'REVERBERATION', 'FUSION' },
+        },
+    },
+    [241] =
+    {
+        id = 241,
+        key = 'pirouette_toss',
+        name = 'Pirouette Toss',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 1.00, 1.50, 2.00 },
+            wsc = { dex = 0.4, agi = 0.2 },
+            numHits = 1,
+            skillchain = { 'IMPACTION' },
+        },
+    },
+    [242] =
+    {
+        id = 242,
+        key = 'whirling_waltz',
+        name = 'Whirling Waltz',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'magic',
+        orig =
+        {
+            ftp = { 1.25, 2.00, 2.75 },
+            wsc = { chr = 0.5, dex = 0.2 },
+            numHits = 1,
+            skillchain = { 'TRANSFIXION' },
+        },
+    },
+    [243] =
+    {
+        id = 243,
+        key = 'ricochet_tango',
+        name = 'Ricochet Tango',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 1.00, 1.00, 1.00 },
+            wsc = { dex = 0.5 },
+            numHits = 3,
+            skillchain = { 'DETONATION', 'SCISSION' },
+        },
+    },
+    [244] =
+    {
+        id = 244,
+        key = 'crimson_samba',
+        name = 'Crimson Samba',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'magic',
+        orig =
+        {
+            ftp = { 1.50, 2.25, 3.00 },
+            wsc = { chr = 0.4, int = 0.2 },
+            numHits = 1,
+            skillchain = { 'COMPRESSION' },
+        },
+    },
+    [245] =
+    {
+        id = 245,
+        key = 'stutter_disc',
+        name = 'Stutter Disc',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 1.25, 1.25, 1.25 },
+            wsc = { agi = 0.4, chr = 0.2 },
+            numHits = 1,
+            skillchain = { 'INDURATION', 'REVERBERATION' },
+        },
+    },
+    [246] =
+    {
+        id = 246,
+        key = 'feathered_ring',
+        name = 'Feathered Ring',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 1.75, 1.75, 1.75 },
+            wsc = { dex = 0.6 },
+            numHits = 1,
+            critVaries = { 0.15, 0.25, 0.35 },
+            skillchain = { 'GRAVITATION', 'SCISSION' },
+        },
+    },
+    [247] =
+    {
+        id = 247,
+        key = 'bolero_cyclone',
+        name = 'Bolero Cyclone',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'magic',
+        orig =
+        {
+            ftp = { 1.50, 2.50, 3.25 },
+            wsc = { chr = 0.4, agi = 0.3 },
+            numHits = 1,
+            skillchain = { 'DETONATION', 'IMPACTION' },
+        },
+    },
+    [248] =
+    {
+        id = 248,
+        key = 'flamenco_finale',
+        name = 'Flamenco Finale',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 2.50, 3.30, 4.10 },
+            wsc = { dex = 0.4, chr = 0.4 },
+            numHits = 1,
+            skillchain = { 'FUSION', 'LIQUEFACTION' },
+        },
+    },
+    [249] =
+    {
+        id = 249,
+        key = 'tarantella_storm',
+        name = 'Tarantella Storm',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 1.00, 1.00, 1.00 },
+            wsc = { dex = 0.5 },
+            numHits = 5,
+            critVaries = { 0.10, 0.20, 0.35 },
+            skillchain = { 'GRAVITATION', 'TRANSFIXION' },
+        },
+    },
+    [250] =
+    {
+        id = 250,
+        key = 'grand_jete',
+        name = 'Grand Jete',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 3.50, 6.00, 8.50 },
+            wsc = { dex = 0.6, agi = 0.2 },
+            numHits = 1,
+            skillchain = { 'FRAGMENTATION', 'SCISSION' },
+        },
+    },
+    [251] =
+    {
+        id = 251,
+        key = 'aurora_fandango',
+        name = 'Aurora Fandango',
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'ranged',
+        orig =
+        {
+            ftp = { 2.75, 2.75, 2.75 },
+            wsc = { dex = 0.4, chr = 0.4 },
+            numHits = 4,
+            skillchain = { 'FRAGMENTATION', 'DISTORTION' },
+        },
+    },
+    [252] =
+    {
+        id = 252,
+        key = 'terpsichores_halo',
+        name = "Terpsichore's Halo",
+        skill = xi.skill.THROWING,
+        skillName = 'Throwing',
+        wsType = 'magic',
+        orig =
+        {
+            ftp = { 3.00, 4.50, 6.00 },
+            wsc = { chr = 0.6, dex = 0.3 },
+            numHits = 1,
+            skillchain = { 'LIGHT', 'FUSION' },
         },
     },
 }

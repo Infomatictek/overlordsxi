@@ -8,6 +8,7 @@
 require('modules/module_utils')
 require('modules/custom/lua/overlords_ws_catalog')
 require('modules/custom/lua/overlords_ws_talents')
+require('modules/custom/lua/overlords_throwing_ws')
 require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/monk')
 require('scripts/globals/player')
