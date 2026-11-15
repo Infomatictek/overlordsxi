@@ -115,14 +115,25 @@ m:addOverride('xi.actions.abilities.faerie_titania.onUseAbility', function(playe
     return titaniaAbilityId
 end)
 
-m:addOverride('xi.actions.spells.white.regen.onSpellCast', function(caster, target, spell)
-    if caster:getPetID() == eosPetId then
+local function handleEosRegenCast(caster, target, spell, superFn)
+    if caster ~= nil and caster:isPet() and caster:getPetID() == eosPetId then
         local params = eosRegenSpells[spell:getID()] or eosRegenSpells[xi.magic.spell.REGEN]
-        target:addStatusEffect(eosRegenEffectId, { power = params.power, tick = 3, duration = params.duration, icon = xi.effect.REGEN, origin = caster })
-        return xi.effect.REGEN
+        if target:addStatusEffect(eosRegenEffectId, { power = params.power, tick = 3, duration = params.duration, icon = xi.effect.REGEN, origin = caster }) then
+            spell:setMsg(xi.msg.basic.MAGIC_GAIN_EFFECT)
+            return xi.effect.REGEN
+        end
+
+        spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+        return xi.effect.NONE
     end
 
-    return super(caster, target, spell)
-end)
+    return superFn(caster, target, spell)
+end
+
+for _, regenKey in ipairs({ 'regen', 'regen_ii', 'regen_iii', 'regen_iv', 'regen_v' }) do
+    m:addOverride('xi.actions.spells.white.' .. regenKey .. '.onSpellCast', function(caster, target, spell)
+        return handleEosRegenCast(caster, target, spell, super)
+    end)
+end
 
 return m

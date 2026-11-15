@@ -1,0 +1,60 @@
+diff --git a/src/map/entities/pet_entity.cpp b/src/map/entities/pet_entity.cpp
+index d787d776..e4f24600 100644
+--- a/src/map/entities/pet_entity.cpp
++++ b/src/map/entities/pet_entity.cpp
+@@ -259,6 +259,10 @@ void CPetEntity::Spawn()
+         this->defaultMobMod(xi::MobMod::MagicCool, 48);
+         mobutils::GetAvailableSpells(this);
+     }
++    else if (PMaster && dynamic_cast<const CCharEntity*>(PMaster) != nullptr && m_SpellListContainer != nullptr)
++    {
++        mobutils::GetAvailableSpells(this);
++    }
+ 
+     if (m_PetType == PET_TYPE::JUG_PET)
+     {
+@@ -354,6 +358,11 @@ void CPetEntity::OnAbility(CAbilityState& state, action_t& action)
+ 
+ auto CPetEntity::ValidTarget(CBattleEntity* PInitiator, uint16 targetFlags) -> bool
+ {
++    if ((targetFlags & TARGET_SELF) && PInitiator == this)
++    {
++        return true;
++    }
++
+     if (targetFlags & TARGET_PLAYER && PInitiator->allegiance == allegiance)
+     {
+         return false;
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+index adb2be28..c9f2e503 100644
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -399,6 +399,28 @@ void LoadJugStats(CPetEntity* PPet, Pet_t* petStats)
+     PPet->stats.INT = (uint16)(fINT + mINT + sINT);
+     PPet->stats.MND = (uint16)(fMND + mMND + sMND);
+     PPet->stats.CHR = (uint16)(fCHR + mCHR + sCHR);
++
++    if (petStats->spellList != 0)
++    {
++        PPet->m_SpellListContainer = mobSpellList::GetMobSpellList(petStats->spellList);
++
++        for (int i = static_cast<int>(xi::SkillType::DivineMagic); i <= static_cast<int>(xi::SkillType::BlueMagic); i++)
++        {
++            uint16 maxSkill = battleutils::GetMaxSkill(static_cast<xi::SkillType>(i), PPet->GetMJob(), std::min<uint8>(mLvl, 99));
++            if (maxSkill != 0)
++            {
++                PPet->WorkingSkills.skill[i] = maxSkill;
++            }
++            else
++            {
++                uint16 maxSubSkill = battleutils::GetMaxSkill(static_cast<xi::SkillType>(i), PPet->GetSJob(), std::min<uint8>(mLvl, 99));
++                if (maxSubSkill != 0)
++                {
++                    PPet->WorkingSkills.skill[i] = maxSubSkill;
++                }
++            }
++        }
++    }
+ }
+ 
+ void LoadAutomatonStats(CCharEntity* PMaster, CPetEntity* PPet, Pet_t* petStats, uint8 mlvl)

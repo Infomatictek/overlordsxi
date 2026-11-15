@@ -10,7 +10,7 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    (231, 'faerie_companion', 20, 255, 1, 300, 227, 0, 0, 171, 2000, 0, 6, 0, 0, 0, 1, 80, 0, 0, 'WOTG');
+    (231, 'faerie_companion', 20, 255, 1, 300, 227, 0, 0, 171, 2000, 0, 6, 0, 0, 0, 1, 80, 0, 0, NULL);
 
 -- Server-side SCH Sage job ability: Call Titania (client display ID 801 = 289 + 512).
 -- Level is set to 255 so it remains hidden unless unlocked via SCH Sage soul (Lv.10+, patch 0007).
@@ -20,7 +20,7 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    (289, 'faerie_titania', 20, 255, 1, 300, 200, 0, 0, 171, 2000, 0, 6, 0, 0, 0, 1, 80, 0, 0, 'WOTG');
+    (289, 'faerie_titania', 20, 255, 1, 300, 200, 0, 0, 171, 2000, 0, 6, 0, 0, 0, 1, 80, 0, 0, NULL);
 
 -- Eos pet and model (Light Pixie 0x07EE). Pet ID 128 requires patch 0001.
 DELETE FROM `pet_list` WHERE `petid` = 128;
@@ -35,6 +35,21 @@ INSERT INTO `pet_list`
     (`petid`, `name`, `poolid`, `minLevel`, `maxLevel`, `time`, `element`, `damageType`)
 VALUES
     (129, 'Titania', 6021, 1, 99, 86400, 8, 3);
+
+-- Pixie resistance profile required by petutils::LoadPetList() join on mob_pools.resist_id = 195.
+DELETE FROM `mob_resistances` WHERE `resist_id` = 195;
+INSERT INTO `mob_resistances`
+    (`resist_id`, `name`, `slash_sdt`, `pierce_sdt`, `h2h_sdt`, `impact_sdt`, `magical_sdt`,
+     `fire_sdt`, `ice_sdt`, `wind_sdt`, `earth_sdt`, `lightning_sdt`, `water_sdt`, `light_sdt`, `dark_sdt`,
+     `fire_res_rank`, `ice_res_rank`, `wind_res_rank`, `earth_res_rank`, `lightning_res_rank`, `water_res_rank`, `light_res_rank`, `dark_res_rank`,
+     `paralyze_res_rank`, `bind_res_rank`, `silence_res_rank`, `slow_res_rank`, `poison_res_rank`,
+     `light_sleep_res_rank`, `dark_sleep_res_rank`, `blind_res_rank`, `stun_res_rank`, `gravity_res_rank`)
+VALUES
+    (195, 'Pixie', 0, 0, 0, 0, -2500,
+     0, 0, 0, 0, 0, 0, 0, 0,
+     1, 1, 11, 1, 1, 1, 8, 1,
+     1, 1, 11, 1, 1,
+     8, 1, 1, 1, 11);
 
 DELETE FROM `mob_pools` WHERE `poolid` = 6020;
 INSERT INTO `mob_pools`

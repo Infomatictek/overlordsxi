@@ -19,18 +19,21 @@
 #include "map/entities/pet_entity.h"
 #include "map/entities/trust_entity.h"
 #include "map/mob_spell_container.h"
+#include "map/mob_spell_list.h"
 #include "map/modifier.h"
 #include "map/recast_container.h"
 #include "map/spell.h"
 #include "map/status_effect.h"
 #include "map/status_effect_container.h"
 #include "map/utils/battleutils.h"
+#include "map/utils/mobutils.h"
 #include "map/utils/moduleutils.h"
 #include "map/utils/petutils.h"
 #include "map/zone.h"
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -124,9 +127,13 @@ bool EnsureOwnerAndJobs(CPetEntity* PPet)
         return false;
     }
 
-    const auto expectedMainJob = isEosPet ? xi::Job::SCH : xi::Job::BLM;
-    const auto expectedSubJob  = isEosPet ? xi::Job::SMN : xi::Job::RDM;
-    const auto mainLevel       = PMaster->GetMLevel();
+    const auto expectedMainJob  = isEosPet ? xi::Job::SCH : xi::Job::BLM;
+    const auto expectedSubJob   = isEosPet ? xi::Job::SMN : xi::Job::RDM;
+    const auto expectedSpellLst = isEosPet ? uint16{ 566 } : uint16{ 600 };
+    const auto mainLevel        = PMaster->GetMLevel();
+    const bool levelChanged     = PPet->GetMLevel() != mainLevel || PPet->GetSLevel() != mainLevel;
+    const bool jobChanged       = PPet->GetMJob() != expectedMainJob || PPet->GetSJob(true) != expectedSubJob;
+    const bool spellsMissing    = PPet->m_SpellListContainer == nullptr || !PPet->SpellContainer || !PPet->SpellContainer->HasSpells();
 
     if (PPet->GetMJob() != expectedMainJob)
     {
@@ -146,6 +153,42 @@ bool EnsureOwnerAndJobs(CPetEntity* PPet)
     if (PPet->GetSLevel() != mainLevel)
     {
         PPet->SetSLevel(mainLevel);
+    }
+
+    if (PPet->m_SpellListContainer == nullptr)
+    {
+        PPet->m_SpellListContainer = mobSpellList::GetMobSpellList(expectedSpellLst);
+    }
+
+    if (levelChanged || jobChanged || spellsMissing)
+    {
+        const uint8 skillLvl = std::min<uint8>(mainLevel, 99);
+        for (int i = static_cast<int>(xi::SkillType::DivineMagic); i <= static_cast<int>(xi::SkillType::BlueMagic); ++i)
+        {
+            const auto skillType = static_cast<xi::SkillType>(i);
+            uint16     maxSkill  = battleutils::GetMaxSkill(skillType, expectedMainJob, skillLvl);
+            if (maxSkill == 0)
+            {
+                maxSkill = battleutils::GetMaxSkill(skillType, expectedSubJob, skillLvl);
+            }
+            PPet->WorkingSkills.skill[i] = maxSkill;
+        }
+
+        if (levelChanged || PPet->health.maxmp <= 0)
+        {
+            const int32 expectedMaxMp = static_cast<int32>(15.2 * std::pow(static_cast<double>(mainLevel), 1.1075));
+            PPet->health.maxmp        = std::max<int32>(1, expectedMaxMp);
+            PPet->UpdateHealth();
+            if (PPet->health.mp > PPet->GetMaxMP() || levelChanged)
+            {
+                PPet->health.mp = PPet->GetMaxMP();
+            }
+        }
+
+        if (PPet->m_SpellListContainer != nullptr)
+        {
+            mobutils::GetAvailableSpells(PPet);
+        }
     }
 
     return true;
@@ -370,7 +413,7 @@ void TryEosCast(CPetEntity* PPet, timer::time_point tick)
     }
 
     auto action = GetEosSupportAction(PPet, tick);
-    if (!action.has_value() || !CanCast(PPet, action->spellId, false))
+    if (!action.has_value() || !CanCast(PPet, action->spellId, true))
     {
         return;
     }
