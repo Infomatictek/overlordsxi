@@ -83,7 +83,7 @@ index 682027aa..3d2a2c79 100644
  void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
  {
 -    TracyZoneScoped;
-+    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, isOutOfRange, isRapidShot);
++    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot());
 +}
  
 -    auto* PTarget = state.target().resolve<CBattleEntity>();
