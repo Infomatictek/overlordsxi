@@ -117,7 +117,7 @@ index e27b61ed..fffa2154 100644
 +    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::DrainDaze, PAttacker->id);
 +    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::HasteDaze, PAttacker->id);
 +    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::AspirDaze, PAttacker->id);
-+    PDefender->StatusEffectContainer->AddStatusEffect(new CStatusEffect(daze, 0, dazePower, 0s, 10s, PAttacker->id), EffectNotice::Silent);
++    PDefender->StatusEffectContainer->AddStatusEffectSilent(daze, 0, dazePower, 0s, 10s, PAttacker->id);
 +
 +    auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
 +    const int32 amMult = (PChar != nullptr && PChar->GetLocalVar("OX_CHAKRAM_AM") > 0) ? 2 : 1;
