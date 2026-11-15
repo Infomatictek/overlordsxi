@@ -70,6 +70,8 @@ local STAT_LABELS =
 local STAT_ORDER = { 'str', 'dex', 'vit', 'agi', 'int', 'mnd', 'chr' }
 talents.STAT_ORDER = STAT_ORDER
 
+talents.MAX_WS_POINTS = 56
+
 talents.TIER_GATES =
 {
     [1] = { reqWsPoints = 0,  reqLevel = 1  },
@@ -1330,7 +1332,7 @@ require('modules/custom/lua/overlords_ws_trees_throwing')
 -----------------------------------
 local treeCache = {}
 
-local function finalizeTree(ws, archetype, rawNodes)
+local function finalizeTree(ws, archetype, rawNodes, opts)
     local nodes = {}
     local colUsed = { {}, {}, {}, {} }
 
@@ -1363,10 +1365,11 @@ local function finalizeTree(ws, archetype, rawNodes)
 
     return
     {
-        ws        = ws,
-        archetype = archetype,
-        nodes     = nodes,
-        byKey     = byKey,
+        ws          = ws,
+        archetype   = archetype,
+        useBaseline = opts and opts.useBaseline == true or false,
+        nodes       = nodes,
+        byKey       = byKey,
     }
 end
 
@@ -1804,7 +1807,7 @@ local function buildTreeForWS(ws)
         for _, n in ipairs(custom.nodes) do
             table.insert(copied, n)
         end
-        return finalizeTree(ws, custom.archetype, copied)
+        return finalizeTree(ws, custom.archetype, copied, { useBaseline = custom.useBaseline })
     end
     return buildGenericTreeForWS(ws)
 end
@@ -1914,6 +1917,9 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
     end
 
     local ranks, wsSpent = talents.getWSRanks(player, jobId, wsId)
+    if wsSpent >= (talents.MAX_WS_POINTS or 56) then
+        return false, string.format('Weaponskill point cap reached (%d/%d).', wsSpent, talents.MAX_WS_POINTS or 56)
+    end
     local curRank = ranks[nodeKey] or 0
     if curRank >= node.maxRank then
         return false, 'Talent is already at max rank.'

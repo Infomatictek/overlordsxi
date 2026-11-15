@@ -91,6 +91,27 @@ local function isSchSpecActive(player, schSpec)
     return false
 end
 
+local function isJobSpecActive(player, jobSpec)
+    if player == nil or jobSpec == nil then
+        return false
+    end
+    local specMod = xi.overlords and xi.overlords.spec
+    if specMod == nil or specMod.is == nil then
+        return false
+    end
+    local jobId = player:getMainJob()
+    if type(jobSpec) == 'string' then
+        return specMod.is(player, jobId, jobSpec)
+    elseif type(jobSpec) == 'table' then
+        for _, sk in ipairs(jobSpec) do
+            if specMod.is(player, jobId, sk) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function isStanceActive(attacker, stance)
     if attacker == nil or type(stance) ~= 'table' then
         return false
@@ -103,6 +124,9 @@ local function isStanceActive(attacker, stance)
         end
     end
     if stance.schSpec ~= nil and isSchSpecActive(attacker, stance.schSpec) then
+        return true
+    end
+    if stance.jobSpec ~= nil and isJobSpecActive(attacker, stance.jobSpec) then
         return true
     end
     if stance.petAlive then
@@ -228,22 +252,57 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     local ws = catalog.byId[wsID]
     local params = copyParams(wsParams)
 
-    -- Always normalize base WS to fTP 1.0, 0 WSC, 1 base hit, and strip curve mods
-    params.ftpMod  = { 1.0, 1.0, 1.0 }
-    params.numHits = 1
-    params.str_wsc = 0
-    params.dex_wsc = 0
-    params.vit_wsc = 0
-    params.agi_wsc = 0
-    params.int_wsc = 0
-    params.mnd_wsc = 0
-    params.chr_wsc = 0
+    local tree = talents.getTreeForWS(wsID)
+    local orig = ws and ws.orig or nil
 
-    params.critVaries     = nil
-    params.accVaries      = nil
-    params.atkVaries      = nil
-    params.ignoredDefense = nil
-    params.multiHitfTP    = nil
+    if tree ~= nil and tree.useBaseline and orig ~= nil then
+        local baseFtp = { 1.0, 1.0, 1.0 }
+        if type(orig.ftp) == 'table' then
+            for i = 1, 3 do
+                local v = orig.ftp[i] or 1.0
+                baseFtp[i] = math.floor((1.0 + (v - 1.0) * 0.65) * 100 + 0.5) / 100
+            end
+        end
+        params.ftpMod = baseFtp
+        params.numHits = orig.numHits or 1
+        params.multiHitfTP = orig.multiHitfTP or false
+        params.str_wsc = (orig.wsc and orig.wsc.str or 0) * 0.60
+        params.dex_wsc = (orig.wsc and orig.wsc.dex or 0) * 0.60
+        params.vit_wsc = (orig.wsc and orig.wsc.vit or 0) * 0.60
+        params.agi_wsc = (orig.wsc and orig.wsc.agi or 0) * 0.60
+        params.int_wsc = (orig.wsc and orig.wsc.int or 0) * 0.60
+        params.mnd_wsc = (orig.wsc and orig.wsc.mnd or 0) * 0.60
+        params.chr_wsc = (orig.wsc and orig.wsc.chr or 0) * 0.60
+        if type(orig.critVaries) == 'table' then
+            params.critVaries = { orig.critVaries[1] * 0.5, orig.critVaries[2] * 0.5, orig.critVaries[3] * 0.5 }
+        else
+            params.critVaries = nil
+        end
+        if type(orig.ignoredDefense) == 'table' then
+            params.ignoredDefense = { orig.ignoredDefense[1] * 0.5, orig.ignoredDefense[2] * 0.5, orig.ignoredDefense[3] * 0.5 }
+        else
+            params.ignoredDefense = nil
+        end
+        params.accVaries = nil
+        params.atkVaries = nil
+    else
+        -- Always normalize base WS to fTP 1.0, 0 WSC, 1 base hit, and strip curve mods
+        params.ftpMod  = { 1.0, 1.0, 1.0 }
+        params.numHits = 1
+        params.str_wsc = 0
+        params.dex_wsc = 0
+        params.vit_wsc = 0
+        params.agi_wsc = 0
+        params.int_wsc = 0
+        params.mnd_wsc = 0
+        params.chr_wsc = 0
+
+        params.critVaries     = nil
+        params.accVaries      = nil
+        params.atkVaries      = nil
+        params.ignoredDefense = nil
+        params.multiHitfTP    = nil
+    end
 
     if ws == nil then
         attacker:setLocalVar('OX_WS_SC_SET', 1)
@@ -263,9 +322,7 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     end
 
     local jobId = attacker:getMainJob()
-    local tree  = talents.getTreeForWS(wsID)
     local ranks = talents.getWSRanks(attacker, jobId, wsID)
-    local orig  = ws.orig
     local extraCtx = { extraScBonus = 0, packExtras = 0 }
     local effectiveTp = tp
 
@@ -1168,6 +1225,13 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
                     end
                 end
 
+                if eff.bonusHits then
+                    local bh = pickRankVal(eff.bonusHits, r)
+                    if bh and bh > 0 then
+                        params.numHits = math.min(8, (params.numHits or 1) + bh)
+                    end
+                end
+
                 if eff.multiHitfTPAt and r >= eff.multiHitfTPAt then
                     params.multiHitfTP = true
                 end
@@ -1473,6 +1537,8 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     local partyHealPct = 0
     local eosHealPct = 0
     local mpToHpPct = 0
+    local partyTpTotal = 0
+    local partyBuffsByEffect = {}
 
     for _, node in ipairs(tree and tree.nodes or {}) do
         local r = ranks[node.key] or 0
@@ -1591,6 +1657,24 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if eff.mpToHpPct then
                 mpToHpPct = mpToHpPct + (pickRankVal(eff.mpToHpPct, r) or 0)
             end
+            if eff.partyTp then
+                partyTpTotal = partyTpTotal + (pickRankVal(eff.partyTp, r) or 0)
+            end
+            if type(eff.partyBuffs) == 'table' then
+                for _, pb in ipairs(eff.partyBuffs) do
+                    if pb.effect ~= nil then
+                        local pwr = pickRankVal(pb.power, r) or 1
+                        local dur = pb.duration or 20
+                        local cur = partyBuffsByEffect[pb.effect]
+                        if cur == nil then
+                            partyBuffsByEffect[pb.effect] = { power = pwr, duration = dur }
+                        else
+                            cur.power = math.max(cur.power, pwr)
+                            cur.duration = math.max(cur.duration, dur)
+                        end
+                    end
+                end
+            end
         end
     end
 
@@ -1658,6 +1742,32 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             local amt = math.floor(attacker:getMaxHP() * (partyHealPct / 100))
             if amt > 0 then
                 attacker:addHP(amt)
+            end
+        end
+    end
+
+    if partyTpTotal > 0 then
+        local party = attacker.getParty and attacker:getParty() or nil
+        if type(party) == 'table' and #party > 0 then
+            for _, member in ipairs(party) do
+                if member ~= nil and member:isAlive() and member.addTP and (member == attacker or member:checkDistance(attacker) <= 15) then
+                    member:addTP(partyTpTotal)
+                end
+            end
+        elseif attacker.addTP then
+            attacker:addTP(partyTpTotal)
+        end
+    end
+
+    if next(partyBuffsByEffect) ~= nil then
+        local party = attacker.getParty and attacker:getParty() or nil
+        local targets = (type(party) == 'table' and #party > 0) and party or { attacker }
+        for _, member in ipairs(targets) do
+            if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
+                for effId, pb in pairs(partyBuffsByEffect) do
+                    member:delStatusEffectSilent(effId)
+                    member:addStatusEffect(effId, { power = pb.power, duration = pb.duration, origin = attacker })
+                end
             end
         end
     end

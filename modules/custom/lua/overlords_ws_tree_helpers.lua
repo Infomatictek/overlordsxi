@@ -20,6 +20,15 @@ function H.reg(wsId, archetype, nodes)
     })
 end
 
+function H.regBaseline(wsId, archetype, nodes)
+    talents.registerCustomWS(wsId,
+    {
+        archetype   = archetype,
+        useBaseline = true,
+        nodes       = nodes,
+    })
+end
+
 function H.ftp(curve, opts)
     opts = opts or {}
     return makeFtp(
@@ -193,6 +202,7 @@ function H.stanceNode(tier, col, key, name, maxRank, stanceLabel, effects, opts)
             {
                 effects   = effects,
                 schSpec   = schSpec,
+                jobSpec   = opts.jobSpec,
                 petAlive  = opts.petAlive,
                 wsd       = wsd,
                 atkPct    = atk,
