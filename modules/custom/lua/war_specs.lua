@@ -24,12 +24,15 @@ local COMMANDER_CADENCE_ABIL_ID = 398
 local COMMANDER_HORN_ABIL_ID    = 399
 local BERSERKER_SURGE_ABIL_ID   = 400
 local BERSERKER_CLEAVE_ABIL_ID  = 401
+local GLADIATOR_CRUSH_ABIL_ID   = 402
+local GLADIATOR_WARD_ABIL_ID    = 403
 
 local COMMANDER_BREACH_EFFECT_ID  = 815
 local COMMANDER_BULWARK_EFFECT_ID = 816
 local COMMANDER_CADENCE_EFFECT_ID = 817
 local COMMANDER_REGROUP_EFFECT_ID = 818
 local BERSERKER_SURGE_EFFECT_ID   = 819
+local GLADIATOR_WARD_EFFECT_ID    = 820
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.TACTICAL_BREACH   = COMMANDER_BREACH_ABIL_ID
@@ -38,6 +41,8 @@ xi.jobAbility.BATTLE_CADENCE    = COMMANDER_CADENCE_ABIL_ID
 xi.jobAbility.RALLYING_HORN     = COMMANDER_HORN_ABIL_ID
 xi.jobAbility.BLOODLUST_SURGE   = BERSERKER_SURGE_ABIL_ID
 xi.jobAbility.SAVAGE_CLEAVE     = BERSERKER_CLEAVE_ABIL_ID
+xi.jobAbility.CRIMSON_CRUSH     = GLADIATOR_CRUSH_ABIL_ID
+xi.jobAbility.VANGUARD_WARD     = GLADIATOR_WARD_ABIL_ID
 
 xi.effect = xi.effect or {}
 xi.effect.COMMANDER_BREACH  = COMMANDER_BREACH_EFFECT_ID
@@ -45,6 +50,7 @@ xi.effect.COMMANDER_BULWARK = COMMANDER_BULWARK_EFFECT_ID
 xi.effect.COMMANDER_CADENCE = COMMANDER_CADENCE_EFFECT_ID
 xi.effect.COMMANDER_REGROUP = COMMANDER_REGROUP_EFFECT_ID
 xi.effect.BERSERKER_SURGE   = BERSERKER_SURGE_EFFECT_ID
+xi.effect.GLADIATOR_WARD    = GLADIATOR_WARD_EFFECT_ID
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
@@ -54,6 +60,8 @@ xi.actions.abilities.battle_cadence    = xi.actions.abilities.battle_cadence or 
 xi.actions.abilities.rallying_horn     = xi.actions.abilities.rallying_horn or {}
 xi.actions.abilities.bloodlust_surge   = xi.actions.abilities.bloodlust_surge or {}
 xi.actions.abilities.savage_cleave     = xi.actions.abilities.savage_cleave or {}
+xi.actions.abilities.crimson_crush     = xi.actions.abilities.crimson_crush or {}
+xi.actions.abilities.vanguard_ward     = xi.actions.abilities.vanguard_ward or {}
 
 xi.effects = xi.effects or {}
 xi.effects.commander_breach  = xi.effects.commander_breach or {}
@@ -61,6 +69,7 @@ xi.effects.commander_bulwark = xi.effects.commander_bulwark or {}
 xi.effects.commander_cadence = xi.effects.commander_cadence or {}
 xi.effects.commander_regroup = xi.effects.commander_regroup or {}
 xi.effects.berserker_surge   = xi.effects.berserker_surge or {}
+xi.effects.gladiator_ward    = xi.effects.gladiator_ward or {}
 
 local COMMANDER_STANCES =
 {
@@ -372,12 +381,19 @@ if xi.job and xi.job.WAR then
             role        = 'Bloodthirsty Club & Shield Tank',
             icon        = 'amber_crescent',
             reqLevel    = 10,
+            extraAbilities =
+            {
+                GLADIATOR_CRUSH_ABIL_ID,
+                GLADIATOR_WARD_ABIL_ID,
+            },
             extraTraits = { 142 },
             description = 'Bloodthirsty Club & Shield tank (Lv10+): extreme sturdiness, Shield Mastery, high enmity, and Bloodthirsty self-healing at the cost of much lower damage output.',
             highlights  =
             {
                 'Passives (Lv10/30/50+): +10/15/22% Max HP, +6/12/20 VIT, +12/20/30% DEF, -6/10/15% Damage Taken, +15/25/40 Enmity, +10/15/20% Cure Rcvd.',
                 'Club & Shield Mastery: +10/20/35 Club & Shield skill, +12/24/40 Shield DEF, +8/14/22% Block Rate, +15/25/40 Shield TP (+10% Block w/ Club+Shield).',
+                'Crimson Crush (Lv10, 20s CD, Enemy 4y, Club+Shield): High-enmity bloodthirsty club strike that drains 4/6/8/10% Max HP (2x during Blood Rage or Mighty Strikes).',
+                'Vanguard Ward (Lv10, 30s CD, 12s, Self): +12/18/25/35% Shield Block Rate, -8/10/12/15% Damage Taken, and +20/30/40/50 Enmity.',
                 'Lower Damage Output: -25% Attack%, -25% Ranged Attack%, and -20% Weaponskill Damage.',
                 'Bloodthirsty Leech (Club+Shield): Club hits heal 1% Max HP + 0.2*Lv, Club WSs heal 3-5% Max HP, Shield Blocks heal 1.5% Max HP (2x under Blood Rage or Mighty Strikes).',
                 'Tank JAs: Defender (+35% DEF, -10% PDT, +15% Block), Blood Rage (-10% DT, +25 Enmity, Regen, 2x Leech), Warcry (party -8% DT; self +12 Enmity & 15% HP heal), Mighty Strikes (-25% DT, +50 Enmity, 2x Leech).',
@@ -1293,6 +1309,87 @@ m:addOverride('xi.actions.abilities.savage_cleave.onUseAbility', function(player
     end
 
     return damage
+end)
+
+-----------------------------------
+-- Gladiator Custom Active Job Abilities (Lv10+, Scaling Lv10/30/50/70+)
+-----------------------------------
+-- 1) Crimson Crush (402): 20s CD, Enemy 4y, Club+Shield bloodthirsty strike + drain + enmity
+m:addOverride('xi.actions.abilities.crimson_crush.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, GLADIATOR_KEY) or not isClubAndShield(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if target == nil or target:getID() == player:getID() then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.crimson_crush.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local drainPct = scaleCommanderTier(lvl, 4, 6, 8, 10)
+    local weaponDmg = player.getWeaponDmg and (player:getWeaponDmg() or 0) or 0
+    local vitStat = player.getStat and xi.mod and xi.mod.VIT and (player:getStat(xi.mod.VIT) or 0) or 0
+    local damage = math.max(12, math.floor(weaponDmg * 1.1 + vitStat * 0.5 + lvl * 1.0))
+
+    if target ~= nil and target.takeDamage and xi.attackType and xi.damageType then
+        target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
+    end
+
+    if target ~= nil and target.addEnmity then
+        target:addEnmity(player, 150, 450)
+    end
+
+    local maxHp = player.getMaxHP and (player:getMaxHP() or 0) or 0
+    if maxHp > 0 then
+        local baseHeal = math.max(10, math.floor(maxHp * drainPct / 100))
+        healBloodthirsty(player, baseHeal)
+    end
+
+    return damage
+end)
+
+-- 2) Vanguard Ward (403): 30s CD, 12s Self (+Block Rate, -DMG%, +Enmity)
+m:addOverride('xi.actions.abilities.vanguard_ward.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, GLADIATOR_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.vanguard_ward.onUseAbility', function(player, target, ability)
+    local lvl = getCommanderLevel(player)
+    local blockBonus, tier = scaleCommanderTier(lvl, 12, 18, 25, 35)
+    local dtBps = scaleCommanderTier(lvl, -800, -1000, -1200, -1500)
+    local enmityVal = scaleCommanderTier(lvl, 20, 30, 40, 50)
+    local iconId = xi.effect and xi.effect.DEFENDER or GLADIATOR_WARD_EFFECT_ID
+
+    applyCommanderTimedEffect(
+        target,
+        GLADIATOR_WARD_EFFECT_ID,
+        blockBonus,
+        12,
+        player,
+        tier,
+        iconId,
+        {
+            { xi.mod.PALISADE_BLOCK_BONUS, blockBonus },
+            { xi.mod.DMG,                  dtBps },
+            { xi.mod.ENMITY,               enmityVal },
+        }
+    )
+
+    return GLADIATOR_WARD_EFFECT_ID
+end)
+
+m:addOverride('xi.effects.gladiator_ward.onEffectGain', function(target, effect)
+    applyPendingCommanderEffectMods(target, effect)
+end)
+
+m:addOverride('xi.effects.gladiator_ward.onEffectLose', function(target, effect)
 end)
 
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)

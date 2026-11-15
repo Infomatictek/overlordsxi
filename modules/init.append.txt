@@ -12,6 +12,7 @@ custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
 custom/sql/war_commander_abilities.sql
 custom/sql/war_berserker_abilities.sql
+custom/sql/war_gladiator_abilities.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua

@@ -15,7 +15,8 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index a80259d..4c4edb9 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -141,6 +141,32 @@ void LoadEffectsParameters()
+-@@ -141,6 +141,32 @@ void LoadEffectsParameters()
++@@ -141,6 +141,38 @@ void LoadEffectsParameters()
      EffectsParams[814].Element          = 7;
      EffectsParams[814].SortKey          = 10000;
      EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
@@ -46,6 +47,12 @@ index a80259d..4c4edb9 100644
 +    EffectsParams[819].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
 +    EffectsParams[819].SortKey          = 10000;
 +    EffectsParams[819].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Gladiator custom status effect (820).
++    EffectsParams[820].Name             = "gladiator_ward";
++    EffectsParams[820].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[820].SortKey          = 10000;
++    EffectsParams[820].WearOffMessageId = MsgStd::EffectWearsOff;
  }
  
  // hacky way to get element from status effect
