@@ -76,16 +76,34 @@ local function dealStaffRiposte(defender, attacker, isDodgeBonus)
     local counterDmg = defender.getMod and xi.mod and xi.mod.COUNTER_DAMAGE and (defender:getMod(xi.mod.COUNTER_DAMAGE) or 0) or 0
     local lvl = defender.getMainLvl and (defender:getMainLvl() or 10) or 10
 
-    local statContribution = isDodgeBonus and math.floor(agiStat * 0.4) or math.floor(strStat * 0.45)
-    local raw = math.max(10, weaponDmg + statContribution + math.floor(lvl * 0.4) + counterDmg)
-    local mult = (isDodgeBonus and defender.hasStatusEffect and xi.effect and xi.effect.DODGE and defender:hasStatusEffect(xi.effect.DODGE)) and 1.35 or 1.15
-    local damage = math.max(10, math.floor(raw * mult))
-
-    if attacker.takeDamage and xi.attackType and xi.damageType then
-        attacker:takeDamage(damage, defender, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
+    local damage
+    if isDodgeBonus then
+        local raw = math.floor(weaponDmg * 0.25) + math.floor(agiStat * 0.10) + math.floor(lvl * 0.15) + math.floor(counterDmg * 0.30)
+        local mult = (defender.hasStatusEffect and xi.effect and xi.effect.DODGE and defender:hasStatusEffect(xi.effect.DODGE)) and 1.25 or 1.0
+        damage = math.max(2, math.floor(raw * mult))
+    else
+        local raw = math.floor(weaponDmg * 0.35) + math.floor(strStat * 0.12) + math.floor(lvl * 0.20) + math.floor(counterDmg * 0.40)
+        damage = math.max(3, math.floor(raw * 1.1))
     end
 
-    return damage
+    local dealt = damage
+    if attacker.takeDamage and xi.attackType and xi.damageType then
+        local res = attacker:takeDamage(damage, defender, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
+        if type(res) == 'number' then
+            dealt = res
+        end
+    end
+
+    if dealt > 0 then
+        local retaliateMsg = (xi.msg and xi.msg.basic and xi.msg.basic.RETALIATE_DAMAGE) or 536
+        if attacker.messagePublic then
+            attacker:messagePublic(retaliateMsg, defender, dealt, dealt)
+        elseif defender.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.HIT_DMG then
+            defender:messagePublic(xi.msg.basic.HIT_DMG, attacker, dealt, dealt)
+        end
+    end
+
+    return dealt
 end
 
 local function detachSenseiListeners(player)
@@ -159,7 +177,7 @@ if xi.job and xi.job.MNK then
                 'Counter & Deflection: +15/30/50 Parry Skill, +5/10/15% Parry Rate, +12/22/30% Counter, +8/16/28 Counter DMG, +15/25/40 Enmity, -25/40/60% Enmity Loss, +6/10/15% HP, -5/8/12% DT.',
                 'Staff Riposte (w/ Staff): +12% Parry Rate; Parrying heals 2% Max HP, grants +75 TP, +Enmity, and strikes back. Evading grants 1.5% Max HP, +50 TP, +Enmity, and deals an Evasive Counter.',
                 'Iron Counterstance (Lv10, 120s CD): +30% Counter, +20 Counter DMG, -10% DT, +20 Enmity, with no DEF halving penalty.',
-                'Tank JAs: Dodge (60s, +25 EVA, +15% EVA, +12% Parry, +15 Enmity, +35% Evasive Counter DMG), Focus (+15% Counter, +15 Parry, +10 Counter DMG), Boost (+15 Enmity, +50 TP), Chi Blast (heavy Enmity + Acc Down), Chakra (+50% heal, Regen, cleanses Slow/Silence), Perfect Counter (45s CD, +25 Counter DMG, +25 Enmity, 5% heal), Mantra (party -5% DT), Inner Strength (60s, -25% DT, +20% EVA%, +30 Counter DMG, +50 Enmity).',
+                'Tank JAs: Dodge (60s, +25 EVA, +15% EVA, +12% Parry, +15 Enmity, +25% Evasive Counter DMG), Focus (+15% Counter, +15 Parry, +10 Counter DMG), Boost (+15 Enmity, +50 TP), Chi Blast (heavy Enmity + Acc Down), Chakra (+50% heal, Regen, cleanses Slow/Silence), Perfect Counter (45s CD, +25 Counter DMG, +25 Enmity, 5% heal), Mantra (party -5% DT), Inner Strength (60s, -25% DT, +20% EVA%, +30 Counter DMG, +50 Enmity).',
             },
             mods = function(_player, lvl)
                 return
