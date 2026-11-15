@@ -1,15 +1,14 @@
 diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
-index 6aae57f6..59a62da4 100644
+index 6aae57f6..f751901b 100644
 --- a/src/map/ai/states/attack_state.cpp
 +++ b/src/map/ai/states/attack_state.cpp
-@@ -109,9 +109,51 @@ auto CAttackState::Update(timer::time_point tick) -> bool
-                 }
-             }
-         }
--        else if (m_PEntity->OnAttackError(*this))
-+        else
-         {
--            m_PEntity->HandleErrorMessage(m_errorMsg);
+@@ -89,7 +89,55 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+ 
+     if (AttackReady())
+     {
+-        if (CanAttack(PTarget))
++        auto tryAutoRanged = [&](bool allowMeleeRange) -> bool
++        {
 +            if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity);
 +                PChar != nullptr && PChar->GetLocalVar("OX_AUTO_RANGED") == 1 && m_PEntity->battleTarget().isSet())
 +            {
@@ -20,7 +19,7 @@ index 6aae57f6..59a62da4 100644
 +                const float dist = distance(PChar->loc.p, PTarget->loc.p);
 +                if (PRanged != nullptr &&
 +                    !PTarget->PAI->IsUntargetable() &&
-+                    dist > PChar->GetMeleeRange(PTarget) &&
++                    (allowMeleeRange || dist > PChar->GetMeleeRange(PTarget)) &&
 +                    dist <= maxRange + PChar->modelHitboxSize + PTarget->modelHitboxSize &&
 +                    facing(PChar->loc.p, PTarget->loc.p, 64) &&
 +                    PChar->CanSeeTarget(PTarget))
@@ -41,21 +40,40 @@ index 6aae57f6..59a62da4 100644
 +                    PChar->m_LastRangedAttackTime = tick;
 +                    const auto rangedDelay        = battleutils::GetRangedDelayReduction(PChar, PChar->GetRangedWeaponDelay(false));
 +                    m_attackTime                  = std::chrono::milliseconds(std::max<int16>(rangedDelay, 1000));
-+                    if (!m_PEntity->battleTarget().isSet())
-+                    {
-+                        return true;
-+                    }
-+                    return false;
++                    return true;
 +                }
 +            }
++            return false;
++        };
 +
-+            if (m_PEntity->OnAttackError(*this))
++        const bool forceRanged = m_PEntity->GetLocalVar("OX_THROW_STANCE") == 1;
++        if (forceRanged && tryAutoRanged(true))
++        {
++            if (!m_PEntity->battleTarget().isSet())
 +            {
-+                m_PEntity->HandleErrorMessage(m_errorMsg);
++                return true;
 +            }
-         }
-         if (!m_PEntity->battleTarget().isSet())
++            return false;
++        }
++        else if (CanAttack(PTarget))
          {
+             // CanAttack may have set target id to 0 (disengage from out of range)
+             if (!m_PEntity->battleTarget().isSet())
+@@ -109,6 +157,14 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+                 }
+             }
+         }
++        else if (tryAutoRanged(false))
++        {
++            if (!m_PEntity->battleTarget().isSet())
++            {
++                return true;
++            }
++            return false;
++        }
+         else if (m_PEntity->OnAttackError(*this))
+         {
+             m_PEntity->HandleErrorMessage(m_errorMsg);
 diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
 index 682027aa..3d2a2c79 100644
 --- a/src/map/entities/battle_entity.cpp

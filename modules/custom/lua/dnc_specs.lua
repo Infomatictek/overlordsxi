@@ -92,22 +92,50 @@ m:addOverride('xi.job_utils.dancer.useViolentFlourishAbility', function(player, 
     end
 end)
 
+local THROWING_STANCE_ABIL_ID = 404
+
+xi.actions = xi.actions or {}
+xi.actions.abilities = xi.actions.abilities or {}
+xi.actions.abilities.throwing_stance = xi.actions.abilities.throwing_stance or {}
+
+m:addOverride('xi.actions.abilities.throwing_stance.onAbilityCheck', function(player, target, ability)
+    if not isBladewheelDnc(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.throwing_stance.onUseAbility', function(player, target, ability)
+    local nextState = player:getLocalVar('OX_THROW_STANCE') == 1 and 0 or 1
+    player:setLocalVar('OX_THROW_STANCE', nextState)
+    if nextState == 1 then
+        player:printToPlayer('Throwing Stance ON: auto-attacks throw your chakram at all ranges.', xi.msg.channel.SYSTEM_3)
+    else
+        player:printToPlayer('Throwing Stance OFF: melee at close range, throw chakram at range.', xi.msg.channel.SYSTEM_3)
+    end
+end)
+
 if xi.job and xi.job.DNC then
     spec.registerJob(xi.job.DNC, 'DNC',
     {
         {
-            id           = 1,
-            key          = BLADEWHEEL_KEY,
-            name         = 'Bladewheel',
-            role         = 'Ranged Chakram Dancer',
-            icon         = 'chakram_crystal',
-            throwWs      = true,
-            autoRanged   = { minLevel = 10, maxRange = 20, skills = { 'throwing' } },
-            rangedDances = true,
-            description  = 'Ranged chakram spec: auto-attacks with your chakram when out of melee range, unlocks 12 Throwing weaponskills, and lets Steps, Flourishes, and Sambas work at range.',
-            highlights   =
+            id             = 1,
+            key            = BLADEWHEEL_KEY,
+            name           = 'Bladewheel',
+            role           = 'Ranged Chakram Dancer',
+            icon           = 'chakram_crystal',
+            throwWs        = true,
+            autoRanged     = { minLevel = 10, maxRange = 20, skills = { 'throwing' } },
+            rangedDances   = true,
+            extraAbilities = { THROWING_STANCE_ABIL_ID },
+            onRemove       = function(player)
+                player:setLocalVar('OX_THROW_STANCE', 0)
+            end,
+            description    = 'Ranged chakram spec: auto-attacks with your chakram when out of melee range (or at all ranges with Throwing Stance), unlocks 12 Throwing weaponskills, and lets Steps, Flourishes, and Sambas work at range.',
+            highlights     =
             {
                 'Auto-attacks with equipped chakram when outside melee range.',
+                'Throwing Stance (JA): overrides melee auto-attacks with chakram throws at all ranges.',
                 'Unlocks 12 custom Dancer Throwing weaponskills (Lv 5-75).',
                 'Steps and offensive Flourishes work up to 20 yalms.',
                 'Drain, Aspir, and Haste Samba trigger on ranged chakram hits.',

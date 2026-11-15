@@ -68,3 +68,12 @@ UPDATE `item_equipment` SET `level` = 75, `ilevel` = 0 WHERE `itemId` = 21368;
 UPDATE `item_weapon` SET `dmg` = 85, `delay` = 260, `ilvl_skill` = 0, `ilvl_parry` = 0, `ilvl_macc` = 0 WHERE `itemId` = 21368;
 REPLACE INTO `item_mods` (`itemId`, `modId`, `value`) VALUES
   (21368, 345, 500), (21368, 73, 10), (21368, 26, 20);
+
+-- Custom Job Ability: Throwing Stance (404) unlocked dynamically by Bladewheel Lv 10+
+DELETE FROM `abilities` WHERE `abilityId` = 404 OR `name` = 'throwing_stance';
+INSERT INTO `abilities`
+    (`abilityId`, `name`, `job`, `level`, `validTarget`, `recastTime`, `recastId`, `message1`, `message2`,
+     `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
+     `meritModID`, `addType`, `content_tag`)
+VALUES
+    (404, 'throwing_stance', 19, 255, 1, 5, 194, 0, 0, 28, 1000, 0, 6, 0.0, 0, 0, 1, 1, 0, 0, NULL);
