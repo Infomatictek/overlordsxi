@@ -592,7 +592,6 @@ function spec.onTraitsRebuild(player)
         prevLvl ~= curLvl or
         prevSpecId ~= curSpecId
     then
-        spec.sendState(player, curJobId)
         if xi.overlords.wsTalents and xi.overlords.wsTalents.sendMetaAndSpent then
             xi.overlords.wsTalents.sendMetaAndSpent(player)
         end

@@ -1,8 +1,8 @@
 diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
-index 6aae57f6..fe55d4c5 100644
+index 6aae57f6..59a62da4 100644
 --- a/src/map/ai/states/attack_state.cpp
 +++ b/src/map/ai/states/attack_state.cpp
-@@ -109,9 +109,33 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+@@ -109,9 +109,51 @@ auto CAttackState::Update(timer::time_point tick) -> bool
                  }
              }
          }
@@ -19,14 +19,32 @@ index 6aae57f6..fe55d4c5 100644
 +                                           : 20.0f;
 +                const float dist = distance(PChar->loc.p, PTarget->loc.p);
 +                if (PRanged != nullptr &&
++                    !PTarget->PAI->IsUntargetable() &&
 +                    dist > PChar->GetMeleeRange(PTarget) &&
 +                    dist <= maxRange + PChar->modelHitboxSize + PTarget->modelHitboxSize &&
 +                    facing(PChar->loc.p, PTarget->loc.p, 64) &&
-+                    PChar->CanSeeTarget(PTarget) &&
-+                    PChar->PAI->Internal_RangedAttack(PTarget->entityId()))
++                    PChar->CanSeeTarget(PTarget))
 +                {
 +                    m_errorMsg.reset();
-+                    m_attackTime = std::chrono::milliseconds(std::max<int16>(PChar->GetRangedWeaponDelay(false), 1000));
++                    battleutils::ClaimMob(PTarget, PChar);
++                    PTarget->LastAttacked = timer::now();
++
++                    action_t action{};
++                    PChar->ExecuteRangedAttack(PTarget, action, false, false);
++                    battleutils::handleKillshotEnmity(PChar, PTarget);
++
++                    if (action.actiontype != ActionCategory::None && !action.targets.empty())
++                    {
++                        PChar->loc.zone->PushPacket(PChar, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
++                    }
++
++                    PChar->m_LastRangedAttackTime = tick;
++                    const auto rangedDelay        = battleutils::GetRangedDelayReduction(PChar, PChar->GetRangedWeaponDelay(false));
++                    m_attackTime                  = std::chrono::milliseconds(std::max<int16>(rangedDelay, 1000));
++                    if (!m_PEntity->battleTarget().isSet())
++                    {
++                        return true;
++                    }
 +                    return false;
 +                }
 +            }
@@ -38,3 +56,52 @@ index 6aae57f6..fe55d4c5 100644
          }
          if (!m_PEntity->battleTarget().isSet())
          {
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index 682027aa..3d2a2c79 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -3150,9 +3150,12 @@ auto CBattleEntity::CanAttack(CBattleEntity* PTarget, std::unique_ptr<CBasicPack
+ 
+ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ {
+-    TracyZoneScoped;
++    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, isOutOfRange, isRapidShot);
++}
+ 
+-    auto* PTarget = state.target().resolve<CBattleEntity>();
++void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot)
++{
++    TracyZoneScoped;
+     if (!PTarget)
+     {
+         return;
+@@ -3244,7 +3247,7 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+     for (uint8 i = 1; i <= hitCount; ++i)
+     {
+         // TODO: add Barrage mod racc bonus
+-        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, 0) && !state.IsOutOfRange())
++        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, 0) && !isOutOfRange)
+         {
+             // Absorbed by shadow
+             if (battleutils::IsAbsorbByShadow(PTarget, this))
+@@ -3371,7 +3374,7 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ 
+         if (isChar && slot == SLOT_RANGED)
+         {
+-            auto attackType = state.IsRapidShot() ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
++            auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
+             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
+         }
+         actionResult.recordDamage(attack_outcome_t{
+diff --git a/src/map/entities/battle_entity.h b/src/map/entities/battle_entity.h
+index 7821563f..a3d6ed56 100644
+--- a/src/map/entities/battle_entity.h
++++ b/src/map/entities/battle_entity.h
+@@ -334,6 +334,7 @@ public:
+ 
+     virtual void OnAbility(CAbilityState&, action_t&);
+     virtual void OnRangedAttack(CRangeState&, action_t&);
++    void         ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot);
+     void         processActionEffectFlags(const action_t& action) const; // Drops status effects whose flags are tied to action emit/receive.
+     virtual void OnDeathTimer();
+ 
