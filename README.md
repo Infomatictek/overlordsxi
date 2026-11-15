@@ -56,7 +56,7 @@ The distributable Windows client launcher (`OverlordsLauncher.exe`), XIPivot DAT
 
 ### Automated Local Server Setup (Windows)
 
-Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from PowerShell to clone or update `landsandboat/server`, apply `patches/*.patch`, copy `modules/custom/*`, merge `modules/init.append.txt` into `modules/init.txt`, and compile `xi_connect`, `xi_world`, `xi_search`, and `xi_map`:
+Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from PowerShell to clone or update `landsandboat/server`, apply `patches/*.patch`, sync `modules/custom/*` without clobbering unchanged C++ timestamps, merge `modules/init.append.txt` into `modules/init.txt`, and rebuild only the server executables (`xi_connect`, `xi_world`, `xi_search`, `xi_map`) whose C++/CMake inputs actually changed:
 
 ```powershell
 .\scripts\setup-local-server.ps1 -ServerDir C:\dev\server
@@ -65,8 +65,10 @@ Run [`scripts/setup-local-server.ps1`](scripts/setup-local-server.ps1) from Powe
 Supported flags:
 
 - `-ServerDir` (default `C:\dev\server`): target LandSandBoat checkout path.
-- `-BuildJobs` (default `4`): parallel CMake build jobs.
+- `-BuildJobs` (default `0`, auto-detects CPU thread count): parallel CMake build jobs.
 - `-SkipClone` / `-SkipBuild`: update files/patches on an existing checkout without cloning or recompiling.
+- `-ForceBuild`: force rebuilding even if no C++/CMake changes are detected.
+- `-MapOnly`: only check/build `xi_map` (skips checking `xi_connect`, `xi_world`, `xi_search`).
 - `-RunDbTool`: also executes `python tools\dbtool.py` inside `-ServerDir`.
 
 ### Manual Install

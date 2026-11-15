@@ -2,6 +2,11 @@
 .SYNOPSIS
     Sets up or updates a local LandSandBoat test server with OverlordsXI customizations on Windows.
 
+.DESCRIPTION
+    Applies OverlordsXI patches idempotently, syncs custom modules/DAT/addon files only when contents
+    changed (preserving C++ file timestamps), and runs CMake builds only for executables whose C++
+    or CMake inputs actually changed since the last build.
+
 .EXAMPLE
     .\scripts\setup-local-server.ps1 -ServerDir C:\dev\server -AshitaAddonsDir C:\Ashita\addons
 #>
@@ -9,13 +14,19 @@ param(
     [string]$ServerDir = 'C:\dev\server',
     [string]$AshitaAddonsDir = '',
     [string]$DatOverlayDir = 'C:\DATs\Overlords',
-    [int]$BuildJobs = 4,
+    [int]$BuildJobs = 0,
     [switch]$SkipClone,
     [switch]$SkipBuild,
+    [switch]$ForceBuild,
+    [switch]$MapOnly,
     [switch]$RunDbTool
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($BuildJobs -le 0) {
+    $BuildJobs = [Math]::Max(1, [Environment]::ProcessorCount)
+}
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $LogDir = Join-Path $RepoRoot 'logs'
@@ -59,6 +70,137 @@ function Find-VsDevCmd {
     return $null
 }
 
+function Sync-DirectoryChangedOnly {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceDir,
+        [Parameter(Mandatory = $true)][string]$DestDir
+    )
+
+    $changedFiles = [System.Collections.Generic.List[string]]::new()
+    if (-not (Test-Path $SourceDir)) {
+        return $changedFiles
+    }
+
+    $srcRoot = (Resolve-Path $SourceDir).Path.TrimEnd('\', '/')
+    New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+    $dstRoot = (Resolve-Path $DestDir).Path.TrimEnd('\', '/')
+
+    foreach ($srcFile in (Get-ChildItem -Path $srcRoot -File -Recurse)) {
+        $relPath = $srcFile.FullName.Substring($srcRoot.Length).TrimStart('\', '/')
+        $dstPath = Join-Path $dstRoot $relPath
+        $dstParent = Split-Path -Parent $dstPath
+        if ($dstParent -and -not (Test-Path $dstParent)) {
+            New-Item -ItemType Directory -Path $dstParent -Force | Out-Null
+        }
+
+        $needsCopy = $true
+        if (Test-Path $dstPath) {
+            $dstInfo = Get-Item -Path $dstPath
+            if ($dstInfo.Length -eq $srcFile.Length) {
+                $srcHash = (Get-FileHash -Path $srcFile.FullName -Algorithm SHA256).Hash
+                $dstHash = (Get-FileHash -Path $dstPath -Algorithm SHA256).Hash
+                if ($srcHash -eq $dstHash) {
+                    $needsCopy = $false
+                }
+            }
+        }
+
+        if ($needsCopy) {
+            Copy-Item -Path $srcFile.FullName -Destination $dstPath -Force
+            [void]$changedFiles.Add(($relPath -replace '\\', '/'))
+        }
+    }
+
+    return $changedFiles
+}
+
+function Get-DirectoryFileHashes {
+    param([string]$RootDir)
+
+    $hashes = @{}
+    if (-not (Test-Path $RootDir)) {
+        return $hashes
+    }
+
+    $basePath = (Resolve-Path $RootDir).Path.TrimEnd('\', '/')
+    foreach ($f in (Get-ChildItem -Path $basePath -File -Recurse)) {
+        $rel = ($f.FullName.Substring($basePath.Length).TrimStart('\', '/')) -replace '\\', '/'
+        $hashes[$rel] = (Get-FileHash -Path $f.FullName -Algorithm SHA256).Hash
+    }
+    return $hashes
+}
+
+function Add-AffectedTargetsForPath {
+    param(
+        [string]$RelPath,
+        [System.Collections.Generic.HashSet[string]]$TargetSet
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RelPath)) {
+        return
+    }
+
+    $norm = ($RelPath -replace '\\', '/').TrimStart('./')
+    if ($norm -match '^src/(profile|test)/') {
+        return
+    }
+    if ($norm -match '^src/map/' -or $norm -match '^modules/custom/cpp/') {
+        [void]$TargetSet.Add('xi_map')
+        return
+    }
+    if ($norm -match '^src/login/') {
+        [void]$TargetSet.Add('xi_connect')
+        return
+    }
+    if ($norm -match '^src/world/') {
+        [void]$TargetSet.Add('xi_world')
+        return
+    }
+    if ($norm -match '^src/search/') {
+        [void]$TargetSet.Add('xi_search')
+        return
+    }
+    if (
+        $norm -match '^src/' -or
+        $norm -match '^ext/' -or
+        $norm -match '^cmake/' -or
+        $norm -match '^res/' -or
+        $norm -eq 'CMakeLists.txt' -or
+        $norm -eq 'CMakePresets.json' -or
+        $norm -eq 'modules/CMakeLists.txt'
+    ) {
+        foreach ($t in @('xi_connect', 'xi_world', 'xi_search', 'xi_map')) {
+            [void]$TargetSet.Add($t)
+        }
+    }
+}
+
+function Get-NewestWriteTimeUtc {
+    param([string[]]$Paths)
+
+    $newest = [datetime]::MinValue
+    foreach ($p in $Paths) {
+        if (-not (Test-Path $p)) {
+            continue
+        }
+        $item = Get-Item -Path $p
+        if (-not $item.PSIsContainer) {
+            if ($item.LastWriteTimeUtc -gt $newest) {
+                $newest = $item.LastWriteTimeUtc
+            }
+            continue
+        }
+
+        foreach ($fullPath in [System.IO.Directory]::EnumerateFiles($item.FullName, '*', [System.IO.SearchOption]::AllDirectories)) {
+            $t = [System.IO.File]::GetLastWriteTimeUtc($fullPath)
+            if ($t -gt $newest) {
+                $newest = $t
+            }
+        }
+    }
+    return $newest
+}
+
 # 1. Clone LandSandBoat if needed
 if (-not (Test-Path $ServerDir)) {
     if ($SkipClone) {
@@ -79,6 +221,8 @@ Push-Location $ServerDir
 try {
     # 2. Apply OverlordsXI engine patches idempotently
     $patchFiles = Get-ChildItem -Path (Join-Path $RepoRoot 'patches') -Filter '*.patch' | Sort-Object Name
+    $newlyAppliedPatchTargetFiles = [System.Collections.Generic.List[string]]::new()
+
     function Get-PatchTargetFiles([string]$PatchPath) {
         $files = @()
         foreach ($line in (Get-Content -Path $PatchPath)) {
@@ -160,19 +304,28 @@ try {
         if ($applyCode -ne 0) {
             throw "Failed to apply patch $($patch.Name)."
         }
+
+        foreach ($tf in (Get-PatchTargetFiles $patch.FullName)) {
+            [void]$newlyAppliedPatchTargetFiles.Add($tf)
+        }
         Write-Host "    Applied." -ForegroundColor Green
     }
 
-    # 3. Copy custom modules (lua, cpp, sql, commands)
-    Write-Host '==> Copying OverlordsXI modules...' -ForegroundColor Cyan
+    # 3. Sync custom modules (lua, cpp, sql, commands) without clobbering timestamps on unchanged files
+    Write-Host '==> Syncing OverlordsXI modules...' -ForegroundColor Cyan
     $srcModules = Join-Path $RepoRoot 'modules\custom'
     $dstModules = Join-Path $ServerDir 'modules\custom'
+    $changedCppFiles = [System.Collections.Generic.List[string]]::new()
     foreach ($sub in @('lua', 'cpp', 'sql', 'commands')) {
         $srcSub = Join-Path $srcModules $sub
         $dstSub = Join-Path $dstModules $sub
         if ((Test-Path $srcSub) -and ((Get-ChildItem -Path $srcSub -Force | Measure-Object).Count -gt 0)) {
-            New-Item -ItemType Directory -Path $dstSub -Force | Out-Null
-            Copy-Item -Path (Join-Path $srcSub '*') -Destination $dstSub -Recurse -Force
+            $synced = Sync-DirectoryChangedOnly -SourceDir $srcSub -DestDir $dstSub
+            if ($sub -eq 'cpp') {
+                foreach ($f in $synced) {
+                    [void]$changedCppFiles.Add("modules/custom/cpp/$f")
+                }
+            }
         }
     }
     $staleSqlFiles = @(
@@ -236,51 +389,279 @@ try {
     }
     Write-Host "==> modules/init.txt updated ($addedCount new entries added)." -ForegroundColor Green
 
-    # 5. Copy DAT overlay
+    # 5. Sync DAT overlay
     $srcDat = Join-Path $RepoRoot 'dat-overlay\ROM'
     if ((Test-Path $srcDat) -and ((Get-ChildItem -Path $srcDat -Force | Measure-Object).Count -gt 0)) {
         $dstDat = Join-Path $DatOverlayDir 'ROM'
-        New-Item -ItemType Directory -Path $dstDat -Force | Out-Null
-        Copy-Item -Path (Join-Path $srcDat '*') -Destination $dstDat -Recurse -Force
-        Write-Host "==> Copied DAT overlay to $dstDat" -ForegroundColor Green
+        $changedDat = Sync-DirectoryChangedOnly -SourceDir $srcDat -DestDir $dstDat
+        Write-Host "==> Synced DAT overlay to $dstDat ($($changedDat.Count) file(s) updated)" -ForegroundColor Green
     }
 
-    # 6. Copy Ashita v4 addon if present and target specified
+    # 6. Sync Ashita v4 addon if present and target specified
     if ($AshitaAddonsDir -ne '') {
         $srcAddon = Join-Path $RepoRoot 'addons\ashita4\overlords_talents'
         if (Test-Path $srcAddon) {
             $dstAddon = Join-Path $AshitaAddonsDir 'overlords_talents'
-            New-Item -ItemType Directory -Path $dstAddon -Force | Out-Null
-            Copy-Item -Path (Join-Path $srcAddon '*') -Destination $dstAddon -Recurse -Force
-            Write-Host "==> Installed Ashita v4 addon to $dstAddon" -ForegroundColor Green
+            $changedAddon = Sync-DirectoryChangedOnly -SourceDir $srcAddon -DestDir $dstAddon
+            Write-Host "==> Synced Ashita v4 addon to $dstAddon ($($changedAddon.Count) file(s) updated)" -ForegroundColor Green
         }
     }
 
-    # 7. Configure & build server binaries
+    # 7. Configure & build server binaries only when C++/CMake inputs changed
     if (-not $SkipBuild) {
-        $vsDevCmd = Find-VsDevCmd
-        if (-not $vsDevCmd) {
-            throw 'Could not find VsDevCmd.bat. Install Visual Studio 2022 / BuildTools or run with -SkipBuild.'
+        $allServerTargets = @('xi_connect', 'xi_world', 'xi_search', 'xi_map')
+        $scopedTargets = if ($MapOnly) { @('xi_map') } else { $allServerTargets }
+
+        $buildDir = Join-Path $ServerDir 'build'
+        $cmakeCachePath = Join-Path $buildDir 'CMakeCache.txt'
+        $buildStatePath = Join-Path $buildDir '.overlords_build_state.json'
+
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $headOut = git rev-parse HEAD 2>$null
+        $headExit = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
+        $currentHead = if ($headExit -eq 0 -and $headOut) { ([string]$headOut).Trim() } else { '' }
+        $currentCppHashes = Get-DirectoryFileHashes -RootDir (Join-Path $ServerDir 'modules\custom\cpp')
+        $needsConfigure = -not (Test-Path $cmakeCachePath)
+
+        $savedState = $null
+        if (Test-Path $buildStatePath) {
+            try {
+                $savedState = Get-Content -Path $buildStatePath -Raw | ConvertFrom-Json
+            } catch {
+                $savedState = $null
+            }
         }
 
-        if (-not (Test-Path (Join-Path $ServerDir 'build\CMakeCache.txt'))) {
-            Write-Host '==> Configuring CMake build...' -ForegroundColor Yellow
-            cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake -S . -B build -G Ninja"
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host '    Ninja generator unavailable, falling back to default CMake generator...' -ForegroundColor DarkGray
-                cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake -S . -B build"
-                if ($LASTEXITCODE -ne 0) {
-                    throw 'CMake configure failed.'
+        $targetsToBuild = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $buildReasons = [System.Collections.Generic.List[string]]::new()
+
+        if ($ForceBuild) {
+            foreach ($t in $scopedTargets) {
+                [void]$targetsToBuild.Add($t)
+            }
+            [void]$buildReasons.Add('-ForceBuild specified')
+        }
+        elseif ($needsConfigure) {
+            foreach ($t in $scopedTargets) {
+                [void]$targetsToBuild.Add($t)
+            }
+            [void]$buildReasons.Add('CMake cache missing (fresh configure)')
+        }
+        else {
+            # a) Newly applied patches in this run
+            foreach ($tf in $newlyAppliedPatchTargetFiles) {
+                Add-AffectedTargetsForPath -RelPath $tf -TargetSet $targetsToBuild
+            }
+            if ($newlyAppliedPatchTargetFiles.Count -gt 0) {
+                [void]$buildReasons.Add("$($newlyAppliedPatchTargetFiles.Count) patched source file(s) applied")
+            }
+
+            # b) Newly added or updated custom C++ modules
+            foreach ($cf in $changedCppFiles) {
+                Add-AffectedTargetsForPath -RelPath $cf -TargetSet $targetsToBuild
+            }
+            if ($changedCppFiles.Count -gt 0) {
+                [void]$buildReasons.Add("$($changedCppFiles.Count) custom C++ file(s) synced")
+            }
+
+            # c) Custom C++ file additions/removals/edits compared to last build state
+            if ($savedState -and $savedState.cppHashes) {
+                $prevCppMap = @{}
+                foreach ($prop in $savedState.cppHashes.PSObject.Properties) {
+                    $prevCppMap[$prop.Name] = [string]$prop.Value
+                }
+                $cppDrift = $false
+                foreach ($k in $currentCppHashes.Keys) {
+                    if (-not $prevCppMap.ContainsKey($k) -or $prevCppMap[$k] -ne $currentCppHashes[$k]) {
+                        $cppDrift = $true
+                        break
+                    }
+                }
+                if (-not $cppDrift) {
+                    foreach ($k in $prevCppMap.Keys) {
+                        if (-not $currentCppHashes.ContainsKey($k)) {
+                            $cppDrift = $true
+                            break
+                        }
+                    }
+                }
+                if ($cppDrift) {
+                    [void]$targetsToBuild.Add('xi_map')
+                    [void]$buildReasons.Add('modules/custom/cpp differs from last build state')
+                }
+            }
+
+            # d) Upstream LandSandBoat git HEAD changes per target since last build
+            foreach ($t in $scopedTargets) {
+                if ($targetsToBuild.Contains($t)) {
+                    continue
+                }
+                $prevHead = $null
+                if ($savedState -and $savedState.targetHeads -and $savedState.targetHeads.PSObject.Properties[$t]) {
+                    $prevHead = [string]$savedState.targetHeads.$t
+                }
+                if ($prevHead -and $currentHead -and $prevHead -ne $currentHead) {
+                    $diffSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+                    $prevEap = $ErrorActionPreference
+                    $ErrorActionPreference = 'Continue'
+                    $diffFiles = git diff --name-only "$prevHead..$currentHead" 2>$null
+                    $diffExit = $LASTEXITCODE
+                    $ErrorActionPreference = $prevEap
+                    if ($diffExit -ne 0) {
+                        [void]$targetsToBuild.Add($t)
+                        [void]$buildReasons.Add("git HEAD changed for $t")
+                    } else {
+                        foreach ($df in $diffFiles) {
+                            Add-AffectedTargetsForPath -RelPath $df -TargetSet $diffSet
+                        }
+                        if ($diffSet.Contains($t)) {
+                            [void]$targetsToBuild.Add($t)
+                            [void]$buildReasons.Add("upstream C++/CMake commit changed $t")
+                        }
+                    }
+                }
+            }
+
+            # e) Missing binaries or any C++/CMake file modified more recently than its last build
+            $exeUtcByTarget = @{}
+            foreach ($t in $scopedTargets) {
+                $exePath = Join-Path $ServerDir "$t.exe"
+                if (-not (Test-Path $exePath)) {
+                    [void]$targetsToBuild.Add($t)
+                    [void]$buildReasons.Add("$t.exe missing")
+                } else {
+                    $cutoffUtc = (Get-Item -Path $exePath).LastWriteTimeUtc
+                    if ($savedState -and $savedState.targetBuildUtc -and $savedState.targetBuildUtc.PSObject.Properties[$t]) {
+                        try {
+                            $savedUtc = [datetime]::Parse([string]$savedState.targetBuildUtc.$t, $null, [System.Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+                            if ($savedUtc -gt $cutoffUtc) {
+                                $cutoffUtc = $savedUtc
+                            }
+                        } catch {
+                        }
+                    }
+                    $exeUtcByTarget[$t] = $cutoffUtc
+                }
+            }
+
+            $remainingTargets = @($scopedTargets | Where-Object { -not $targetsToBuild.Contains($_) })
+            if ($remainingTargets.Count -gt 0) {
+                $newestSharedUtc = Get-NewestWriteTimeUtc -Paths @(
+                    (Join-Path $ServerDir 'CMakeLists.txt'),
+                    (Join-Path $ServerDir 'CMakePresets.json'),
+                    (Join-Path $ServerDir 'cmake'),
+                    (Join-Path $ServerDir 'ext'),
+                    (Join-Path $ServerDir 'res'),
+                    (Join-Path $ServerDir 'src\CMakeLists.txt'),
+                    (Join-Path $ServerDir 'src\common'),
+                    (Join-Path $ServerDir 'modules\CMakeLists.txt')
+                )
+
+                foreach ($t in $remainingTargets) {
+                    if ($newestSharedUtc -gt $exeUtcByTarget[$t]) {
+                        [void]$targetsToBuild.Add($t)
+                        [void]$buildReasons.Add("shared C++/CMake files newer than $t")
+                    }
+                }
+
+                $targetSpecificDirs = @{
+                    'xi_connect' = @((Join-Path $ServerDir 'src\login'))
+                    'xi_world'   = @((Join-Path $ServerDir 'src\world'))
+                    'xi_search'  = @((Join-Path $ServerDir 'src\search'))
+                    'xi_map'     = @((Join-Path $ServerDir 'src\map'), (Join-Path $ServerDir 'modules\custom\cpp'))
+                }
+                foreach ($t in $remainingTargets) {
+                    if ($targetsToBuild.Contains($t)) {
+                        continue
+                    }
+                    $newestOwnUtc = Get-NewestWriteTimeUtc -Paths $targetSpecificDirs[$t]
+                    if ($newestOwnUtc -gt $exeUtcByTarget[$t]) {
+                        [void]$targetsToBuild.Add($t)
+                        [void]$buildReasons.Add("target source newer than $t")
+                    }
                 }
             }
         }
 
-        Write-Host "==> Building xi_connect, xi_world, xi_search, xi_map (-j $BuildJobs)..." -ForegroundColor Yellow
-        cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake --build build --target xi_connect xi_world xi_search xi_map -j $BuildJobs"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'CMake build failed.'
+        $finalTargets = @($scopedTargets | Where-Object { $targetsToBuild.Contains($_) })
+
+        if ($finalTargets.Count -eq 0) {
+            Write-Host '==> No C++/CMake changes detected; skipping build. (Use -ForceBuild to rebuild anyway.)' -ForegroundColor Green
+
+            # Bootstrap state file if exes are already verified up-to-date
+            if (-not (Test-Path $buildStatePath) -and (Test-Path $buildDir)) {
+                $nowIso = (Get-Date).ToUniversalTime().ToString('o')
+                $targetHeadsMap = @{}
+                $targetBuildUtcMap = @{}
+                foreach ($t in $scopedTargets) {
+                    $targetHeadsMap[$t] = $currentHead
+                    $targetBuildUtcMap[$t] = $nowIso
+                }
+                $stateObj = [ordered]@{
+                    lastBuildUtc   = $nowIso
+                    targetHeads    = $targetHeadsMap
+                    targetBuildUtc = $targetBuildUtcMap
+                    cppHashes      = $currentCppHashes
+                }
+                $stateObj | ConvertTo-Json -Depth 4 | Set-Content -Path $buildStatePath -Encoding UTF8
+            }
         }
-        Write-Host '==> Build succeeded.' -ForegroundColor Green
+        else {
+            $vsDevCmd = Find-VsDevCmd
+            if (-not $vsDevCmd) {
+                throw 'Could not find VsDevCmd.bat. Install Visual Studio 2022 / BuildTools or run with -SkipBuild.'
+            }
+
+            if ($needsConfigure) {
+                Write-Host '==> Configuring CMake build...' -ForegroundColor Yellow
+                cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake -S . -B build -G Ninja"
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host '    Ninja generator unavailable, falling back to default CMake generator...' -ForegroundColor DarkGray
+                    cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake -S . -B build"
+                    if ($LASTEXITCODE -ne 0) {
+                        throw 'CMake configure failed.'
+                    }
+                }
+            }
+
+            $reasonSummary = ($buildReasons | Select-Object -Unique) -join '; '
+            $targetArgs = $finalTargets -join ' '
+            Write-Host "==> Building $targetArgs (-j $BuildJobs) [$reasonSummary]..." -ForegroundColor Yellow
+            cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 && cmake --build build --target $targetArgs -j $BuildJobs"
+            if ($LASTEXITCODE -ne 0) {
+                throw 'CMake build failed.'
+            }
+
+            # Persist updated per-target build state
+            $nowIso = (Get-Date).ToUniversalTime().ToString('o')
+            $targetHeadsMap = @{}
+            $targetBuildUtcMap = @{}
+            if ($savedState -and $savedState.targetHeads) {
+                foreach ($prop in $savedState.targetHeads.PSObject.Properties) {
+                    $targetHeadsMap[$prop.Name] = [string]$prop.Value
+                }
+            }
+            if ($savedState -and $savedState.targetBuildUtc) {
+                foreach ($prop in $savedState.targetBuildUtc.PSObject.Properties) {
+                    $targetBuildUtcMap[$prop.Name] = [string]$prop.Value
+                }
+            }
+            foreach ($t in $scopedTargets) {
+                $targetHeadsMap[$t] = $currentHead
+                $targetBuildUtcMap[$t] = $nowIso
+            }
+            $stateObj = [ordered]@{
+                lastBuildUtc   = $nowIso
+                targetHeads    = $targetHeadsMap
+                targetBuildUtc = $targetBuildUtcMap
+                cppHashes      = $currentCppHashes
+            }
+            $stateObj | ConvertTo-Json -Depth 4 | Set-Content -Path $buildStatePath -Encoding UTF8
+
+            Write-Host '==> Build succeeded.' -ForegroundColor Green
+        }
     }
 
     # 8. Optional dbtool migration
