@@ -11,7 +11,7 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    (402, 'crimson_crush', 1, 255, 4, 20, 192, 110, 0, 244, 2000, 0, 6, 4.0, 0, 0, 150, 450, 0, 0, NULL);
+    (402, 'crimson_crush', 1, 255, 4, 20, 192, 110, 0, 201, 2000, 0, 6, 4.0, 0, 0, 150, 450, 0, 0, NULL);
 
 -- Vanguard Ward: 30s CD, Self, recastId 193
 INSERT INTO `abilities`
