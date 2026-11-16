@@ -7,6 +7,7 @@
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
 require('scripts/globals/pets')
+require('scripts/globals/player')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
 -----------------------------------
@@ -307,9 +308,10 @@ local function detachNecroListeners(player)
 end
 
 -- Restrict non-vanilla Scythes to BLM Necromancer spec only
-m:addOverride('xi.server.onPlayerLogin', function(player)
-    super(player)
+m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
+    super(player, firstLogin, zoning)
     if player ~= nil and player:isPC() then
+        player:removeListener('OX_BLM_SCYTHE_GATE')
         player:addListener('ITEM_EQUIP', 'OX_BLM_SCYTHE_GATE', function(actor, item, slot)
             if
                 slot == xi.slot.MAIN and
