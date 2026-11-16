@@ -3608,9 +3608,6 @@ local function isItemEquippable(player, entry, targetLevel, opts)
         if activeSpec ~= 'necromancer' then
             return false
         end
-        if entry.jobs == 128 then
-            return false
-        end
     else
         -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs
         if entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
