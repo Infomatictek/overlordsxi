@@ -15,6 +15,7 @@ custom/lua/blm_specs.lua
 custom/lua/run_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/lua/overlords_test_gear.lua
+custom/lua/overlords_regen_potency.lua
 custom/cpp/eos_companion.cpp
 custom/cpp/kazenoeye_sync.cpp
 custom/sql/eos_companion.sql

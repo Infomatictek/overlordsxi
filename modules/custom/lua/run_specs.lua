@@ -1349,7 +1349,7 @@ if xi.job and xi.job.RUN then
                 'Passives (Lv10/30/50/70+): +10/18/28/35% Max MP, +2/4/7/10 Refresh, +8/16/25/32 MND & VIT, +12/20/30/35% Cure Potency, +15/25/40/50 Enhancing/Divine/Healing Skill, +10/18/25/30% Fast Cast, -15/25/35/40 Enmity.',
                 'Sacred Pulse (Vivacious Pulse at Lv10, 15s CD, Party 12y AoE): Party heal + per-Rune boons (Lux: +25% heal & Regen; Unda: Party debuff cleanse; Tenebrae: Caster MP & Party Refresh; Elemental: 25% Stoneskin).',
                 'Font of Life (Lv10, 20s CD, Ally 15y): Restores 22/30/38/48% Max HP, cleanses 2 status ailments, and grants -10/14/18/22% DT & +10/15/20/25% Cure Rcvd for 12s.',
-                'Sanctified Ward (Lv10, 35s CD, 15s, Party 12y): Instant 10/14/18/22% Party HP heal + 15s Sanctuary (+10/18/28/40 Regen, -8/12/16/20% DT, +15/25/35/50 MEVA).',
+                'Sanctified Ward (Lv10, 35s CD, 15s, Party 12y): Instant 10/14/18/22% Party HP heal + 15s Sanctuary (+1.5/2.2/3.0/4.0% Max HP/tick Regen, -8/12/16/20% DT, +15/25/35/50 MEVA).',
                 'Runic Lifetap: Melee hits & WSs while holding Runes mend the most injured party member (2.5-5% HP + 0.5*MND) and restore 1-3% Max MP.',
                 'AoE Regen & Wards: Regen I-IV project as 10y Party AoE with +50% potency & +60s duration; One for All (60s CD) also heals the party for 18% of your Max HP; Valiance (60s CD) grants +15% Cure Rcvd & Fast Cast.',
             },
@@ -1967,7 +1967,8 @@ m:addOverride('xi.job_utils.rune_fencer.useVivaciousPulse', function(player, tar
         player:addMP(mpHeal)
     end
 
-    local regenTick   = scaleTier(lvl, 8, 15, 24, 32)
+    local luxPct      = scaleTier(lvl, 1.0, 1.4, 1.8, 2.2)
+    local luxMin      = scaleTier(lvl, 12, 22, 34, 48)
     local refreshTick = scaleTier(lvl, 2, 3, 5, 7)
     local party       = getPartyMembersInRange(player, 12.0)
     local casterHealed = baseHeal
@@ -2001,7 +2002,8 @@ m:addOverride('xi.job_utils.rune_fencer.useVivaciousPulse', function(player, tar
         end
 
         if luxCount > 0 and member.addStatusEffect then
-            member:addStatusEffect(xi.effect.REGEN, { power = regenTick * luxCount, duration = 30, origin = player, tick = 3, tier = 1 })
+            local memberRegen = math.max(luxMin, math.floor(maxHp * luxPct / 100)) * luxCount
+            member:addStatusEffect(xi.effect.REGEN, { power = memberRegen, duration = 30, origin = player, tick = 3, tier = 1 })
         end
 
         if tenebraeCount > 0 and member.addStatusEffect then
@@ -2680,13 +2682,15 @@ end, function(player, target, _ability)
     local recipient = target or player
     local lvl       = player.getMainLvl and player:getMainLvl() or 10
     local healPct, tier = scaleTier(lvl, 10, 14, 18, 22)
-    local regenTick = scaleTier(lvl, 10, 18, 28, 40)
+    local regenPct  = scaleTier(lvl, 1.5, 2.2, 3.0, 4.0)
+    local regenMin  = scaleTier(lvl, 15, 28, 44, 64)
     local dtBps     = scaleTier(lvl, -800, -1200, -1600, -2000)
     local mevaBonus = scaleTier(lvl, 15, 25, 35, 50)
     local curePot   = 1.0 + ((player.getMod and player:getMod(xi.mod.CURE_POTENCY) or 0) / 100.0)
     local iconId    = (xi.effect and xi.effect.VALIANCE) or EFFECT_SANCTIFIED_WARD
 
-    local maxHp = recipient.getMaxHP and recipient:getMaxHP() or 100
+    local maxHp     = recipient.getMaxHP and recipient:getMaxHP() or 100
+    local regenTick = math.max(regenMin, math.floor(maxHp * regenPct / 100))
     local healAmount = math.max(15, math.floor(maxHp * (healPct / 100) * curePot))
     if recipient.addHP then
         local healed = recipient:addHP(healAmount)

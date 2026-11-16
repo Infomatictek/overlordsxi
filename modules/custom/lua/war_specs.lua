@@ -188,13 +188,17 @@ local function applyGladiatorBloodRage(target, origin, duration)
         return
     end
 
-    local lvl = origin and origin.getMainLvl and origin:getMainLvl() or (target.getMainLvl and target:getMainLvl() or 10)
-    local targetId = target:getID()
+    local lvl         = origin and origin.getMainLvl and origin:getMainLvl() or (target.getMainLvl and target:getMainLvl() or 10)
+    local regenPct    = scaleTier(lvl, 1.2, 2.0, 3.0)
+    local minRegen    = scaleTier(lvl, 12, 24, 42)
+    local targetMaxHp = target.getMaxHP and math.max(0, target:getMaxHP() or 0) or 0
+    local regenPower  = math.max(minRegen, math.floor(targetMaxHp * regenPct / 100))
+    local targetId    = target:getID()
     pendingBloodRageMods[targetId] =
     {
         { xi.mod.DMG,    -1000 },
         { xi.mod.ENMITY, 25 },
-        { xi.mod.REGEN,  scaleTier(lvl, 8, 16, 28) },
+        { xi.mod.REGEN,  regenPower },
     }
     target:addStatusEffect(xi.effect.BLOOD_RAGE, { power = 5, duration = duration, origin = origin or target, subPower = 1 })
     pendingBloodRageMods[targetId] = nil

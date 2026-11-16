@@ -20,27 +20,32 @@ local eosRegenSpells =
 {
     [xi.magic.spell.REGEN] =
     {
-        power = 5,
+        pct      = 0.010,
+        minPower = 10,
         duration = 75,
     },
     [xi.magic.spell.REGEN_II] =
     {
-        power = 8,
+        pct      = 0.014,
+        minPower = 18,
         duration = 90,
     },
     [xi.magic.spell.REGEN_III] =
     {
-        power = 12,
+        pct      = 0.018,
+        minPower = 26,
         duration = 105,
     },
     [xi.magic.spell.REGEN_IV] =
     {
-        power = 16,
+        pct      = 0.024,
+        minPower = 36,
         duration = 120,
     },
     [xi.magic.spell.REGEN_V] =
     {
-        power = 22,
+        pct      = 0.030,
+        minPower = 48,
         duration = 150,
     },
 }
@@ -118,7 +123,9 @@ end)
 local function handleEosRegenCast(caster, target, spell, superFn)
     if caster ~= nil and caster:isPet() and caster:getPetID() == eosPetId then
         local params = eosRegenSpells[spell:getID()] or eosRegenSpells[xi.magic.spell.REGEN]
-        if target:addStatusEffect(eosRegenEffectId, { power = params.power, tick = 3, duration = params.duration, icon = xi.effect.REGEN, origin = caster }) then
+        local maxHp  = target ~= nil and target.getMaxHP and math.max(0, target:getMaxHP() or 0) or 0
+        local power  = math.max(params.minPower, math.floor(maxHp * params.pct))
+        if target:addStatusEffect(eosRegenEffectId, { power = power, tick = 3, duration = params.duration, icon = xi.effect.REGEN, origin = caster }) then
             spell:setMsg(xi.msg.basic.MAGIC_GAIN_EFFECT)
             return xi.effect.REGEN
         end

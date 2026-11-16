@@ -423,8 +423,11 @@ m:addOverride('xi.job_utils.monk.useChakra', function(player, target, ability)
         player:delStatusEffect(xi.effect.SILENCE)
     end
 
-    local lvl = player.getMainLvl and player:getMainLvl() or 10
-    local regenPower = scaleTier(lvl, 8, 16, 26)
+    local lvl        = player.getMainLvl and player:getMainLvl() or 10
+    local regenPct   = scaleTier(lvl, 1.5, 2.5, 3.5)
+    local minRegen   = scaleTier(lvl, 14, 28, 45)
+    local maxHp      = player.getMaxHP and math.max(0, player:getMaxHP() or 0) or 0
+    local regenPower = math.max(minRegen, math.floor(maxHp * regenPct / 100))
     if player:hasStatusEffect(xi.effect.REGEN) then
         player:delStatusEffect(xi.effect.REGEN)
     end
