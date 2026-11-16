@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T14:18:14.254165+00:00",
+  "generatedAt": "2026-11-16T14:31:40.194526+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "863f6ce",
+  "headCommit": "9e17cb4",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -12,7 +12,7 @@
     "totalCompanions": 4,
     "totalWeaponskills": 219,
     "totalWeaponSkillsCategories": 15,
-    "totalPatches": 18,
+    "totalPatches": 19,
     "totalRecentCommits": 60
   },
   "serverRules": {
@@ -9246,40 +9246,10 @@
           "SCISSION"
         ]
       },
-      "archetype": "utility",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.40/2.40/3.50",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "hs_prime",
-          "name": "Momentum Strike",
-          "maxRank": 7,
-          "desc": "R1: +6..42% Atk & primes Next WS (+WSD)",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "wsc_str",
-          "name": "Heavy STR",
-          "maxRank": 7,
-          "desc": "STR +14..100% WSC & +5..35 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -9290,26 +9260,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "hs_force",
-          "name": "Crushing Weight",
-          "maxRank": 5,
-          "desc": "+10..50% WS Atk & +10..50 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "hs_flow",
-          "name": "Follow-Through",
-          "maxRank": 5,
-          "desc": "Next WS +60..300 TP Bonus & +6..30 Store TP",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -9324,26 +9274,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "hs_def",
-          "name": "Sunder Armor",
-          "maxRank": 5,
-          "desc": "Target DEF -5..20% (45s) & +5..25% WSD",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "hs_st",
-          "name": "Stance Power",
-          "maxRank": 5,
-          "desc": "LR/Berserk/Swordplay: +7..35% WSD & +Atk",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -9352,26 +9282,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Iron Momentum",
-          "maxRank": 3,
-          "desc": "1->2 Hits, +12/22/32% WSD & +10..30% DEF Ign",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "hs_mast",
-          "name": "Hard Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +5..25% Crit",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -9410,40 +9320,10 @@
           "TRANSFIXION"
         ]
       },
-      "archetype": "crit",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.25/1.85/2.50",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "ps_edge",
-          "name": "Brutal Crit Edge",
-          "maxRank": 7,
-          "desc": "R1: +4..25% Early Crit & +6..42% WS Atk",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "ps_wsc",
-          "name": "Stalwart STR/VIT",
-          "maxRank": 7,
-          "desc": "STR/VIT +8..60% WSC & +5..35 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -9454,26 +9334,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "ps_crit",
-          "name": "TP Crit Curve",
-          "maxRank": 5,
-          "desc": "TP Crit Rate: up to +18..50% max TP",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "ps_force",
-          "name": "Crushing Force",
-          "maxRank": 5,
-          "desc": "+10..50% WS Atk & +10..50 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -9488,26 +9348,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "ps_cd",
-          "name": "Sundering Crit",
-          "maxRank": 5,
-          "desc": "+9..45% Critical Hit Damage on WS",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "ps_st",
-          "name": "Fury Stance",
-          "maxRank": 5,
-          "desc": "LR/Berserk/Battuta: +8..40% WSD & +CrDmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -9516,26 +9356,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Absolute Power",
-          "maxRank": 3,
-          "desc": "1->2 Hits & +12/24/36% WSD",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "ps_mast",
-          "name": "Power Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +6..30% Crit",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -9575,39 +9395,9 @@
         ]
       },
       "archetype": "magic",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.40/2.90/4.60",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "fb50_ice",
-          "name": "Glacial Blade",
-          "maxRank": 7,
-          "desc": "R1: +8..56 MAB & Enblizzard (20s)",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "fb50_wsc",
-          "name": "Rime STR/INT",
-          "maxRank": 7,
-          "desc": "STR/INT +6..45% WSC & +4..28% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -9618,26 +9408,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "fb50_arc",
-          "name": "Frost Arcana",
-          "maxRank": 5,
-          "desc": "+9..45 MAB/MACC & +5..25% WSD",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "fb50_st",
-          "name": "Rune & Dark",
-          "maxRank": 5,
-          "desc": "Gelus/Valiance/LR: +8..40% WSD & +MAB",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -9652,26 +9422,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "fb50_ice2",
-          "name": "Hoarfrost Burst",
-          "maxRank": 5,
-          "desc": "Ice elemental follow-up (11..55%)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "fb50_tp",
-          "name": "Glacial Surge",
-          "maxRank": 5,
-          "desc": "+70..350 TP Bonus & +6..30 MACC",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -9680,26 +9430,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Absolute Zero",
-          "maxRank": 3,
-          "desc": "+16/30/45% WSD & +15/30/45 MAB",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "fb50_mast",
-          "name": "Frost Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +8..40 MACC",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -9740,39 +9470,9 @@
         ]
       },
       "archetype": "magic",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.50/3.25/5.50",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "fr_ice",
-          "name": "Permafrost Edge",
-          "maxRank": 7,
-          "desc": "R1: +9..63 MAB & Enblizzard (20s)",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "fr_wsc",
-          "name": "Cryo STR/INT",
-          "maxRank": 7,
-          "desc": "STR/INT +6..45% WSC & +5..35% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -9783,26 +9483,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "fr_arc",
-          "name": "Cryo Arcana",
-          "maxRank": 5,
-          "desc": "+10..50 MAB/MACC & +5..25% WSD",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "fr_st",
-          "name": "Rune Affinity",
-          "maxRank": 5,
-          "desc": "Gelus/Battuta/LR: +9..45% WSD & +MAB",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -9817,26 +9497,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "fr_ice2",
-          "name": "Glacier Shatter",
-          "maxRank": 5,
-          "desc": "Ice elemental follow-up (12..60%)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "fr_para",
-          "name": "Numbing Chill",
-          "maxRank": 5,
-          "desc": "Inflicts Paralysis & +60..300 TP Bonus",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -9845,26 +9505,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Glacial Apex",
-          "maxRank": 3,
-          "desc": "+18/32/48% WSD & +15/30/45 MAB",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "fr_mast",
-          "name": "Freeze Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +8..40 MACC",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -9904,40 +9544,10 @@
         ],
         "debuff": "Sleep"
       },
-      "archetype": "utility",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.15/1.50/1.90",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "sw_pack",
-          "name": "Quake Pack Control",
-          "maxRank": 7,
-          "desc": "R1: +6..42% WSD/extra mob & +12..84 MACC",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "sw_wsc",
-          "name": "Resonant STR/MND",
-          "maxRank": 7,
-          "desc": "STR/MND +5..35% WSC & +5..35 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -9948,26 +9558,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "sw_deb",
-          "name": "Concussive Wave",
-          "maxRank": 5,
-          "desc": "Target -6..30% Atk & -10..50 Acc (45s)",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "sw_st",
-          "name": "Vanguard Quake",
-          "maxRank": 5,
-          "desc": "Valiance/Sent./LR: +8..40% WSD & +MACC",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -9982,26 +9572,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "sw_dark",
-          "name": "Abyssal Tremor",
-          "maxRank": 5,
-          "desc": "Dark elemental follow-up (10..50%)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "sw_ward",
-          "name": "Tectonic Aegis",
-          "maxRank": 5,
-          "desc": "Stoneskin 100..500 & NextWS +5..25% WSD",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10010,26 +9580,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Cataclysmic Wave",
-          "maxRank": 3,
-          "desc": "Dispel 1-2, +14/26/38% WSD & Slow",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "sw52_mast",
-          "name": "Wave Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +10..50 MACC",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10067,40 +9617,10 @@
           "SCISSION"
         ]
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.60/2.90/4.40",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "cm_arc",
-          "name": "Lunar Edge",
-          "maxRank": 7,
-          "desc": "R1: +7..49% WS Atk & +5..35% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "wsc_str",
-          "name": "Crescent STR",
-          "maxRank": 7,
-          "desc": "STR +12..85% WSC & +6..42 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10111,26 +9631,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "cm_force",
-          "name": "Lunar Force",
-          "maxRank": 5,
-          "desc": "+12..60% WS Atk & +10..50 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "cm_st",
-          "name": "Night Fury",
-          "maxRank": 5,
-          "desc": "LR/Berserk/Swdplay: +9..45% WSD & +Crit",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10145,26 +9645,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "cm_crit",
-          "name": "Moonlit Edge",
-          "maxRank": 5,
-          "desc": "+5..25% Crit Rate & +7..35% Crit Dmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "cm_tp",
-          "name": "Full Moon TP",
-          "maxRank": 5,
-          "desc": "+80..400 TP Bonus & +6..30% WSD",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10173,26 +9653,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Eclipse Cleave",
-          "maxRank": 3,
-          "desc": "+15/30/45% WSD & +10/20/30% DEF Ignore",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "cm_mast",
-          "name": "Lunar Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +10..50 Acc",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10232,40 +9692,10 @@
           "IMPACTION"
         ]
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.00/3.80/6.20",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "sm_hits",
-          "name": "Twin Crescent",
-          "maxRank": 7,
-          "desc": "R1: 1->2 Hits & +6..42% WS Atk right at Lv 1",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "sm_wsc",
-          "name": "Sickle STR/AGI",
-          "maxRank": 7,
-          "desc": "STR/AGI +6..45% WSC & +4..28% Crit Rate",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10276,26 +9706,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "sm_force",
-          "name": "Reaping Force",
-          "maxRank": 5,
-          "desc": "+10..50% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "sm_st",
-          "name": "Stance Resonance",
-          "maxRank": 5,
-          "desc": "Swdplay/LR/Bers: +9..45% WSD & +CrDmg",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10310,26 +9720,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "sm_mftp",
-          "name": "Twin Sickle",
-          "maxRank": 5,
-          "desc": "R1-4: +24% WSD | R5: fTP applies to ALL Hits!",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "sm_crit",
-          "name": "Moon Crit",
-          "maxRank": 5,
-          "desc": "+5..25% Crit Rate & +7..35% Crit Dmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10338,26 +9728,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "New Moon Zenith",
-          "maxRank": 3,
-          "desc": "fTP ALL HITS + +12/22/32% WSD",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "sm_mast",
-          "name": "Sickle Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +10..50 Acc",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10396,40 +9766,10 @@
           "FRAGMENTATION"
         ]
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.50/4.80/7.30",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "sp_atk",
-          "name": "Whirl Force",
-          "maxRank": 7,
-          "desc": "R1: +10..70% WS Attack & +6..42 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "sp_wsc",
-          "name": "Cyclone STR/INT",
-          "maxRank": 7,
-          "desc": "STR/INT +5..35% WSC & +5..35% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10440,26 +9780,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "sp_force",
-          "name": "Gale Force",
-          "maxRank": 5,
-          "desc": "+14..70% WS Atk & +10..50 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "sp_st",
-          "name": "Heavy Stance",
-          "maxRank": 5,
-          "desc": "LR/Soul/Berserk: +9..45% WSD & +TP",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10474,26 +9794,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "sp_def",
-          "name": "Rend Defense",
-          "maxRank": 5,
-          "desc": "Ignores 7..35% Target DEF & +5..25% WSD",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "sp_crit",
-          "name": "Spiral Edge",
-          "maxRank": 5,
-          "desc": "+5..25% Crit Rate & +7..35% Crit Dmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10502,26 +9802,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Typhoon Slash",
-          "maxRank": 3,
-          "desc": "+16/30/45% WSD & +15/30/45% Crit Dmg",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "sp_mast",
-          "name": "Spin Mastery",
-          "maxRank": 5,
-          "desc": "+7..35% WSD & +10..50 Acc",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10561,40 +9841,10 @@
           "DISTORTION"
         ]
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.00/3.60/5.40",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "gr_atk",
-          "name": "Quake Force",
-          "maxRank": 7,
-          "desc": "R1: +12..84% WS Attack & +6..42 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "gr_wsc",
-          "name": "Earth STR/INT",
-          "maxRank": 7,
-          "desc": "STR/INT +7..50% WSC & +5..35% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10605,26 +9855,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "gr_force",
-          "name": "Tectonic Blow",
-          "maxRank": 5,
-          "desc": "+14..70% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "gr_st",
-          "name": "Stance Shatter",
-          "maxRank": 5,
-          "desc": "LR/Swdplay/Tellus: +10..50% WSD & +Atk",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10639,26 +9869,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "gr_earth",
-          "name": "Tremor Echo",
-          "maxRank": 5,
-          "desc": "Earth elemental follow-up (9..45%)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "gr_tp",
-          "name": "Seismic Surge",
-          "maxRank": 5,
-          "desc": "+90..450 TP Bonus & +5..25% Crit",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10667,26 +9877,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Continental Split",
-          "maxRank": 3,
-          "desc": "+16/32/48% WSD & +12/24/36% DEF Ignore",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "gr_mast",
-          "name": "Ground Mastery",
-          "maxRank": 5,
-          "desc": "+7..35% WSD & +6..30% Crit Dmg",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10727,40 +9917,10 @@
         ],
         "aftermath": "relic"
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.40/3.60/5.00",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "sc_wsc",
-          "name": "Ragnarok STR/VIT",
-          "maxRank": 7,
-          "desc": "STR/VIT +6..45% WSC & +8..56% WS Attack",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "sc_edge",
-          "name": "Relic Judgment",
-          "maxRank": 7,
-          "desc": "+5..35% WSD & 4..28% DEF Ignore right at Lv 1",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10771,26 +9931,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "sc_st",
-          "name": "Valkyrie Vow",
-          "maxRank": 5,
-          "desc": "LR/Sent./Val.: +10..50% WSD & +Crit",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "sc_force",
-          "name": "Relic Force",
-          "maxRank": 5,
-          "desc": "+12..60% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10805,26 +9945,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "sc_crit",
-          "name": "Scourge Crit",
-          "maxRank": 5,
-          "desc": "+5..25% Crit Rate & +7..35% Crit Dmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "aftermath_echo",
-          "name": "Relic Echo",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +70..350 TP Bonus",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10833,26 +9953,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Ragnarok Zenith",
-          "maxRank": 3,
-          "desc": "+15/30/45% WSD & +15/30/45% Crit Dmg",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "sc_mast",
-          "name": "Scourge Mastery",
-          "maxRank": 5,
-          "desc": "+7..35% WSD & +10..50 Acc",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -10894,39 +9994,9 @@
         "debuff": "Paralysis"
       },
       "archetype": "magic",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.20/3.20/4.40",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "hs58_vit",
-          "name": "Titan VIT & MAB",
-          "maxRank": 7,
-          "desc": "VIT +12..85% WSC & +8..56 MAB",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "hs58_ward",
-          "name": "Titan Aegis",
-          "maxRank": 7,
-          "desc": "+8..56 MACC & Stoneskin 100..400",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -10937,26 +10007,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "hs58_arc",
-          "name": "Glacial Arcana",
-          "maxRank": 5,
-          "desc": "+10..50 MAB/MACC & +5..25% WSD",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "hs58_st",
-          "name": "Citadel Stance",
-          "maxRank": 5,
-          "desc": "Gelus/Battuta/Sent: +9..45% WSD & +MAB",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -10971,26 +10021,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "hs58_ice",
-          "name": "Titanic Freeze",
-          "maxRank": 5,
-          "desc": "Ice elemental follow-up (12..60%)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "hs58_deb",
-          "name": "Crushing Chill",
-          "maxRank": 5,
-          "desc": "Target -6..30% Atk & -8..40 M.Atk (45s)",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -10999,26 +10029,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Herakles Impact",
-          "maxRank": 3,
-          "desc": "+16/30/45% WSD & +15/30/45 MAB",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "hs58_mast",
-          "name": "Herculean Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +6..30 Enmity",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -11058,40 +10068,10 @@
         ],
         "aftermath": "empyrean"
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.80/5.40/8.20",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "tc_vit",
-          "name": "Caladbolg VIT",
-          "maxRank": 7,
-          "desc": "VIT +12..85% WSC & +8..56 Acc right at Lv 1",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "tc_force",
-          "name": "Titan Impact",
-          "maxRank": 7,
-          "desc": "+10..70% WS Attack & +4..28% WSD",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -11102,26 +10082,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "tc_cleave",
-          "name": "Colossus Cleave",
-          "maxRank": 5,
-          "desc": "+12..60% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "tc_st",
-          "name": "Stance Titan",
-          "maxRank": 5,
-          "desc": "LR/Sent./Battuta: +10..50% WSD & +Atk",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -11136,26 +10096,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "tc_def",
-          "name": "Armor Cleave",
-          "maxRank": 5,
-          "desc": "Ignores 8..40% Target DEF & +5..25% WSD",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "aftermath_echo",
-          "name": "Empyrean Echo",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +80..400 TP Bonus",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -11164,26 +10104,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Sundered Earth",
-          "maxRank": 3,
-          "desc": "+16/32/48% WSD & +15/30/45% Crit Dmg",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "tc_mast",
-          "name": "Torcleaver Mastery",
-          "maxRank": 5,
-          "desc": "+7..35% WSD & +6..30% Crit",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -11222,40 +10142,10 @@
           "SCISSION"
         ]
       },
-      "archetype": "multihit",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 1.00/1.35/1.80",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "rs60_hits",
-          "name": "Resolute Flurry",
-          "maxRank": 7,
-          "desc": "Rebuild 1->5 Hits & +4..28% Atk, +5..35 Acc",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "rs60_str",
-          "name": "Merit STR Force",
-          "maxRank": 7,
-          "desc": "STR +10..70% WSC & +8..56% WS Attack",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -11266,26 +10156,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "rs60_force",
-          "name": "Furious Cleave",
-          "maxRank": 5,
-          "desc": "+10..50% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "rs60_st",
-          "name": "Stance Fury",
-          "maxRank": 5,
-          "desc": "LR/Berserk/Swdplay: +8..40% WSD & +Atk",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -11300,26 +10170,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "rs60_mftp",
-          "name": "Unbroken Resolve",
-          "maxRank": 5,
-          "desc": "R1-4: +24% WSD | R5: fTP applies to ALL Hits!",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "rs60_crit",
-          "name": "Keen Resolve",
-          "maxRank": 5,
-          "desc": "+5..25% Crit Rate & +6..30% Crit Dmg",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -11328,26 +10178,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Absolute Resolve",
-          "maxRank": 3,
-          "desc": "fTP ALL HITS + +10/20/30% WSD",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "rs60_mast",
-          "name": "Resolve Mastery",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +10..50 Acc",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -11387,40 +10217,10 @@
         ],
         "aftermath": "mythic"
       },
-      "archetype": "heavy",
-      "sourceFile": "modules/custom/lua/overlords_ws_trees_gs.lua",
-      "maxPoints": 56,
+      "archetype": "physical",
+      "sourceFile": "modules/custom/lua/overlords_ws_talents.lua",
+      "maxPoints": 8,
       "nodes": [
-        {
-          "tier": 1,
-          "col": 1,
-          "key": "ftp",
-          "name": "TP Scaling",
-          "maxRank": 6,
-          "desc": "Base fTP 1.00 -> Scales up to 2.25/4.50/6.75",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 2,
-          "key": "dm_hits",
-          "name": "Epeolatry Twin",
-          "maxRank": 7,
-          "desc": "R1: 1->2 Hits & +7..49% WS Atk right at Lv 1",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
-        {
-          "tier": 1,
-          "col": 3,
-          "key": "dm_dex",
-          "name": "Runewarden DEX",
-          "maxRank": 7,
-          "desc": "DEX +12..85% WSC & +4..28% Crit Rate",
-          "reqLevel": 1,
-          "reqWsPoints": 0
-        },
         {
           "tier": 1,
           "col": 4,
@@ -11431,26 +10231,6 @@
           "desc": "Player-selectable Lv1 Skillchain property (+5/10% SC Dmg)",
           "reqLevel": 1,
           "reqWsPoints": 0
-        },
-        {
-          "tier": 2,
-          "col": 1,
-          "key": "dm_run",
-          "name": "Rune Swordplay",
-          "maxRank": 5,
-          "desc": "Swdplay/Battuta/Val: +10..50% WSD & +CrDmg",
-          "reqLevel": 20,
-          "reqWsPoints": 10
-        },
-        {
-          "tier": 2,
-          "col": 2,
-          "key": "dm_force",
-          "name": "Mythic Force",
-          "maxRank": 5,
-          "desc": "+12..60% WS Atk & +12..60 Acc",
-          "reqLevel": 20,
-          "reqWsPoints": 10
         },
         {
           "tier": 2,
@@ -11465,26 +10245,6 @@
         },
         {
           "tier": 3,
-          "col": 1,
-          "key": "dm_mftp",
-          "name": "Twin Rune Strike",
-          "maxRank": 5,
-          "desc": "R1-4: +24% WSD | R5: fTP applies to ALL Hits!",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
-          "col": 2,
-          "key": "aftermath_echo",
-          "name": "Mythic Echo",
-          "maxRank": 5,
-          "desc": "+6..30% WSD & +80..400 TP Bonus",
-          "reqLevel": 42,
-          "reqWsPoints": 22
-        },
-        {
-          "tier": 3,
           "col": 4,
           "key": "sc_t3",
           "name": "SC T3 (Lv2)",
@@ -11493,26 +10253,6 @@
           "desc": "Player-selectable Lv2 Skillchain property (+10/20% SC Dmg)",
           "reqLevel": 42,
           "reqWsPoints": 22
-        },
-        {
-          "tier": 4,
-          "col": 1,
-          "key": "capstone",
-          "name": "Rayke Sovereign",
-          "maxRank": 3,
-          "desc": "fTP ALL HITS + +12/22/32% WSD",
-          "reqLevel": 62,
-          "reqWsPoints": 35
-        },
-        {
-          "tier": 4,
-          "col": 2,
-          "key": "dm_mast",
-          "name": "Dimidiate Mastery",
-          "maxRank": 5,
-          "desc": "+7..35% WSD & +5..25% Crit",
-          "reqLevel": 62,
-          "reqWsPoints": 35
         },
         {
           "tier": 4,
@@ -25415,7 +24155,7 @@
           "key": "c160_t1",
           "name": "Tactical Opening",
           "maxRank": 7,
-          "desc": "Lv1+: +6..42% Atk & NextWS +4..28% WSD",
+          "desc": "Lv1+: +8..56 MAB & NextWS +4..28% WSD",
           "reqLevel": 1,
           "reqWsPoints": 0
         },
@@ -25508,7 +24248,7 @@
           "key": "c160_t4",
           "name": "Sovereign Strike",
           "maxRank": 4,
-          "desc": "+1 Bonus Hit, +15..60% WSD & +10..40% SC Dmg",
+          "desc": "+0.6..2.4 fTP, +15..60% WSD & +10..40% SC Dmg",
           "reqLevel": 62,
           "reqWsPoints": 35
         },
@@ -25629,9 +24369,9 @@
           "tier": 3,
           "col": 3,
           "key": "c161_t3",
-          "name": "Fury Surge",
+          "name": "Radiant Surge",
           "maxRank": 6,
-          "desc": "Crit +4..24% & Crit DMG +5..30%",
+          "desc": "+9..54 MAB & +8..48% SC Dmg",
           "reqLevel": 42,
           "reqWsPoints": 22
         },
@@ -29925,7 +28665,7 @@
           "key": "s187_t3",
           "name": "Light Shatter",
           "maxRank": 6,
-          "desc": "+10..60% SC Dmg & +6..36% DEF Ignored",
+          "desc": "+10..60% SC Dmg & +9..54 MAB",
           "reqLevel": 42,
           "reqWsPoints": 22
         },
@@ -38224,9 +36964,108 @@
       ],
       "linesAdded": 92,
       "linesRemoved": 10
+    },
+    {
+      "number": "0019",
+      "filename": "0019-talent-ws-unlocks.patch",
+      "title": "Talent Ws Unlocks",
+      "description": "Engine patch modifying src/map/lua/lua_base_entity.cpp, src/map/lua/lua_base_entity.h, src/map/lua/luautils.cpp, src/map/lua/luautils.h, src/map/packets/c2s/0x11f_crystal_socket.cpp, src/map/utils/battleutils.cpp, src/map/utils/charutils.cpp.",
+      "files": [
+        "src/map/lua/lua_base_entity.cpp",
+        "src/map/lua/lua_base_entity.h",
+        "src/map/lua/luautils.cpp",
+        "src/map/lua/luautils.h",
+        "src/map/packets/c2s/0x11f_crystal_socket.cpp",
+        "src/map/utils/battleutils.cpp",
+        "src/map/utils/charutils.cpp"
+      ],
+      "linesAdded": 105,
+      "linesRemoved": 5
     }
   ],
   "commits": [
+    {
+      "hash": "9e17cb4e1c2d0f26e1e6386b6fdcf061e991cba1",
+      "shortHash": "9e17cb4",
+      "author": "Infomatictek",
+      "date": "2026-11-16T14:30:35Z",
+      "subject": "Redesign WS talent trees per spec, gate WS unlocks by Tier 1, add binary talent packets, and fix AoE WS TP return",
+      "files": [
+        {
+          "path": "modules/custom/commands/talent.lua",
+          "added": 13,
+          "removed": 7
+        },
+        {
+          "path": "modules/custom/lua/overlords_job_specs.lua",
+          "added": 4,
+          "removed": 1
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_overrides.lua",
+          "added": 266,
+          "removed": 188
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_talents.lua",
+          "added": 417,
+          "removed": 96
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_tree_helpers.lua",
+          "added": 714,
+          "removed": 23
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_trees_club.lua",
+          "added": 9,
+          "removed": 9
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_trees_gs.lua",
+          "added": 474,
+          "removed": 253
+        },
+        {
+          "path": "modules/custom/lua/overlords_ws_trees_staff.lua",
+          "added": 3,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 4,
+          "removed": 0
+        },
+        {
+          "path": "patches/0019-talent-ws-unlocks.patch",
+          "added": 206,
+          "removed": 0
+        }
+      ],
+      "totalAdded": 2110,
+      "totalRemoved": 580
+    },
+    {
+      "hash": "ad6f6f9e6639b62531c30f3cea86415eac6914f2",
+      "shortHash": "ad6f6f9",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T14:18:14Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 54,
+          "removed": 89
+        },
+        {
+          "path": "site/data.json",
+          "added": 54,
+          "removed": 89
+        }
+      ],
+      "totalAdded": 108,
+      "totalRemoved": 178
+    },
     {
       "hash": "863f6ce8a04f30693754b9d2e6c4ca3d1d808e33",
       "shortHash": "863f6ce",
@@ -39559,48 +38398,6 @@
       ],
       "totalAdded": 415,
       "totalRemoved": 32
-    },
-    {
-      "hash": "7d7bb89b4157698a4512f7f72449e4bd6bbbca98",
-      "shortHash": "7d7bb89",
-      "author": "Infomatictek",
-      "date": "2026-11-15T09:00:44Z",
-      "subject": "Log setup-local-server.ps1 output to logs/setup-latest.log",
-      "files": [
-        {
-          "path": "scripts/setup-local-server.ps1",
-          "added": 15,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 15,
-      "totalRemoved": 0
-    },
-    {
-      "hash": "90cf56557c32bd20ea8152769972d1ba3f4f99a1",
-      "shortHash": "90cf565",
-      "author": "Infomatictek",
-      "date": "2026-11-15T08:59:21Z",
-      "subject": "Renumber throwing/ranged patches to 0013-0015 after 0011-0012",
-      "files": [
-        {
-          "path": "patches/{0011-throwing-weaponskills.patch => 0013-throwing-weaponskills.patch}",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "patches/{0012-auto-ranged-attack.patch => 0014-auto-ranged-attack.patch}",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "patches/{0013-dnc-ranged-dances.patch => 0015-dnc-ranged-dances.patch}",
-          "added": 0,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 0,
-      "totalRemoved": 0
     }
   ]
 }
