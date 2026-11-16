@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T08:58:32.271861+00:00",
+  "generatedAt": "2026-11-16T09:07:53.013392+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "d150f68",
+  "headCommit": "27892a6",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -1003,60 +1003,37 @@
           "id": 2,
           "key": "spellblade",
           "name": "Spellblade",
-          "role": "Elemental Effusion & Great Sword Burst DPS",
+          "role": "Greatsword & Conduction Spellweaver DPS",
           "icon": "spellblade",
           "reqLevel": 10,
-          "description": "Ulbukan frontier vanguard (Lv10+): harbors 3 Runes at Lv10+, imbues every Great Sword swing and WS with multi-rune elemental discharges, and weaves rapid Effusion Magic Bursts.",
+          "description": "Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).",
           "highlights": [
-            "Passives (Lv10/30/50/70+): +8/14/20/25% Attack%, +6/10/15/18% Double Attack, +6/10/15/18% WS Damage, +12/22/35/45 MAB, +10/20/35/45 MACC, +6/12/18/24 Store TP, -15/25/35/40 Enmity.",
-            "Runic Brand (3 Runes at Lv10+): Every active Rune adds a scaling elemental strike to your melee swings and Weaponskills (2.2x on WSs).",
-            "Elemental Resonance: 3 identical Runes grant +25% Runic Brand damage & +20 MACC; 3 distinct Runes grant +12% Skillchain Damage & +8% Triple Attack.",
-            "Effusion Slash (Lv10, 20s CD, Enemy 4y): Non-consuming Great Sword arcane cleave (1.5x-2.8x +20%/Rune) that can Magic Burst (+35% DMG) and grants +100/150/200/250 TP.",
-            "Overcharge Runes (Lv10, 30s CD, 12s, Self): +15/22/30/40 MAB, +10/14/18/24% Attack%, +15/20/25/30 MB Bonus, 2x Runic Brand damage, and non-consuming +50% DMG Swipe/Lunge.",
-            "Effusion Mastery: Swipe (15s CD, keeps Runes, +150 TP), Lunge (30s CD, +25% DMG, refunds newest Rune), Gambit & Rayke (60s CD, keep Runes, inflict -10/15/20% DEF Down), Embolden (+20% WSD & +25 MAB)."
+            "Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).",
+            "Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).",
+            "Conduction (Lv15+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv15/40/65) scaled by Delay/480 on positive Rune Edge.",
+            "Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).",
+            "Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.",
+            "Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).",
+            "Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend 3 Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s)."
           ],
           "passiveMods": [
             {
-              "mod": "ATTP",
-              "label": "Attack",
-              "value": "+8 / +14 / +20 / +25%",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
+              "mod": "GREAT_SWORD",
+              "label": "Great Sword Skill",
+              "value": "getGreatswordAPlusBonus(lvl)",
+              "bracket": "Passive"
             },
             {
-              "mod": "DOUBLE_ATTACK",
-              "label": "Double Attack",
-              "value": "+6 / +10 / +15 / +18%",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
+              "mod": "ELEM",
+              "label": "Elem",
+              "value": "getARankSkillForLevel(lvl)",
+              "bracket": "Passive"
             },
             {
-              "mod": "ALL_WSDMG_ALL_HITS",
-              "label": "Weaponskill Damage",
-              "value": "+6 / +10 / +15 / +18%",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
-            },
-            {
-              "mod": "MATT",
-              "label": "Magic Atk. Bonus",
-              "value": "+12 / +22 / +35 / +45",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
-            },
-            {
-              "mod": "MACC",
-              "label": "Magic Accuracy",
-              "value": "+10 / +20 / +35 / +45",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
-            },
-            {
-              "mod": "STORETP",
-              "label": "Store TP",
-              "value": "+6 / +12 / +18 / +24",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
-            },
-            {
-              "mod": "ENMITY",
-              "label": "Enmity",
-              "value": "-15 / -25 / -35 / -40",
-              "bracket": "Lv.10 / 30 / 50 / 70+"
+              "mod": "ENHANCING",
+              "label": "Enhancing Magic Skill",
+              "value": "getEnhancingBRankDelta(lvl)",
+              "bracket": "Passive"
             }
           ],
           "customAbilities": [
@@ -38151,7 +38128,7 @@
         "src/map/status_effect.h",
         "src/map/status_effect_container.cpp"
       ],
-      "linesAdded": 65,
+      "linesAdded": 75,
       "linesRemoved": 1
     },
     {
@@ -38203,8 +38180,8 @@
         "src/map/utils/battleutils.cpp",
         "src/map/utils/battleutils.h"
       ],
-      "linesAdded": 236,
-      "linesRemoved": 33
+      "linesAdded": 246,
+      "linesRemoved": 31
     },
     {
       "number": "0016",
@@ -38234,6 +38211,63 @@
     }
   ],
   "commits": [
+    {
+      "hash": "27892a65474474b577afbd25749c0fb92f31ace9",
+      "shortHash": "27892a6",
+      "author": "Infomatictek",
+      "date": "2026-11-16T09:05:50Z",
+      "subject": "Update RUN Spellblade spec to Greatsword + Conduction + Runic Bolt/Sever + Edgeflare",
+      "files": [
+        {
+          "path": "README.md",
+          "added": 4,
+          "removed": 4
+        },
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 1163,
+          "removed": 346
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 11,
+          "removed": 11
+        },
+        {
+          "path": "patches/0011-commander-status-effects.patch",
+          "added": 13,
+          "removed": 3
+        },
+        {
+          "path": "patches/0015-dnc-ranged-dances.patch",
+          "added": 53,
+          "removed": 30
+        }
+      ],
+      "totalAdded": 1244,
+      "totalRemoved": 394
+    },
+    {
+      "hash": "b4f3e3640876672fb47fa0b75e3cbb8f20513b1a",
+      "shortHash": "b4f3e36",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T08:58:32Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 55,
+          "removed": 123
+        },
+        {
+          "path": "site/data.json",
+          "added": 55,
+          "removed": 123
+        }
+      ],
+      "totalAdded": 110,
+      "totalRemoved": 246
+    },
     {
       "hash": "d150f6837f871caa5909194c1cc4fe67fcbbe11a",
       "shortHash": "d150f68",
@@ -39871,178 +39905,6 @@
       ],
       "totalAdded": 0,
       "totalRemoved": 3736
-    },
-    {
-      "hash": "6eaef1c65a02e56f5adb333a99ad4c8ba7eb3082",
-      "shortHash": "6eaef1c",
-      "author": "Infomatictek",
-      "date": "2026-11-14T19:54:10Z",
-      "subject": "Move launcher C# source and CI workflow to Infomatictek/overlordsxi-launcher",
-      "files": [
-        {
-          "path": ".gitignore",
-          "added": 0,
-          "removed": 5
-        },
-        {
-          "path": "README.md",
-          "added": 5,
-          "removed": 5
-        }
-      ],
-      "totalAdded": 5,
-      "totalRemoved": 10
-    },
-    {
-      "hash": "cc1c2c7d43dfe2f6fed1ef17e8e08373a777c83b",
-      "shortHash": "cc1c2c7",
-      "author": "Infomatictek",
-      "date": "2026-11-14T19:50:53Z",
-      "subject": "Add distributable OverlordsXI WPF client launcher and release workflow",
-      "files": [
-        {
-          "path": ".gitattributes",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": ".github/workflows/build-launcher.yml",
-          "added": 95,
-          "removed": 0
-        },
-        {
-          "path": ".gitignore",
-          "added": 5,
-          "removed": 0
-        },
-        {
-          "path": "README.md",
-          "added": 32,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/AshitaConfigGeneratorTests.cs",
-          "added": 175,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/ManifestTests.cs",
-          "added": 145,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/OverlordsLauncher.Tests.csproj",
-          "added": 24,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher.sln",
-          "added": 27,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/App.xaml",
-          "added": 159,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/App.xaml.cs",
-          "added": 7,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Converters/UiConverters.cs",
-          "added": 59,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/MainWindow.xaml",
-          "added": 657,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/MainWindow.xaml.cs",
-          "added": 43,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/InstallDiagnostics.cs",
-          "added": 19,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/LauncherManifest.cs",
-          "added": 105,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/LauncherSettings.cs",
-          "added": 69,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/ServerStatus.cs",
-          "added": 12,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/OverlordsLauncher.csproj",
-          "added": 26,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/AshitaConfigGenerator.cs",
-          "added": 273,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/FfxiInstallDetector.cs",
-          "added": 163,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/GameLaunchService.cs",
-          "added": 26,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/ManifestUpdateService.cs",
-          "added": 494,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/ServerStatusService.cs",
-          "added": 91,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/SettingsService.cs",
-          "added": 119,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/ViewModels/MainViewModel.cs",
-          "added": 875,
-          "removed": 0
-        },
-        {
-          "path": "launcher/OverlordsLauncher/ViewModels/RelayCommand.cs",
-          "added": 73,
-          "removed": 0
-        },
-        {
-          "path": "launcher/manifest.json",
-          "added": 77,
-          "removed": 0
-        },
-        {
-          "path": "scripts/update-launcher-manifest.py",
-          "added": 67,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 3918,
-      "totalRemoved": 0
     }
   ]
 }
