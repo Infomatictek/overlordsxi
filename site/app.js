@@ -921,11 +921,12 @@
               <div class="tier-nodes-grid">
                 ${tNodes
                   .map((n) => {
-                    const lvls = n.rankLevels || [];
+                    const rlt = state.data.serverRules?.rankLevelTables || {};
+                    const lvls = n.rankLevels || (n.isSkillchain ? rlt.sc?.[String(n.tier)] : rlt[String(n.tier)]?.[String(n.maxRank)]) || [];
                     const lvlHint =
                       lvls.length > 1
                         ? `Lv.${lvls[0]}..${lvls[lvls.length - 1]}`
-                        : `Lv.${n.reqLevel || 1}+`;
+                        : `Lv.${lvls[0] || n.reqLevel || 1}+`;
                     return `
                   <div class="talent-node-card ${n.isSkillchain ? 'sc-node' : ''} ${n.key === 'capstone' ? 'capstone-node' : ''}">
                     <div class="node-top">

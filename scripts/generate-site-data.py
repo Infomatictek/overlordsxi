@@ -1359,19 +1359,6 @@ def finalize_spec_nodes(raw_nodes: list[dict]) -> list[dict]:
             }
         )
     nodes.sort(key=lambda n: (n["tier"], n["col"]))
-    for n in nodes:
-        gate = TIER_GATES.get(n["tier"], TIER_GATES[1])
-        n["reqWsPoints"] = gate["reqWsPoints"]
-        if n.get("isSkillchain"):
-            sc_t = n["tier"]
-            lvls = RANK_LEVEL_TABLES["sc"].get(sc_t, [1, 18])
-            n["reqLevel"] = lvls[0]
-            n["rankLevels"] = lvls
-        else:
-            lvls = RANK_LEVEL_TABLES.get(n["tier"], {}).get(n["maxRank"])
-            n["reqLevel"] = lvls[0] if lvls else gate["reqLevel"]
-            if lvls:
-                n["rankLevels"] = lvls
     return nodes
 
 
@@ -1518,7 +1505,6 @@ def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
             "sourceFile": tinfo["sourceFile"],
             "isSpecAdaptive": mode != "throwing",
             "maxPoints": sum(n["maxRank"] for n in final_nodes),
-            "nodes": final_nodes,
             "specTrees": spec_trees,
         }
         out_list.append(ws_entry)
@@ -1563,6 +1549,7 @@ def parse_server_rules() -> dict:
         "crystalUnlockLevel": 10,
         "wsUnlockRule": "All Weaponskills are visible from Level 1, and each WS is unlocked for use as soon as you invest at least 1 Talent Point into Tier 1 of that WS.",
         "tierGates": TIER_GATES,
+        "rankLevelTables": RANK_LEVEL_TABLES,
         "specCategories": SPEC_CATEGORIES,
         "features": header_features,
         "baselinePlayerPace": [
@@ -1806,7 +1793,7 @@ def main():
     json_path = SITE_DIR / "data.json"
     js_path = SITE_DIR / "data.js"
 
-    json_text = json.dumps(data, indent=2, ensure_ascii=False)
+    json_text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     json_path.write_text(json_text, encoding="utf-8")
     js_path.write_text(f"window.OVERLORDS_DATA = {json_text};\n", encoding="utf-8")
 
