@@ -225,6 +225,7 @@ MOD_LABELS = {
     "FASTCAST": ("Fast Cast", "%", 1),
     "SNAPSHOT": ("Snapshot", "%", 1),
     "REFRESH": ("Refresh", "/tick", 1),
+    "REGEN": ("Regen", "/tick", 1),
     "REGEN_MULTIPLIER": ("Regen Potency", "%", 1),
     "REGEN_DURATION": ("Regen Duration", "s", 1),
     "OCCULT_ACUMEN": ("Occult Acumen", "", 1),
@@ -331,7 +332,7 @@ CUSTOM_TRAITS = {
     151: {"id": 151, "displayId": 1687, "name": "Runic Brand", "job": "RUN", "crystal": "Spellblade", "desc": "3-Rune Mastery at Lv.10+, elemental discharges on every swing/WS, and Mono/Tri-Rune Resonance."},
     152: {"id": 152, "displayId": 1688, "name": "Sacred Pulse", "job": "RUN", "crystal": "Lifebinder", "desc": "3-Rune Mastery at Lv.10+, 15s CD AoE Vivacious Pulse with Rune boons, Runic Lifetap, and AoE Regen."},
     153: {"id": 153, "displayId": 1689, "name": "Black Belt's Mastery", "job": "MNK", "crystal": "Black Belt", "desc": "Pure Hand-to-Hand oath: amplifies Kick Attacks, Double Attack, Critical Hits, WSD, and refunds +75 TP per H2H weaponskill."},
-    154: {"id": 154, "displayId": 1690, "name": "Chi Weaver's Pulse", "job": "MNK", "crystal": "Chi Weaver", "desc": "Empty-handed ranged Light Chi bolts (0-20y) emit a 12y AoE healing pulse around the target mob while restoring MP."},
+    154: {"id": 154, "displayId": 1690, "name": "Chi Weaver's Pulse", "job": "MNK", "crystal": "Chi Weaver", "desc": "Empty-handed ranged Light Chi bolts (0-20y) emit a 12y AoE healing pulse around the target mob while mending the Monk at range."},
 }
 
 CUSTOM_ABILITIES_BY_SPEC = {
@@ -357,7 +358,7 @@ CUSTOM_ABILITIES_BY_SPEC = {
     ("MNK", "chiweaver"): [
         {"id": 429, "name": "Resonant Chi", "cd": "20s", "target": "Enemy (20y)", "desc": "Projects a concentrated Light Chi burst at up to 20y, triggering a 1.75x AoE healing pulse & debuff cleanse around the target mob and granting +125 TP."},
         {"id": 430, "name": "Tranquil Lotus", "cd": "30s", "target": "Party (12y AoE)", "desc": "Restores 12/16/20/24% Max HP (+MND) to nearby party members, Trusts, and pets, applying a 15s Sanctuary (+12/20/30/42 Regen, +10/15/20/25% Cure Rcvd, -10/14/18/22 Enmity)."},
-        {"id": 431, "name": "Inner Harmony", "cd": "45s", "target": "Self", "desc": "18s meditative overdrive: +15/22/30/40% Cure Potency, +20/30/45/60 MAB & MACC, +3/5/7/10 Refresh, and +40% Chi Bolt & Pulse potency."},
+        {"id": 431, "name": "Inner Harmony", "cd": "45s", "target": "Self", "desc": "18s meditative overdrive: +15/22/30/40% Cure Potency, +20/30/45/60 MAB & MACC, +5/8/11/15% Ability Haste, +10/18/28/40 Regen, and +40% Chi Bolt & Pulse potency."},
     ],
     ("SCH", "medic"): [
         {"id": 231, "name": "Call Eos", "cd": "300s", "target": "Self", "desc": "Summons Eos, a Light Arts faerie companion that maintains stackable Regen (I-V) on the party and automatically casts -na spells and Erase."},

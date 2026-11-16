@@ -605,7 +605,7 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         end
     end
 
-    -- Grant TP + subtle enmity + modest MP sustain per landed bolt.
+    -- Grant TP + subtle enmity per landed bolt.
     local storeTp = player.getMod and (player:getMod(xi.mod.STORETP) or 0) or 0
     if player.addTP then
         player:addTP(math.floor(75 * (1.0 + (storeTp / 100.0))))
@@ -617,16 +617,6 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         target:updateEnmityFromDamage(player, math.max(1, math.floor(dealt * 0.35)))
     end
 
-    if player.addMP and player.getLocalVar and player.setLocalVar then
-        local mpRate = scaleTier(lvl, 120, 180, 250, 320) -- 1.2 -> 3.2 MP per Chi bolt
-        local accum  = (player:getLocalVar('OX_CHW_MP_FRAC') or 0) + mpRate
-        local whole  = math.floor(accum / 100)
-        player:setLocalVar('OX_CHW_MP_FRAC', accum - (whole * 100))
-        if whole > 0 then
-            player:addMP(whole)
-        end
-    end
-
     -- Healing Pulse centered around the target mob (12y radius): heals party, Trusts, and pets!
     local pulseMult = (boostActive and 1.50 or 1.0)
         * (hasHarmony and 1.40 or 1.0)
@@ -634,6 +624,18 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         * (hasHundred and 1.25 or 1.0)
     local baseHeal = computeChiPulseBaseHeal(player, lvl, mndStat, pulseMult)
     pulseHealAroundCenter(player, target, baseHeal, 12.0, 0)
+
+    -- If firing from outside the 12y target pulse (12-20y), also channel a modest Chi mend to the Monk.
+    if
+        player.checkDistance and
+        player:checkDistance(target) > 12.0 and
+        player.getHP and
+        player.getMaxHP and
+        player.addHP and
+        player:getHP() < player:getMaxHP()
+    then
+        player:addHP(math.max(6, math.floor(baseHeal * 0.45)))
+    end
 
     return math.max(0, math.floor(dealt))
 end
@@ -745,16 +747,16 @@ if xi.job and xi.job.MNK then
             highlights     =
             {
                 'Empty-Handed Vow: Cannot equip ANY weapon or item in Main or Sub slots (bare fists only).',
-                'Ranged Chi Pulse (0-20y): Auto-attacks project Light Chi bolts up to 20 yalms; every landed bolt emits a 12y healing pulse around the mob healing party members, Trusts, and pets while restoring MP.',
-                'Passives (Lv10/30/50/70+): +10/18/28/36% Max MP, +2/4/6/9 Refresh, +8/16/26/36 MND, +5/10/16/24 VIT, +12/20/28/35% Cure Potency, +8/15/24/35 H2H, +10/20/32/45 MACC, +8/15/24/34 MAB, -12/18/25/32 Enmity, -3/5/8/10% DT.',
-                'Custom JAs (Lv10+): Resonant Chi (20s CD, 20y Light burst + 1.75x target AoE heal & Cleanse), Tranquil Lotus (30s CD, 12y Party/Pet heal + 15s Regen, +Cure Rcvd, & Enmity-), Inner Harmony (45s CD, 18s +Cure Potency, +MAB/MACC, +Refresh, & +40% Chi Bolt/Pulse power).',
-                'Healer MNK JAs: Boost (+5% MP, instant target pulse & +50% next Chi Bolt/Pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Chi Blast (+30% DMG + 65% target AoE heal), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
+                'Ranged Chi Pulse (0-20y): Auto-attacks project Light Chi bolts up to 20 yalms; every landed bolt emits a 12y healing pulse around the mob healing party members, Trusts, and pets (and mends the Monk beyond 12y).',
+                'Passives (Lv10/30/50/70+): +8/12/16/20% Max HP, +8/16/26/38 Regen, +8/16/26/36 MND, +5/10/16/24 VIT, +12/20/28/35% Cure Potency, +8/15/24/35 H2H, +10/20/32/45 MACC, +8/15/24/34 MAB, -12/18/25/32 Enmity, -3/5/8/10% DT.',
+                'Custom JAs (Lv10+): Resonant Chi (20s CD, 20y Light burst + 1.75x target AoE heal & Cleanse), Tranquil Lotus (30s CD, 12y Party/Pet heal + 15s Regen, +Cure Rcvd, & Enmity-), Inner Harmony (45s CD, 18s +Cure Potency, +MAB/MACC, +Ability Haste, +Regen, & +40% Chi Bolt/Pulse power).',
+                'Healer MNK JAs: Boost (+50 TP, instant target pulse & +50% next Chi Bolt/Pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Chi Blast (+30% DMG + 65% target AoE heal), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
             },
             mods = function(_player, lvl)
                 return
                 {
-                    { xi.mod.MPP,          scaleTier(lvl, 10, 18, 28, 36) },
-                    { xi.mod.REFRESH,      scaleTier(lvl, 2, 4, 6, 9) },
+                    { xi.mod.HPP,          scaleTier(lvl, 8, 12, 16, 20) },
+                    { xi.mod.REGEN,        scaleTier(lvl, 8, 16, 26, 38) },
                     { xi.mod.MND,          scaleTier(lvl, 8, 16, 26, 36) },
                     { xi.mod.VIT,          scaleTier(lvl, 5, 10, 16, 24) },
                     { xi.mod.CURE_POTENCY, scaleTier(lvl, 12, 20, 28, 35) },
@@ -1008,9 +1010,8 @@ m:addOverride('xi.job_utils.monk.useBoost', function(player, target, ability)
             boostEff:addMod(xi.mod.ALL_WSDMG_ALL_HITS, 15)
         end
     elseif isMonkSpec(player, CHIWEAVER_KEY) then
-        local maxMp = player.getMaxMP and (player:getMaxMP() or 0) or 0
-        if maxMp > 0 and player.addMP then
-            player:addMP(math.max(4, math.floor(maxMp * 0.05)))
+        if player.addTP then
+            player:addTP(50)
         end
         if player.setLocalVar then
             player:setLocalVar('OX_CHW_BOOST_NEXT', 1)
@@ -1438,7 +1439,7 @@ end, function(player, target, _ability)
     return EFFECT_TRANQUIL_LOTUS
 end)
 
--- 3) Inner Harmony (431, 45s CD, Self 18s: Cure Potency, MAB/MACC, Refresh, +40% Chi Bolt & Pulse power)
+-- 3) Inner Harmony (431, 45s CD, Self 18s: Cure Potency, MAB/MACC, Ability Haste, Regen, +40% Chi Bolt & Pulse power)
 bindAbility('inner_harmony', function(player, _target, _ability)
     if not isMonkSpec(player, CHIWEAVER_KEY) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
@@ -1452,7 +1453,8 @@ end, function(player, _target, _ability)
     local lvl       = player.getMainLvl and (player:getMainLvl() or 10) or 10
     local curePot   = scaleTier(lvl, 15, 22, 30, 40)
     local magBonus  = scaleTier(lvl, 20, 30, 45, 60)
-    local refresh   = scaleTier(lvl, 3, 5, 7, 10)
+    local abilHaste = scaleTier(lvl, 500, 800, 1100, 1500)
+    local regenVal  = scaleTier(lvl, 10, 18, 28, 40)
     local iconId    = (xi.effect and xi.effect.AFFLATUS_SOLACE) or (xi.effect and xi.effect.ENLIGHT) or EFFECT_INNER_HARMONY
 
     applyTimedChiEffect(
@@ -1463,10 +1465,11 @@ end, function(player, _target, _ability)
         player,
         iconId,
         {
-            { xi.mod.CURE_POTENCY, curePot },
-            { xi.mod.MATT,         magBonus },
-            { xi.mod.MACC,         magBonus },
-            { xi.mod.REFRESH,      refresh },
+            { xi.mod.CURE_POTENCY,  curePot },
+            { xi.mod.MATT,          magBonus },
+            { xi.mod.MACC,          magBonus },
+            { xi.mod.HASTE_ABILITY, abilHaste },
+            { xi.mod.REGEN,         regenVal },
         }
     )
 
