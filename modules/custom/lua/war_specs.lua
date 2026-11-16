@@ -413,7 +413,8 @@ if xi.job and xi.job.WAR then
                     { xi.mod.CURE_POTENCY_RCVD,    scaleTier(lvl, 10, 15, 20) },
                     { xi.mod.CLUB,                 scaleTier(lvl, 10, 20, 35) },
                     { xi.mod.SHIELD,               scaleTier(lvl, 10, 20, 35) },
-                    { xi.mod.SHIELD_DEF_BONUS,     scaleTier(lvl, 12, 24, 40) },
+                    { xi.mod.DEF,                  scaleTier(lvl, 12, 24, 40) },
+                    { xi.mod.SHIELD_DEF_BONUS,     scaleTier(lvl, 2, 4, 6) },
                     { xi.mod.PALISADE_BLOCK_BONUS, scaleTier(lvl, 8, 14, 22) },
                     { xi.mod.SHIELD_MASTERY_TP,    scaleTier(lvl, 15, 25, 40) },
                     -- Substantially lower damage output tradeoff

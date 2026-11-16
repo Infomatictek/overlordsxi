@@ -164,6 +164,21 @@ xi.customBossServer.config =
         mobDmgDealtCap         = 3.00,
     },
 
+    -- Tank pressure tuning: ensures mobs deal meaningful physical damage through heavy
+    -- Tank DEF/Block/Parry stacking without increasing damage taken by DPS, Supports, or Healers.
+    tankPressure =
+    {
+        normalMobPdifFloor      = 0.65, -- Raises mob minimum raw pDIF from 0.25 -> 0.65 against high-DEF tanks
+        nmPdifFloor             = 0.75, -- Raises NM minimum raw pDIF to 0.75 against high-DEF tanks
+        critPdifFloorBonus      = 0.20, -- Extra floor on mob critical hits
+        mobMinFstr              = -2,   -- Prevents high VIT from cratering mob base weapon damage below -2 fSTR
+        parryPassiveCap         = 50,   -- Max 50% passive/stance Parry rate (65% during active burst CDs)
+        parryBurstCap           = 65,
+        blockPassiveCap         = 60,   -- Max 60% passive/stance Shield Block rate (75% during active burst CDs)
+        blockBurstCap           = 75,
+        blockMinBleedthroughPct = 0.35, -- Blocked hits always bleed through at least 35% of the hit (max 65% reduced)
+    },
+
     -- Breath & HP-based suicide move anti-one-shot tuning (scaled for deeper player HP pools).
     breath =
     {
@@ -1623,12 +1638,109 @@ m:addOverride('xi.mob.onMobSpawnEx', function(mob)
 end)
 
 -----------------------------------
--- Combat Level-Gap & Breath Anti-One-Shot Overrides
+-- Combat Level-Gap, Tank Armor-Piercing Floor, Block/Parry Caps & Breath Overrides
 -----------------------------------
+local function applyMobArmorPiercingPdifFloor(actor, target, rawPdif, isCritical)
+    if not isWildMob(actor) or getPlayerSideLevel(target) == nil then
+        return rawPdif
+    end
+
+    local tpCfg = xi.customBossServer.config.tankPressure
+    if not tpCfg or rawPdif >= 1.0 then
+        -- DPS, Supports, and Healers sit at rawPdif >= 1.0, so their incoming damage is untouched.
+        return rawPdif
+    end
+
+    local isNM     = actor.isNM and actor:isNM() or false
+    local minFloor = isNM and (tpCfg.nmPdifFloor or 0.75) or (tpCfg.normalMobPdifFloor or 0.65)
+    if isCritical then
+        minFloor = minFloor + (tpCfg.critPdifFloorBonus or 0.20)
+    end
+
+    -- Smoothly compress low-wRatio tank pDIF into [minFloor, 1.0] so DEF still matters
+    -- without letting mobs drop to 0.25 pDIF scratch damage.
+    local blended = minFloor + math.max(0, rawPdif - 0.25) * ((1.0 - minFloor) / 0.75)
+    return math.max(minFloor, blended)
+end
+
+xi.customBossServer.applyMobArmorPiercingPdifFloor = applyMobArmorPiercingPdifFloor
+
+m:addOverride('xi.combat.physical.calculateMeleeStatFactor', function(actor, target)
+    local fstr = super(actor, target)
+    if isWildMob(actor) and getPlayerSideLevel(target) ~= nil then
+        local tpCfg   = xi.customBossServer.config.tankPressure
+        local minFstr = (tpCfg and tpCfg.mobMinFstr) or -2
+        if fstr < minFstr then
+            return minFstr
+        end
+    end
+    return fstr
+end)
+
+m:addOverride('xi.combat.physical.calculateRangedStatFactor', function(actor, target)
+    local fstr = super(actor, target)
+    if isWildMob(actor) and getPlayerSideLevel(target) ~= nil then
+        local tpCfg   = xi.customBossServer.config.tankPressure
+        local minFstr = ((tpCfg and tpCfg.mobMinFstr) or -2) * 2
+        if fstr < minFstr then
+            return minFstr
+        end
+    end
+    return fstr
+end)
+
+m:addOverride('xi.combat.physical.calculateParryRate', function(defender, attacker)
+    local rate = super(defender, attacker)
+    if defender and defender.isPC and defender:isPC() then
+        local tpCfg  = xi.customBossServer.config.tankPressure or {}
+        local hasBurst = defender.hasStatusEffect and (
+            (xi.effect.ISSEKIGAN and defender:hasStatusEffect(xi.effect.ISSEKIGAN)) or
+            (xi.effect.BATTUTA and defender:hasStatusEffect(xi.effect.BATTUTA)) or
+            defender:hasStatusEffect(825) -- EFFECT_RUNIC_CONVERGENCE
+        )
+        local cap = hasBurst and (tpCfg.parryBurstCap or 65) or (tpCfg.parryPassiveCap or 50)
+        if rate > cap then
+            rate = cap
+        end
+    end
+    return rate
+end)
+
+m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attacker)
+    local rate = super(defender, attacker)
+    if defender and defender.isPC and defender:isPC() then
+        local tpCfg  = xi.customBossServer.config.tankPressure or {}
+        local hasBurst = defender.hasStatusEffect and (
+            (xi.effect.PALISADE and defender:hasStatusEffect(xi.effect.PALISADE)) or
+            (xi.effect.REPRISAL and defender:hasStatusEffect(xi.effect.REPRISAL)) or
+            defender:hasStatusEffect(820) -- GLADIATOR_WARD_EFFECT_ID
+        )
+        local cap = hasBurst and (tpCfg.blockBurstCap or 75) or (tpCfg.blockPassiveCap or 60)
+        if rate > cap then
+            rate = cap
+        end
+    end
+    return rate
+end)
+
+m:addOverride('xi.combat.physical.getDamageReductionForBlock', function(defender, attacker, damage)
+    local reduction = super(defender, attacker, damage)
+    local dmg       = tonumber(damage) or 0
+    if dmg <= 0 then
+        return 0
+    end
+
+    local tpCfg        = xi.customBossServer.config.tankPressure or {}
+    local minBleedPct  = tpCfg.blockMinBleedthroughPct or 0.35
+    local maxReduction = math.max(0, dmg - math.max(1, math.floor(dmg * minBleedPct)))
+    return math.min(reduction, maxReduction)
+end)
+
 m:addOverride('xi.combat.physical.calculateMeleePDIF', function(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, weaponSlot, isCannonball)
     ensureCombatEntitiesScaled(actor, target)
     markInActualCombat(actor, target)
     local pdif = super(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, weaponSlot, isCannonball)
+    pdif       = applyMobArmorPiercingPdifFloor(actor, target, pdif, isCritical)
     local mult = getLevelGapDamageMultiplier(actor, target)
     return pdif * mult
 end)
@@ -1637,6 +1749,7 @@ m:addOverride('xi.combat.physical.calculateRangedPDIF', function(actor, target, 
     ensureCombatEntitiesScaled(actor, target)
     markInActualCombat(actor, target)
     local pdif = super(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, bonusRangedAttack)
+    pdif       = applyMobArmorPiercingPdifFloor(actor, target, pdif, isCritical)
     local mult = getLevelGapDamageMultiplier(actor, target)
     return pdif * mult
 end)
