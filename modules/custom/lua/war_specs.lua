@@ -1293,6 +1293,9 @@ m:addOverride('xi.actions.abilities.savage_cleave.onUseAbility', function(player
     local weaponDmg = player.getWeaponDmg and (player:getWeaponDmg() or 0) or 0
     local strStat = player.getStat and xi.mod and xi.mod.STR and (player:getStat(xi.mod.STR) or 0) or 0
     local damage = math.max(15, math.floor(weaponDmg * mult + strStat * 0.6 + lvl * 1.5))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        damage = xi.customBossServer.scaleDamageByLevelGap(player, target, damage)
+    end
 
     if target ~= nil and target.takeDamage and xi.attackType and xi.damageType then
         target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING or xi.damageType.BLUNT)
@@ -1333,6 +1336,9 @@ m:addOverride('xi.actions.abilities.crimson_crush.onUseAbility', function(player
     local weaponDmg = player.getWeaponDmg and (player:getWeaponDmg() or 0) or 0
     local vitStat = player.getStat and xi.mod and xi.mod.VIT and (player:getStat(xi.mod.VIT) or 0) or 0
     local damage = math.max(12, math.floor(weaponDmg * 1.1 + vitStat * 0.5 + lvl * 1.0))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        damage = xi.customBossServer.scaleDamageByLevelGap(player, target, damage)
+    end
 
     if target ~= nil and target.takeDamage and xi.attackType and xi.damageType then
         target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.BLUNT)

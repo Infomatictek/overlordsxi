@@ -1,3 +1,4 @@
+custom/lua/boss_like_combat_and_exp.lua
 custom/lua/overlords_job_specs.lua
 custom/lua/overlords_ws_catalog.lua
 custom/lua/overlords_ws_talents.lua

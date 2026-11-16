@@ -470,6 +470,9 @@ local function triggerSpellbladeRunicBrand(actor, target, isWeaponskill)
 
     local perRune   = math.max(3, math.floor((4 + gsSkill * 0.06 + intStat * 0.22 + lvl * 0.25) * mab * overMult * monoMult * wsMult))
     local totalDmg  = perRune * runeCount
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        totalDmg = xi.customBossServer.scaleDamageByLevelGap(actor, target, totalDmg)
+    end
     local newest    = actor.getNewestRuneEffect and actor:getNewestRuneEffect() or runes[#runes]
     local element   = RUNE_ELEMENT_MAP[newest] or xi.element.FIRE
 
@@ -764,6 +767,9 @@ local function dealRunicRiposte(defender, attacker)
     local stanceMult = (defender.hasStatusEffect and defender:hasStatusEffect(EFFECT_IRON_BATTUTA)) and 1.35 or 1.0
 
     local rawDmg = math.max(5, math.floor((weaponDmg * 0.45 + vitStat * 0.25 + lvl * 0.30 + runeCount * 4) * stanceMult))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        rawDmg = xi.customBossServer.scaleDamageByLevelGap(defender, attacker, rawDmg)
+    end
     local newest = defender.getNewestRuneEffect and defender:getNewestRuneEffect() or xi.effect.IGNIS
     local elem   = RUNE_ELEMENT_MAP[newest] or xi.element.FIRE
 
@@ -1465,6 +1471,9 @@ end, function(player, target, _ability, action)
     local mbMult = (mbTier > 0) and 1.35 or 1.0
 
     local rawDmg = math.max(20, math.floor((weaponDmg * mult + gsSkill * 0.35 + (strStat + intStat) * 0.55 + lvl * 1.6) * mab * runeMult * overMult * mbMult))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        rawDmg = xi.customBossServer.scaleDamageByLevelGap(player, target, rawDmg)
+    end
     local dmg    = utils.handleStoneskin(target, rawDmg, xi.attackType.MAGICAL)
 
     if target.takeDamage then

@@ -463,7 +463,10 @@ end, function(player, target, ability)
                 not mob:getUntargetable() and
                 pet:checkDistance(mob) <= 10.0
             then
-                local dmg = utils.handleStoneskin(mob, baseDmg, xi.attackType.MAGICAL)
+                local scaledBase = (xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap)
+                    and xi.customBossServer.scaleDamageByLevelGap(player, mob, baseDmg)
+                    or baseDmg
+                local dmg = utils.handleStoneskin(mob, scaledBase, xi.attackType.MAGICAL)
                 if mob.updateClaim and not player:hasClaim(mob) then
                     mob:updateClaim(player)
                 end
@@ -521,6 +524,9 @@ end, function(player, target, ability, action)
     local isDull   = (petId == PET_UNDEAD_DULLAHAN)
     local mult     = isDull and 1.45 or 1.0
     local baseDmg  = math.max(20, math.floor(((lvl * 4.5) + (scythe * 0.9) + player:getStat(xi.mod.STR)) * mult))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        baseDmg = xi.customBossServer.scaleDamageByLevelGap(pet, target, baseDmg)
+    end
     local dmg      = utils.handleStoneskin(target, baseDmg, xi.attackType.PHYSICAL)
 
     target:takeDamage(dmg, pet, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
@@ -567,6 +573,9 @@ end, function(player, target, ability, action)
     local isCorse = (petId == PET_UNDEAD_CORSE)
     local mult    = isCorse and 1.40 or 1.0
     local baseDmg = math.max(20, math.floor(((lvl * 4.0) + (intStat * 1.8)) * mab * mult))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        baseDmg = xi.customBossServer.scaleDamageByLevelGap(pet, target, baseDmg)
+    end
     local dmg     = utils.handleStoneskin(target, baseDmg, xi.attackType.MAGICAL)
 
     target:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
