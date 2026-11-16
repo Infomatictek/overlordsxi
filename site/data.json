@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T17:14:01.150360+00:00",
+  "generatedAt": "2026-11-16T17:16:11.387954+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "2c63222",
+  "headCommit": "7d59ee7",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -340934,10 +340934,51 @@
   ],
   "commits": [
     {
+      "hash": "7d59ee7bbad0b4bf0cc25da5f9daf6fb7f25b836",
+      "shortHash": "7d59ee7",
+      "author": "nappypup",
+      "date": "2026-11-16T11:15:54-06:00",
+      "subject": "Update wiki generator and UI for 5-spec WS talent trees and instant GitHub SHA sync",
+      "files": [
+        {
+          "path": "scripts/generate-site-data.py",
+          "added": 516,
+          "removed": 64
+        },
+        {
+          "path": "site/app.js",
+          "added": 148,
+          "removed": 76
+        },
+        {
+          "path": "site/data.js",
+          "added": 309162,
+          "removed": 5233
+        },
+        {
+          "path": "site/data.json",
+          "added": 309162,
+          "removed": 5233
+        },
+        {
+          "path": "site/index.html",
+          "added": 6,
+          "removed": 5
+        },
+        {
+          "path": "site/styles.css",
+          "added": 15,
+          "removed": 0
+        }
+      ],
+      "totalAdded": 619009,
+      "totalRemoved": 10611
+    },
+    {
       "hash": "2c63222ac8fa5ef3dec4ef211a931fbfc78bb155",
       "shortHash": "2c63222",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T16:57:52+00:00",
+      "date": "2026-11-16T16:57:52Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -340958,7 +340999,7 @@
       "hash": "5ffc721c156031a467d012f00eccfbc429bc6222",
       "shortHash": "5ffc721",
       "author": "Infomatictek",
-      "date": "2026-11-16T16:57:42+00:00",
+      "date": "2026-11-16T16:57:42Z",
       "subject": "Fix validTarget=4 (TARGET_ENEMY) for BLM Necromancer mob-targeting pet commands and Runic JA aliases",
       "files": [
         {
@@ -340984,7 +341025,7 @@
       "hash": "a45e9b0aab8be0d27176b95c382f9539efdea91d",
       "shortHash": "a45e9b0",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T16:41:04+00:00",
+      "date": "2026-11-16T16:41:04Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341005,7 +341046,7 @@
       "hash": "f56b4a70d2fb38f86910fdbdb5c24434d3c45ced",
       "shortHash": "f56b4a7",
       "author": "Infomatictek",
-      "date": "2026-11-16T16:40:51+00:00",
+      "date": "2026-11-16T16:40:51Z",
       "subject": "Remove dead MATT/MACC from physical & utility WS talent trees",
       "files": [
         {
@@ -341036,7 +341077,7 @@
       "hash": "9d35e6161ebe951ee76a1c0343ed36cdd1b6454a",
       "shortHash": "9d35e61",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T16:40:06+00:00",
+      "date": "2026-11-16T16:40:06Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341057,7 +341098,7 @@
       "hash": "07eee032e3eab8b60269d33ece14c27ca2122485",
       "shortHash": "07eee03",
       "author": "Infomatictek",
-      "date": "2026-11-16T16:39:57+00:00",
+      "date": "2026-11-16T16:39:57Z",
       "subject": "Allow BLM (Necromancer) to equip all scythes in SQL and test gear vendor",
       "files": [
         {
@@ -341078,7 +341119,7 @@
       "hash": "16b5d3fd5348ab1d7446aa0bd6f1a4d6858dbb29",
       "shortHash": "16b5d3f",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T16:12:32+00:00",
+      "date": "2026-11-16T16:12:32Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341115,7 +341156,7 @@
       "hash": "c3c28ae199ae86e2993e247257c3c8c923852378",
       "shortHash": "c3c28ae",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T14:31:40+00:00",
+      "date": "2026-11-16T14:31:40Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341136,7 +341177,7 @@
       "hash": "9e17cb4e1c2d0f26e1e6386b6fdcf061e991cba1",
       "shortHash": "9e17cb4",
       "author": "Infomatictek",
-      "date": "2026-11-16T14:30:35+00:00",
+      "date": "2026-11-16T14:30:35Z",
       "subject": "Redesign WS talent trees per spec, gate WS unlocks by Tier 1, add binary talent packets, and fix AoE WS TP return",
       "files": [
         {
@@ -341197,7 +341238,7 @@
       "hash": "ad6f6f9e6639b62531c30f3cea86415eac6914f2",
       "shortHash": "ad6f6f9",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T14:18:14+00:00",
+      "date": "2026-11-16T14:18:14Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341218,7 +341259,7 @@
       "hash": "863f6ce8a04f30693754b9d2e6c4ca3d1d808e33",
       "shortHash": "863f6ce",
       "author": "Infomatictek",
-      "date": "2026-11-16T14:18:02+00:00",
+      "date": "2026-11-16T14:18:02Z",
       "subject": "fix(sql): remove obsolete skill_ranks and weapon_skills SQL queries migrated to YAML",
       "files": [
         {
@@ -341249,7 +341290,7 @@
       "hash": "361b73659be2dd174dd92936a752d40722659986",
       "shortHash": "361b736",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T14:04:47+00:00",
+      "date": "2026-11-16T14:04:47Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341270,7 +341311,7 @@
       "hash": "a2b83968b2e452b570313d4fc8bf1131c3dcf515",
       "shortHash": "a2b8396",
       "author": "Infomatictek",
-      "date": "2026-11-16T14:04:22+00:00",
+      "date": "2026-11-16T14:04:22Z",
       "subject": "feat(run-specs): lower Runic Bolt and Conduction requirement to Lv 10",
       "files": [
         {
@@ -341291,7 +341332,7 @@
       "hash": "d5f739cd641b2e04127d0f34be96075af8b20e9b",
       "shortHash": "d5f739c",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T13:40:14+00:00",
+      "date": "2026-11-16T13:40:14Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341312,7 +341353,7 @@
       "hash": "5f5bc52bd7381a2f0a119eade6eb5bc93f269b97",
       "shortHash": "5f5bc52",
       "author": "Infomatictek",
-      "date": "2026-11-16T13:39:48+00:00",
+      "date": "2026-11-16T13:39:48Z",
       "subject": "fix(specs): add Runic Bolt & Runic Sever magic spells, unblock Spellblade JAs, and preserve capped skills/WS after recalculateSkillsTable",
       "files": [
         {
@@ -341348,7 +341389,7 @@
       "hash": "5a32f74bd83b195a3ab800627911c26692445bd4",
       "shortHash": "5a32f74",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T10:59:26+00:00",
+      "date": "2026-11-16T10:59:26Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341369,7 +341410,7 @@
       "hash": "2264fb065c3cf93e45ff63272d2d3876b87f8fa4",
       "shortHash": "2264fb0",
       "author": "Infomatictek",
-      "date": "2026-11-16T10:59:17+00:00",
+      "date": "2026-11-16T10:59:17Z",
       "subject": "Fix Runic Bolt/Sever target flags in run_specs.sql and auto-grant RUN native spells on crystal equip",
       "files": [
         {
@@ -341390,7 +341431,7 @@
       "hash": "7c69d2dd80dcca8f0cc53cd664a33d7d91ed6b18",
       "shortHash": "7c69d2d",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T10:42:12+00:00",
+      "date": "2026-11-16T10:42:12Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341411,7 +341452,7 @@
       "hash": "c5c6a22485319ce29f6e014841edafa58a9ad9b8",
       "shortHash": "c5c6a22",
       "author": "Infomatictek",
-      "date": "2026-11-16T10:42:00+00:00",
+      "date": "2026-11-16T10:42:00Z",
       "subject": "Fix RUN Spellblade/Inquisitor skills/spells/stances/Vallation and BLM Necromancer Scythe WSs",
       "files": [
         {
@@ -341452,7 +341493,7 @@
       "hash": "3c9804a1f35287f899df158e224dc6ae09634dd2",
       "shortHash": "3c9804a",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T10:07:58+00:00",
+      "date": "2026-11-16T10:07:58Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341489,7 +341530,7 @@
       "hash": "6b11cfef88268aceb4c1352c11577e73ae5178c8",
       "shortHash": "6b11cfe",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T09:46:31+00:00",
+      "date": "2026-11-16T09:46:31Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341531,7 +341572,7 @@
       "hash": "5447666c8dccd8013b45b43558cfe6259088f06f",
       "shortHash": "5447666",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T09:32:58+00:00",
+      "date": "2026-11-16T09:32:58Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341552,7 +341593,7 @@
       "hash": "25f433bd27eb871fd02ee5a748d1177b93deb78f",
       "shortHash": "25f433b",
       "author": "Infomatictek",
-      "date": "2026-11-16T09:32:28+00:00",
+      "date": "2026-11-16T09:32:28Z",
       "subject": "Fix !gear job weapon restrictions, exclude REMA/DRK-only scythes, and add TP/WS sets",
       "files": [
         {
@@ -341583,7 +341624,7 @@
       "hash": "48ae5079bf6b45fd5f9cc98cc672e956a93a848b",
       "shortHash": "48ae507",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T09:20:07+00:00",
+      "date": "2026-11-16T09:20:07Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341620,7 +341661,7 @@
       "hash": "b789095b7c329f5316335d7582672846fda304b9",
       "shortHash": "b789095",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T09:18:39+00:00",
+      "date": "2026-11-16T09:18:39Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341657,7 +341698,7 @@
       "hash": "4b762c986eb112d0c8c276e82d935f0318b9e8d9",
       "shortHash": "4b762c9",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T09:07:53+00:00",
+      "date": "2026-11-16T09:07:53Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341678,7 +341719,7 @@
       "hash": "27892a65474474b577afbd25749c0fb92f31ace9",
       "shortHash": "27892a6",
       "author": "Infomatictek",
-      "date": "2026-11-16T09:05:50+00:00",
+      "date": "2026-11-16T09:05:50Z",
       "subject": "Update RUN Spellblade spec to Greatsword + Conduction + Runic Bolt/Sever + Edgeflare",
       "files": [
         {
@@ -341714,7 +341755,7 @@
       "hash": "b4f3e3640876672fb47fa0b75e3cbb8f20513b1a",
       "shortHash": "b4f3e36",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T08:58:32+00:00",
+      "date": "2026-11-16T08:58:32Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341735,7 +341776,7 @@
       "hash": "d150f6837f871caa5909194c1cc4fe67fcbbe11a",
       "shortHash": "d150f68",
       "author": "Infomatictek",
-      "date": "2026-11-16T08:58:24+00:00",
+      "date": "2026-11-16T08:58:24Z",
       "subject": "feat(blm): add Necromancer pet sub-menus (Grim Reaping/Incantations) and ranged magical caster pet AI",
       "files": [
         {
@@ -341761,7 +341802,7 @@
       "hash": "e40056642163cee3587e1b9211ee66688844237a",
       "shortHash": "e400566",
       "author": "github-actions[bot]",
-      "date": "2026-11-16T08:54:11+00:00",
+      "date": "2026-11-16T08:54:11Z",
       "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
       "files": [
         {
@@ -341885,7 +341926,7 @@
       "hash": "3ee5a3397e600da302e8e019ae0bf41e9298676a",
       "shortHash": "3ee5a33",
       "author": "Infomatictek",
-      "date": "2026-11-16T08:18:13+00:00",
+      "date": "2026-11-16T08:18:13Z",
       "subject": "Add Rune Fencer (RUN) Inquisitor, Spellblade, and Lifebinder crystal specs",
       "files": [
         {
@@ -341926,7 +341967,7 @@
       "hash": "d6acbd87929295ca6c0afb497e4651ac22367f10",
       "shortHash": "d6acbd8",
       "author": "Infomatictek",
-      "date": "2026-11-16T08:18:00+00:00",
+      "date": "2026-11-16T08:18:00Z",
       "subject": "Add kazenoeye_sync C++ module for live server status/timer packets (0x1FE OXKE)",
       "files": [
         {
@@ -342079,7 +342120,7 @@
       "hash": "caca89ed13c27106e0439a1f47941c54fc221241",
       "shortHash": "caca89e",
       "author": "Infomatictek",
-      "date": "2026-11-16T04:47:20+00:00",
+      "date": "2026-11-16T04:47:20Z",
       "subject": "Fix !gear command registration on FileWatcher hot-reload",
       "files": [
         {
@@ -342115,7 +342156,7 @@
       "hash": "413d300de9edf88e1af7d74b9b06fbf71dd76cb4",
       "shortHash": "413d300",
       "author": "Infomatictek",
-      "date": "2026-11-16T04:31:05+00:00",
+      "date": "2026-11-16T04:31:05Z",
       "subject": "feat(commands): add !gear command for level-appropriate test loadouts",
       "files": [
         {
@@ -342146,7 +342187,7 @@
       "hash": "82f73d338ffa40736d82cc501a631b55b3b36f6a",
       "shortHash": "82f73d3",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:48:13+00:00",
+      "date": "2026-11-16T03:48:13Z",
       "subject": "fix(blm): return 0/dmg from Necromancer JAs and print summon feedback",
       "files": [
         {
@@ -342193,7 +342234,7 @@
       "hash": "9fac555d72beb3a46f6397c2945bf4c50a55003c",
       "shortHash": "9fac555",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:17:47+00:00",
+      "date": "2026-11-16T03:17:47Z",
       "subject": "fix(blm): call capSkill(SCYTHE) on Necromancer apply so client skills menu updates",
       "files": [
         {
@@ -342209,7 +342250,7 @@
       "hash": "fba9cc0d07962b80c129f8f8fc5a528157c858ad",
       "shortHash": "fba9cc0",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:11:54+00:00",
+      "date": "2026-11-16T03:11:54Z",
       "subject": "fix(modules): add blm_specs.lua and blm_necro_spec.sql to modules/init.append.txt",
       "files": [
         {
@@ -342225,7 +342266,7 @@
       "hash": "9d294210954d391bfae3dac22b34a7e845ac846f",
       "shortHash": "9d29421",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:07:18+00:00",
+      "date": "2026-11-16T03:07:18Z",
       "subject": "fix(blm): use xi.player.onGameIn and require scripts/globals/player so blm_specs loads",
       "files": [
         {
@@ -342241,7 +342282,7 @@
       "hash": "ac989b417ac1b25a32918a809e361d92d07865a4",
       "shortHash": "ac989b4",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:52:56+00:00",
+      "date": "2026-11-16T02:52:56Z",
       "subject": "fix(patches): correct hunk line counts in 0017-blm-necromancer-pets.patch",
       "files": [
         {
@@ -342257,7 +342298,7 @@
       "hash": "5250d92c3b601cc5e932e343a9f9951d95f19c48",
       "shortHash": "5250d92",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:49:06+00:00",
+      "date": "2026-11-16T02:49:06Z",
       "subject": "chore(patches): rename 0016-blm-necromancer-pets to 0017 to avoid 0016 collision",
       "files": [
         {
@@ -342273,7 +342314,7 @@
       "hash": "1924243e5287542fe2f835c21aff2abea2f71dc3",
       "shortHash": "1924243",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:47:31+00:00",
+      "date": "2026-11-16T02:47:31Z",
       "subject": "feat(blm): add Lv.10 Grim Conversion trait (MACC->ACC, MATT->ATT, FC->Haste, MB->WSD)",
       "files": [
         {
@@ -342289,7 +342330,7 @@
       "hash": "04bd0fd972dc2bdb17bbc09dc2c9e5e9caa1c09b",
       "shortHash": "04bd0fd",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:43:55+00:00",
+      "date": "2026-11-16T02:43:55Z",
       "subject": "feat(blm): add Necromancer spec with undead summons, Corpse Explosion, Dark Pact, Harbinger's Drain, and A+ Scythe",
       "files": [
         {
@@ -342315,7 +342356,7 @@
       "hash": "8fcee92149bce93968659b476460f3db980e1c20",
       "shortHash": "8fcee92",
       "author": "Infomatictek",
-      "date": "2026-11-15T23:25:47+00:00",
+      "date": "2026-11-15T23:25:47Z",
       "subject": "Fix Eos and Titania summoning, spell casting, and Regen I-V handling",
       "files": [
         {
@@ -342341,22 +342382,6 @@
       ],
       "totalAdded": 141,
       "totalRemoved": 12
-    },
-    {
-      "hash": "7436fcb1533db24465f791fded9682bd1d996789",
-      "shortHash": "7436fcb",
-      "author": "Infomatictek",
-      "date": "2026-11-15T21:55:55+00:00",
-      "subject": "fix(ws-talents): preserve CUSTOM_TREES across module double-loads and invalidate treeCache on reload",
-      "files": [
-        {
-          "path": "modules/custom/lua/overlords_ws_talents.lua",
-          "added": 10,
-          "removed": 3
-        }
-      ],
-      "totalAdded": 10,
-      "totalRemoved": 3
     }
   ]
 }
