@@ -1,7 +1,7 @@
 -- OverlordsXI Rune Fencer Crystal Specs (Inquisitor, Spellblade, Lifebinder)
 -- 1. Backport post-75 RUN abilities (Liement, One for All, Odyllic Subterfuge) to Lv 75
 --    and clear merit addType on Rayke (375) and Battuta (376) so crystal extraAbilities can unlock them.
--- 2. Backport RUN Regen IV (spell 477) from Lv 99 (0x63) to Lv 75 (0x4B) and give RUN A-rank magic skills in skill_ranks.
+-- 2. Backport RUN Regen IV (spell 477) from Lv 99 (0x63) to Lv 75 (0x4B).
 -- 3. Define custom RUN Spellblade Magic Spells: Runic Bolt (spell 754, Lv 10) & Runic Sever (spell 755, Lv 55).
 -- 4. Define custom RUN spec Job Abilities (412-418) with independent recast timers (198, 199, 201-205)
 --    and level = 255 so they stay hidden unless dynamically unlocked via patch 0007.
@@ -11,9 +11,6 @@ UPDATE `abilities` SET `level` = 75 WHERE `abilityId` IN (373, 374, 378) AND `le
 UPDATE `abilities` SET `addType` = 0 WHERE `abilityId` IN (375, 376);
 -- Hide empty Ward (379) and Effusion (380) category headers (RUN abilities are top-level in 114.DAT so 0x16/0x17 stay free for BLM Necromancer)
 UPDATE `abilities` SET `level` = 255 WHERE `abilityId` IN (379, 380);
-
--- Ensure RUN (run column) has A-rank (3) in Divine, Healing, Enhancing, Enfeebling, Elemental, and Dark Magic so capAllSkills() caps them
-UPDATE `skill_ranks` SET `run` = 3 WHERE `skillid` IN (32, 33, 34, 35, 36, 37) AND (`run` = 0 OR `run` > 3);
 
 -- Allow RUN (job 22 = byte 22 of jobs blob) to learn Regen IV (spellId 477) at Lv 75 (0x4B)
 UPDATE `spell_list`
