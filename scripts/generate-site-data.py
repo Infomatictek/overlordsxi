@@ -2,7 +2,7 @@
 """
 OverlordsXI Wiki & Database Generator
 -------------------------------------
-Parses all custom OverlordsXI Lua modules, Weaponskill Catalog & Talent Trees,
+Parses all custom OverlordsXI Lua modules, Weaponskill Catalog & 5-Spec Talent Trees,
 Job Crystal Specs, Custom Job Abilities & Traits, Companions & Summons,
 Combat/QoL Rules, Player Commands, Engine Patches, and Git Commit History
 directly from the repository and emits:
@@ -12,6 +12,7 @@ directly from the repository and emits:
 Runs automatically via GitHub Actions on every push (or locally via `python scripts/generate-site-data.py`).
 """
 
+import copy
 import datetime
 import json
 import re
@@ -20,9 +21,6 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LUA_DIR = ROOT_DIR / "modules" / "custom" / "lua"
-CMD_DIR = ROOT_DIR / "modules" / "custom" / "commands"
-SQL_DIR = ROOT_DIR / "modules" / "custom" / "sql"
-CPP_DIR = ROOT_DIR / "modules" / "custom" / "cpp"
 PATCH_DIR = ROOT_DIR / "patches"
 SITE_DIR = ROOT_DIR / "site"
 
@@ -254,7 +252,6 @@ def format_mod_scaling(mod_code: str, expr: str, local_vars: dict[str, str]) -> 
             return f"{sign}{int(round(val))}"
         return f"{sign}{val:.1f}"
 
-    # Check `scaleTier(lvl, a, b, c, d)`
     m_tier = re.search(r"scale(?:Commander)?Tier\s*\(\s*lvl\s*,\s*([^)]+)\)", resolved)
     if m_tier:
         nums = []
@@ -266,18 +263,14 @@ def format_mod_scaling(mod_code: str, expr: str, local_vars: dict[str, str]) -> 
                 pass
         if len(nums) == 3:
             tiers_str = f"{fmt_num(nums[0])} / {fmt_num(nums[1])} / {fmt_num(nums[2])}{unit}"
-            bracket = "Lv.10 / 30 / 50+"
-            return {"mod": mod_code, "label": label, "value": tiers_str, "bracket": bracket}
+            return {"mod": mod_code, "label": label, "value": tiers_str, "bracket": "Lv.10 / 30 / 50+"}
         elif len(nums) >= 4:
             tiers_str = f"{fmt_num(nums[0])} / {fmt_num(nums[1])} / {fmt_num(nums[2])} / {fmt_num(nums[3])}{unit}"
-            bracket = "Lv.10 / 30 / 50 / 70+"
-            return {"mod": mod_code, "label": label, "value": tiers_str, "bracket": bracket}
+            return {"mod": mod_code, "label": label, "value": tiers_str, "bracket": "Lv.10 / 30 / 50 / 70+"}
 
-    # Check formula like `math.max(10, math.floor(lvl * 0.95))`
     if "lvl * 0.95" in resolved:
         return {"mod": mod_code, "label": label, "value": "+10 -> +71 (Rank A+)", "bracket": "Scales w/ Level"}
 
-    # Check plain number
     try:
         v = float(resolved)
         return {"mod": mod_code, "label": label, "value": f"{fmt_num(v)}{unit}", "bracket": "Always Active"}
@@ -446,7 +439,6 @@ def parse_job_specs() -> list[dict]:
                             if h_item:
                                 highlights.append(unquote_lua_str(h_item))
 
-                # Parse passive mods inside mods = function(...)
                 passive_mods = []
                 mm = re.search(r"\bmods\s*=\s*function", entry_str)
                 if mm:
@@ -471,7 +463,6 @@ def parse_job_specs() -> list[dict]:
                                         mod_val = kv[1].strip()
                                         passive_mods.append(format_mod_scaling(mod_name, mod_val, local_vars))
 
-                # Resolve custom traits for this spec
                 spec_traits = [
                     t for t in CUSTOM_TRAITS.values() if t["job"] == job_key and t["crystal"].lower() == cname.lower()
                 ]
@@ -508,7 +499,7 @@ def parse_job_specs() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# 2. Parse Companions & Custom Weapons/Items (Wiki Encyclopedia Section)
+# 2. Companions & Custom Weapons/Items
 # ---------------------------------------------------------------------------
 def get_companions_and_equipment() -> dict:
     companions = [
@@ -590,7 +581,7 @@ def get_companions_and_equipment() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 3. Parse Weaponskill Catalog & Bespoke Talent Trees (219 WSs)
+# 3. Parse Weaponskill Catalog & 5-Spec Talent Trees (219 WSs)
 # ---------------------------------------------------------------------------
 SKILL_NAMES_BY_ENUM = {
     "xi.skill.HAND_TO_HAND": (1, "Hand-to-Hand"),
@@ -617,12 +608,29 @@ SC_BONUS_BY_TIER = {
     4: (15, 28, "Lv3"),
 }
 
+# Current tier gates from overlords_ws_talents.lua
 TIER_GATES = {
     1: {"reqWsPoints": 0, "reqLevel": 1},
-    2: {"reqWsPoints": 10, "reqLevel": 20},
-    3: {"reqWsPoints": 22, "reqLevel": 42},
-    4: {"reqWsPoints": 35, "reqLevel": 62},
+    2: {"reqWsPoints": 2, "reqLevel": 5},
+    3: {"reqWsPoints": 5, "reqLevel": 10},
+    4: {"reqWsPoints": 8, "reqLevel": 15},
 }
+
+RANK_LEVEL_TABLES = {
+    "sc": {1: [1, 18], 2: [5, 28], 3: [10, 42], 4: [15, 58]},
+    1: {6: [1, 11, 22, 35, 50, 65], 7: [1, 10, 20, 32, 44, 56, 68]},
+    2: {5: [5, 18, 32, 48, 64]},
+    3: {5: [10, 24, 38, 54, 70]},
+    4: {3: [15, 42, 68], 5: [15, 30, 45, 60, 75]},
+}
+
+SPEC_CATEGORIES = [
+    {"key": "berserker", "label": "Berserker / DPS", "specs": "WAR Berserker, SAM, DRK, DRG, THF, NIN, RNG, MNK (non-Sensei)"},
+    {"key": "tank", "label": "Tank / Vanguard", "specs": "RUN Inquisitor, WAR Gladiator, MNK Sensei, PLD"},
+    {"key": "spellblade", "label": "Spellblade / Arcana", "specs": "RUN Spellblade, SCH Sage, BLM Necromancer, RDM, BLU, SMN"},
+    {"key": "healer", "label": "Healer / Mending", "specs": "RUN Lifebinder, SCH Medic, WHM, BRD, GEO"},
+    {"key": "commander", "label": "Commander / Tactical", "specs": "WAR Commander, COR"},
+]
 
 
 def parse_ws_catalog() -> dict[int, dict]:
@@ -700,6 +708,15 @@ def parse_ws_catalog() -> dict[int, dict]:
     return ws_by_id
 
 
+def extract_phys_flags_from_effect(effect_str: str) -> set[str]:
+    """Detect physical stat keys inside an effect table so sanitizeNodeForNonPhysical mirrors Lua."""
+    flags = set()
+    for k in ("atkPct", "acc", "racc", "crit", "critCurve", "critDmg", "defIgnore", "hits", "bonusHits", "multiHitfTPAt"):
+        if re.search(rf"\b{k}\b", effect_str):
+            flags.add(k)
+    return flags
+
+
 def parse_single_helper_node(call_str: str) -> dict | None:
     call_str = call_str.strip()
     if not call_str:
@@ -728,6 +745,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
                 "name": unquote_lua_str(name_m.group(1)) if name_m else "TP Scaling",
                 "maxRank": int(mr_m.group(1)) if mr_m else 6,
                 "desc": desc,
+                "physFlags": extract_phys_flags_from_effect(call_str),
             }
         return None
 
@@ -759,9 +777,11 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": name,
             "maxRank": 6,
             "desc": zero_desc,
+            "physFlags": set(),
         }
 
     if fn_name in ("utilFtp", "H.utilFtp") and len(args) >= 2:
+        eff_str = args[3] if len(args) >= 4 else ""
         return {
             "tier": 1,
             "col": 1,
@@ -769,9 +789,14 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[0]),
             "maxRank": 6,
             "desc": unquote_lua_str(args[1]),
+            "physFlags": extract_phys_flags_from_effect(eff_str),
         }
 
-    if fn_name in ("node", "H.node") and len(args) >= 6:
+    if fn_name in ("node", "H.node", "gladStance", "schStance", "warStance", "senseiStance") and len(args) >= 6:
+        eff_str = args[7] if len(args) >= 8 else ""
+        flags = extract_phys_flags_from_effect(eff_str)
+        if fn_name in ("gladStance", "warStance", "senseiStance") and re.search(r"\bstAtk\b|\bstCrit\b", eff_str):
+            flags.add("atkPct")
         return {
             "tier": int(args[0]),
             "col": int(args[1]),
@@ -779,9 +804,11 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": int(args[4]),
             "desc": unquote_lua_str(args[5]),
+            "physFlags": flags,
         }
 
     if fn_name == "N" and len(args) >= 7:
+        eff_str = args[8] if len(args) >= 9 else ""
         return {
             "tier": int(args[2]),
             "col": int(args[3]),
@@ -789,6 +816,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[1]),
             "maxRank": int(args[4]),
             "desc": unquote_lua_str(args[6]),
+            "physFlags": extract_phys_flags_from_effect(eff_str),
         }
 
     if fn_name == "makeCurveNode" and args:
@@ -806,6 +834,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(name_m.group(1)) if name_m else "Talent",
             "maxRank": int(mr_m.group(1)) if mr_m else 5,
             "desc": unquote_lua_str(zd_m.group(1)) if zd_m else "",
+            "physFlags": set(),
         }
 
     if fn_name in ("atkAcc", "H.atkAcc") and len(args) >= 6:
@@ -818,6 +847,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"+{atk_s}..{atk_s*5}% WS Atk & +{acc_s}..{acc_s*5} Acc",
+            "physFlags": {"atkPct", "acc"},
         }
 
     if fn_name in ("wsdAcc", "H.wsdAcc") and len(args) >= 6:
@@ -830,6 +860,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"+{wsd_s}..{wsd_s*5}% WSD & +{acc_s}..{acc_s*5} Acc",
+            "physFlags": {"acc"},
         }
 
     if fn_name in ("critMast", "H.critMast") and len(args) >= 6:
@@ -842,6 +873,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"+{cr_s}..{cr_s*5}% Crit Rate & +{cd_s}..{cd_s*5}% Crit Dmg",
+            "physFlags": {"crit", "critDmg"},
         }
 
     if fn_name in ("mabMacc", "H.mabMacc") and len(args) >= 6:
@@ -860,6 +892,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": desc,
+            "physFlags": set(),
         }
 
     if fn_name in ("rangedAtkAcc", "H.rangedAtkAcc") and len(args) >= 6:
@@ -872,12 +905,16 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"+{atk_s}..{atk_s*5}% R.Atk & +{racc_s}..{racc_s*5} R.Acc",
+            "physFlags": {"atkPct", "racc"},
         }
 
     if fn_name in ("multiFtp", "H.multiFtp") and len(args) >= 5:
         wsd_s = int(float(args[4])) if args[4] != "nil" else 0
         atk_s = int(float(args[5])) if len(args) >= 6 and args[5] != "nil" else 0
         lbl = f"+{wsd_s*4}% WSD" if wsd_s else f"+{atk_s*4}% Atk"
+        flags = {"multiHitfTPAt"}
+        if atk_s:
+            flags.add("atkPct")
         return {
             "tier": int(args[0]),
             "col": int(args[1]),
@@ -885,6 +922,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"R1-4: {lbl} | R5: fTP applies to ALL Hits!",
+            "physFlags": flags,
         }
 
     if fn_name in ("elemFollow", "H.elemFollow") and len(args) >= 7:
@@ -897,6 +935,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": 5,
             "desc": f"{dmg_name} elemental follow-up ({pct_s}..{pct_s*5}%)",
+            "physFlags": set(),
         }
 
     if fn_name in ("stance", "stanceNode", "H.stanceNode") and len(args) >= 8:
@@ -911,6 +950,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": int(args[4]),
             "desc": desc,
+            "physFlags": extract_phys_flags_from_effect(opts_str),
         }
 
     if fn_name in ("hits", "H.hits") and len(args) >= 5:
@@ -935,6 +975,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[3]),
             "maxRank": mr,
             "desc": desc,
+            "physFlags": {"hits", "atkPct", "acc"},
         }
 
     if fn_name in ("echo", "H.echo"):
@@ -949,9 +990,11 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": name,
             "maxRank": 5,
             "desc": f"+{wsd_s}..{wsd_s*5}% WSD & +{tp_s}..{tp_s*5} TP Bonus",
+            "physFlags": set(),
         }
 
     if fn_name in ("cap", "H.cap") and len(args) >= 3:
+        eff_str = args[4] if len(args) >= 5 else ""
         return {
             "tier": 4,
             "col": 1,
@@ -959,6 +1002,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[1]),
             "maxRank": 3,
             "desc": unquote_lua_str(args[2]),
+            "physFlags": extract_phys_flags_from_effect(eff_str),
         }
 
     if fn_name in ("mast", "H.mast") and len(args) >= 3:
@@ -966,9 +1010,11 @@ def parse_single_helper_node(call_str: str) -> dict | None:
         if arg2.isdigit():
             mr = int(arg2)
             desc = unquote_lua_str(args[3]) if len(args) >= 4 else ""
+            eff_str = args[5] if len(args) >= 6 else ""
         else:
             mr = 5
             desc = unquote_lua_str(arg2)
+            eff_str = args[4] if len(args) >= 5 else ""
         return {
             "tier": 4,
             "col": 2,
@@ -976,42 +1022,416 @@ def parse_single_helper_node(call_str: str) -> dict | None:
             "name": unquote_lua_str(args[1]),
             "maxRank": mr,
             "desc": desc,
+            "physFlags": extract_phys_flags_from_effect(eff_str),
         }
 
     return None
 
 
+# ---------------------------------------------------------------------------
+# Spec-Tree Expansion (mirrors overlords_ws_tree_helpers.lua 5-spec engine)
+# ---------------------------------------------------------------------------
+def is_magic_or_utility_ws(ws: dict, archetype: str) -> tuple[bool, str]:
+    ws_id = ws["id"]
+    ws_type = ws.get("wsType", "physical")
+    if ws_type in ("magic", "utility"):
+        return True, ws_type
+    if ws_id in (39, 45):  # Spirits Within / Atonement
+        return True, "utility"
+    if archetype == "magic":
+        return True, "magic"
+    return False, ws_type
+
+
+def get_default_element(ws: dict) -> str:
+    if ws.get("elementName"):
+        return ws["elementName"]
+    sk = ws.get("skillId", 0)
+    if sk == 7:
+        return "Dark"
+    if sk == 11:
+        return "Light"
+    if sk == 4:
+        return "Ice"
+    if sk in (5, 8):
+        return "Thunder"
+    if sk in (2, 9):
+        return "Wind"
+    if sk in (3, 10):
+        return "Fire"
+    return "Light"
+
+
+def sanitize_node_for_non_physical(node: dict, ws: dict, ws_kind: str) -> dict:
+    flags = node.get("physFlags") or set()
+    if not flags:
+        return node
+    nc = copy.deepcopy(node)
+    mr = nc.get("maxRank", 5)
+    is_util = ws_kind == "utility"
+    parts = []
+    if is_util:
+        if "crit" in flags or "critCurve" in flags or "critDmg" in flags or "hits" in flags or "bonusHits" in flags or "multiHitfTPAt" in flags:
+            parts.append(f"+{6}..{6*mr}% Potency")
+        if "acc" in flags or "racc" in flags or "defIgnore" in flags:
+            parts.append(f"+{8}..{8*mr} MACC")
+        if "crit" in flags or "critCurve" in flags or "critDmg" in flags:
+            parts.append(f"+{60}..{60*mr} TP Bonus")
+        if "hits" in flags or "bonusHits" in flags or "multiHitfTPAt" in flags:
+            parts.append(f"+0.35..{0.35*mr:.2f} fTP")
+        nc["desc"] = ", ".join(parts) if parts else "+Potency, +MACC & +TP Scaling"
+    else:
+        if "atkPct" in flags or "defIgnore" in flags:
+            parts.append(f"+{8}..{8*mr} MAB")
+        if "acc" in flags or "racc" in flags or "defIgnore" in flags:
+            parts.append(f"+{8}..{8*mr} MACC")
+        if "crit" in flags or "critCurve" in flags or "critDmg" in flags or "hits" in flags or "bonusHits" in flags or "multiHitfTPAt" in flags:
+            parts.append(f"+{6}..{6*mr}% WSD")
+        if "hits" in flags or "bonusHits" in flags or "multiHitfTPAt" in flags:
+            parts.append(f"+0.35..{0.35*mr:.2f} fTP")
+        nc["desc"] = ", ".join(parts) if parts else "+MAB, +MACC & +WSD Scaling"
+    return nc
+
+
+def find_grid_node(nodes: list[dict], tier: int, col: int) -> dict | None:
+    for n in nodes:
+        if n["tier"] == tier and n["col"] == col:
+            return copy.deepcopy(n)
+    return None
+
+
+def make_scaling_t1_col1(ws: dict, base_t1_c1: dict | None, is_non_phys: bool, ws_kind: str) -> dict:
+    if base_t1_c1 is not None:
+        c = copy.deepcopy(base_t1_c1)
+        c["tier"], c["col"], c["key"] = 1, 1, "ftp"
+        return sanitize_node_for_non_physical(c, ws, ws_kind) if is_non_phys else c
+    orig_ftp = ws.get("orig", {}).get("ftp") or [1.25, 2.00, 2.75]
+    a = max(1.25, orig_ftp[0] if len(orig_ftp) > 0 else 1.25)
+    b = max(1.85, orig_ftp[1] if len(orig_ftp) > 1 else 1.85)
+    c = max(2.60, orig_ftp[2] if len(orig_ftp) > 2 else 2.60)
+    return {"tier": 1, "col": 1, "key": "ftp", "name": "TP Scaling", "maxRank": 6, "desc": f"Base fTP 1.00 -> Scales up to {a:.2f}/{b:.2f}/{c:.2f}"}
+
+
+def make_primary_wsc_node(ws: dict, tier: int, col: int, key: str, is_non_phys: bool, pref_stat: str | None) -> dict:
+    orig_wsc = ws.get("orig", {}).get("wsc") or {}
+    stat = pref_stat
+    if stat is None:
+        for s in ("STR", "DEX", "VIT", "AGI", "INT", "MND", "CHR"):
+            if orig_wsc.get(s, 0) > 0:
+                stat = s
+                break
+    stat = (stat or ("INT" if is_non_phys else "STR")).upper()
+    if is_non_phys:
+        if ws.get("wsType") == "magic":
+            return {"tier": tier, "col": col, "key": key, "name": f"{stat} & Arcane Focus", "maxRank": 7, "desc": f"{stat} +12..85% WSC & +6..42 MACC"}
+        return {"tier": tier, "col": col, "key": key, "name": f"{stat} & Potency", "maxRank": 7, "desc": f"{stat} +12..85% WSC & +45..315 TP Bonus"}
+    return {"tier": tier, "col": col, "key": key, "name": f"{stat} Precision", "maxRank": 7, "desc": f"{stat} +12..85% WSC & +5..35 Acc"}
+
+
+def build_tank_spec_nodes(ws: dict, archetype: str, base_nodes: list[dict]) -> list[dict]:
+    is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
+    is_mag_dmg = ws.get("wsType") == "magic"
+    sk = ws.get("skillId", 0)
+    is_sensei = sk in (12, 1, 9, 2)
+    is_gladiator = sk in (11, 5, 6)
+
+    t1c1 = make_scaling_t1_col1(ws, find_grid_node(base_nodes, 1, 1), is_non_phys, ws_kind)
+    t1c3 = make_primary_wsc_node(ws, 1, 3, "tk_t1_c3", is_non_phys, "VIT")
+
+    if is_sensei:
+        c1_t1 = {"tier": 1, "col": 2, "key": "tk_t1_c2", "name": "Sensei Provoke", "maxRank": 7, "desc": "+7..49 Enmity & +2..14% Counter (15s)"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "tk_t2_c2", "name": "Evasive Poise", "maxRank": 5, "desc": "Heal 3..15% Max HP & +5..25 EVA (20s)"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "tk_t3_c2", "name": "Sweeping Parry", "maxRank": 5, "desc": "+3..15% Parry (20s) & Stoneskin 120..360"}
+        c1_t4 = {"tier": 4, "col": 2, "key": "tk_t4_c2", "name": "Grandmaster Guard", "maxRank": 3, "desc": "Phalanx 20..40 (30s) & +12..36% WSD"}
+    elif is_gladiator:
+        c1_t1 = {"tier": 1, "col": 2, "key": "tk_t1_c2", "name": "Bloodthirsty Taunt", "maxRank": 7, "desc": "+7..49 Enmity & Heal 2..14% Max HP"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "tk_t2_c2", "name": "Crimson Shield", "maxRank": 5, "desc": "+4..20% Shield Block (20s) & Stoneskin 120..360"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "tk_t3_c2", "name": "Sanguine Leech", "maxRank": 5, "desc": "Drains 12..40% WS dmg as HP & +8..40% WSD"}
+        c1_t4 = {"tier": 4, "col": 2, "key": "tk_t4_c2", "name": "Immortal Gladiator", "maxRank": 3, "desc": "Phalanx 20..40 (30s) & Heal 6..18% Max HP"}
+    else:
+        c1_t1 = {"tier": 1, "col": 2, "key": "tk_t1_c2", "name": "Inquisitor Challenge", "maxRank": 7, "desc": "+7..49 Enmity & Stoneskin 90..330 (45s)"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "tk_t2_c2", "name": "Order Ward", "maxRank": 5, "desc": "Heal 3..15% Max HP & +3..15% Parry (20s)"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "tk_t3_c2", "name": "Sanctified Phalanx", "maxRank": 5, "desc": "Phalanx 16..36 (30s) & +6..30 Enmity"}
+        c1_t4 = {"tier": 4, "col": 2, "key": "tk_t4_c2", "name": "Unbreakable Aegis", "maxRank": 3, "desc": "Stoneskin 250..500 & Heal 6..18% Max HP"}
+
+    c2_t2 = {"tier": 2, "col": 1, "key": "tk_t2_c1", "name": "Suppressing Blow", "maxRank": 5, "desc": "Target -5..25% Atk & -8..40 Acc (45s)"}
+    c2_t3 = {"tier": 3, "col": 1, "key": "tk_t3_c1", "name": "Spellbreaker Guard", "maxRank": 5, "desc": "Target -6..30 M.Atk & Drains 60..300 Target TP"}
+    c2_t4 = {"tier": 4, "col": 1, "key": "tk_t4_c1", "name": "Bastion Judgment", "maxRank": 3, "desc": "Dispel 1-2, Target Slow 15..25% & +14..42% WSD"}
+
+    if is_mag_dmg:
+        c3_t2 = {"tier": 2, "col": 3, "key": "tk_t2_c3", "name": "Tank Stance Synergy", "maxRank": 5, "desc": "Tank Stance: +8..40% WSD & +8..40 MAB"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "tk_t3_c3", "name": "Runic Focus", "maxRank": 5, "desc": "+9..45 MAB, +9..45 MACC & +60..300 TP Bonus"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "tk_t4_c3", "name": "Vanguard Mastery", "maxRank": 5, "desc": "+7..35% WSD, +8..40 MAB & +6..30 Enmity"}
+    elif is_non_phys:
+        c3_t2 = {"tier": 2, "col": 3, "key": "tk_t2_c3", "name": "Tank Stance Synergy", "maxRank": 5, "desc": "Tank Stance: +8..40% WSD & +6..30 Enmity"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "tk_t3_c3", "name": "Bastion Focus", "maxRank": 5, "desc": "+6..30% WSD, +6..30 Enmity & +60..300 TP Bonus"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "tk_t4_c3", "name": "Vanguard Mastery", "maxRank": 5, "desc": "+8..40% WSD, +8..40 Enmity & Heal 3..15% HP"}
+    else:
+        c3_t2 = {"tier": 2, "col": 3, "key": "tk_t2_c3", "name": "Tank Stance Synergy", "maxRank": 5, "desc": "Tank Stance: +8..40% WSD & +8..40% Atk"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "tk_t3_c3", "name": "Vanguard Force", "maxRank": 5, "desc": "+1 Bonus Hit, +8..40% Atk & +8..40 Acc"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "tk_t4_c3", "name": "Vanguard Mastery", "maxRank": 5, "desc": "fTP ALL Hits, +6..30% WSD & +6..30 Enmity"}
+
+    return [t1c1, c1_t1, t1c3, c2_t2, c1_t2, c3_t2, c2_t3, c1_t3, c3_t3, c2_t4, c1_t4, c3_t4]
+
+
+def build_spellblade_spec_nodes(ws: dict, archetype: str, base_nodes: list[dict]) -> list[dict]:
+    is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
+    is_mag_dmg = ws.get("wsType") == "magic"
+    sk = ws.get("skillId", 0)
+    is_ranged = ws.get("wsType") == "ranged"
+    acc_lbl = "RAcc" if is_ranged else "Acc"
+    ele_name = get_default_element(ws)
+    is_necro = sk == 7
+    is_sage = sk in (11, 12, 2)
+
+    t1c1 = make_scaling_t1_col1(ws, find_grid_node(base_nodes, 1, 1), is_non_phys, ws_kind)
+    t1c3 = make_primary_wsc_node(ws, 1, 3, "sb_t1_c3", is_non_phys, "INT")
+
+    if is_necro:
+        c1_t1 = {"tier": 1, "col": 2, "key": "sb_t1_c2", "name": "Harbinger Pact", "maxRank": 7, "desc": "Heals Undead Pet 10..70% HP/MP & +8..56 MAB" if is_mag_dmg else "Heals Undead Pet 10..70% HP/MP & +4..28% WSD"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "sb_t2_c2", "name": "Soul Siphon", "maxRank": 5, "desc": "HP Drain 8..40% & MP Drain 5..25% of WS dmg"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "sb_t3_c2", "name": "Necrotic Burst", "maxRank": 5, "desc": "Dark follow-up (12..60%)"}
+        if is_mag_dmg:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Lich Sovereign", "maxRank": 3, "desc": "Pet Heal 30..90%, +15..45% WSD & +15..45 MAB"}
+        elif is_non_phys:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Lich Sovereign", "maxRank": 3, "desc": "Pet Heal 30..90%, +15..45% WSD & +0.4..1.2 fTP"}
+        else:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Lich Sovereign", "maxRank": 3, "desc": "Pet Heal 30..90%, +15..45% WSD & 10..30% DEF Ign"}
+    elif is_sage:
+        c1_t1 = {"tier": 1, "col": 2, "key": "sb_t1_c2", "name": "Titania Covenant", "maxRank": 7, "desc": "Heals Titania/Pet 10..70% & +8..56 MAB" if is_mag_dmg else "Heals Titania/Pet 10..70% & +4..28% WSD"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "sb_t2_c2", "name": "Dark Arts Helix", "maxRank": 5, "desc": "MP Drain 6..30% & +9..45 MACC" if is_mag_dmg else "MP Drain 6..30% & +5..25% WSD"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "sb_t3_c2", "name": f"{ele_name} Helix Burst", "maxRank": 5, "desc": f"{ele_name} follow-up (12..60%)"}
+        if is_mag_dmg:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Sage Overcharge", "maxRank": 3, "desc": "+16..48% WSD, +18..54 MAB & -15..45 Target MEVA"}
+        elif is_non_phys:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Sage Overcharge", "maxRank": 3, "desc": "+16..48% WSD, +0.4..1.2 fTP & -15..45 Target MEVA"}
+        else:
+            c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Sage Overcharge", "maxRank": 3, "desc": "+16..48% WSD, 10..30% DEF Ign & -15..45 Target MEVA"}
+    else:
+        c1_t1 = {"tier": 1, "col": 2, "key": "sb_t1_c2", "name": "Conduction Edge", "maxRank": 7, "desc": "Grants +1..2 Conduction & +8..56 MAB" if is_mag_dmg else "Grants +1..2 Conduction & +4..28% WSD"}
+        c1_t2 = {"tier": 2, "col": 2, "key": "sb_t2_c2", "name": "Runic Siphon", "maxRank": 5, "desc": "MP Drain 6..30% & +9..45 MACC" if is_mag_dmg else "MP Drain 6..30% & +5..25% WSD"}
+        c1_t3 = {"tier": 3, "col": 2, "key": "sb_t3_c2", "name": f"{ele_name} Edgeflare", "maxRank": 5, "desc": f"{ele_name} follow-up (12..60%)"}
+        c1_t4 = {"tier": 4, "col": 2, "key": "sb_t4_c2", "name": "Ascendant Spellblade", "maxRank": 3, "desc": "+2..3 Conduction, +15..45% WSD & +15..45 MAB" if is_mag_dmg else "+2..3 Conduction, +15..45% WSD & +0.4..1.2 fTP"}
+
+    c2_t2 = {"tier": 2, "col": 1, "key": "sb_t2_c1", "name": "Arcane Breach", "maxRank": 5, "desc": "Target -6..30 M.Def & -8..40 M.Eva (45s)"}
+    c2_t3 = {"tier": 3, "col": 1, "key": "sb_t3_c1", "name": "Runic Resonance", "maxRank": 5, "desc": "Runes/DarkArts: +9..45% WSD & +10..50 MAB" if is_mag_dmg else "Runes/DarkArts: +9..45% WSD & +60..300 TP Bonus"}
+    c2_t4 = {"tier": 4, "col": 1, "key": "sb_t4_c1", "name": "Elemental Convergence", "maxRank": 3, "desc": "+15..45% SC Dmg & +0.5..1.5 fTP"}
+    c3_t2 = {"tier": 2, "col": 3, "key": "sb_t2_c3", "name": "Spellweaver Tempo", "maxRank": 5, "desc": "+70..350 TP Bonus & +6..30% WSD"}
+
+    if is_mag_dmg:
+        c3_t3 = {"tier": 3, "col": 3, "key": "sb_t3_c3", "name": "Arcane Amplifier", "maxRank": 5, "desc": "+10..50 MAB, +10..50 MACC & +5..25% WSD"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "sb_t4_c3", "name": "Spellblade Mastery", "maxRank": 5, "desc": "+7..35% WSD, +10..50 MAB & +8..40% SC Dmg"}
+    elif is_non_phys:
+        c3_t3 = {"tier": 3, "col": 3, "key": "sb_t3_c3", "name": "Runic Amplifier", "maxRank": 5, "desc": "+7..35% WSD & +60..300 TP Bonus"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "sb_t4_c3", "name": "Spellblade Mastery", "maxRank": 5, "desc": "+7..35% WSD, +60..300 TP Bonus & +8..40% SC Dmg"}
+    else:
+        c3_t3 = {"tier": 3, "col": 3, "key": "sb_t3_c3", "name": "Enchanted Flurry", "maxRank": 5, "desc": f"+1 Bonus Hit, +5..25% WSD & +8..40 {acc_lbl}"}
+        c3_t4 = {"tier": 4, "col": 3, "key": "sb_t4_c3", "name": "Spellblade Mastery", "maxRank": 5, "desc": "+7..35% WSD, +60..300 TP Bonus & +8..40% SC Dmg"}
+
+    return [t1c1, c1_t1, t1c3, c2_t2, c1_t2, c3_t2, c2_t3, c1_t3, c3_t3, c2_t4, c1_t4, c3_t4]
+
+
+def build_healer_spec_nodes(ws: dict, archetype: str, base_nodes: list[dict]) -> list[dict]:
+    is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
+    is_mag_dmg = ws.get("wsType") == "magic"
+    t1c1 = make_scaling_t1_col1(ws, find_grid_node(base_nodes, 1, 1), is_non_phys, ws_kind)
+    t1c3 = make_primary_wsc_node(ws, 1, 3, "hl_t1_c3", is_non_phys, "MND")
+
+    c1_t1 = {"tier": 1, "col": 2, "key": "hl_t1_c2", "name": "Vivacious Mending", "maxRank": 7, "desc": "Party Heal 3..21% Max HP & Eos/Pet Heal 10..70%"}
+    c1_t2 = {"tier": 2, "col": 2, "key": "hl_t2_c2", "name": "Sanctuary Regen", "maxRank": 5, "desc": "Party Regen 12..32/tick (30s) & +6..30% WSD"}
+    c1_t3 = {"tier": 3, "col": 2, "key": "hl_t3_c2", "name": "Runic Lifetap", "maxRank": 5, "desc": "MP Drain 8..40% of WS dmg & Party Refresh 3..15/t"}
+    c1_t4 = {"tier": 4, "col": 2, "key": "hl_t4_c2", "name": "Lifebinder Benediction", "maxRank": 3, "desc": "Party Heal 10..30% Max HP & +15..45% WSD"}
+    c2_t2 = {"tier": 2, "col": 1, "key": "hl_t2_c1", "name": "Pacifying Strike", "maxRank": 5, "desc": "+5..25 Subtle Blow & Target -5..25% Atk (45s)"}
+    c2_t3 = {"tier": 3, "col": 1, "key": "hl_t3_c1", "name": "Solace Harmony", "maxRank": 5, "desc": "LightArts/Valiance: +9..45% WSD & +10..50 MAB" if is_mag_dmg else "LightArts/Valiance: +9..45% WSD & +60..300 TP Bonus"}
+    c2_t4 = {"tier": 4, "col": 1, "key": "hl_t4_c1", "name": "Sanctified Ward", "maxRank": 3, "desc": "Stoneskin 250..500 & Party +80..240 TP"}
+    c3_t2 = {"tier": 2, "col": 3, "key": "hl_t2_c3", "name": "Luminous Pulse", "maxRank": 5, "desc": "Light follow-up (11..55%)"}
+    c3_t3 = {"tier": 3, "col": 3, "key": "hl_t3_c3", "name": "Mending Tempo", "maxRank": 5, "desc": "+70..350 TP Bonus & Target -6..30 M.Atk (45s)"}
+    c3_t4 = {"tier": 4, "col": 3, "key": "hl_t4_c3", "name": "Healer Mastery", "maxRank": 5, "desc": "+7..35% WSD, +8..40 MACC & -4..20 Enmity" if is_mag_dmg else "+7..35% WSD, Party Heal 2..10% & -4..20 Enmity"}
+    return [t1c1, c1_t1, t1c3, c2_t2, c1_t2, c3_t2, c2_t3, c1_t3, c3_t3, c2_t4, c1_t4, c3_t4]
+
+
+def build_commander_spec_nodes(ws: dict, archetype: str, base_nodes: list[dict]) -> list[dict]:
+    is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
+    is_mag_dmg = ws.get("wsType") == "magic"
+    t1c1 = make_scaling_t1_col1(ws, find_grid_node(base_nodes, 1, 1), is_non_phys, ws_kind)
+    t1c3 = make_primary_wsc_node(ws, 1, 3, "cm_t1_c3", is_non_phys, None)
+
+    c1_t1 = {"tier": 1, "col": 2, "key": "cm_t1_c2", "name": "Rallying Cadence", "maxRank": 7, "desc": "Party +35..245 TP & NextWS +4..28% WSD (15s)"}
+    c1_t2 = {"tier": 2, "col": 2, "key": "cm_t2_c2", "name": "Banner of War", "maxRank": 5, "desc": "Party Warcry (+6..30% Atk, 25s) & +5..25% WSD"}
+    c1_t3 = {"tier": 3, "col": 2, "key": "cm_t3_c2", "name": "Tactical Haste", "maxRank": 5, "desc": "Party Haste +4..20% (25s) & +60..300 TP Bonus"}
+    c1_t4 = {"tier": 4, "col": 2, "key": "cm_t4_c2", "name": "Supreme Commander", "maxRank": 3, "desc": "Party +100..300 TP, +15..45% WSD & +12..36% SC Dmg"}
+    c2_t2 = {"tier": 2, "col": 1, "key": "cm_t2_c1", "name": "Sunder Formation", "maxRank": 5, "desc": "Target -5..25% DEF & -6..30 M.Def (45s)"}
+
+    if is_mag_dmg:
+        c2_t3 = {"tier": 3, "col": 1, "key": "cm_t3_c1", "name": "Command Presence", "maxRank": 5, "desc": "Command Stance: +9..45% WSD & +10..50 MAB"}
+        c3_t2 = {"tier": 2, "col": 3, "key": "cm_t2_c3", "name": "Arcane Volley", "maxRank": 5, "desc": "+9..45 MAB & +9..45 MACC"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "cm_t3_c3", "name": "Resonant Chain", "maxRank": 5, "desc": "+8..40% SC Dmg & +0.25..1.25 fTP"}
+    elif is_non_phys:
+        c2_t3 = {"tier": 3, "col": 1, "key": "cm_t3_c1", "name": "Command Presence", "maxRank": 5, "desc": "Command Stance: +9..45% WSD & +60..300 TP"}
+        c3_t2 = {"tier": 2, "col": 3, "key": "cm_t2_c3", "name": "Tactical Volley", "maxRank": 5, "desc": "+6..30% WSD & Party +40..200 TP"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "cm_t3_c3", "name": "Resonant Chain", "maxRank": 5, "desc": "+8..40% SC Dmg & +0.25..1.25 fTP"}
+    else:
+        c2_t3 = {"tier": 3, "col": 1, "key": "cm_t3_c1", "name": "Command Presence", "maxRank": 5, "desc": "Command Stance: +9..45% WSD & +8..40% Atk"}
+        c3_t2 = {"tier": 2, "col": 3, "key": "cm_t2_c3", "name": "Vanguard Strike", "maxRank": 5, "desc": "+9..45% WS Atk & +9..45 Acc"}
+        c3_t3 = {"tier": 3, "col": 3, "key": "cm_t3_c3", "name": "Coordinated Assault", "maxRank": 5, "desc": "+1 Bonus Hit & +8..40% SC Dmg"}
+
+    c2_t4 = {"tier": 4, "col": 1, "key": "cm_t4_c1", "name": "Exposed Flank", "maxRank": 3, "desc": "Target -15..45 EVA/MEVA & NextWS +120..360 TP"}
+    c3_t4 = {"tier": 4, "col": 3, "key": "cm_t4_c3", "name": "Commander Mastery", "maxRank": 5, "desc": "+7..35% WSD & Party +5..25% Crit (20s)"}
+    return [t1c1, c1_t1, t1c3, c2_t2, c1_t2, c3_t2, c2_t3, c1_t3, c3_t3, c2_t4, c1_t4, c3_t4]
+
+
+def build_berserker_spec_nodes(ws: dict, archetype: str, base_nodes: list[dict]) -> list[dict]:
+    is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
+    is_mag_dmg = ws.get("wsType") == "magic"
+    out = []
+    grid = {1: {}, 2: {}, 3: {}, 4: {}}
+
+    for raw in base_nodes:
+        n = copy.deepcopy(raw)
+        if is_non_phys:
+            n = sanitize_node_for_non_physical(n, ws, ws_kind)
+        t, c = n["tier"], n["col"]
+        if t in grid and c not in grid[t]:
+            grid[t][c] = n
+            out.append(n)
+
+    if 1 not in grid[1]:
+        n = make_scaling_t1_col1(ws, None, is_non_phys, ws_kind)
+        grid[1][1] = n
+        out.append(n)
+    if 2 not in grid[1]:
+        if is_mag_dmg:
+            n = {"tier": 1, "col": 2, "key": "zk_t1_c2", "name": "Arcane Surge", "maxRank": 7, "desc": "+8..56 MAB & +7..49 MACC"}
+        elif is_non_phys:
+            n = {"tier": 1, "col": 2, "key": "zk_t1_c2", "name": "Resonant Surge", "maxRank": 7, "desc": "+5..35% WSD & +45..315 TP Bonus"}
+        else:
+            n = {"tier": 1, "col": 2, "key": "zk_t1_c2", "name": "Fury Opener", "maxRank": 7, "desc": "+7..49% WS Atk & +4..28% WSD"}
+        grid[1][2] = n
+        out.append(n)
+    if 3 not in grid[1]:
+        n = make_primary_wsc_node(ws, 1, 3, "zk_t1_c3", is_non_phys, None)
+        grid[1][3] = n
+        out.append(n)
+
+    if 3 not in grid[2]:
+        if is_mag_dmg:
+            n = {"tier": 2, "col": 3, "key": "zk_t2_c3", "name": "Overwhelming Arcana", "maxRank": 5, "desc": "+9..45 MAB, +5..25% WSD & +50..250 TP Bonus"}
+        elif is_non_phys:
+            n = {"tier": 2, "col": 3, "key": "zk_t2_c3", "name": "Overwhelming Force", "maxRank": 5, "desc": "+7..35% WSD & +60..300 TP Bonus"}
+        else:
+            n = {"tier": 2, "col": 3, "key": "zk_t2_c3", "name": "Armor Sundering", "maxRank": 5, "desc": "Ignores 6..30% DEF & +5..25% WSD"}
+        grid[2][3] = n
+        out.append(n)
+
+    if 3 not in grid[3]:
+        ele_name = get_default_element(ws)
+        if is_non_phys:
+            n = {"tier": 3, "col": 3, "key": "zk_t3_c3", "name": f"{ele_name} Detonation", "maxRank": 5, "desc": f"{ele_name} elemental follow-up (12..60%)"}
+        else:
+            n = {"tier": 3, "col": 3, "key": "zk_t3_c3", "name": "Bloodbath Momentum", "maxRank": 5, "desc": "+5..25% Crit, +6..30% Crit Dmg & 5..25% HP Drain"}
+        grid[3][3] = n
+        out.append(n)
+
+    if 3 not in grid[4]:
+        if is_non_phys:
+            n = {"tier": 4, "col": 3, "key": "zk_t4_c3", "name": "Cataclysmic Apex", "maxRank": 5, "desc": "+0.3..1.5 fTP, +7..35% WSD & +8..40% SC Dmg"}
+        else:
+            n = {"tier": 4, "col": 3, "key": "zk_t4_c3", "name": "Berserker Apex", "maxRank": 5, "desc": "+1 Bonus Hit, fTP ALL Hits & +6..30% WSD"}
+        grid[4][3] = n
+        out.append(n)
+
+    return out
+
+
+def finalize_spec_nodes(raw_nodes: list[dict]) -> list[dict]:
+    nodes = [copy.deepcopy({k: v for k, v in n.items() if k != "physFlags"}) for n in raw_nodes]
+    for sc_tier in range(1, 5):
+        b1, b2, sc_lvl = SC_BONUS_BY_TIER[sc_tier]
+        nodes.append(
+            {
+                "tier": sc_tier,
+                "col": 4,
+                "key": f"sc_t{sc_tier}",
+                "name": f"SC T{sc_tier} ({sc_lvl})",
+                "maxRank": 2,
+                "isSkillchain": True,
+                "desc": f"Player-selectable {sc_lvl} Skillchain property (+{b1}/{b2}% SC Dmg)",
+            }
+        )
+    nodes.sort(key=lambda n: (n["tier"], n["col"]))
+    for n in nodes:
+        gate = TIER_GATES.get(n["tier"], TIER_GATES[1])
+        n["reqWsPoints"] = gate["reqWsPoints"]
+        if n.get("isSkillchain"):
+            sc_t = n["tier"]
+            lvls = RANK_LEVEL_TABLES["sc"].get(sc_t, [1, 18])
+            n["reqLevel"] = lvls[0]
+            n["rankLevels"] = lvls
+        else:
+            lvls = RANK_LEVEL_TABLES.get(n["tier"], {}).get(n["maxRank"])
+            n["reqLevel"] = lvls[0] if lvls else gate["reqLevel"]
+            if lvls:
+                n["rankLevels"] = lvls
+    return nodes
+
+
 def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
     tree_files = [LUA_DIR / "overlords_ws_talents.lua"] + sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))
+    # Map ws_id -> {"mode": "reg"|"regB"|"regSpec"|"throwing", "archetype": str, "baseNodes": [...], "specNodes": {...}, "sourceFile": str}
     trees_by_ws_id = {}
 
     for fpath in tree_files:
         if not fpath.exists():
             continue
         clean = strip_lua_comments(fpath.read_text(encoding="utf-8", errors="replace"))
+        src_rel = f"modules/custom/lua/{fpath.name}"
 
-        for m in re.finditer(r"\b(?:reg|regB|H\.reg|H\.regBaseline)\s*\(\s*(\d+)\s*,\s*['\"]([^'\"]+)['\"]\s*,", clean):
+        # Capture local zerkXX = { ... } blocks (used by regGS in overlords_ws_trees_gs.lua)
+        local_node_lists = {}
+        for lm in re.finditer(r"local\s+(zerk\d+)\s*=\s*\{", clean):
+            var_name = lm.group(1)
+            b_start = clean.find("{", lm.start())
+            b_end = find_balanced(clean, b_start, "{", "}")
+            if b_end != -1:
+                calls = split_top_level_args(clean[b_start + 1 : b_end])
+                local_node_lists[var_name] = [pn for nc in calls if (pn := parse_single_helper_node(nc))]
+
+        # 1. regGS(wsId, archetype, zerkN)
+        for m in re.finditer(r"\bregGS\s*\(\s*(\d+)\s*,\s*['\"]([^'\"]+)['\"]\s*,\s*(zerk\d+)\s*(?:,|\))", clean):
             ws_id = int(m.group(1))
             archetype = m.group(2)
+            var_name = m.group(3)
+            trees_by_ws_id[ws_id] = {
+                "mode": "reg",
+                "archetype": archetype,
+                "baseNodes": local_node_lists.get(var_name, []),
+                "sourceFile": src_rel,
+            }
+
+        # 2. reg / H.reg / regB / H.regBaseline
+        for m in re.finditer(r"\b(reg|regB|H\.reg|H\.regBaseline)\s*\(\s*(\d+)\s*,\s*['\"]([^'\"]+)['\"]\s*,", clean):
+            fn_used = m.group(1)
+            ws_id = int(m.group(2))
+            archetype = m.group(3)
             b_start = clean.find("{", m.end())
             if b_start == -1:
                 continue
             b_end = find_balanced(clean, b_start, "{", "}")
             if b_end == -1:
                 continue
-            nodes_body = clean[b_start + 1 : b_end]
-            node_calls = split_top_level_args(nodes_body)
-            parsed_nodes = []
-            for nc in node_calls:
-                pn = parse_single_helper_node(nc)
-                if pn:
-                    parsed_nodes.append(pn)
+            node_calls = split_top_level_args(clean[b_start + 1 : b_end])
+            parsed_nodes = [pn for nc in node_calls if (pn := parse_single_helper_node(nc))]
+            mode = "regB" if fn_used in ("regB", "H.regBaseline") else "reg"
+            if fpath.name == "overlords_ws_trees_throwing.lua":
+                mode = "throwing"
             trees_by_ws_id[ws_id] = {
+                "mode": mode,
                 "archetype": archetype,
-                "nodes": parsed_nodes,
-                "sourceFile": f"modules/custom/lua/{fpath.name}",
+                "baseNodes": parsed_nodes,
+                "sourceFile": src_rel,
             }
 
+        # 3. registerCustomH2H(wsId, { archetype = '...', nodes = { ... } })
         for m in re.finditer(r"\bregisterCustomH2H\s*\(\s*(\d+)\s*,", clean):
             ws_id = int(m.group(1))
             b_start = clean.find("{", m.end())
@@ -1028,51 +1448,78 @@ def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
                 continue
             n_start = spec_body.find("{", nm.start())
             n_end = find_balanced(spec_body, n_start, "{", "}")
-            nodes_body = spec_body[n_start + 1 : n_end]
-            node_calls = split_top_level_args(nodes_body)
-            parsed_nodes = []
-            for nc in node_calls:
-                pn = parse_single_helper_node(nc)
-                if pn:
-                    parsed_nodes.append(pn)
+            node_calls = split_top_level_args(spec_body[n_start + 1 : n_end])
+            parsed_nodes = [pn for nc in node_calls if (pn := parse_single_helper_node(nc))]
             trees_by_ws_id[ws_id] = {
+                "mode": "reg",
                 "archetype": archetype,
-                "nodes": parsed_nodes,
-                "sourceFile": f"modules/custom/lua/{fpath.name}",
+                "baseNodes": parsed_nodes,
+                "sourceFile": src_rel,
             }
 
     out_list = []
     for ws_id in sorted(ws_by_id.keys()):
         ws = ws_by_id[ws_id]
-        tinfo = trees_by_ws_id.get(ws_id, {"archetype": ws["wsType"], "nodes": [], "sourceFile": "modules/custom/lua/overlords_ws_talents.lua"})
-        nodes = list(tinfo["nodes"])
+        tinfo = trees_by_ws_id.get(
+            ws_id,
+            {"mode": "reg", "archetype": ws["wsType"], "baseNodes": [], "sourceFile": "modules/custom/lua/overlords_ws_talents.lua"},
+        )
+        archetype = tinfo["archetype"]
+        base_nodes = tinfo["baseNodes"]
+        mode = tinfo["mode"]
+        is_non_phys, ws_kind = is_magic_or_utility_ws(ws, archetype)
 
-        for sc_tier in range(1, 5):
-            b1, b2, sc_lvl = SC_BONUS_BY_TIER[sc_tier]
-            nodes.append(
-                {
-                    "tier": sc_tier,
-                    "col": 4,
-                    "key": f"sc_t{sc_tier}",
-                    "name": f"SC T{sc_tier} ({sc_lvl})",
-                    "maxRank": 2,
-                    "isSkillchain": True,
-                    "desc": f"Player-selectable {sc_lvl} Skillchain property (+{b1}/{b2}% SC Dmg)",
-                }
-            )
+        if mode == "throwing":
+            cleaned = [sanitize_node_for_non_physical(n, ws, ws_kind) if is_non_phys else n for n in base_nodes]
+            final_nodes = finalize_spec_nodes(cleaned)
+            spec_trees = {"bladewheel": final_nodes}
+        else:
+            tank_nodes = build_tank_spec_nodes(ws, archetype, base_nodes)
+            heal_nodes = build_healer_spec_nodes(ws, archetype, base_nodes)
+            sb_nodes = build_spellblade_spec_nodes(ws, archetype, base_nodes)
+            cmd_nodes = build_commander_spec_nodes(ws, archetype, base_nodes)
+            zerk_nodes = build_berserker_spec_nodes(ws, archetype, base_nodes)
 
-        nodes.sort(key=lambda n: (n["tier"], n["col"]))
-        for n in nodes:
-            gate = TIER_GATES.get(n["tier"], TIER_GATES[1])
-            n["reqLevel"] = gate["reqLevel"]
-            n["reqWsPoints"] = gate["reqWsPoints"]
+            if mode == "regB":
+                # Inject Club/Staff Col 1 (Tank), Col 2 (Healer/Spellblade), Col 3 (Commander) into Col 1 of each spec
+                def inject_col1(target_list, bespoke_col):
+                    for tier in range(1, 5):
+                        b_node = find_grid_node(base_nodes, tier, bespoke_col)
+                        if b_node is not None:
+                            b_node["tier"] = tier
+                            b_node["col"] = 1
+                            for idx, tn in enumerate(target_list):
+                                if tn["tier"] == tier and tn["col"] == 1:
+                                    target_list[idx] = b_node
+                                    break
+
+                inject_col1(tank_nodes, 1)
+                inject_col1(heal_nodes, 2)
+                inject_col1(sb_nodes, 2)
+                inject_col1(cmd_nodes, 3)
+
+            spec_map_raw = {
+                "berserker": zerk_nodes,
+                "tank": tank_nodes,
+                "spellblade": sb_nodes,
+                "healer": heal_nodes,
+                "commander": cmd_nodes,
+            }
+            spec_trees = {}
+            for s_key, s_nodes in spec_map_raw.items():
+                cleaned = [sanitize_node_for_non_physical(n, ws, ws_kind) if is_non_phys else n for n in s_nodes]
+                spec_trees[s_key] = finalize_spec_nodes(cleaned)
+
+            final_nodes = spec_trees["berserker"]
 
         ws_entry = {
             **ws,
-            "archetype": tinfo["archetype"],
+            "archetype": archetype,
             "sourceFile": tinfo["sourceFile"],
-            "maxPoints": sum(n["maxRank"] for n in nodes),
-            "nodes": nodes,
+            "isSpecAdaptive": mode != "throwing",
+            "maxPoints": sum(n["maxRank"] for n in final_nodes),
+            "nodes": final_nodes,
+            "specTrees": spec_trees,
         }
         out_list.append(ws_entry)
 
@@ -1114,6 +1561,9 @@ def parse_server_rules() -> dict:
         "maxPointsAt75": 225,
         "pointsPerMaxedWS": 56,
         "crystalUnlockLevel": 10,
+        "wsUnlockRule": "All Weaponskills are visible from Level 1, and each WS is unlocked for use as soon as you invest at least 1 Talent Point into Tier 1 of that WS.",
+        "tierGates": TIER_GATES,
+        "specCategories": SPEC_CATEGORIES,
         "features": header_features,
         "baselinePlayerPace": [
             {"stat": "Baseline Haste", "value": "+25% (+15% Gear + 10% Ability)", "desc": "Brisk combat speed right from Level 1 without needing endgame Haste gear first."},
@@ -1173,7 +1623,7 @@ def parse_commands() -> list[dict]:
         {
             "command": "!talent",
             "sourceFile": "modules/custom/commands/talent.lua",
-            "summary": "Weaponskill Talent Tree builder (4 Tiers, 56 pts per WS, Skillchain selector) & Ashita v4 /talents UI bridge.",
+            "summary": "Spec-adaptive Weaponskill Talent Tree builder (4 Tiers, 56 pts per WS, Tier-1 WS unlock, Skillchain selector) & Ashita v4 0x1FD binary /talents UI bridge.",
             "usage": [
                 "!talent",
                 "/talents (or /tal in Ashita v4 UI)",
@@ -1226,6 +1676,8 @@ def parse_patches() -> list[dict]:
         "0015-dnc-ranged-dances.patch": "Allows Steps and Flourishes to execute at ranged distances up to 20 yalms when Bladewheel is socketed.",
         "0016-eos-jugpet-spells-and-skills.patch": "Configures deterministic spell lists and AI casting cooldowns for Eos and Titania faerie pets.",
         "0017-blm-necromancer-pets.patch": "Configures custom Undead Warrior, Undead Mage, Corse, and Dullahan pet IDs (130–133) for BLM Necromancer.",
+        "0018-search-job-labels.patch": "Streams active OverlordsXI Soul Crystal spec labels in `/search` and party search results.",
+        "0019-talent-ws-unlocks.patch": "Gates Weaponskill usage until at least 1 Tier-1 Talent Point is invested and adds the `0x1FD` (`OXTL`) binary packet for instant Ashita `/talents` UI syncing.",
     }
     desc_map.update({k: v for k, v in extra_descriptions.items() if k not in desc_map})
 
@@ -1361,7 +1813,7 @@ def main():
     print(
         f"Generated {json_path.relative_to(ROOT_DIR)} and {js_path.relative_to(ROOT_DIR)}: "
         f"{data['stats']['totalCrystalSpecs']} Crystal Specs ({total_custom_jas} Custom JAs, {data['stats']['totalCustomTraits']} Traits), "
-        f"{data['stats']['totalWeaponskills']} Weaponskill Trees, "
+        f"{data['stats']['totalWeaponskills']} Weaponskill Trees (5-spec adaptive), "
         f"{data['stats']['totalPatches']} Engine Patches, "
         f"{data['stats']['totalRecentCommits']} Git Commits."
     )

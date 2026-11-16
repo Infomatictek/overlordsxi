@@ -2,8 +2,8 @@
  * OverlordsXI Server Wiki & Live Encyclopedia Engine
  * --------------------------------------------------
  * Zero-maintenance static SPA for SWAG / Nginx / GitHub Pages.
- * Automatically loads `data.json` (or fallback `window.OVERLORDS_DATA`)
- * and live-syncs against GitHub (`Infomatictek/overlordsxi`).
+ * Automatically resolves the latest commit SHA from GitHub so
+ * raw.githubusercontent.com never serves stale cached data.json.
  */
 (function () {
   'use strict';
@@ -16,12 +16,21 @@
     token: '',
   };
 
+  const SPEC_VIEW_META = [
+    { key: 'berserker', label: 'Berserker / DPS', hint: 'WAR Berserker, SAM, DRK, DRG, THF, NIN, RNG, MNK DPS' },
+    { key: 'tank', label: 'Tank / Vanguard', hint: 'RUN Inquisitor, WAR Gladiator, MNK Sensei, PLD' },
+    { key: 'spellblade', label: 'Spellblade / Arcana', hint: 'RUN Spellblade, SCH Sage, BLM Necromancer, RDM, BLU, SMN' },
+    { key: 'healer', label: 'Healer / Mending', hint: 'RUN Lifebinder, SCH Medic, WHM, BRD, GEO' },
+    { key: 'commander', label: 'Commander / Tactical', hint: 'WAR Commander, COR' },
+  ];
+
   let state = {
     data: window.OVERLORDS_DATA || null,
     activePage: 'overview',
     selectedJobKey: 'ALL',
     selectedSkillName: 'Hand-to-Hand',
     selectedWsId: 1,
+    selectedWsSpec: 'berserker',
     wsSearchQuery: '',
     syncCfg: loadSyncConfig(),
     liveCommits: null,
@@ -64,7 +73,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Live GitHub / Data.json Sync
+  // Live GitHub / Data.json Sync (Bypasses Fastly 5-min raw branch cache)
   // ---------------------------------------------------------------------------
   async function syncFromGitHub() {
     const dot = document.getElementById('syncDot');
@@ -77,19 +86,49 @@
       }
     };
 
-    setStatus('Checking GitHub...', '#fbbf24');
+    setStatus('Syncing...', '#fbbf24');
 
     const headers = { Accept: 'application/vnd.github.v3+json' };
     if (state.syncCfg.token) {
       headers.Authorization = `Bearer ${state.syncCfg.token}`;
     }
 
-    // 1. Try fetching fresh data.json (from customDataUrl, GitHub raw, or local ./data.json)
+    // 1. Query GitHub Commits API first (uncached) to get the exact latest commit SHA
+    let latestSha = '';
+    try {
+      const apiCommitsUrl = `https://api.github.com/repos/${state.syncCfg.repo}/commits?sha=${encodeURIComponent(
+        state.syncCfg.branch
+      )}&per_page=25&t=${Date.now()}`;
+      const res = await fetch(apiCommitsUrl, { headers, cache: 'no-store' });
+      if (res.ok) {
+        const commitsArr = await res.json();
+        if (Array.isArray(commitsArr) && commitsArr.length > 0) {
+          latestSha = commitsArr[0].sha || '';
+          state.liveCommits = commitsArr.map((c) => ({
+            hash: c.sha,
+            shortHash: (c.sha || '').slice(0, 7),
+            author: c.commit?.author?.name || c.author?.login || 'Author',
+            date: c.commit?.author?.date || '',
+            subject: (c.commit?.message || '').split('\n')[0],
+            files: [],
+            totalAdded: 0,
+            totalRemoved: 0,
+          }));
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fetch data.json — prioritize customDataUrl, then immutable commit-SHA raw URL, then branch/local
     const candidateUrls = [];
     if (state.syncCfg.customDataUrl) {
       candidateUrls.push(state.syncCfg.customDataUrl);
     }
     if (!state.syncCfg.token) {
+      if (latestSha) {
+        candidateUrls.push(
+          `https://raw.githubusercontent.com/${state.syncCfg.repo}/${latestSha}/site/data.json`
+        );
+      }
       candidateUrls.push(
         `https://raw.githubusercontent.com/${state.syncCfg.repo}/${state.syncCfg.branch}/site/data.json?t=${Date.now()}`
       );
@@ -111,36 +150,16 @@
       } catch (_) {}
     }
 
-    // 2. Also query GitHub API for latest commits so even between data.json builds, recent commits show live
-    try {
-      const apiCommitsUrl = `https://api.github.com/repos/${state.syncCfg.repo}/commits?sha=${encodeURIComponent(
-        state.syncCfg.branch
-      )}&per_page=25`;
-      const res = await fetch(apiCommitsUrl, { headers });
-      if (res.ok) {
-        const commitsArr = await res.json();
-        if (Array.isArray(commitsArr) && commitsArr.length > 0) {
-          state.liveCommits = commitsArr.map((c) => ({
-            hash: c.sha,
-            shortHash: (c.sha || '').slice(0, 7),
-            author: c.commit?.author?.name || c.author?.login || 'Author',
-            date: c.commit?.author?.date || '',
-            subject: (c.commit?.message || '').split('\n')[0],
-            files: [],
-            totalAdded: 0,
-            totalRemoved: 0,
-          }));
-          if (state.data) {
-            state.data.headCommit = state.liveCommits[0].shortHash;
-          }
-        }
-      }
-    } catch (_) {}
+    if (state.data && state.liveCommits && state.liveCommits.length > 0 && !state.data.headCommit) {
+      state.data.headCommit = state.liveCommits[0].shortHash;
+    }
 
     updateSidebarMeta();
     renderCurrentPage();
     setStatus(
-      loadedRemoteJson ? `Live (${state.data?.headCommit || 'main'})` : `Ready (${state.data?.headCommit || 'local'})`,
+      loadedRemoteJson
+        ? `Live (${state.data?.headCommit || latestSha.slice(0, 7) || 'main'})`
+        : `Local (${state.data?.headCommit || 'bundled'})`,
       '#10b981'
     );
   }
@@ -154,7 +173,6 @@
     if (wBadge) wBadge.textContent = state.data.stats?.totalWeaponskills || 219;
     if (cHash) cHash.textContent = state.data.headCommit || 'latest';
 
-    // Populate Sidebar Job Crystal Quick Links
     const jobSublist = document.getElementById('sidebarJobLinks');
     if (jobSublist && state.data.jobSpecs) {
       jobSublist.innerHTML = state.data.jobSpecs
@@ -188,6 +206,7 @@
     if (opts.jobKey) state.selectedJobKey = opts.jobKey;
     if (opts.skillName) state.selectedSkillName = opts.skillName;
     if (opts.wsId) state.selectedWsId = Number(opts.wsId);
+    if (opts.wsSpec) state.selectedWsSpec = opts.wsSpec;
 
     document.querySelectorAll('.nav-item[data-page]').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-page') === page);
@@ -241,12 +260,12 @@
 
     return `
       <section class="wiki-hero">
-        <div class="hero-eyebrow">⚡ Classic Level 75 Cap &bull; Level 99 QoL &bull; Bespoke Specs &amp; WS Trees</div>
+        <div class="hero-eyebrow">⚡ Classic Level 75 Cap &bull; Level 99 QoL &bull; Spec-Adaptive WS Trees</div>
         <h1>Welcome to the OverlordsXI Encyclopedia</h1>
         <p>
           OverlordsXI blends the iconic <strong>Level 75 Era cap</strong> with modern <strong>Level 99 Quality-of-Life</strong>,
           faster baseline combat pacing, transformative <strong>Lv.10+ Job Soul Crystals</strong>, and a deep
-          <strong>56-point Talent Tree for every Weaponskill in the game</strong>.
+          <strong>Spec-Adaptive 56-point Talent Tree for every Weaponskill in the game</strong>.
         </p>
 
         <div class="stat-grid">
@@ -256,7 +275,7 @@
           </div>
           <div class="stat-card" data-nav="talents">
             <div class="stat-value">${s.totalWeaponskills || 219} WS Trees</div>
-            <div class="stat-label">All 15 Weapon Types Unlocked @ Lv. 1</div>
+            <div class="stat-label">5 Spec Views &bull; Unlock via Tier 1</div>
           </div>
           <div class="stat-card" data-nav="companions">
             <div class="stat-value">6 Custom Pets</div>
@@ -298,15 +317,14 @@
 
         <div class="wiki-card">
           <h3>
-            <span>🌟 Weaponskill Talent Trees (Lv. 1+)</span>
+            <span>🌟 Spec-Adaptive WS Talent Trees</span>
             <span class="badge badge-cyan">!talent / /talents</span>
           </h3>
           <p>
-            Every implemented player weaponskill is <strong>unlocked at Level 1</strong>. Base PC weaponskills start normalized
-            (<code>1 Hit, fTP 1.0, 0% WSC, No Skillchain</code>) and you earn <strong>3 Talent Points per job level</strong>
-            (<strong>225 points at Lv. 75</strong>—enough to fully max <strong>4 Weaponskills</strong> at 56 points each).
-            Each WS features a bespoke 4-tier tree with custom multi-hit rebuilds, elemental follow-ups, stance synergies, and
-            <strong>player-selectable Skillchain properties</strong> in every tier.
+            All ${s.totalWeaponskills || 219} Weaponskills are <strong>visible from Level 1</strong> and unlock for use as soon as you invest
+            <strong>1 point in Tier 1</strong>. You earn <strong>3 Talent Points per job level</strong> (<strong>225 pts at Lv. 75</strong>—4 maxed WSs at 56 pts each).
+            Each WS dynamically reshapes across <strong>5 Spec Trees</strong> (<em>Berserker, Tank, Spellblade, Healer, Commander</em>) and enforces strict
+            Magic/Utility stat sanitization—no dead physical stats on Magic/Utility WSs!
           </p>
           <button class="btn-primary" data-nav="talents">Browse All ${s.totalWeaponskills || 219} Weaponskill Trees &rarr;</button>
         </div>
@@ -720,7 +738,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // PAGE 4: Weaponskill Talent Trees Explorer (All 219 WSs across 15 Skills)
+  // PAGE 4: Weaponskill Talent Trees Explorer (All 219 WSs + 5 Spec Views)
   // ---------------------------------------------------------------------------
   function renderTalentsPage() {
     const allWs = state.data.weaponskills || [];
@@ -752,12 +770,13 @@
 
     return `
       <section class="wiki-hero">
-        <div class="hero-eyebrow">🌟 Weaponskill Talent System &bull; 3 Points/Level (225 Pts @ Lv.75)</div>
+        <div class="hero-eyebrow">🌟 Spec-Adaptive Weaponskill Talents &bull; 3 Pts/Lv (225 Pts @ Lv.75)</div>
         <h1>Weaponskill Talent Tree Encyclopedia (${allWs.length} WSs)</h1>
         <p>
-          All player weaponskills are <strong>unlocked at Level 1</strong>. Base PC weaponskills start at
-          <code>1 Hit, fTP 1.0, 0% WSC, No Skillchain</code> and grow into bespoke <strong>56-point 4-Tier Talent Trees</strong>.
-          Every tier includes a <strong>Col 4 Skillchain Augment</strong> so you can enable Lv.1, Lv.2, or Lv.3 Skillchain properties on any WS—or leave them off on utility WSs to avoid interrupting party Skillchains.
+          Every Weaponskill is visible from Level 1 and <strong>unlocks for combat use when you invest 1+ Talent Point in Tier 1</strong>.
+          Base PC WSs start at <code>1 Hit, fTP 1.0, 0% WSC, No Skillchain</code> and reshape dynamically across <strong>5 Spec Trees</strong>
+          (<em>Berserker, Tank, Spellblade, Healer, Commander</em>). Tier gates unlock at <strong>Lv. 1 / Lv. 5 / Lv. 10 / Lv. 15</strong>,
+          with individual node ranks scaling smoothly up to Lv. 75.
         </p>
       </section>
 
@@ -820,11 +839,19 @@
     const ftpText = ftpArr.map((n) => Number(n).toFixed(2)).join(' / ');
     const scText = (orig.skillchain || []).join(' / ') || 'None';
 
+    const specTrees = ws.specTrees || {};
+    const isSpecAdaptive = ws.isSpecAdaptive !== false && Object.keys(specTrees).length > 1;
+    const activeSpecKey = isSpecAdaptive
+      ? (specTrees[state.selectedWsSpec] ? state.selectedWsSpec : 'berserker')
+      : Object.keys(specTrees)[0] || 'default';
+    const activeNodes = (isSpecAdaptive ? specTrees[activeSpecKey] : specTrees[activeSpecKey] || ws.nodes) || [];
+    const activeSpecInfo = SPEC_VIEW_META.find((s) => s.key === activeSpecKey);
+
     const tierMeta = {
-      1: { title: 'Tier 1 — Foundation & Signature Identity', gate: 'Requires Lv. 1+ &bull; 0+ WS Pts (22 Pts Total)' },
-      2: { title: 'Tier 2 — Specialization', gate: 'Requires Lv. 20+ &bull; 10+ WS Pts (12 Pts Total)' },
-      3: { title: 'Tier 3 — Mastery', gate: 'Requires Lv. 42+ &bull; 22+ WS Pts (12 Pts Total)' },
-      4: { title: 'Tier 4 — Capstone & Apex', gate: 'Requires Lv. 62+ &bull; 35+ WS Pts (10 Pts Total)' },
+      1: { title: 'Tier 1 — Foundation & Unlock Gate', gate: 'Lv. 1+ &bull; 0+ WS Pts (Invest 1 pt here to unlock WS)' },
+      2: { title: 'Tier 2 — Specialization', gate: 'Lv. 5+ &bull; 2+ WS Pts Required' },
+      3: { title: 'Tier 3 — Mastery', gate: 'Lv. 10+ &bull; 5+ WS Pts Required' },
+      4: { title: 'Tier 4 — Capstone & Apex', gate: 'Lv. 15+ &bull; 8+ WS Pts Required' },
     };
 
     return `
@@ -835,27 +862,55 @@
               #${ws.id} ${escapeHtml(ws.name)}
             </h2>
             <span class="badge badge-cyan">${escapeHtml(ws.skillName)}</span>
-            <span class="badge badge-gold">Archetype: ${escapeHtml((ws.archetype || ws.wsType).toUpperCase())}</span>
+            <span class="badge badge-gold">Type: ${escapeHtml((ws.wsType || 'physical').toUpperCase())}</span>
             ${ws.isCustomThrowing ? '<span class="badge badge-purple">Custom DNC Bladewheel WS</span>' : ''}
           </div>
           <div style="margin-top:0.5rem; font-size:0.86rem; color:var(--text-muted);">
-            Vanilla Profile Reference: <code>${orig.numHits || 1} Hit(s)</code> &bull;
+            Vanilla Reference: <code>${orig.numHits || 1} Hit(s)</code> &bull;
             Orig fTP: <code>${escapeHtml(ftpText)}</code> &bull;
             Orig WSC: <code>${escapeHtml(wscText)}</code> &bull;
             Default SC Affinity: <code>${escapeHtml(scText)}</code>
           </div>
         </div>
         <div style="text-align:right;">
-          <span class="badge badge-emerald">Max Tree Investment: ${ws.maxPoints || 56} Pts</span>
+          <span class="badge badge-emerald">WS Cap: 56 Pts (${activeNodes.reduce((s, n) => s + (n.maxRank || 0), 0)} Total in Tree)</span>
           <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
             Source: <code>${escapeHtml(ws.sourceFile || '')}</code>
           </div>
         </div>
       </div>
 
+      ${
+        isSpecAdaptive
+          ? `
+        <div style="margin-top:1rem; padding:0.85rem 1rem; background:rgba(10,15,29,0.72); border:1px solid var(--border-accent); border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.65rem;">
+            <strong style="font-size:0.82rem; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.06em;">
+              💎 Spec Tree View (Adapts automatically to your active Soul Crystal / Job):
+            </strong>
+            <span style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml(activeSpecInfo?.hint || '')}</span>
+          </div>
+          <div class="job-filter-bar" style="margin-bottom:0;">
+            ${SPEC_VIEW_META.map(
+              (sp) => `
+              <button class="filter-chip ${activeSpecKey === sp.key ? 'active' : ''}" data-ws-spec="${escapeHtml(sp.key)}">
+                ${escapeHtml(sp.label)}
+              </button>
+            `
+            ).join('')}
+          </div>
+        </div>
+      `
+          : `
+        <div style="margin-top:0.85rem;">
+          <span class="badge badge-purple">Dedicated DNC Bladewheel Chakram Tree</span>
+        </div>
+      `
+      }
+
       ${[1, 2, 3, 4]
         .map((tierNum) => {
-          const tNodes = (ws.nodes || []).filter((n) => n.tier === tierNum);
+          const tNodes = activeNodes.filter((n) => n.tier === tierNum);
           const meta = tierMeta[tierNum];
           return `
             <div class="tier-block">
@@ -865,17 +920,22 @@
               </div>
               <div class="tier-nodes-grid">
                 ${tNodes
-                  .map(
-                    (n) => `
+                  .map((n) => {
+                    const lvls = n.rankLevels || [];
+                    const lvlHint =
+                      lvls.length > 1
+                        ? `Lv.${lvls[0]}..${lvls[lvls.length - 1]}`
+                        : `Lv.${n.reqLevel || 1}+`;
+                    return `
                   <div class="talent-node-card ${n.isSkillchain ? 'sc-node' : ''} ${n.key === 'capstone' ? 'capstone-node' : ''}">
                     <div class="node-top">
                       <span class="node-name">${escapeHtml(n.name)}</span>
-                      <span class="node-ranks">${n.maxRank} Ranks</span>
+                      <span class="node-ranks">${n.maxRank} Ranks &bull; ${escapeHtml(lvlHint)}</span>
                     </div>
                     <div class="node-desc">${escapeHtml(n.desc)}</div>
                   </div>
-                `
-                  )
+                `;
+                  })
                   .join('')}
               </div>
             </div>
@@ -901,6 +961,13 @@
     container.querySelectorAll('[data-ws-id]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.selectedWsId = Number(btn.getAttribute('data-ws-id'));
+        renderCurrentPage();
+      });
+    });
+
+    container.querySelectorAll('[data-ws-spec]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.selectedWsSpec = btn.getAttribute('data-ws-spec');
         renderCurrentPage();
       });
     });
@@ -1090,8 +1157,8 @@
         <div class="wiki-card">
           <h3><span>Overlords Talents UI</span><code>/talents</code></h3>
           <p>
-            Graphical 4-tier Weaponskill Talent Tree window in Ashita v4. Browse all 15 weapon categories, click nodes to invest or refund points,
-            and cycle Tier 1–4 Skillchain properties visually over the silent <code>[OXTAL]</code> protocol.
+            Graphical 4-tier Weaponskill Talent Tree window in Ashita v4. Browse all 15 weapon categories across your active spec view,
+            click nodes to invest or refund points, unlock WSs at Tier 1, and cycle Skillchains via the <code>0x1FD OXTL</code> binary packet.
           </p>
         </div>
 
@@ -1216,7 +1283,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Global Instant Search (Searches Crystals, Abilities, WSs, Companions, Rules)
+  // Global Instant Search (Searches Crystals, Abilities, WSs across 5 specs, Companions)
   // ---------------------------------------------------------------------------
   function performGlobalSearch(query) {
     const q = query.trim().toLowerCase();
@@ -1224,7 +1291,6 @@
 
     const results = [];
 
-    // 1. Search Job Crystals & Custom Abilities
     for (const job of state.data.jobSpecs || []) {
       for (const c of job.crystals || []) {
         const hay = `${job.jobKey} ${job.jobName} ${c.name} ${c.role} ${c.description} ${(c.highlights || []).join(' ')}`.toLowerCase();
@@ -1249,7 +1315,6 @@
       }
     }
 
-    // 2. Search Companions
     for (const comp of state.data.companions || []) {
       if (`${comp.name} ${comp.job} ${comp.summary} ${comp.specialItem}`.toLowerCase().includes(q)) {
         results.push({
@@ -1261,11 +1326,18 @@
       }
     }
 
-    // 3. Search Weaponskills & Talent Nodes
     for (const ws of state.data.weaponskills || []) {
-      const nodeMatch = (ws.nodes || []).find((n) =>
-        `${n.name} ${n.desc}`.toLowerCase().includes(q)
-      );
+      let matchedSpec = null;
+      let nodeMatch = null;
+      const specTrees = ws.specTrees || { default: ws.nodes || [] };
+      for (const [sKey, sNodes] of Object.entries(specTrees)) {
+        const hit = (sNodes || []).find((n) => `${n.name} ${n.desc}`.toLowerCase().includes(q));
+        if (hit) {
+          matchedSpec = sKey;
+          nodeMatch = hit;
+          break;
+        }
+      }
       if (
         ws.name.toLowerCase().includes(q) ||
         ws.skillName.toLowerCase().includes(q) ||
@@ -1274,20 +1346,20 @@
         results.push({
           title: `#${ws.id} ${ws.name} (${ws.skillName})`,
           sub: nodeMatch
-            ? `Matching Node: ${nodeMatch.name} — ${nodeMatch.desc}`
-            : `56-pt ${ws.archetype} Talent Tree`,
+            ? `[${matchedSpec}] ${nodeMatch.name} — ${nodeMatch.desc}`
+            : `5-Spec 56-pt Talent Tree`,
           tag: 'Weaponskill',
           action: () =>
             navigateTo('talents', {
               skillName: ws.skillName,
               wsId: ws.id,
+              wsSpec: matchedSpec && SPEC_VIEW_META.some((s) => s.key === matchedSpec) ? matchedSpec : undefined,
             }),
         });
       }
       if (results.length >= 18) break;
     }
 
-    // 4. Search Commands
     for (const cmd of state.data.commands || []) {
       if (`${cmd.command} ${cmd.summary}`.toLowerCase().includes(q)) {
         results.push({
@@ -1303,20 +1375,22 @@
   }
 
   function setupGlobalListeners() {
-    // Sidebar nav items
     document.querySelectorAll('.nav-item[data-page]').forEach((btn) => {
       btn.addEventListener('click', () => {
         navigateTo(btn.getAttribute('data-page'));
       });
     });
 
-    // Brand home button
     const brandBtn = document.getElementById('brandHomeBtn');
     if (brandBtn) {
       brandBtn.addEventListener('click', () => navigateTo('overview'));
     }
 
-    // Global Search input & keyboard shortcut `/`
+    const syncPill = document.getElementById('syncStatusPill');
+    if (syncPill) {
+      syncPill.addEventListener('click', () => syncFromGitHub());
+    }
+
     const searchInput = document.getElementById('globalSearchInput');
     const dropdown = document.getElementById('searchResultsDropdown');
 
@@ -1370,7 +1444,6 @@
       });
     }
 
-    // Sync Settings Modal
     const modal = document.getElementById('syncConfigModal');
     const openBtn = document.getElementById('openSyncConfigBtn');
     const closeBtn = document.getElementById('closeSyncConfigBtn');
@@ -1415,7 +1488,6 @@
     }
   }
 
-  // Initialize Wiki on DOM ready
   document.addEventListener('DOMContentLoaded', () => {
     setupGlobalListeners();
     updateSidebarMeta();

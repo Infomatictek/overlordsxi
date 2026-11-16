@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
   <!-- Top Bar -->
@@ -44,10 +44,11 @@
     </div>
 
     <div class="topbar-actions">
-      <div class="sync-pill" id="syncStatusPill" title="Automatically synced from GitHub">
+      <button class="sync-pill sync-pill-btn" id="syncStatusPill" title="Click to force-sync latest data from GitHub">
         <span class="sync-dot" id="syncDot"></span>
         <span id="syncText">Synced</span>
-      </div>
+        <span class="sync-refresh-icon" aria-hidden="true">&#8635;</span>
+      </button>
       <button class="btn-icon" id="openSyncConfigBtn" title="Configure GitHub Live Sync / Private Feed">
         <svg viewBox="0 0 20 20" fill="none">
           <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="currentColor" stroke-width="1.6"/>
@@ -169,7 +170,7 @@
   </div>
 
   <!-- Pre-bundled fallback data so the wiki works immediately offline or on any static host -->
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

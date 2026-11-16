@@ -242,11 +242,26 @@ code {
   align-items: center;
   gap: 0.45rem;
   font-size: 0.78rem;
+  font-family: var(--font-sans);
   color: var(--text-secondary);
   background: rgba(19, 28, 51, 0.85);
   border: 1px solid var(--border-subtle);
   padding: 0.35rem 0.7rem;
   border-radius: 99px;
+}
+
+.sync-pill-btn {
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.sync-pill-btn:hover {
+  border-color: var(--accent-cyan);
+  color: #fff;
+  background: var(--bg-card-hover);
+}
+.sync-refresh-icon {
+  font-size: 0.88rem;
+  opacity: 0.75;
 }
 
 .sync-dot {
