@@ -1,8 +1,23 @@
 diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
-index c7a02fbe..fbf3b238 100644
+index c7a02fb..309137a 100644
 --- a/src/map/ai/states/ability_state.cpp
 +++ b/src/map/ai/states/ability_state.cpp
-@@ -243,6 +243,38 @@ auto CAbilityState::Update(const timer::time_point tick) -> bool
+@@ -127,6 +127,14 @@ auto CAbilityState::init() -> StateErrorOr<void>
+ 
+     if (m_castTime > 0s && CanUseAbility())
+     {
++        if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity))
++        {
++            if (uint32 overrideCastMs = PChar->GetLocalVar("OX_ABIL_CAST_MS"); overrideCastMs > 0)
++            {
++                m_castTime = std::chrono::milliseconds(overrideCastMs);
++                PChar->SetLocalVar("OX_ABIL_CAST_MS", 0);
++            }
++        }
+         action_t action{
+             .actorId    = m_PEntity->id,
+             .actiontype = ActionCategory::AbilityStart,
+@@ -243,6 +251,38 @@ auto CAbilityState::Update(const timer::time_point tick) -> bool
      return false;
  }
  
@@ -41,7 +56,7 @@ index c7a02fbe..fbf3b238 100644
  auto CAbilityState::CanUseAbility() const -> bool
  {
      CAbility*    PAbility = GetAbility();
-@@ -280,7 +312,7 @@ auto CAbilityState::CanUseAbility() const -> bool
+@@ -280,7 +320,7 @@ auto CAbilityState::CanUseAbility() const -> bool
                      return false;
                  }
              }
@@ -50,7 +65,7 @@ index c7a02fbe..fbf3b238 100644
              {
                  PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PTarget, 0, 0, MsgBasic::TooFarAway);
                  return false;
-@@ -323,7 +355,7 @@ auto CAbilityState::CanUseAbility() const -> bool
+@@ -323,7 +363,7 @@ auto CAbilityState::CanUseAbility() const -> bool
  
          if (PTarget && m_PEntity->IsValidTarget(PTarget->targid, PAbility->getValidTarget(), errMsg))
          {
@@ -60,10 +75,10 @@ index c7a02fbe..fbf3b238 100644
                  cancelAbility = true;
              }
 diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
-index 682027aa..f998a771 100644
+index 3a94ecc..f68627d 100644
 --- a/src/map/entities/battle_entity.cpp
 +++ b/src/map/entities/battle_entity.cpp
-@@ -3400,6 +3400,11 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+@@ -3403,6 +3403,11 @@ void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action
  
          if (isChar)
          {
@@ -76,7 +91,7 @@ index 682027aa..f998a771 100644
              // this should go AFTER damage taken
              // or else sleep effect won't work
 diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
-index e27b61ed..fffa2154 100644
+index e27b61e..f522979 100644
 --- a/src/map/utils/battleutils.cpp
 +++ b/src/map/utils/battleutils.cpp
 @@ -1231,6 +1231,170 @@ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntit
@@ -250,7 +265,18 @@ index e27b61ed..fffa2154 100644
  void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 finaldamage, CAttack& attack)
  {
      auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
-@@ -1673,7 +1837,7 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+@@ -1464,6 +1628,10 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+         }
+         else if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
+         {
++            if (PChar != nullptr && PChar->GetLocalVar("OX_RUN_SPELLBLADE") == 1)
++            {
++                return;
++            }
+             xi::StatusEffect highestRuneEffect = PAttacker->StatusEffectContainer->GetHighestRuneEffect();
+             xi::StatusEffect newestRuneEffect  = PAttacker->StatusEffectContainer->GetNewestRuneEffect();
+             int              highestRuneCount  = PAttacker->StatusEffectContainer->GetEffectsCount(highestRuneEffect);
+@@ -1578,7 +1746,7 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
              Action->addEffectMessage = MsgBasic::AddEffectRecoversHP;
          }
      }
@@ -259,7 +285,7 @@ index e27b61ed..fffa2154 100644
      {
          bool hasDrainDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainDaze);
          bool hasAspirDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirDaze);
-@@ -1702,42 +1866,43 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+@@ -1607,41 +1775,42 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
  
              attackerID = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetSubID();
  
@@ -279,27 +305,19 @@ index e27b61ed..fffa2154 100644
 -                    // clang-format on
 -                }
 +                power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
-+            }
+             }
+-            else if (PAttacker->objtype == TYPE_TRUST)
 +            else if (PChar != nullptr && PAttacker->PParty != nullptr)
-+            {
+             {
+-                if (auto* PMaster = dynamic_cast<CCharEntity*>(PAttacker->PMaster))
+-                {
+-                    // clang-format off
+-                        PMaster->ForPartyWithTrusts([&](CBattleEntity* PMember)
 +                // clang-format off
 +                    PChar->ForPartyWithTrusts([&](CBattleEntity* PMember)
 +                    {
 +                        if (attackerID == PMember->id)
-+                        {
-+                            power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
-+                        }
-+                    });
-+                // clang-format on
-             }
--            else if (PAttacker->objtype == TYPE_TRUST)
-+            else if (PAttacker->PMaster != nullptr)
-             {
-                 if (auto* PMaster = dynamic_cast<CCharEntity*>(PAttacker->PMaster))
-                 {
--                    // clang-format off
--                        PMaster->ForPartyWithTrusts([&](CBattleEntity* PMember)
--                        {
+                         {
 -                            if (attackerID == PMember->id)
 -                            {
 -                                power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
@@ -307,11 +325,17 @@ index e27b61ed..fffa2154 100644
 -                        });
 -                    // clang-format on
 -                }
--            }
++                            power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++                        }
++                    });
++                // clang-format on
+             }
 -            else if (PAttacker->PMaster == nullptr)
--            {
++            else if (PAttacker->PMaster != nullptr)
+             {
 -                if (attackerID == PAttacker->id)
--                {
++                if (auto* PMaster = dynamic_cast<CCharEntity*>(PAttacker->PMaster))
+                 {
 -                    power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
 +                    if (attackerID == PMaster->id)
 +                    {
@@ -332,9 +356,8 @@ index e27b61ed..fffa2154 100644
                  }
              }
  
-             if (daze == xi::StatusEffect::DrainDaze && power > 0)
 diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
-index 649635cd..ae75abcb 100644
+index 649635c..ae75abc 100644
 --- a/src/map/utils/battleutils.h
 +++ b/src/map/utils/battleutils.h
 @@ -169,6 +169,7 @@ auto HandleParrySpikesDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender,

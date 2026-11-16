@@ -15,7 +15,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index a80259d..4c4edb9 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -141,6 +141,70 @@ void LoadEffectsParameters()
+@@ -141,6 +141,80 @@ void LoadEffectsParameters()
      EffectsParams[814].Element          = 7;
      EffectsParams[814].SortKey          = 10000;
      EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
@@ -53,7 +53,7 @@ index a80259d..4c4edb9 100644
 +    EffectsParams[820].SortKey          = 10000;
 +    EffectsParams[820].WearOffMessageId = MsgStd::EffectWearsOff;
 +
-+    // OverlordsXI RUN custom status effects (821-826).
++    // OverlordsXI RUN custom status effects (821-828).
 +    EffectsParams[821].Name             = "inquisitor_battuta";
 +    EffectsParams[821].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
 +    EffectsParams[821].SortKey          = 10000;
@@ -69,7 +69,7 @@ index a80259d..4c4edb9 100644
 +    EffectsParams[823].SortKey          = 10000;
 +    EffectsParams[823].WearOffMessageId = MsgStd::EffectWearsOff;
 +
-+    EffectsParams[824].Name             = "spellblade_overcharge";
++    EffectsParams[824].Name             = "spellblade_edgeflare";
 +    EffectsParams[824].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
 +    EffectsParams[824].SortKey          = 10000;
 +    EffectsParams[824].WearOffMessageId = MsgStd::EffectWearsOff;
@@ -83,6 +83,16 @@ index a80259d..4c4edb9 100644
 +    EffectsParams[826].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
 +    EffectsParams[826].SortKey          = 10000;
 +    EffectsParams[826].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[827].Name             = "spellblade_conduction";
++    EffectsParams[827].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::Erasable;
++    EffectsParams[827].SortKey          = 10000;
++    EffectsParams[827].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[828].Name             = "spellblade_ascendance";
++    EffectsParams[828].Flag             = xi::StatusEffectFlag::Death;
++    EffectsParams[828].SortKey          = 10000;
++    EffectsParams[828].WearOffMessageId = MsgStd::EffectWearsOff;
  }
  
  // hacky way to get element from status effect
