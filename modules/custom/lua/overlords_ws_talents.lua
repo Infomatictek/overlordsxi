@@ -2384,10 +2384,12 @@ function talents.sendWSDetail(player, wsId)
     sendProto(player, string.format('WS|%u|%s|%s|%s|%u|%s', ws.id, sanitizeField(ws.name), sanitizeField(ws.skillName), ws.wsType, wsSpent, sanitizeField(summary)))
 
     local nodeBatch = {}
+    local nodeBatchLen = 0
     local function flushNodeBatch()
         if #nodeBatch > 0 then
             sendProto(player, 'NODES|' .. table.concat(nodeBatch, ';;'))
             nodeBatch = {}
+            nodeBatchLen = 0
         end
     end
 
@@ -2424,10 +2426,12 @@ function talents.sendWSDetail(player, wsId)
             scName,
             node.slot or 0
         )
-        table.insert(nodeBatch, entry)
-        if #nodeBatch >= 3 then
+        local addLen = #entry + (#nodeBatch > 0 and 2 or 0)
+        if #nodeBatch > 0 and (nodeBatchLen + addLen) > 180 then
             flushNodeBatch()
         end
+        table.insert(nodeBatch, entry)
+        nodeBatchLen = nodeBatchLen + #entry + (#nodeBatch > 1 and 2 or 0)
     end
     flushNodeBatch()
 
