@@ -1,0 +1,101 @@
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+index b2c79a12..c8a4f2d1 100644
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -1072,7 +1072,13 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+     highestLvl    = std::min(highestLvl, capLevel);
+ 
+     // Randomize: 0-2 lvls lower, less Monster Gloves(+1/+2) bonus
+-    if (petID != PETID_FAERIE_COMPANION && petID != PETID_FAERIE_TITANIA)
++    if (petID != PETID_FAERIE_COMPANION &&
++        petID != PETID_FAERIE_TITANIA &&
++        petID != PETID_UNDEAD_WARRIOR &&
++        petID != PETID_UNDEAD_MAGE &&
++        petID != PETID_UNDEAD_CORSE &&
++        petID != PETID_UNDEAD_DULLAHAN)
+     {
+         highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
+     }
+@@ -1089,6 +1095,22 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+         PPet->SetSJob(static_cast<uint8>(xi::Job::RDM));
+         PPet->SetSLevel(PPet->GetMLevel());
+     }
++    else if (petID == PETID_UNDEAD_WARRIOR || petID == PETID_UNDEAD_MAGE)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::DRK));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
++    else if (petID == PETID_UNDEAD_CORSE)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::SCH));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
++    else if (petID == PETID_UNDEAD_DULLAHAN)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
+     LoadJugStats(PPet, PPetData); // follow monster calcs (w/o SJ)
+ 
+     luautils::callGlobal<void>("xi.pets.jug.onPetStatCalculate", PMaster, PPet);
+@@ -2006,6 +2028,42 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
+             PPet->SetSLevel(mainLevel);
+             PPet->setSpawnLevel(mainLevel);
+         }
++        else if (PetID == PETID_UNDEAD_WARRIOR && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::DRK));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_UNDEAD_MAGE && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::BLM));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::DRK));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_UNDEAD_CORSE && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::BLM));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::SCH));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_UNDEAD_DULLAHAN && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::DRK));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
+         else
+         {
+             uint8 spawnLevel = static_cast<CCharEntity*>(PMaster)->petZoningInfo.petLevel;
+diff --git a/src/map/utils/petutils.h b/src/map/utils/petutils.h
+index 9d41e210..b1e4a8c3 100644
+--- a/src/map/utils/petutils.h
++++ b/src/map/utils/petutils.h
+@@ -163,8 +163,12 @@ enum PETID
+     PETID_ENERGIZED_SEFINA       = 127,
+     PETID_FAERIE_COMPANION       = 128,
+     PETID_FAERIE_TITANIA         = 129,
++    PETID_UNDEAD_WARRIOR         = 130,
++    PETID_UNDEAD_MAGE            = 131,
++    PETID_UNDEAD_CORSE           = 132,
++    PETID_UNDEAD_DULLAHAN        = 133,
+ 
+-    MAX_PETID = 130,
++    MAX_PETID = 134,
+ };
+ 
+ struct Pet_t
