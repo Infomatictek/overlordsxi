@@ -37,10 +37,10 @@ index c3719d7..e84a912 100644
 +    PChar->pushPacket(std::move(packet));
 +}
 +
- auto CLuaBaseEntity::getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table
- {
-     auto table = lua.create_table();
-@@ -21208,6 +21235,7 @@ void CLuaBaseEntity::Register()
+ /************************************************************************
+  *  Function: getEntitiesInRange()
+  *  Purpose : Returns a Lua table of entities within range of the base entity
+@@ -21208,6 +21239,7 @@ void CLuaBaseEntity::Register()
  
      SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
      SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
