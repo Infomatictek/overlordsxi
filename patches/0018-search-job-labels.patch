@@ -13,9 +13,9 @@ index bfac8bb022..af11269240 100644
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
 +        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob IN (1, 2, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
 +        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
-+        "(mjob IN (2, 4, 19) AND ox_spec.value = 1)"
++        "(mjob IN (4, 19) AND ox_spec.value = 1)"
 +        ") THEN ox_spec.value "
 +        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
 +        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
@@ -56,9 +56,9 @@ index bfac8bb022..af11269240 100644
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
 +        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob IN (1, 2, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
 +        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
-+        "(mjob IN (2, 4, 19) AND ox_spec.value = 1)"
++        "(mjob IN (4, 19) AND ox_spec.value = 1)"
 +        ") THEN ox_spec.value "
 +        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
 +        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
@@ -126,11 +126,11 @@ index 181d1e8003..3222ceb915 100644
 +    switch (mjob)
 +    {
 +        case 1:  // WAR: Commander (1), Berserker (2), Gladiator (3)
++        case 2:  // MNK: Sensei (1), Black Belt (2), Chi Weaver (3)
 +        case 22: // RUN: Inquisitor (1), Spellblade (2), Lifebinder (3)
 +            return branch >= 1 && branch <= 3;
 +        case 20: // SCH: Medic (1), Sage (2)
 +            return branch >= 1 && branch <= 2;
-+        case 2:  // MNK: Sensei (1)
 +        case 4:  // BLM: Necromancer (1)
 +        case 19: // DNC: Bladewheel (1)
 +            return branch == 1;

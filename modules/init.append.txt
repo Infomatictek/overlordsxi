@@ -26,6 +26,7 @@ custom/sql/war_gladiator_abilities.sql
 custom/sql/dnc_chakram_spec.sql
 custom/sql/blm_necro_spec.sql
 custom/sql/run_specs.sql
+custom/sql/mnk_chiweaver_abilities.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua

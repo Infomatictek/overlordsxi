@@ -458,6 +458,9 @@ function spec.removeAppliedMods(player, invokeOnRemove)
         player:setLocalVar('OX_AUTO_RANGED', 0)
         player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
         player:setLocalVar('OX_DNC_RANGED', 0)
+        player:setLocalVar('OX_CHI_AUTO_RANGED', 0)
+        player:setLocalVar('OX_CHI_RANGED_RANGE', 0)
+        player:setLocalVar('OX_CHI_NEXT_DELAY_MS', 0)
     end
 
     spec.appliedByCharId[charKey] = nil
@@ -553,6 +556,15 @@ function spec.refreshPlayer(player, opts)
             player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
         end
         player:setLocalVar('OX_DNC_RANGED', active.rangedDances and 1 or 0)
+        if active.chiRanged then
+            local crMinLvl = (type(active.chiRanged) == 'table' and active.chiRanged.minLevel) or 1
+            local crRange = (type(active.chiRanged) == 'table' and active.chiRanged.maxRange) or 20
+            player:setLocalVar('OX_CHI_AUTO_RANGED', (lvl >= crMinLvl) and 1 or 0)
+            player:setLocalVar('OX_CHI_RANGED_RANGE', crRange)
+        else
+            player:setLocalVar('OX_CHI_AUTO_RANGED', 0)
+            player:setLocalVar('OX_CHI_RANGED_RANGE', 0)
+        end
     end
 
     spec.appliedByCharId[charKey] =

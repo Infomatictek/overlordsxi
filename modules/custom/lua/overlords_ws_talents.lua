@@ -376,8 +376,10 @@ local SPEC_KEY_TO_CATEGORY =
     healer      = 'healer',
     lifebinder  = 'healer',
     medic       = 'healer',
+    chiweaver   = 'healer',
     commander   = 'commander',
     berserker   = 'berserker',
+    blackbelt   = 'berserker',
     bladewheel  = 'berserker',
 }
 

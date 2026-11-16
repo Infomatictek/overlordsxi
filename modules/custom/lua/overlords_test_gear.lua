@@ -3495,6 +3495,10 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.MNK or 2) then
         if specKey == 'sensei' then
             return { role = 'tank', weapon = 'staff', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'MNK Sensei (Staff Counter Tank)', specEntry = specEntry }
+        elseif specKey == 'blackbelt' then
+            return { role = 'tp', weapon = 'h2h', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'MNK Black Belt (Hand-to-Hand DPS)', specEntry = specEntry }
+        elseif specKey == 'chiweaver' then
+            return { role = 'caster', weapon = 'none', offhand = 'none', ranged = 'none', ammo = 'ammo_caster', label = 'MNK Chi Weaver (Unarmed Chi Healer)', specEntry = specEntry }
         end
         return { role = 'tp', weapon = 'h2h', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'Monk (Hand-to-Hand TP)' }
     elseif jobId == (j.WHM or 3) then
@@ -3646,6 +3650,15 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         local stored = spec and spec.get(player, jobId) or nil
         return activeSpec == 'necromancer' or (stored ~= nil and stored.key == 'necromancer')
     end
+    local mnkJob = (xi.job and xi.job.MNK) or 2
+    if jobId == mnkJob then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'blackbelt' then
+            return wKey == 'h2h'
+        elseif activeSpec == 'chiweaver' then
+            return false
+        end
+    end
     local allowedList = testGear.JOB_WEAPONS[jobId]
     if allowedList == nil then
         return true
@@ -3676,6 +3689,14 @@ function testGear.applyWeaponOverride(profile, weaponOverride, player)
     end
 
     if player ~= nil and not testGear.isWeaponAllowedForJob(player, wKey) then
+        if player:getMainJob() == ((xi.job and xi.job.MNK) or 2) then
+            local activeSpec = testGear.getActiveSpecKey(player, player:getMainJob())
+            if activeSpec == 'blackbelt' then
+                return false, 'MNK Black Belt can only wield Hand-to-Hand weapons.'
+            elseif activeSpec == 'chiweaver' then
+                return false, 'MNK Chi Weaver fights unarmed and cannot equip weapons.'
+            end
+        end
         return false, string.format('%s cannot use %s weapons.', spec and spec.getJobName(player:getMainJob()) or 'Your job', info.label)
     end
 

@@ -1,0 +1,209 @@
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+index f751901b..9c42e81a 100644
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -133,8 +133,61 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+             return false;
+         };
+ 
++        auto tryChiRanged = [&]() -> bool
++        {
++            if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity);
++                PChar != nullptr && PChar->GetLocalVar("OX_CHI_AUTO_RANGED") == 1 && m_PEntity->battleTarget().isSet())
++            {
++                if (PChar->getEquip(SLOT_MAIN) != nullptr || PChar->getEquip(SLOT_SUB) != nullptr)
++                {
++                    return false;
++                }
++
++                const float maxRange = PChar->GetLocalVar("OX_CHI_RANGED_RANGE") > 0
++                                           ? static_cast<float>(PChar->GetLocalVar("OX_CHI_RANGED_RANGE"))
++                                           : 20.0f;
++                const float dist = distance(PChar->loc.p, PTarget->loc.p);
++                if (!PTarget->PAI->IsUntargetable() &&
++                    dist <= maxRange + PChar->modelHitboxSize + PTarget->modelHitboxSize &&
++                    facing(PChar->loc.p, PTarget->loc.p, 64) &&
++                    PChar->CanSeeTarget(PTarget))
++                {
++                    m_errorMsg.reset();
++                    battleutils::ClaimMob(PTarget, PChar);
++                    PTarget->LastAttacked = timer::now();
++
++                    action_t action{};
++                    battleutils::ExecuteChiRangedAttack(PChar, PTarget, action);
++                    battleutils::handleKillshotEnmity(PChar, PTarget);
++
++                    if (action.actiontype != ActionCategory::None && !action.targets.empty())
++                    {
++                        PChar->loc.zone->PushPacket(PChar, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
++                    }
++
++                    int32 chiDelay = static_cast<int32>(PChar->GetLocalVar("OX_CHI_NEXT_DELAY_MS"));
++                    if (chiDelay <= 0)
++                    {
++                        chiDelay = 2800;
++                    }
++                    chiDelay     = std::clamp<int32>(chiDelay, 600, 6000);
++                    m_attackTime = std::chrono::milliseconds(chiDelay);
++                    return true;
++                }
++            }
++            return false;
++        };
++
+         const bool forceRanged = m_PEntity->GetLocalVar("OX_THROW_STANCE") == 1;
+-        if (forceRanged && tryAutoRanged(true))
++        if (tryChiRanged())
++        {
++            if (!m_PEntity->battleTarget().isSet())
++            {
++                return true;
++            }
++            return false;
++        }
++        else if (forceRanged && tryAutoRanged(true))
+         {
+             if (!m_PEntity->battleTarget().isSet())
+             {
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index 6481291..9f3d214 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -2761,6 +2761,7 @@ void CBattleEntity::OnAbility(CAbilityState& state, action_t& action)
+                 case 398: // Battle Cadence
+                 case 399: // Rallying Horn
+                 case 418: // Sanctified Ward
++                case 430: // Tranquil Lotus
+                     abilityFindFlags |= FINDFLAGS_PET;
+                     break;
+                 default:
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index 39a7d1e..8a1f4c2 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6915,4 +6915,34 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
+     }
+ }
+ 
++auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget) -> int32
++{
++    if (PChar == nullptr || PTarget == nullptr)
++    {
++        return -1;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.mnk.executeChiRangedAttack");
++    if (!func.valid())
++    {
++        return -1;
++    }
++
++    const auto result = func(PChar, PTarget);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::ExecuteChiRangedAttack: %s", err.what());
++        return -1;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<int32>())
++    {
++        return retObj.as<int32>();
++    }
++
++    return -1;
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index f19e84b..5c2a8d7 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -587,6 +587,7 @@ auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>;
+ auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>;
+ void OnTraitsTableBuilt(CCharEntity* PChar);
+ auto CanUseTalentWeaponskill(CCharEntity* PChar, uint16 wsId) -> bool;
+ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1, uint8 arg2);
++auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget) -> int32;
+ 
+ }; // namespace luautils
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 4c4edb9..d2e31b4 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -217,7 +217,18 @@ void LoadEffectsParameters()
+     EffectsParams[828].Name             = "spellblade_ascendance";
+     EffectsParams[828].Flag             = xi::StatusEffectFlag::Death;
+     EffectsParams[828].SortKey          = 10000;
+     EffectsParams[828].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI MNK Chi Weaver custom status effects (829-830).
++    EffectsParams[829].Name             = "chiweaver_lotus";
++    EffectsParams[829].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[829].SortKey          = 10000;
++    EffectsParams[829].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[830].Name             = "chiweaver_harmony";
++    EffectsParams[830].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[830].SortKey          = 10000;
++    EffectsParams[830].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index c8d4102..6b4e91a 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -1392,6 +1392,39 @@ void HandleRangedSamba(CBattleEntity* PAttacker, CBattleEntity* PDefender, action
+         Action->additionalEffect = ActionProcAddEffect::Haste;
+         PAttacker->StatusEffectContainer->AddStatusEffect(xi::StatusEffect::HasteSambaHaste, 0, dazePower, 0s, 10s);
+     }
+ }
+ 
++void ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, action_t& action)
++{
++    if (PChar == nullptr || PTarget == nullptr || !PTarget->isAlive() || !PChar->isAlive())
++    {
++        return;
++    }
++
++    const int32 dmg = luautils::ExecuteChiRangedAttack(PChar, PTarget);
++
++    action.actiontype       = ActionCategory::BasicAttack;
++    action.actorId          = PChar->id;
++    action_target_t& list   = action.addTarget(PTarget->id);
++    action_result_t& result = list.addResult();
++
++    if (dmg < 0)
++    {
++        result.resolution = static_cast<ActionResolution>(0);
++        result.animation  = ActionAnimation::None;
++        result.messageID  = static_cast<MsgBasic>(15);
++        return;
++    }
++
++    result.resolution = ActionResolution::Hit;
++    result.animation  = ActionAnimation::None;
++    result.messageID  = MsgBasic::AttackHits;
++    result.recordDamage(attack_outcome_t{
++        .atkType    = xi::AttackType::Magical,
++        .damage     = std::max<int32>(0, dmg),
++        .target     = PTarget,
++        .isCritical = false,
++    });
++}
++
+ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 finaldamage, CAttack& attack)
+diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
+index ae75abc..8f2d14c 100644
+--- a/src/map/utils/battleutils.h
++++ b/src/map/utils/battleutils.h
+@@ -169,6 +169,7 @@ auto HandleParrySpikesDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender,
+ auto HandleSpikesEquip(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, uint8 damage, ActionReactKind spikesType, uint8 chance) -> bool;
+ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntity* PDefender, const action_result_t* Action);
+ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 damage, CAttack& attack);
+ void HandleRangedSamba(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, uint16 delay, int32 finaldamage);
++void ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, action_t& action);
+ auto GetRangedHitRate(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool isBarrage) -> uint8;
+ auto GetRangedHitRate(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool isBarrage, int16 accBonus) -> uint8;

@@ -209,6 +209,13 @@ MOD_LABELS = {
     "COUNTER_DAMAGE": ("Counter Damage", "%", 1),
     "STORETP": ("Store TP", "", 1),
     "DOUBLE_ATTACK": ("Double Attack", "%", 1),
+    "CRITHITRATE": ("Critical Hit Rate", "%", 1),
+    "CRIT_DMG_INCREASE": ("Critical Hit Damage", "%", 1),
+    "HASTE_ABILITY": ("Ability Haste", "%", 0.01),
+    "SUBTLE_BLOW": ("Subtle Blow", "", 1),
+    "KICK_ATTACK_RATE": ("Kick Attack Rate", "%", 1),
+    "KICK_DMG": ("Kick Damage", "", 1),
+    "HANDTOHAND": ("Hand-to-Hand Skill", "", 1),
     "ALL_WSDMG_ALL_HITS": ("Weaponskill Damage", "%", 1),
     "DMG": ("Damage Taken", "%", 0.01),
     "ENMITY": ("Enmity", "", 1),
@@ -323,6 +330,8 @@ CUSTOM_TRAITS = {
     150: {"id": 150, "displayId": 1686, "name": "Inquisitor's Ward", "job": "RUN", "crystal": "Inquisitor", "desc": "3-Rune Mastery at Lv.10+, non-consuming Runes, Runic Riposte on Parry, and dual Tank Stances."},
     151: {"id": 151, "displayId": 1687, "name": "Runic Brand", "job": "RUN", "crystal": "Spellblade", "desc": "3-Rune Mastery at Lv.10+, elemental discharges on every swing/WS, and Mono/Tri-Rune Resonance."},
     152: {"id": 152, "displayId": 1688, "name": "Sacred Pulse", "job": "RUN", "crystal": "Lifebinder", "desc": "3-Rune Mastery at Lv.10+, 15s CD AoE Vivacious Pulse with Rune boons, Runic Lifetap, and AoE Regen."},
+    153: {"id": 153, "displayId": 1689, "name": "Black Belt's Mastery", "job": "MNK", "crystal": "Black Belt", "desc": "Pure Hand-to-Hand oath: amplifies Kick Attacks, Double Attack, Critical Hits, WSD, and refunds +75 TP per H2H weaponskill."},
+    154: {"id": 154, "displayId": 1690, "name": "Chi Weaver's Pulse", "job": "MNK", "crystal": "Chi Weaver", "desc": "Empty-handed ranged Light Chi bolts (0-20y) emit a 12y AoE healing pulse around the target mob while restoring MP."},
 }
 
 CUSTOM_ABILITIES_BY_SPEC = {
@@ -343,6 +352,12 @@ CUSTOM_ABILITIES_BY_SPEC = {
     ],
     ("MNK", "sensei"): [
         {"id": 61, "name": "Iron Counterstance", "cd": "120s", "target": "Self", "desc": "Unlocked early at Lv.10 on a 120s recast: +30% Counter Rate, +20 Counter DMG, -10% Damage Taken, +20 Enmity, with ZERO Defense penalty."},
+    ],
+    ("MNK", "blackbelt"): [],
+    ("MNK", "chiweaver"): [
+        {"id": 429, "name": "Resonant Chi", "cd": "20s", "target": "Enemy (20y)", "desc": "Projects a concentrated Light Chi burst at up to 20y, triggering a 1.75x AoE healing pulse & debuff cleanse around the target mob and granting +125 TP."},
+        {"id": 430, "name": "Tranquil Lotus", "cd": "30s", "target": "Party (12y AoE)", "desc": "Restores 12/16/20/24% Max HP (+MND) to nearby party members, Trusts, and pets, applying a 15s Sanctuary (+12/20/30/42 Regen, +10/15/20/25% Cure Rcvd, -10/14/18/22 Enmity)."},
+        {"id": 431, "name": "Inner Harmony", "cd": "45s", "target": "Self", "desc": "18s meditative overdrive: +15/22/30/40% Cure Potency, +20/30/45/60 MAB & MACC, +3/5/7/10 Refresh, and +40% Chi Bolt & Pulse potency."},
     ],
     ("SCH", "medic"): [
         {"id": 231, "name": "Call Eos", "cd": "300s", "target": "Self", "desc": "Summons Eos, a Light Arts faerie companion that maintains stackable Regen (I-V) on the party and automatically casts -na spells and Erase."},
@@ -628,10 +643,10 @@ RANK_LEVEL_TABLES = {
 }
 
 SPEC_CATEGORIES = [
-    {"key": "berserker", "label": "Berserker / DPS", "specs": "WAR Berserker, SAM, DRK, DRG, THF, NIN, RNG, MNK (non-Sensei)"},
+    {"key": "berserker", "label": "Berserker / DPS", "specs": "WAR Berserker, MNK Black Belt, SAM, DRK, DRG, THF, NIN, RNG"},
     {"key": "tank", "label": "Tank / Vanguard", "specs": "RUN Inquisitor, WAR Gladiator, MNK Sensei, PLD"},
     {"key": "spellblade", "label": "Spellblade / Arcana", "specs": "RUN Spellblade, SCH Sage, BLM Necromancer, RDM, BLU, SMN"},
-    {"key": "healer", "label": "Healer / Mending", "specs": "RUN Lifebinder, SCH Medic, WHM, BRD, GEO"},
+    {"key": "healer", "label": "Healer / Mending", "specs": "MNK Chi Weaver, RUN Lifebinder, SCH Medic, WHM, BRD, GEO"},
     {"key": "commander", "label": "Commander / Tactical", "specs": "WAR Commander, COR"},
 ]
 
@@ -1756,6 +1771,8 @@ def parse_patches() -> list[dict]:
         "0017-blm-necromancer-pets.patch": "Configures custom Undead Warrior, Undead Mage, Corse, and Dullahan pet IDs (130–133) for BLM Necromancer.",
         "0018-search-job-labels.patch": "Streams active OverlordsXI Soul Crystal spec labels in `/search` and party search results.",
         "0019-talent-ws-unlocks.patch": "Gates Weaponskill usage until at least 1 Tier-1 Talent Point is invested and adds the `0x1FD` (`OXTL`) binary packet for instant Ashita `/talents` UI syncing.",
+        "0020-aoe-healing-affect-pets.patch": "Allows custom party AoE healing abilities (such as RUN Lifebinder's Sanctified Ward) to affect pets and avatars.",
+        "0021-mnk-chiweaver-ranged-chi.patch": "Enables unarmed ranged Chi bolt auto-attacks (0–20y), custom effects 829–830, and party/pet AoE reach for MNK Chi Weaver.",
     }
     desc_map.update({k: v for k, v in extra_descriptions.items() if k not in desc_map})
 
