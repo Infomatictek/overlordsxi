@@ -74,11 +74,76 @@ talents.MAX_WS_POINTS = 56
 
 talents.TIER_GATES =
 {
-    [1] = { reqWsPoints = 0,  reqLevel = 1  },
-    [2] = { reqWsPoints = 10, reqLevel = 20 },
-    [3] = { reqWsPoints = 22, reqLevel = 42 },
-    [4] = { reqWsPoints = 35, reqLevel = 62 },
+    [1] = { reqWsPoints = 0, reqLevel = 1  },
+    [2] = { reqWsPoints = 2, reqLevel = 5  },
+    [3] = { reqWsPoints = 5, reqLevel = 10 },
+    [4] = { reqWsPoints = 8, reqLevel = 15 },
 }
+
+local RANK_LEVEL_TABLES =
+{
+    sc =
+    {
+        [1] = { 1,  18 },
+        [2] = { 5,  28 },
+        [3] = { 10, 42 },
+        [4] = { 15, 58 },
+    },
+    [1] =
+    {
+        [6] = { 1, 11, 22, 35, 50, 65 },
+        [7] = { 1, 10, 20, 32, 44, 56, 68 },
+    },
+    [2] =
+    {
+        [5] = { 5, 18, 32, 48, 64 },
+    },
+    [3] =
+    {
+        [5] = { 10, 24, 38, 54, 70 },
+    },
+    [4] =
+    {
+        [3] = { 15, 42, 68 },
+        [5] = { 15, 30, 45, 60, 75 },
+    },
+}
+
+function talents.getRankReqLevel(node, targetRank)
+    if node == nil then
+        return 1
+    end
+    local r = math.max(1, math.min(targetRank or 1, node.maxRank or 1))
+    if type(node.rankLevels) == 'table' and node.rankLevels[r] ~= nil then
+        return node.rankLevels[r]
+    end
+    if (node.scTier or 0) > 0 then
+        local scTbl = RANK_LEVEL_TABLES.sc[node.scTier]
+        if scTbl and scTbl[r] then
+            return scTbl[r]
+        end
+    end
+    local tier = node.tier or 1
+    local mr   = node.maxRank or 5
+    local tierTbl = RANK_LEVEL_TABLES[tier] and RANK_LEVEL_TABLES[tier][mr]
+    if tierTbl and tierTbl[r] then
+        return tierTbl[r]
+    end
+    local baseLvl = (talents.TIER_GATES[tier] and talents.TIER_GATES[tier].reqLevel) or 1
+    if mr <= 1 or r <= 1 then
+        return baseLvl
+    end
+    local maxLvl = (tier == 4) and 75 or (tier == 3 and 70 or (tier == 2 and 64 or 68))
+    return baseLvl + math.floor((r - 1) * (maxLvl - baseLvl) / (mr - 1))
+end
+
+function talents.getNodeNextReqLevel(node, currentRank)
+    if node == nil then
+        return 1
+    end
+    local nextRank = math.min(node.maxRank or 1, (currentRank or 0) + 1)
+    return talents.getRankReqLevel(node, nextRank)
+end
 
 local function round2(v)
     return math.floor(v * 100 + 0.5) / 100
@@ -100,7 +165,18 @@ local function sendProto(player, payload)
         return
     end
 
+    if player.sendTalentPacket then
+        player:sendTalentPacket(payload)
+        return
+    end
+
     player:printToPlayer(PROTO_TAG .. payload, xi.msg.channel.SYSTEM_3, '')
+end
+
+talents.sendProto = sendProto
+
+function talents.sendError(player, message)
+    sendProto(player, 'ERR|' .. sanitizeField(message or 'Action failed.'))
 end
 
 -----------------------------------
@@ -166,9 +242,9 @@ local SC_SHORT =
 local SC_CHOICES =
 {
     [1] = { 8, 3, 6, 4, 5, 7, 1, 2 }, -- Tier 1 (Lv 1+): All Level 1 properties
-    [2] = { 3, 8, 4, 6, 7, 5, 2, 1 }, -- Tier 2 (Lv 20+): 2nd Level 1 property
-    [3] = { 11, 12, 9, 10 },          -- Tier 3 (Lv 42+): Level 2 properties
-    [4] = { 13, 14 },                 -- Tier 4 (Lv 62+): Level 3 properties
+    [2] = { 3, 8, 4, 6, 7, 5, 2, 1 }, -- Tier 2 (Lv 5+): 2nd Level 1 property
+    [3] = { 11, 12, 9, 10 },          -- Tier 3 (Lv 10+): Level 2 properties
+    [4] = { 13, 14 },                 -- Tier 4 (Lv 15+): Level 3 properties
 }
 
 local SC_BONUS_BY_TIER =
@@ -268,35 +344,98 @@ local function getDefaultSCForWS(ws, scTier)
 end
 
 -----------------------------------
--- Persistence (3 bits/slot across OX_WST_ (1..10) & OX_WST2_ (11..20))
--- Skillchain tier picks packed 4 bits/tier in OX_WSSC_ (tiers 1..4)
+-- Spec Resolution & Per-Spec Persistence
+-- (3 bits/slot across OX_WST_<JOB><SPEC>_ (1..10) & OX_WST2_<JOB><SPEC>_ (11..20))
+-- Skillchain tier picks packed 4 bits/tier in OX_WSSC_<JOB><SPEC>_ (tiers 1..4)
 -----------------------------------
 function talents.getJobKey(jobId)
     return JOB_KEYS[jobId] or string.format('J%u', jobId or 0)
 end
 
-function talents.getVarPrefix(jobId)
-    return VAR_PREFIX .. talents.getJobKey(jobId) .. '_'
+function talents.getActiveSpec(player, jobId)
+    if player == nil or xi.overlords == nil or xi.overlords.spec == nil then
+        return 0, 'base', 'Unspecced', 'general'
+    end
+    local jid = jobId or (player.getMainJob and player:getMainJob()) or 0
+    local entry = xi.overlords.spec.get(player, jid)
+    if entry ~= nil and xi.overlords.spec.isLevelEligible(player, jid, entry) then
+        return tonumber(entry.id) or 0, tostring(entry.key or 'base'), tostring(entry.name or 'Unspecced'), tostring(entry.role or 'general')
+    end
+    return 0, 'base', 'Unspecced', 'general'
 end
 
-function talents.getVar2Prefix(jobId)
-    return VAR2_PREFIX .. talents.getJobKey(jobId) .. '_'
+local SPEC_KEY_TO_CATEGORY =
+{
+    inquisitor  = 'tank',
+    gladiator   = 'tank',
+    sensei      = 'tank',
+    spellblade  = 'spellblade',
+    sage        = 'spellblade',
+    necromancer = 'spellblade',
+    lifebinder  = 'healer',
+    medic       = 'healer',
+    commander   = 'commander',
+    berserker   = 'berserker',
+    bladewheel  = 'berserker',
+}
+
+function talents.resolveSpecCategory(player, jobId, specKeyOverride)
+    local jid = jobId or (player and player.getMainJob and player:getMainJob()) or 0
+    local sKey = specKeyOverride
+    if sKey == nil or sKey == '' then
+        local _, activeKey = talents.getActiveSpec(player, jid)
+        sKey = activeKey
+    end
+    sKey = string.lower(tostring(sKey or 'base'))
+    if SPEC_KEY_TO_CATEGORY[sKey] ~= nil then
+        return SPEC_KEY_TO_CATEGORY[sKey]
+    end
+    if jid == xi.job.PLD or jid == xi.job.RUN then
+        return 'tank'
+    elseif jid == xi.job.WHM or jid == xi.job.BRD or jid == xi.job.GEO then
+        return 'healer'
+    elseif jid == xi.job.BLM or jid == xi.job.RDM or jid == xi.job.SCH or jid == xi.job.BLU or jid == xi.job.SMN then
+        return 'spellblade'
+    elseif jid == xi.job.COR then
+        return 'commander'
+    end
+    return 'berserker'
 end
 
-function talents.getScVarPrefix(jobId)
-    return VAR_SC_PREFIX .. talents.getJobKey(jobId) .. '_'
+function talents.getSpecToken(player, jobId, specIdOverride)
+    local specId = specIdOverride
+    if specId == nil then
+        specId = select(1, talents.getActiveSpec(player, jobId))
+    end
+    specId = tonumber(specId) or 0
+    if specId > 0 then
+        return tostring(specId)
+    end
+    return ''
 end
 
-function talents.getVarName(jobId, wsId)
-    return string.format('%s%u', talents.getVarPrefix(jobId), wsId)
+function talents.getVarPrefix(jobId, player, specIdOverride)
+    return VAR_PREFIX .. talents.getJobKey(jobId) .. talents.getSpecToken(player, jobId, specIdOverride) .. '_'
 end
 
-function talents.getVar2Name(jobId, wsId)
-    return string.format('%s%u', talents.getVar2Prefix(jobId), wsId)
+function talents.getVar2Prefix(jobId, player, specIdOverride)
+    return VAR2_PREFIX .. talents.getJobKey(jobId) .. talents.getSpecToken(player, jobId, specIdOverride) .. '_'
 end
 
-function talents.getScVarName(jobId, wsId)
-    return string.format('%s%u', talents.getScVarPrefix(jobId), wsId)
+function talents.getScVarPrefix(jobId, player, specIdOverride)
+    return VAR_SC_PREFIX .. talents.getJobKey(jobId) .. talents.getSpecToken(player, jobId, specIdOverride) .. '_'
+end
+
+function talents.getVarName(jobId, wsId, player, specIdOverride)
+    return string.format('%s%u', talents.getVarPrefix(jobId, player, specIdOverride), wsId)
+end
+
+function talents.getVar2Name(jobId, wsId, player, specIdOverride)
+    return string.format('%s%u', talents.getVar2Prefix(jobId, player, specIdOverride), wsId)
+end
+
+function talents.getScVarName(jobId, wsId, player, specIdOverride)
+    return string.format('%s%u', talents.getScVarPrefix(jobId, player, specIdOverride), wsId)
 end
 
 local function unpack3(packed, idx)
@@ -321,28 +460,28 @@ local function pack4(packed, idx, val)
     return (packed or 0) + (val - oldVal) * shift
 end
 
-local function readSlotRank(player, jobId, wsId, slot)
+local function readSlotRank(player, jobId, wsId, slot, specIdOverride)
     if slot <= 10 then
-        return unpack3(player:getCharVar(talents.getVarName(jobId, wsId)), slot)
+        return unpack3(player:getCharVar(talents.getVarName(jobId, wsId, player, specIdOverride)), slot)
     else
-        return unpack3(player:getCharVar(talents.getVar2Name(jobId, wsId)), slot - 10)
+        return unpack3(player:getCharVar(talents.getVar2Name(jobId, wsId, player, specIdOverride)), slot - 10)
     end
 end
 
-local function writeSlotRank(player, jobId, wsId, slot, rank)
+local function writeSlotRank(player, jobId, wsId, slot, rank, specIdOverride)
     if slot <= 10 then
-        local vn = talents.getVarName(jobId, wsId)
+        local vn = talents.getVarName(jobId, wsId, player, specIdOverride)
         player:setCharVar(vn, pack3(player:getCharVar(vn), slot, rank))
     else
-        local vn = talents.getVar2Name(jobId, wsId)
+        local vn = talents.getVar2Name(jobId, wsId, player, specIdOverride)
         player:setCharVar(vn, pack3(player:getCharVar(vn), slot - 10, rank))
     end
 end
 
-function talents.getSCChoice(player, jobId, wsId, scTier)
+function talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
     local ws = catalog.byId[wsId]
     if player ~= nil then
-        local packed = player:getCharVar(talents.getScVarName(jobId, wsId))
+        local packed = player:getCharVar(talents.getScVarName(jobId, wsId, player, specIdOverride))
         local raw = unpack4(packed, scTier)
         if isValidChoiceForTier(scTier, raw) then
             return raw
@@ -351,22 +490,22 @@ function talents.getSCChoice(player, jobId, wsId, scTier)
     return getDefaultSCForWS(ws, scTier)
 end
 
-function talents.setSCChoice(player, jobId, wsId, scTier, scId)
+function talents.setSCChoice(player, jobId, wsId, scTier, scId, specIdOverride)
     if player == nil or not isValidChoiceForTier(scTier, scId) then
         return false, 'Invalid skillchain choice for this tier.'
     end
-    local vn = talents.getScVarName(jobId, wsId)
+    local vn = talents.getScVarName(jobId, wsId, player, specIdOverride)
     local packed = player:getCharVar(vn)
     player:setCharVar(vn, pack4(packed, scTier, scId))
     return true, scId
 end
 
-function talents.cycleSCChoice(player, jobId, wsId, scTier, dir)
+function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
     local list = SC_CHOICES[scTier]
     if list == nil or #list == 0 then
         return false, 'No skillchain choices for this tier.'
     end
-    local cur = talents.getSCChoice(player, jobId, wsId, scTier)
+    local cur = talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
     local curIdx = 1
     for i, id in ipairs(list) do
         if id == cur then
@@ -376,13 +515,13 @@ function talents.cycleSCChoice(player, jobId, wsId, scTier, dir)
     end
     local step = (dir and dir < 0) and -1 or 1
     local nxtIdx = ((curIdx - 1 + step) % #list) + 1
-    return talents.setSCChoice(player, jobId, wsId, scTier, list[nxtIdx])
+    return talents.setSCChoice(player, jobId, wsId, scTier, list[nxtIdx], specIdOverride)
 end
 
-function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride)
+function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride, specIdOverride)
     local ranks = ranksOverride
     if ranks == nil then
-        ranks = talents.getWSRanks(player, jobId, wsId)
+        ranks = talents.getWSRanks(player, jobId, wsId, specIdOverride)
     end
 
     local chosen = {}
@@ -397,7 +536,7 @@ function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride)
         if r > 0 then
             local bTbl = SC_BONUS_BY_TIER[tier]
             bonus = bonus + (bTbl and bTbl[math.min(r, 2)] or 0)
-            local scId = talents.getSCChoice(player, jobId, wsId, tier)
+            local scId = talents.getSCChoice(player, jobId, wsId, tier, specIdOverride)
             if scId > 0 and not seen[scId] and #chosen < 3 then
                 seen[scId] = true
                 table.insert(chosen, scId)
@@ -1333,24 +1472,42 @@ require('modules/custom/lua/overlords_ws_trees_staff')
 require('modules/custom/lua/overlords_ws_trees_ranged')
 require('modules/custom/lua/overlords_ws_trees_throwing')
 
+local treeHelpers = require('modules/custom/lua/overlords_ws_tree_helpers')
+if treeHelpers and treeHelpers.upgradeExistingCustomRange then
+    treeHelpers.upgradeExistingCustomRange(1, 15)
+end
+
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
 -----------------------------------
 talents._treeCache = {}
 local treeCache = talents._treeCache
 
+local function shallowCopyNode(src)
+    local dst = {}
+    for k, v in pairs(src) do
+        dst[k] = v
+    end
+    return dst
+end
+
 local function finalizeTree(ws, archetype, rawNodes, opts)
     local nodes = {}
-    local colUsed = { {}, {}, {}, {} }
+    local grid = { {}, {}, {}, {} }
 
-    for _, n in ipairs(rawNodes) do
-        colUsed[n.tier][n.col] = true
+    for _, origNode in ipairs(rawNodes) do
+        local n = shallowCopyNode(origNode)
+        if grid[n.tier] then
+            grid[n.tier][n.col] = n
+        end
         table.insert(nodes, n)
     end
 
     -- Add Skillchain Augment selector node on Col 4 in EVERY tier (1..4)
     for scTier = 1, 4 do
-        table.insert(nodes, makeSCTierNode(ws, scTier, 4))
+        local scNode = makeSCTierNode(ws, scTier, 4)
+        grid[scTier][4] = scNode
+        table.insert(nodes, scNode)
     end
 
     -- Sort cleanly by tier, then col, and assign deterministic storage slots (1..20)
@@ -1361,13 +1518,23 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
         return a.col < b.col
     end)
 
+    -- Auto-wire vertical column progression (Tier N Col C requires Rank 1 of Tier N-1 Col C) when requires is not explicitly set
     local byKey = {}
     for idx, node in ipairs(nodes) do
         node.slot = idx
         local gate = talents.TIER_GATES[node.tier] or talents.TIER_GATES[1]
         node.reqWsPoints = node.reqWsPoints ~= nil and node.reqWsPoints or gate.reqWsPoints
-        node.reqLevel    = node.reqLevel ~= nil and node.reqLevel or gate.reqLevel
-        byKey[node.key]  = node
+        if node.requires == nil and (node.tier or 1) >= 2 and (node.col or 1) <= 3 then
+            local prevColNode = grid[node.tier - 1] and grid[node.tier - 1][node.col]
+            if prevColNode == nil and grid[1] then
+                prevColNode = grid[1][node.col] or grid[1][1]
+            end
+            if prevColNode ~= nil then
+                node.requires = { key = prevColNode.key, rank = 1 }
+            end
+        end
+        node.reqLevel = talents.getRankReqLevel(node, 1)
+        byKey[node.key] = node
     end
 
     return
@@ -1578,7 +1745,7 @@ local function buildGenericTreeForWS(ws)
         })
     end
 
-    -- Tier 2 (Lv 20+, 10+ WS pts): 5 + 5 + 2 (SC) = 12 pts
+    -- Tier 2 (Lv 5+, 2+ WS pts): 5 + 5 + 2 (SC) = 12 pts
     local t2Col = 1
     local function addT2(node)
         if t2Col > 2 or usedKeys[node.key] then
@@ -1691,7 +1858,7 @@ local function buildGenericTreeForWS(ws)
         })
     end
 
-    -- Tier 3 (Lv 42+, 22+ WS pts): 5 + 5 + 2 (SC) = 12 pts
+    -- Tier 3 (Lv 10+, 5+ WS pts): 5 + 5 + 2 (SC) = 12 pts
     local t3Col = 1
     local function addT3(node)
         if t3Col > 2 or usedKeys[node.key] then
@@ -1767,7 +1934,7 @@ local function buildGenericTreeForWS(ws)
         })
     end
 
-    -- Tier 4 (Lv 62+, 35+ WS pts): 3 + 5 + 2 (SC) = 10 pts
+    -- Tier 4 (Lv 15+, 8+ WS pts): 3 + 5 + 2 (SC) = 10 pts
     local capstoneSpecs =
     {
         magic    = { name = 'Arcane Overcharge', desc = '+20/35/50 MAB, +20/35/50 MACC, +10/20/30% WSD' },
@@ -1807,29 +1974,46 @@ local function buildGenericTreeForWS(ws)
     return finalizeTree(ws, archetype, nodes)
 end
 
-local function buildTreeForWS(ws)
+local function buildTreeForWS(ws, specCat)
     local custom = CUSTOM_TREES[ws.id]
     if custom ~= nil then
+        local srcNodes = custom.nodes
+        if custom.specNodes ~= nil then
+            srcNodes = custom.specNodes[specCat or 'berserker']
+                or custom.specNodes.default
+                or custom.specNodes.berserker
+                or custom.nodes
+        end
         local copied = {}
-        for _, n in ipairs(custom.nodes) do
-            table.insert(copied, n)
+        for _, n in ipairs(srcNodes or {}) do
+            table.insert(copied, shallowCopyNode(n))
         end
         return finalizeTree(ws, custom.archetype, copied, { useBaseline = custom.useBaseline })
     end
     return buildGenericTreeForWS(ws)
 end
 
-function talents.getTreeForWS(wsId)
-    if treeCache[wsId] ~= nil then
-        return treeCache[wsId]
-    end
-
+function talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
     local ws = catalog.byId[wsId]
     if ws == nil then
         return nil
     end
 
-    treeCache[wsId] = buildTreeForWS(ws)
+    local custom = CUSTOM_TREES[wsId]
+    if custom ~= nil and custom.specNodes ~= nil then
+        local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
+        local cacheKey = string.format('%u:%s', wsId, specCat)
+        if treeCache[cacheKey] == nil then
+            treeCache[cacheKey] = buildTreeForWS(ws, specCat)
+        end
+        return treeCache[cacheKey]
+    end
+
+    if treeCache[wsId] ~= nil then
+        return treeCache[wsId]
+    end
+
+    treeCache[wsId] = buildTreeForWS(ws, nil)
     return treeCache[wsId]
 end
 
@@ -1845,16 +2029,17 @@ function talents.getEarnedPoints(player, jobId)
     return math.max(1, player:getJobLevel(jid)) * 3
 end
 
-function talents.getWSRanks(player, jobId, wsId)
-    local tree = talents.getTreeForWS(wsId)
+function talents.getWSRanks(player, jobId, wsId, specIdOverride)
+    local tree = talents.getTreeForWS(wsId, player, jobId)
     if tree == nil then
         return {}, 0
     end
 
+    local jid = jobId or (player and player:getMainJob()) or 0
     local ranks = {}
     local spent = 0
     for _, node in ipairs(tree.nodes) do
-        local r = math.min(node.maxRank, readSlotRank(player, jobId, wsId, node.slot))
+        local r = math.min(node.maxRank, readSlotRank(player, jid, wsId, node.slot, specIdOverride))
         ranks[node.key] = r
         spent = spent + r
     end
@@ -1862,12 +2047,35 @@ function talents.getWSRanks(player, jobId, wsId)
     return ranks, spent
 end
 
-function talents.getWSSpent(player, jobId, wsId)
-    local _, spent = talents.getWSRanks(player, jobId, wsId)
+function talents.getWSSpent(player, jobId, wsId, specIdOverride)
+    local _, spent = talents.getWSRanks(player, jobId, wsId, specIdOverride)
     return spent
 end
 
-function talents.getTotalSpent(player, jobId)
+function talents.isWSUnlocked(player, wsId, jobId, specIdOverride)
+    if player == nil or wsId == nil or catalog.byId[wsId] == nil then
+        return false
+    end
+
+    local jid = jobId or player:getMainJob()
+    local tree = talents.getTreeForWS(wsId, player, jid)
+    if tree == nil then
+        return false
+    end
+
+    for _, node in ipairs(tree.nodes) do
+        if (node.tier or 1) == 1 then
+            local r = readSlotRank(player, jid, wsId, node.slot, specIdOverride)
+            if r ~= nil and r >= 1 then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+function talents.getTotalSpent(player, jobId, specIdOverride)
     if player == nil then
         return 0, {}
     end
@@ -1884,7 +2092,7 @@ function talents.getTotalSpent(player, jobId)
                 local wsId = tonumber(string.sub(varName, #prefix + 1))
                 if wsId ~= nil and not seenWs[wsId] and catalog.byId[wsId] ~= nil then
                     seenWs[wsId] = true
-                    local _, wsSpent = talents.getWSRanks(player, jid, wsId)
+                    local _, wsSpent = talents.getWSRanks(player, jid, wsId, specIdOverride)
                     if wsSpent > 0 then
                         perWs[wsId] = wsSpent
                         total = total + wsSpent
@@ -1894,21 +2102,22 @@ function talents.getTotalSpent(player, jobId)
         end
     end
 
-    scanPrefix(talents.getVarPrefix(jid))
-    scanPrefix(talents.getVar2Prefix(jid))
+    scanPrefix(talents.getVarPrefix(jid, player, specIdOverride))
+    scanPrefix(talents.getVar2Prefix(jid, player, specIdOverride))
 
     return total, perWs
 end
 
-function talents.getAvailablePoints(player, jobId)
+function talents.getAvailablePoints(player, jobId, specIdOverride)
     local jid = jobId or player:getMainJob()
     local earned = talents.getEarnedPoints(player, jid)
-    local spent = talents.getTotalSpent(player, jid)
+    local spent = talents.getTotalSpent(player, jid, specIdOverride)
     return math.max(0, earned - spent), earned, spent
 end
 
 function talents.canInvest(player, jobId, wsId, nodeKey)
-    local tree = talents.getTreeForWS(wsId)
+    local jid = jobId or player:getMainJob()
+    local tree = talents.getTreeForWS(wsId, player, jid)
     if tree == nil then
         return false, 'Unknown weaponskill.'
     end
@@ -1918,12 +2127,12 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
         return false, 'Unknown talent node for this weaponskill.'
     end
 
-    local avail = talents.getAvailablePoints(player, jobId)
+    local avail = talents.getAvailablePoints(player, jid)
     if avail <= 0 then
-        return false, 'No available talent points for this job.'
+        return false, 'No available talent points for this spec.'
     end
 
-    local ranks, wsSpent = talents.getWSRanks(player, jobId, wsId)
+    local ranks, wsSpent = talents.getWSRanks(player, jid, wsId)
     if wsSpent >= (talents.MAX_WS_POINTS or 56) then
         return false, string.format('Weaponskill point cap reached (%d/%d).', wsSpent, talents.MAX_WS_POINTS or 56)
     end
@@ -1932,10 +2141,11 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
         return false, 'Talent is already at max rank.'
     end
 
-    local reqLevel = node.reqLevel or 1
-    local jobLvl = math.max(1, player:getJobLevel(jobId or player:getMainJob()))
+    local nextRank = curRank + 1
+    local reqLevel = talents.getNodeNextReqLevel(node, curRank)
+    local jobLvl = math.max(1, player:getJobLevel(jid))
     if jobLvl < reqLevel then
-        return false, string.format('Requires Level %d %s (currently %d).', reqLevel, talents.getJobKey(jobId or player:getMainJob()), jobLvl)
+        return false, string.format('Rank %d requires Lv.%d %s (currently Lv.%d).', nextRank, reqLevel, talents.getJobKey(jid), jobLvl)
     end
 
     if wsSpent < (node.reqWsPoints or 0) then
@@ -1955,22 +2165,32 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
 end
 
 function talents.invest(player, jobId, wsId, nodeKey)
-    local ok, err = talents.canInvest(player, jobId, wsId, nodeKey)
+    local jid = jobId or player:getMainJob()
+    local ok, err = talents.canInvest(player, jid, wsId, nodeKey)
     if not ok then
         return false, err
     end
 
-    local tree = talents.getTreeForWS(wsId)
+    local wasUnlocked = talents.isWSUnlocked(player, wsId, jid)
+    local tree = talents.getTreeForWS(wsId, player, jid)
     local node = tree.byKey[nodeKey]
-    local curRank = readSlotRank(player, jobId, wsId, node.slot)
+    local curRank = readSlotRank(player, jid, wsId, node.slot)
     local newRank = curRank + 1
 
-    writeSlotRank(player, jobId, wsId, node.slot, newRank)
+    writeSlotRank(player, jid, wsId, node.slot, newRank)
+
+    if not wasUnlocked and talents.isWSUnlocked(player, wsId, jid) then
+        if player.recalculateAbilitiesTable then
+            player:recalculateAbilitiesTable()
+        end
+    end
+
     return true, newRank
 end
 
 function talents.refundNode(player, jobId, wsId, nodeKey)
-    local tree = talents.getTreeForWS(wsId)
+    local jid = jobId or player:getMainJob()
+    local tree = talents.getTreeForWS(wsId, player, jid)
     if tree == nil then
         return false, 'Unknown weaponskill.'
     end
@@ -1980,7 +2200,7 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         return false, 'Unknown talent node.'
     end
 
-    local ranks, wsSpent = talents.getWSRanks(player, jobId, wsId)
+    local ranks, wsSpent = talents.getWSRanks(player, jid, wsId)
     local curRank = ranks[nodeKey] or 0
     if curRank <= 0 then
         return false, 'Talent rank is already 0.'
@@ -2005,7 +2225,14 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         end
     end
 
-    writeSlotRank(player, jobId, wsId, node.slot, curRank - 1)
+    local wasUnlocked = talents.isWSUnlocked(player, wsId, jid)
+    writeSlotRank(player, jid, wsId, node.slot, curRank - 1)
+    if wasUnlocked and not talents.isWSUnlocked(player, wsId, jid) then
+        if player.recalculateAbilitiesTable then
+            player:recalculateAbilitiesTable()
+        end
+    end
+
     return true, curRank - 1
 end
 
@@ -2014,9 +2241,13 @@ function talents.resetWS(player, jobId, wsId)
         return false
     end
 
-    player:setCharVar(talents.getVarName(jobId, wsId), 0)
-    player:setCharVar(talents.getVar2Name(jobId, wsId), 0)
-    player:setCharVar(talents.getScVarName(jobId, wsId), 0)
+    local jid = jobId or player:getMainJob()
+    player:setCharVar(talents.getVarName(jid, wsId, player), 0)
+    player:setCharVar(talents.getVar2Name(jid, wsId, player), 0)
+    player:setCharVar(talents.getScVarName(jid, wsId, player), 0)
+    if player.recalculateAbilitiesTable then
+        player:recalculateAbilitiesTable()
+    end
     return true
 end
 
@@ -2034,9 +2265,13 @@ function talents.resetAll(player, jobId)
         end
     end
 
-    clearPrefix(talents.getVarPrefix(jid))
-    clearPrefix(talents.getVar2Prefix(jid))
-    clearPrefix(talents.getScVarPrefix(jid))
+    clearPrefix(talents.getVarPrefix(jid, player))
+    clearPrefix(talents.getVar2Prefix(jid, player))
+    clearPrefix(talents.getScVarPrefix(jid, player))
+
+    if player.recalculateAbilitiesTable then
+        player:recalculateAbilitiesTable()
+    end
 
     return count
 end
@@ -2045,19 +2280,22 @@ end
 -- Ashita Protocol Sync Helpers
 -----------------------------------
 function talents.formatActiveSummary(player, jobId, ws, ranks)
-    local scData = talents.getActiveSkillchains(player, jobId, ws.id, ranks)
+    local jid = jobId or (player and player:getMainJob()) or 0
+    local scData = talents.getActiveSkillchains(player, jid, ws.id, ranks)
     local scParts = {}
     for _, scId in ipairs(scData.ids) do
         table.insert(scParts, SC_SHORT[scId] or SC_NAMES[scId] or tostring(scId))
     end
     local scText = #scParts > 0 and table.concat(scParts, '/') or 'NONE'
-    local tree = talents.getTreeForWS(ws.id)
+    local tree = talents.getTreeForWS(ws.id, player, jid)
     local maxPts = 0
     for _, n in ipairs(tree and tree.nodes or {}) do
         maxPts = maxPts + n.maxRank
     end
     local scBonusText = scData.scBonus > 0 and string.format(' (+%d%%)', scData.scBonus) or ''
-    return string.format('Base: 1h fTP 1.0 | Active SC: %s%s | Max: %d pts', scText, scBonusText, maxPts)
+    local unlocked = talents.isWSUnlocked(player, ws.id, jid)
+    local lockTag = unlocked and 'UNLOCKED' or 'LOCKED (Rank 1 Tier 1 to unlock)'
+    return string.format('%s | SC: %s%s | Max: %d pts', lockTag, scText, scBonusText, maxPts)
 end
 
 local function sendChunked(player, tag, items)
@@ -2093,12 +2331,14 @@ function talents.sendMetaAndSpent(player)
     local _, perWs = talents.getTotalSpent(player, jobId)
     local mainSkill = player:getWeaponSkillType(xi.slot.MAIN) or 0
     local rangedSkill = player:getWeaponSkillType(xi.slot.RANGED) or 0
+    local _, _, specName = talents.getActiveSpec(player, jobId)
 
-    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u', jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill))
+    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s', jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill, sanitizeField(specName)))
 
     local spentItems = {}
     for wsId, wsSpent in pairs(perWs) do
-        table.insert(spentItems, string.format('%u:%u', wsId, wsSpent))
+        local unl = talents.isWSUnlocked(player, wsId, jobId) and 1 or 0
+        table.insert(spentItems, string.format('%u:%u:%u', wsId, wsSpent, unl))
     end
     table.sort(spentItems)
     sendProto(player, 'SPENT_BEGIN')
@@ -2128,12 +2368,12 @@ function talents.sendWSDetail(player, wsId)
         return
     end
 
-    local tree = talents.getTreeForWS(wsId)
+    local jobId = player:getMainJob()
+    local tree = talents.getTreeForWS(wsId, player, jobId)
     if tree == nil then
         return
     end
 
-    local jobId = player:getMainJob()
     local ws = tree.ws
     local ranks, wsSpent = talents.getWSRanks(player, jobId, wsId)
     local avail = talents.getAvailablePoints(player, jobId)
@@ -2153,8 +2393,9 @@ function talents.sendWSDetail(player, wsId)
         local scTier = node.scTier or 0
         local scId = scTier > 0 and talents.getSCChoice(player, jobId, ws.id, scTier) or 0
         local scName = scId > 0 and (SC_SHORT[scId] or SC_NAMES[scId] or '') or ''
+        local nextReqLvl = talents.getNodeNextReqLevel(node, r)
 
-        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s',
+        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
             ws.id,
             node.key,
             node.tier,
@@ -2167,14 +2408,94 @@ function talents.sendWSDetail(player, wsId)
             reqRank,
             sanitizeField(node.name),
             desc,
-            node.reqLevel or 1,
+            nextReqLvl,
             scTier,
             scId,
-            scName
+            scName,
+            node.slot or 0
         ))
     end
 
     sendProto(player, string.format('WS_END|%u|%u', ws.id, avail))
 end
 
+-----------------------------------
+-- Binary Packet Handler (C2S 0x11F 'OXTL')
+-- Operations:
+--   1 = sync (full catalog + meta + spent)
+--   2 = state (meta + spent)
+--   3 = ws detail (wsId)
+--   4 = uadd (wsId, arg1 = node.slot 1..20)
+--   5 = usub (wsId, arg1 = node.slot 1..20)
+--   6 = uscc (wsId, arg1 = scTier 1..4, arg2 = 1 (+1) or 2 (-1))
+--   7 = uresetws (wsId)
+--   8 = ureset (all WSs for active job/spec)
+-----------------------------------
+function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
+    if player == nil then
+        return
+    end
+
+    local jobId = player:getMainJob()
+    local op = tonumber(operation) or 0
+    local wid = tonumber(wsId) or 0
+    local a1 = tonumber(arg1) or 0
+    local a2 = tonumber(arg2) or 0
+
+    if op == 1 then
+        talents.sendCatalogSync(player)
+    elseif op == 2 then
+        talents.sendMetaAndSpent(player)
+    elseif op == 3 then
+        if wid > 0 then
+            talents.sendWSDetail(player, wid)
+        end
+    elseif op == 4 then
+        local tree = talents.getTreeForWS(wid, player, jobId)
+        local node = tree and tree.nodes and tree.nodes[a1]
+        if node ~= nil then
+            local ok, res = talents.invest(player, jobId, wid, node.key)
+            if not ok then
+                sendProto(player, 'ERR|' .. sanitizeField(res))
+            end
+            talents.sendMetaAndSpent(player)
+            talents.sendWSDetail(player, wid)
+        end
+    elseif op == 5 then
+        local tree = talents.getTreeForWS(wid, player, jobId)
+        local node = tree and tree.nodes and tree.nodes[a1]
+        if node ~= nil then
+            local ok, res = talents.refundNode(player, jobId, wid, node.key)
+            if not ok then
+                sendProto(player, 'ERR|' .. sanitizeField(res))
+            end
+            talents.sendMetaAndSpent(player)
+            talents.sendWSDetail(player, wid)
+        end
+    elseif op == 6 then
+        local scTier = a1
+        local dir = (a2 == 2) and -1 or 1
+        if wid > 0 and scTier >= 1 and scTier <= 4 then
+            local ok, res = talents.cycleSCChoice(player, jobId, wid, scTier, dir)
+            if not ok then
+                sendProto(player, 'ERR|' .. sanitizeField(res))
+            end
+            talents.sendWSDetail(player, wid)
+        end
+    elseif op == 7 then
+        if wid > 0 then
+            talents.resetWS(player, jobId, wid)
+            talents.sendMetaAndSpent(player)
+            talents.sendWSDetail(player, wid)
+        end
+    elseif op == 8 then
+        talents.resetAll(player, jobId)
+        talents.sendMetaAndSpent(player)
+        if wid > 0 then
+            talents.sendWSDetail(player, wid)
+        end
+    end
+end
+
 return talents
+

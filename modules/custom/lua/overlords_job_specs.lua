@@ -569,8 +569,11 @@ function spec.refreshPlayer(player, opts)
         active.onApply(player, active)
     end
 
-    if tablesChanged and not opts.skipSync then
+    if (tablesChanged or specChanged) and not opts.skipSync then
         syncAbilitiesTable(player)
+        if xi.overlords.wsTalents and xi.overlords.wsTalents.sendMetaAndSpent then
+            xi.overlords.wsTalents.sendMetaAndSpent(player)
+        end
     end
 
     return active

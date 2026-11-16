@@ -697,6 +697,10 @@ local function addConductionStacks(player, delta)
     return setConductionStacks(player, math.min(3, cur + (delta or 1)), false)
 end
 
+xi.overlords = xi.overlords or {}
+xi.overlords.runSpecs = xi.overlords.runSpecs or {}
+xi.overlords.runSpecs.addConduction = addConductionStacks
+
 local function hasEdgeflare(player, activeElement)
     local eff = getRunCustomEffect(player, EFFECT_EDGEFLARE)
     if eff == nil then

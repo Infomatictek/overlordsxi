@@ -22,7 +22,11 @@ local function tell(player, message)
 end
 
 local function sendProtoErr(player, message)
-    player:printToPlayer('[OXTAL]|ERR|' .. tostring(message), xi.msg.channel.SYSTEM_3, '')
+    if talents.sendError then
+        talents.sendError(player, message)
+    else
+        player:printToPlayer('[OXTAL]|ERR|' .. tostring(message), xi.msg.channel.SYSTEM_3, '')
+    end
 end
 
 local function delaySendMenu(player, menuBuilder)
@@ -43,7 +47,7 @@ local openWSDetailMenu
 
 openWSDetailMenu = function(player, wsId, backFn)
     local jobId = player:getMainJob()
-    local tree = talents.getTreeForWS(wsId)
+    local tree = talents.getTreeForWS(wsId, player, jobId)
     if tree == nil then
         return { title = 'Unknown WS', options = { { 'Back', function(p) delaySendMenu(p, backFn) end } } }
     end
@@ -56,7 +60,8 @@ openWSDetailMenu = function(player, wsId, backFn)
     for _, node in ipairs(tree.nodes) do
         local r = ranks[node.key] or 0
         local canLearn = talents.canInvest(player, jobId, wsId, node.key)
-        local statusTag = r >= node.maxRank and 'MAX' or (canLearn and '+' or 'LOCK')
+        local nextLvl = talents.getNodeNextReqLevel and talents.getNodeNextReqLevel(node, r) or (node.reqLevel or 1)
+        local statusTag = r >= node.maxRank and 'MAX' or (canLearn and '+' or string.format('Lv%d', nextLvl))
         local label = string.format('[%s] %s (%d/%d)', statusTag, node.name, r, node.maxRank)
         local capturedKey = node.key
         local capturedNode = node
@@ -456,14 +461,15 @@ commandObj.onTrigger = function(player, action, arg1, arg2, arg3)
             tell(player, 'Unknown weaponskill. Example: !talent info fast_blade')
             return
         end
-        local tree = talents.getTreeForWS(ws.id)
+        local tree = talents.getTreeForWS(ws.id, player, jobId)
         local ranks, wsSpent = talents.getWSRanks(player, jobId, ws.id)
         local avail, earned = talents.getAvailablePoints(player, jobId)
         tell(player, string.format('%s (%s) - WS Pts: %d | Job Avail: %d/%d | %s',
             ws.name, ws.skillName, wsSpent, avail, earned, talents.formatActiveSummary(player, jobId, ws, ranks)))
         for _, node in ipairs(tree.nodes) do
             local r = ranks[node.key] or 0
-            tell(player, string.format('  %s (%s) [Lv%d+ %d/%d] - %s', node.key, node.name, node.reqLevel or 1, r, node.maxRank, node.describe(r, ws, player, jobId)))
+            local nextLvl = talents.getNodeNextReqLevel and talents.getNodeNextReqLevel(node, r) or (node.reqLevel or 1)
+            tell(player, string.format('  %s (%s) [Lv%d+ %d/%d] - %s', node.key, node.name, nextLvl, r, node.maxRank, node.describe(r, ws, player, jobId)))
         end
         return
     end
@@ -480,7 +486,7 @@ commandObj.onTrigger = function(player, action, arg1, arg2, arg3)
             tell(player, res)
             return
         end
-        local node = talents.getTreeForWS(ws.id).byKey[nodeKey]
+        local node = talents.getTreeForWS(ws.id, player, jobId).byKey[nodeKey]
         tell(player, string.format('%s: %s upgraded to Rank %d/%d.', ws.name, node.name, res, node.maxRank))
         talents.sendMetaAndSpent(player)
         return
@@ -498,7 +504,7 @@ commandObj.onTrigger = function(player, action, arg1, arg2, arg3)
             tell(player, res)
             return
         end
-        local node = talents.getTreeForWS(ws.id).byKey[nodeKey]
+        local node = talents.getTreeForWS(ws.id, player, jobId).byKey[nodeKey]
         tell(player, string.format('%s: %s refunded to Rank %d/%d.', ws.name, node.name, res, node.maxRank))
         talents.sendMetaAndSpent(player)
         return

@@ -22,6 +22,7 @@ local talents = xi.overlords.wsTalents
 local activeWsContext = {}
 local pendingScBonus  = {}
 local packExtrasCache = {}
+local nextWsCache     = {}
 
 local DEBUFF_POWER_CAPS =
 {
@@ -252,7 +253,8 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     local ws = catalog.byId[wsID]
     local params = copyParams(wsParams)
 
-    local tree = talents.getTreeForWS(wsID)
+    local jobId = attacker and attacker.getMainJob and attacker:getMainJob() or nil
+    local tree = talents.getTreeForWS(wsID, attacker, jobId)
     local orig = ws and ws.orig or nil
 
     if tree ~= nil and tree.useBaseline and orig ~= nil then
@@ -321,33 +323,27 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
     end
 
-    local jobId = attacker:getMainJob()
     local ranks = talents.getWSRanks(attacker, jobId, wsID)
     local extraCtx = { extraScBonus = 0, packExtras = 0 }
     local effectiveTp = tp
 
-    -- Consume Next-WS Primer buffs if active
+    -- Consume Next-WS Primer buffs if active (preserve across AoE secondary targets)
+    local actorId = attacker:getID()
+    local now = os.time()
+    local nextBonus = nil
     local nextExp = attacker:getLocalVar('OX_NEXT_WS_EXP')
-    if nextExp > 0 and os.time() <= nextExp then
-        local nextWsd = attacker:getLocalVar('OX_NEXT_WS_WSD')
-        if nextWsd > 0 then
-            addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, nextWsd)
-        end
-        local nextTpBonus = attacker:getLocalVar('OX_NEXT_WS_TP')
-        if nextTpBonus > 0 then
-            effectiveTp = math.min(3000, effectiveTp + nextTpBonus)
-        end
-        local nextAcc = attacker:getLocalVar('OX_NEXT_WS_ACC')
-        if nextAcc > 0 then
-            params.accVaries = addToTriple(params.accVaries, nextAcc, 0)
-            if ws.wsType == 'ranged' then
-                addTempMod(xi.mod.RACC, nextAcc)
-            end
-        end
-        local nextMacc = attacker:getLocalVar('OX_NEXT_WS_MACC')
-        if nextMacc > 0 then
-            addTempMod(xi.mod.MACC, nextMacc)
-        end
+    if nextExp > 0 and now <= nextExp then
+        nextBonus =
+        {
+            at   = now,
+            wsd  = attacker:getLocalVar('OX_NEXT_WS_WSD'),
+            tp   = attacker:getLocalVar('OX_NEXT_WS_TP'),
+            acc  = attacker:getLocalVar('OX_NEXT_WS_ACC'),
+            macc = attacker:getLocalVar('OX_NEXT_WS_MACC'),
+        }
+        nextWsCache[actorId] = nextBonus
+    elseif primaryMsg == false and nextWsCache[actorId] ~= nil and (now - nextWsCache[actorId].at) <= 1 then
+        nextBonus = nextWsCache[actorId]
     end
     if nextExp > 0 then
         attacker:setLocalVar('OX_NEXT_WS_WSD', 0)
@@ -355,6 +351,23 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         attacker:setLocalVar('OX_NEXT_WS_ACC', 0)
         attacker:setLocalVar('OX_NEXT_WS_MACC', 0)
         attacker:setLocalVar('OX_NEXT_WS_EXP', 0)
+    end
+    if nextBonus ~= nil then
+        if (nextBonus.wsd or 0) > 0 then
+            addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, nextBonus.wsd)
+        end
+        if (nextBonus.tp or 0) > 0 then
+            effectiveTp = math.min(3000, effectiveTp + nextBonus.tp)
+        end
+        if (nextBonus.acc or 0) > 0 then
+            params.accVaries = addToTriple(params.accVaries, nextBonus.acc, 0)
+            if ws.wsType == 'ranged' then
+                addTempMod(xi.mod.RACC, nextBonus.acc)
+            end
+        end
+        if (nextBonus.macc or 0) > 0 then
+            addTempMod(xi.mod.MACC, nextBonus.macc)
+        end
     end
 
     -- Tier 1: fTP Scaling (supports combined Tier 1 fTP + utility nodes)
@@ -1117,10 +1130,12 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
 
         end
-    else
-        -----------------------------------
-        -- Declarative Bespoke WS Effects (#16 - #235, Pre-WS)
-        -----------------------------------
+    end
+
+    -----------------------------------
+    -- Declarative Bespoke WS Effects (#1 - #235, Pre-WS)
+    -----------------------------------
+    do
         local critDmgMod = (ws.wsType == 'ranged') and xi.mod.RANGED_CRIT_DMG_INCREASE or xi.mod.CRIT_DMG_INCREASE
         local nativeDebuffRank = 0
         local function applyStatEffects(tbl, rank)
@@ -1152,7 +1167,8 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
             if tbl.crit then
                 local v = pickRankVal(tbl.crit, rank)
                 if v and v ~= 0 then
-                    params.critVaries = addToTriple(params.critVaries, v / 100, 0)
+                    local cAdd = v >= 1 and (v / 100) or v
+                    params.critVaries = addToTriple(params.critVaries, cAdd, 0)
                 end
             end
             if tbl.critCurve then
@@ -1302,7 +1318,7 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
                 isBinary   = orig.debuff and orig.debuff.binary or false,
                 expiresAt  = os.time() + 2,
             }
-        else
+        elseif wsID > 15 then
             activeWsContext[attacker:getID()] = nil
         end
     end
@@ -1328,19 +1344,20 @@ local function dealFollowUpElementalHit(attacker, target, pct, elementDmgType)
     return extra
 end
 
-local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCtx)
+local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCtx, primaryMsg)
     if attacker == nil or ranks == nil then
         return dmg
     end
 
     local totalDmg = dmg or 0
     local baseDmg  = totalDmg
+    local isPrimaryTarget = (primaryMsg ~= false)
 
     if wsID <= 15 then
         -----------------------------------
         -- Utility Self-Buffs / Debuffs / Chi Blast Setup (#1 - #4)
         -----------------------------------
-        if wsID == 1 then -- Combo
+        if wsID == 1 and isPrimaryTarget then -- Combo
             local mods = {}
             local rTempo = ranks.combo_tempo or 0
             if rTempo > 0 then
@@ -1377,14 +1394,16 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
         elseif wsID == 2 then -- Shoulder Tackle
             local rChi = ranks.chi_setup or 0
             local rCap = ranks.capstone or 0
-            local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 50, 58, 65 })[rChi] or 65) or 0
-            local chiFromCap = rCap > 0 and (({ 20, 35, 50 })[rCap] or 50) or 0
-            local chiPct = chiFromT1 + chiFromCap
-            if chiPct > 0 then
-                attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
-            end
-            if rChi > 0 then
-                attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', ({ 6, 10, 14, 18, 22, 26, 30 })[rChi] or 30)
+            if isPrimaryTarget then
+                local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 50, 58, 65 })[rChi] or 65) or 0
+                local chiFromCap = rCap > 0 and (({ 20, 35, 50 })[rCap] or 50) or 0
+                local chiPct = chiFromT1 + chiFromCap
+                if chiPct > 0 then
+                    attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
+                end
+                if rChi > 0 then
+                    attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', ({ 6, 10, 14, 18, 22, 26, 30 })[rChi] or 30)
+                end
             end
             if totalDmg > 0 and target ~= nil and target:isAlive() then
                 local rBreak = ranks.tackle_break or 0
@@ -1419,21 +1438,23 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             end
 
         elseif wsID == 3 then -- One Inch Punch
-            local rChi  = ranks.inch_vit_chi or 0
-            local rMast = ranks.inch_mast or 0
-            local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 54, 65, 75 })[rChi] or 75) or 0
-            local chiPct = chiFromT1 + (rMast * 8)
-            if chiPct > 0 then
-                attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
-            end
-            local rCd = ranks.inch_cd or 0
-            if rCd > 0 then
-                attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', rCd * 8)
-            end
-            local rSkin = ranks.inch_skin or 0
-            if rSkin > 0 then
-                attacker:delStatusEffectSilent(xi.effect.STONESKIN)
-                attacker:addStatusEffect(xi.effect.STONESKIN, { power = ({ 100, 200, 300, 400, 520 })[rSkin] or 520, duration = 120, origin = attacker, tier = 3 })
+            if isPrimaryTarget then
+                local rChi  = ranks.inch_vit_chi or 0
+                local rMast = ranks.inch_mast or 0
+                local chiFromT1 = rChi > 0 and (({ 12, 22, 32, 42, 54, 65, 75 })[rChi] or 75) or 0
+                local chiPct = chiFromT1 + (rMast * 8)
+                if chiPct > 0 then
+                    attacker:setLocalVar('OX_CHIBLAST_PCT', chiPct)
+                end
+                local rCd = ranks.inch_cd or 0
+                if rCd > 0 then
+                    attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', rCd * 8)
+                end
+                local rSkin = ranks.inch_skin or 0
+                if rSkin > 0 then
+                    attacker:delStatusEffectSilent(xi.effect.STONESKIN)
+                    attacker:addStatusEffect(xi.effect.STONESKIN, { power = ({ 100, 200, 300, 400, 520 })[rSkin] or 520, duration = 120, origin = attacker, tier = 3 })
+                end
             end
             if totalDmg > 0 and target ~= nil and target:isAlive() then
                 local rShatter = ranks.inch_shatter or 0
@@ -1455,24 +1476,26 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             end
 
         elseif wsID == 4 then -- Backhand Blow
-            local critMods = {}
-            local rGale = ranks.bh_gale or 0
-            if rGale > 0 then
-                table.insert(critMods, { xi.mod.CRITHITRATE, ({ 4, 7, 10, 13, 15, 18, 20 })[rGale] or 20 })
-            end
-            local rRhythm = ranks.bh_rhythm or 0
-            local rCap = ranks.capstone or 0
-            local extraCritDmg = (rRhythm * 4) + (rCap > 0 and (({ 8, 15, 22 })[rCap] or 22) or 0)
-            if extraCritDmg > 0 then
-                table.insert(critMods, { xi.mod.CRIT_DMG_INCREASE, extraCritDmg })
-            end
-            if #critMods > 0 then
-                applyTimedBuffMods(attacker, xi.effect.POTENCY, 12, critMods)
-            end
-            local rAero = ranks.bh_enaero or 0
-            if rAero > 0 then
-                attacker:delStatusEffectSilent(xi.effect.ENAERO)
-                attacker:addStatusEffect(xi.effect.ENAERO, { power = rAero * 10, duration = 12, origin = attacker })
+            if isPrimaryTarget then
+                local critMods = {}
+                local rGale = ranks.bh_gale or 0
+                if rGale > 0 then
+                    table.insert(critMods, { xi.mod.CRITHITRATE, ({ 4, 7, 10, 13, 15, 18, 20 })[rGale] or 20 })
+                end
+                local rRhythm = ranks.bh_rhythm or 0
+                local rCap = ranks.capstone or 0
+                local extraCritDmg = (rRhythm * 4) + (rCap > 0 and (({ 8, 15, 22 })[rCap] or 22) or 0)
+                if extraCritDmg > 0 then
+                    table.insert(critMods, { xi.mod.CRIT_DMG_INCREASE, extraCritDmg })
+                end
+                if #critMods > 0 then
+                    applyTimedBuffMods(attacker, xi.effect.POTENCY, 12, critMods)
+                end
+                local rAero = ranks.bh_enaero or 0
+                if rAero > 0 then
+                    attacker:delStatusEffectSilent(xi.effect.ENAERO)
+                    attacker:addStatusEffect(xi.effect.ENAERO, { power = rAero * 10, duration = 12, origin = attacker })
+                end
             end
             if totalDmg > 0 and target ~= nil and target:isAlive() then
                 local rFeint = ranks.bh_feint or 0
@@ -1511,15 +1534,14 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
                 totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.ss_wind * 0.06, xi.damageType.WIND)
             end
         end
-
-        return totalDmg
     end
 
     -----------------------------------
-    -- Declarative Bespoke Post-WS Effects (#16 - #235)
+    -- Declarative Bespoke Post-WS Effects (#1 - #235)
     -----------------------------------
-    local tree = talents.getTreeForWS(wsID)
-    local ws   = catalog.byId[wsID]
+    local jobId = attacker.getMainJob and attacker:getMainJob() or nil
+    local tree  = talents.getTreeForWS(wsID, attacker, jobId)
+    local ws    = catalog.byId[wsID]
 
     local nextWsAccum = { wsd = 0, tp = 0, acc = 0, macc = 0, dur = 0 }
     local modsByEffect = {}
@@ -1539,6 +1561,7 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     local mpToHpPct = 0
     local partyTpTotal = 0
     local partyBuffsByEffect = {}
+    local conductionAddTotal = 0
 
     for _, node in ipairs(tree and tree.nodes or {}) do
         local r = ranks[node.key] or 0
@@ -1562,11 +1585,20 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
                 else
                     entry.dur = math.max(entry.dur, pb.duration or 12)
                 end
-                for _, pair in ipairs(pb.mods or {}) do
-                    local modId = pair.mod or pair[1]
-                    local rawVal = pair.val ~= nil and pair.val or pair[2]
+                for k, v in pairs(pb.mods or {}) do
+                    local modId, rawVal
+                    if type(v) == 'table' and (v.mod ~= nil or type(v[2]) == 'table') then
+                        modId = v.mod or v[1]
+                        rawVal = v.val ~= nil and v.val or v[2]
+                    elseif type(k) == 'number' and k <= 10 and type(v) == 'table' and #v == 2 then
+                        modId = v[1]
+                        rawVal = v[2]
+                    else
+                        modId = k
+                        rawVal = v
+                    end
                     local val = pickRankVal(rawVal, r)
-                    if modId ~= nil and val and val ~= 0 then
+                    if type(modId) == 'number' and val and val ~= 0 then
                         table.insert(entry.mods, { modId, val })
                     end
                 end
@@ -1660,6 +1692,9 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if eff.partyTp then
                 partyTpTotal = partyTpTotal + (pickRankVal(eff.partyTp, r) or 0)
             end
+            if eff.conductionAdd then
+                conductionAddTotal = conductionAddTotal + (pickRankVal(eff.conductionAdd, r) or 0)
+            end
             if type(eff.partyBuffs) == 'table' then
                 for _, pb in ipairs(eff.partyBuffs) do
                     if pb.effect ~= nil then
@@ -1678,139 +1713,145 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
         end
     end
 
-    if nextWsAccum.wsd > 0 or nextWsAccum.tp > 0 or nextWsAccum.acc > 0 or nextWsAccum.macc > 0 then
-        if nextWsAccum.wsd > 0 then
-            attacker:setLocalVar('OX_NEXT_WS_WSD', nextWsAccum.wsd)
+    if isPrimaryTarget then
+        if nextWsAccum.wsd > 0 or nextWsAccum.tp > 0 or nextWsAccum.acc > 0 or nextWsAccum.macc > 0 then
+            if nextWsAccum.wsd > 0 then
+                attacker:setLocalVar('OX_NEXT_WS_WSD', nextWsAccum.wsd)
+            end
+            if nextWsAccum.tp > 0 then
+                attacker:setLocalVar('OX_NEXT_WS_TP', nextWsAccum.tp)
+            end
+            if nextWsAccum.acc > 0 then
+                attacker:setLocalVar('OX_NEXT_WS_ACC', nextWsAccum.acc)
+            end
+            if nextWsAccum.macc > 0 then
+                attacker:setLocalVar('OX_NEXT_WS_MACC', nextWsAccum.macc)
+            end
+            attacker:setLocalVar('OX_NEXT_WS_EXP', os.time() + (nextWsAccum.dur > 0 and nextWsAccum.dur or 12))
         end
-        if nextWsAccum.tp > 0 then
-            attacker:setLocalVar('OX_NEXT_WS_TP', nextWsAccum.tp)
-        end
-        if nextWsAccum.acc > 0 then
-            attacker:setLocalVar('OX_NEXT_WS_ACC', nextWsAccum.acc)
-        end
-        if nextWsAccum.macc > 0 then
-            attacker:setLocalVar('OX_NEXT_WS_MACC', nextWsAccum.macc)
-        end
-        attacker:setLocalVar('OX_NEXT_WS_EXP', os.time() + (nextWsAccum.dur > 0 and nextWsAccum.dur or 12))
-    end
 
-    if storeTpBuffVal > 0 then
-        local sbEntry = modsByEffect[xi.effect.SUBTLE_BLOW_PLUS]
-        if sbEntry == nil then
-            sbEntry = { dur = 12, mods = {} }
-            modsByEffect[xi.effect.SUBTLE_BLOW_PLUS] = sbEntry
+        if storeTpBuffVal > 0 then
+            local sbEntry = modsByEffect[xi.effect.SUBTLE_BLOW_PLUS]
+            if sbEntry == nil then
+                sbEntry = { dur = 12, mods = {} }
+                modsByEffect[xi.effect.SUBTLE_BLOW_PLUS] = sbEntry
+            end
+            table.insert(sbEntry.mods, { xi.mod.STORETP, storeTpBuffVal })
         end
-        table.insert(sbEntry.mods, { xi.mod.STORETP, storeTpBuffVal })
-    end
 
-    for effId, entry in pairs(modsByEffect) do
-        if #entry.mods > 0 then
-            applyTimedBuffMods(attacker, effId, entry.dur, entry.mods)
+        for effId, entry in pairs(modsByEffect) do
+            if #entry.mods > 0 then
+                applyTimedBuffMods(attacker, effId, entry.dur, entry.mods)
+            end
         end
-    end
 
-    for effId, sb in pairs(selfBuffsByEffect) do
-        attacker:delStatusEffectSilent(effId)
-        local opts = { power = sb.power, duration = sb.duration, origin = attacker }
-        if sb.tier ~= nil then
-            opts.tier = sb.tier
-        elseif effId == xi.effect.STONESKIN then
-            opts.tier = 3
+        for effId, sb in pairs(selfBuffsByEffect) do
+            attacker:delStatusEffectSilent(effId)
+            local opts = { power = sb.power, duration = sb.duration, origin = attacker }
+            if sb.tier ~= nil then
+                opts.tier = sb.tier
+            elseif effId == xi.effect.STONESKIN then
+                opts.tier = 3
+            end
+            attacker:addStatusEffect(effId, opts)
         end
-        attacker:addStatusEffect(effId, opts)
-    end
 
-    if selfMaxHpHealPct > 0 then
-        local amt = math.floor(attacker:getMaxHP() * (selfMaxHpHealPct / 100))
-        if amt > 0 then
-            attacker:addHP(amt)
+        if selfMaxHpHealPct > 0 then
+            local amt = math.floor(attacker:getMaxHP() * (selfMaxHpHealPct / 100))
+            if amt > 0 then
+                attacker:addHP(amt)
+            end
         end
-    end
 
-    if partyHealPct > 0 then
-        local party = attacker.getParty and attacker:getParty() or nil
-        if type(party) == 'table' and #party > 0 then
-            for _, member in ipairs(party) do
+        if partyHealPct > 0 then
+            local party = attacker.getParty and attacker:getParty() or nil
+            if type(party) == 'table' and #party > 0 then
+                for _, member in ipairs(party) do
+                    if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
+                        local amt = math.floor(member:getMaxHP() * (partyHealPct / 100))
+                        if amt > 0 then
+                            member:addHP(amt)
+                        end
+                    end
+                end
+            else
+                local amt = math.floor(attacker:getMaxHP() * (partyHealPct / 100))
+                if amt > 0 then
+                    attacker:addHP(amt)
+                end
+            end
+        end
+
+        if partyTpTotal > 0 then
+            local party = attacker.getParty and attacker:getParty() or nil
+            if type(party) == 'table' and #party > 0 then
+                for _, member in ipairs(party) do
+                    if member ~= nil and member:isAlive() and member.addTP and (member == attacker or member:checkDistance(attacker) <= 15) then
+                        member:addTP(partyTpTotal)
+                    end
+                end
+            elseif attacker.addTP then
+                attacker:addTP(partyTpTotal)
+            end
+        end
+
+        if next(partyBuffsByEffect) ~= nil then
+            local party = attacker.getParty and attacker:getParty() or nil
+            local targets = (type(party) == 'table' and #party > 0) and party or { attacker }
+            for _, member in ipairs(targets) do
                 if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
-                    local amt = math.floor(member:getMaxHP() * (partyHealPct / 100))
-                    if amt > 0 then
-                        member:addHP(amt)
+                    for effId, pb in pairs(partyBuffsByEffect) do
+                        member:delStatusEffectSilent(effId)
+                        member:addStatusEffect(effId, { power = pb.power, duration = pb.duration, origin = attacker })
                     end
                 end
             end
-        else
-            local amt = math.floor(attacker:getMaxHP() * (partyHealPct / 100))
-            if amt > 0 then
-                attacker:addHP(amt)
-            end
         end
-    end
 
-    if partyTpTotal > 0 then
-        local party = attacker.getParty and attacker:getParty() or nil
-        if type(party) == 'table' and #party > 0 then
-            for _, member in ipairs(party) do
-                if member ~= nil and member:isAlive() and member.addTP and (member == attacker or member:checkDistance(attacker) <= 15) then
-                    member:addTP(partyTpTotal)
+        if eosHealPct > 0 and attacker.getPet then
+            local pet = attacker:getPet()
+            if pet ~= nil and pet:isAlive() then
+                local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
+                if petHp > 0 and pet.addHP then
+                    pet:addHP(petHp)
                 end
-            end
-        elseif attacker.addTP then
-            attacker:addTP(partyTpTotal)
-        end
-    end
-
-    if next(partyBuffsByEffect) ~= nil then
-        local party = attacker.getParty and attacker:getParty() or nil
-        local targets = (type(party) == 'table' and #party > 0) and party or { attacker }
-        for _, member in ipairs(targets) do
-            if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
-                for effId, pb in pairs(partyBuffsByEffect) do
-                    member:delStatusEffectSilent(effId)
-                    member:addStatusEffect(effId, { power = pb.power, duration = pb.duration, origin = attacker })
+                if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
+                    local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
+                    if petMp > 0 then
+                        pet:addMP(petMp)
+                    end
                 end
             end
         end
-    end
 
-    if eosHealPct > 0 and attacker.getPet then
-        local pet = attacker:getPet()
-        if pet ~= nil and pet:isAlive() then
-            local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
-            if petHp > 0 and pet.addHP then
-                pet:addHP(petHp)
-            end
-            if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
-                local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
-                if petMp > 0 then
-                    pet:addMP(petMp)
+        if conductionAddTotal > 0 and xi.overlords and xi.overlords.runSpecs and xi.overlords.runSpecs.addConduction then
+            xi.overlords.runSpecs.addConduction(attacker, conductionAddTotal)
+        end
+
+        if baseDmg > 0 then
+            if hpDrainPct > 0 and (target == nil or not target:isUndead()) then
+                local amt = math.floor(baseDmg * (hpDrainPct / 100))
+                if amt > 0 then
+                    attacker:addHP(amt)
                 end
             end
-        end
-    end
-
-    if baseDmg > 0 then
-        if hpDrainPct > 0 and (target == nil or not target:isUndead()) then
-            local amt = math.floor(baseDmg * (hpDrainPct / 100))
-            if amt > 0 then
-                attacker:addHP(amt)
+            if mpDrainPct > 0 then
+                local amt = math.floor(baseDmg * (mpDrainPct / 100))
+                if amt > 0 then
+                    attacker:addMP(amt)
+                end
             end
-        end
-        if mpDrainPct > 0 then
-            local amt = math.floor(baseDmg * (mpDrainPct / 100))
-            if amt > 0 then
-                attacker:addMP(amt)
+            if selfHealPct > 0 then
+                local amt = math.floor(baseDmg * (selfHealPct / 100))
+                if amt > 0 then
+                    attacker:addHP(amt)
+                end
             end
-        end
-        if selfHealPct > 0 then
-            local amt = math.floor(baseDmg * (selfHealPct / 100))
-            if amt > 0 then
-                attacker:addHP(amt)
-            end
-        end
-        if mpToHpPct > 0 then
-            local amt = math.floor(baseDmg * (mpToHpPct / 100))
-            if amt > 0 then
-                attacker:addHP(amt)
+            if mpToHpPct > 0 then
+                local amt = math.floor(baseDmg * (mpToHpPct / 100))
+                if amt > 0 then
+                    attacker:addHP(amt)
+                end
             end
         end
     end
@@ -1833,7 +1874,7 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             target:delTP(tpDrainTotal)
             local postTp = target.getTP and target:getTP() or 0
             local drained = math.max(0, prevTp - postTp)
-            if tpStealMaxPct > 0 and drained > 0 then
+            if isPrimaryTarget and tpStealMaxPct > 0 and drained > 0 then
                 local gain = math.floor(drained * (tpStealMaxPct / 100))
                 if gain > 0 then
                     attacker:addTP(gain)
@@ -1852,11 +1893,36 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     return totalDmg
 end
 
+-- Clamp AoE secondary target TP return so hitting multiple enemies never grants extra TP per enemy
+m:addOverride('xi.weaponskills.takeWeaponskillDamage', function(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+    if primaryMsg == false and attacker ~= nil and attacker.isPC and attacker:isPC() then
+        if type(wsResults) == 'table' then
+            wsResults.tpHitsLanded    = 0
+            wsResults.extraHitsLanded = 0
+            wsResults.bonusTP         = 0
+        end
+        local preTp = attacker.getTP and attacker:getTP() or 0
+        local dmg = super(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+        if type(wsResults) == 'table' then
+            wsResults.tpHitsLanded    = 0
+            wsResults.extraHitsLanded = 0
+            wsResults.bonusTP         = 0
+        end
+        if attacker.getTP and attacker.setTP and attacker:getTP() > preTp then
+            attacker:setTP(preTp)
+        end
+        return dmg
+    end
+
+    return super(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+end)
+
 local function invokeWithNormalizedParams(superFn, attacker, target, wsID, wsParams, tp, action, primaryMsg, taChar)
     if attacker == nil or not attacker:isPC() then
         return superFn(attacker, target, wsID, wsParams, tp, action, primaryMsg, taChar)
     end
 
+    local preTp = (primaryMsg == false and attacker.getTP) and attacker:getTP() or nil
     local modParams, tempMods, ranks, effTp, extraCtx = applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, tp, primaryMsg)
     local ok, r1, r2, r3, r4, r5 = pcall(superFn, attacker, target, wsID, modParams, effTp, action, primaryMsg, taChar)
     cleanupTempMods(attacker, tempMods)
@@ -1865,7 +1931,15 @@ local function invokeWithNormalizedParams(superFn, attacker, target, wsID, wsPar
         error(r1)
     end
 
-    r1 = applyPostDamageTraits(attacker, target, wsID, ranks, r1, extraCtx)
+    if primaryMsg == false then
+        if preTp ~= nil and attacker.getTP and attacker.setTP and attacker:getTP() > preTp then
+            attacker:setTP(preTp)
+        end
+        r3 = 0
+        r4 = 0
+    end
+
+    r1 = applyPostDamageTraits(attacker, target, wsID, ranks, r1, extraCtx, primaryMsg)
     return r1, r2, r3, r4, r5
 end
 
@@ -1976,9 +2050,10 @@ end)
 local moonlightMultCache = {}
 
 local function collectUtilityNodeData(player, wsID, tp, consumeNextWs)
+    local jobId = player:getMainJob()
     local ws    = catalog.byId[wsID]
-    local tree  = talents.getTreeForWS(wsID)
-    local ranks = talents.getWSRanks(player, player:getMainJob(), wsID)
+    local tree  = talents.getTreeForWS(wsID, player, jobId)
+    local ranks = talents.getWSRanks(player, jobId, wsID)
 
     local data =
     {
@@ -2039,6 +2114,9 @@ local function collectUtilityNodeData(player, wsID, tp, consumeNextWs)
             end
             if eff.wsd then
                 data.potencyPct = data.potencyPct + (pickRankVal(eff.wsd, r) or 0)
+            end
+            if eff.ftpAdd then
+                data.potencyPct = data.potencyPct + math.floor((pickRankVal(eff.ftpAdd, r) or 0) * 35 + 0.5)
             end
             if eff.tpBonus then
                 local addTp = pickRankVal(eff.tpBonus, r) or 0

@@ -1,0 +1,206 @@
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index c3719d7..e84a912 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -11748,6 +11748,37 @@ void CLuaBaseEntity::recalculateAbilitiesTable()
+     PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
+ }
+ 
++void CLuaBaseEntity::sendTalentPacket(std::string const& payload)
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        return;
++    }
++
++    auto*                 PChar         = static_cast<CCharEntity*>(m_PBaseEntity);
++    constexpr std::size_t HeaderBytes   = 12;
++    constexpr std::size_t MaxPayloadLen = 236;
++    const std::size_t     len           = std::min<std::size_t>(payload.size(), MaxPayloadLen);
++    const std::size_t     totalBytes    = ((HeaderBytes + len + 3) / 4) * 4;
++
++    auto packet = std::make_unique<CBasicPacket>();
++    packet->setType(0x1FD);
++    packet->setSize(totalBytes);
++    packet->ref<uint8>(0x04)  = 'O';
++    packet->ref<uint8>(0x05)  = 'X';
++    packet->ref<uint8>(0x06)  = 'T';
++    packet->ref<uint8>(0x07)  = 'L';
++    packet->ref<uint8>(0x08)  = 1;
++    packet->ref<uint8>(0x09)  = 0;
++    packet->ref<uint16>(0x0A) = static_cast<uint16>(len);
++    for (std::size_t i = 0; i < len; ++i)
++    {
++        packet->ref<uint8>(HeaderBytes + i) = static_cast<uint8>(payload[i]);
++    }
++
++    PChar->pushPacket(std::move(packet));
++}
++
+ auto CLuaBaseEntity::getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table
+ {
+     auto table = lua.create_table();
+@@ -21208,6 +21235,7 @@ void CLuaBaseEntity::Register()
+ 
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
++    SOL_REGISTER("sendTalentPacket", CLuaBaseEntity::sendTalentPacket);
+     SOL_REGISTER("getEntitiesInRange", CLuaBaseEntity::getEntitiesInRange);
+ 
+     // Parties and Alliances
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+index 2f1b43e..8d29c1a 100644
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -593,6 +593,7 @@ public:
+ 
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
++    void sendTalentPacket(std::string const& payload);
+     auto getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table;
+ 
+     // Parties and Alliances
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index 2683ae9..39a7d1e 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6869,4 +6869,55 @@ void OnTraitsTableBuilt(CCharEntity* PChar)
+     }
+ }
+ 
++auto CanUseTalentWeaponskill(CCharEntity* PChar, uint16 wsId) -> bool
++{
++    if (PChar == nullptr || wsId == 0)
++    {
++        return false;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.wsTalents.isWSUnlocked");
++    if (!func.valid())
++    {
++        return false;
++    }
++
++    const auto result = func(PChar, wsId);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::CanUseTalentWeaponskill: %s", err.what());
++        return false;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<bool>())
++    {
++        return retObj.as<bool>();
++    }
++
++    return false;
++}
++
++void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1, uint8 arg2)
++{
++    if (PChar == nullptr)
++    {
++        return;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.wsTalents.handleClientPacket");
++    if (!func.valid())
++    {
++        return;
++    }
++
++    const auto result = func(PChar, operation, wsId, arg1, arg2);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::OnTalentPacket: %s", err.what());
++    }
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index 6542c9f..f19e84b 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -587,6 +587,8 @@ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table
+ auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>;
+ auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>;
+ void OnTraitsTableBuilt(CCharEntity* PChar);
++auto CanUseTalentWeaponskill(CCharEntity* PChar, uint16 wsId) -> bool;
++void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1, uint8 arg2);
+ 
+ }; // namespace luautils
+ 
+diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+index 485a90b..c90e4a1 100644
+--- a/src/map/packets/c2s/0x11f_crystal_socket.cpp
++++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+@@ -32,13 +32,27 @@
+ #include "packets/c2s/validation.h"
+ #include "packets/s2c/0x1ff_crystal_collection.h"
+ 
++namespace
++{
++constexpr uint32_t TalentMagic = 0x4C54584Fu; // "OXTL"
++}
++
+ auto GP_CLI_COMMAND_CRYSTAL_SOCKET::validate(MapSession* PSession, const CCharEntity* PChar) const -> PacketValidationResult
+ {
+-    return PacketValidator(PChar).mustEqual(magic, crystal::Magic, "Not a Crystal protocol request.");
++    return PacketValidator(PChar).mustEqual(magic == crystal::Magic || magic == TalentMagic, true, "Not a Crystal or Talent protocol request.");
+ }
+ 
+ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* PChar) const
+ {
++    if (magic == TalentMagic)
++    {
++        if (version == 1)
++        {
++            luautils::OnTalentPacket(PChar, operation, requestId, job, branch);
++        }
++        return;
++    }
++
+     auto result = crystal::Result::Invalid;
+     if (crystal::validRequest(magic, version, operation, reserved))
+     {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index f522979..c8d4102 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -410,9 +410,9 @@ auto CanUseWeaponskill(CCharEntity* PChar, CWeaponSkill* PSkill) -> bool
+         case 250:
+         case 251:
+         case 252:
+-            return PChar->GetLocalVar("OX_THROW_WS") == 1;
++            return PChar->GetLocalVar("OX_THROW_WS") == 1 && luautils::CanUseTalentWeaponskill(PChar, PSkill->getID());
+         default:
+-            return true;
++            return luautils::CanUseTalentWeaponskill(PChar, PSkill->getID());
+     }
+ }
+ 
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index e003bb0..3d91b4c 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -3291,7 +3291,7 @@ void BuildingCharWeaponSkills(CCharEntity* PChar)
+     const auto& MeleeWeaponSkillList = battleutils::GetWeaponSkills(skill);
+     for (auto&& PSkill : MeleeWeaponSkillList)
+     {
+-        if (battleutils::CanUseWeaponskill(PChar, PSkill) || PSkill->getID() == main_ws)
++        if (battleutils::CanUseWeaponskill(PChar, PSkill))
+         {
+             addWeaponSkill(PChar, PSkill->getID());
+         }
+@@ -3304,7 +3304,7 @@ void BuildingCharWeaponSkills(CCharEntity* PChar)
+         const auto& RangedWeaponSkillList = battleutils::GetWeaponSkills(skill);
+         for (auto&& PSkill : RangedWeaponSkillList)
+         {
+-            if ((battleutils::CanUseWeaponskill(PChar, PSkill)) || PSkill->getID() == range_ws)
++            if (battleutils::CanUseWeaponskill(PChar, PSkill))
+             {
+                 addWeaponSkill(PChar, PSkill->getID());
+             }

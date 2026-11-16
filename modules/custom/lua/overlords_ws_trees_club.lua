@@ -91,9 +91,9 @@ regB(160, 'magic', {
         { key = 'c160_s3', rank = 2 }),
 
     -- Col 3: Tactical Fury
-    node(1, 3, 'c160_t1', 'Tactical Opening', 7, 'Lv1+: +6..42% Atk & NextWS +4..28% WSD',
-        function(r) return string.format('+%d%% Atk, NextWS +%d%% WSD', r * 6, r * 4) end,
-        { atkPct = { 6,12,18,24,30,36,42 }, nextWs = { wsd = { 4,8,12,16,20,24,28 }, dur = 15 } }),
+    node(1, 3, 'c160_t1', 'Tactical Opening', 7, 'Lv1+: +8..56 MAB & NextWS +4..28% WSD',
+        function(r) return string.format('+%d MAB, NextWS +%d%% WSD', r * 8, r * 4) end,
+        { matt = { 8,16,24,32,40,48,56 }, nextWs = { wsd = { 4,8,12,16,20,24,28 }, dur = 15 } }),
     warStance(2, 3, 'c160_t2', 'Breaching Blow', 6, 'Target -5..25% DEF & Commander/Zerk +8..48% WSD',
         function(r) return string.format('Target -%d%% DEF, Spec +%d%% WSD', math.min(25, r * 4 + 1), r * 8) end,
         { targetDebuffs = {{ effect = xi.effect.DEFENSE_DOWN, power = { 5,9,13,17,21,25 }, duration = 45 }},
@@ -102,9 +102,9 @@ regB(160, 'magic', {
         function(r) return string.format('Party +%d TP, +%d TP Bonus', r * 50, r * 60) end,
         { partyTp = { 50,100,150,200,250,300 }, tpBonus = { 60,120,180,240,300,360 } },
         { key = 'c160_t2', rank = 2 }),
-    node(4, 3, 'c160_t4', 'Sovereign Strike', 4, '+1 Bonus Hit, +15..60% WSD & +10..40% SC Dmg',
-        function(r) return string.format('+1 Hit, +%d%% WSD, +%d%% SC Dmg', r * 15, r * 10) end,
-        { bonusHits = { 1,1,1,1 }, wsd = { 15,30,45,60 }, scBonus = { 10,20,30,40 } },
+    node(4, 3, 'c160_t4', 'Sovereign Strike', 4, '+0.6..2.4 fTP, +15..60% WSD & +10..40% SC Dmg',
+        function(r) return string.format('+%.1f fTP, +%d%% WSD, +%d%% SC Dmg', r * 0.6, r * 15, r * 10) end,
+        { ftpAdd = { 0.6,1.2,1.8,2.4 }, wsd = { 15,30,45,60 }, scBonus = { 10,20,30,40 } },
         { key = 'c160_t3', rank = 2 }),
 })
 
@@ -154,9 +154,9 @@ regB(161, 'magic', {
         function(r) return string.format('Target -%d MDEF, Spec +%d%% WSD', r * 6, r * 8) end,
         { targetDebuffs = {{ effect = xi.effect.MAGIC_DEF_DOWN, power = { 6,12,18,24,30,36 }, duration = 45 }},
           stWsd = { 8,16,24,32,40,48 } }, { key = 'c161_t1', rank = 2 }),
-    node(3, 3, 'c161_t3', 'Fury Surge', 6, 'Crit +4..24% & Crit DMG +5..30%',
-        function(r) return string.format('+%d%% Crit, +%d%% Crit DMG', r * 4, r * 5) end,
-        { crit = { 4,8,12,16,20,24 }, critDmg = { 5,10,15,20,25,30 } },
+    node(3, 3, 'c161_t3', 'Radiant Surge', 6, '+9..54 MAB & +8..48% SC Dmg',
+        function(r) return string.format('+%d MAB, +%d%% SC Dmg', r * 9, r * 8) end,
+        { matt = { 9,18,27,36,45,54 }, scBonus = { 8,16,24,32,40,48 } },
         { key = 'c161_t2', rank = 2 }),
     node(4, 3, 'c161_t4', 'Divine Reckoning', 4, '+1.0..4.0 fTP & Party +75..300 TP',
         function(r) return string.format('+%.1f fTP, Party +%d TP', r * 1.0, r * 75) end,
