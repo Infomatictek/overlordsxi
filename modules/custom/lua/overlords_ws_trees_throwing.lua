@@ -21,11 +21,13 @@
 --   #247 Bolero Cyclone      (Wind Elemental + Evasion Down Cyclone, CHR 40% / AGI 30%)
 --   #252 Terpsichore's Halo  (Mythic Light Elemental + Dancer Regalia, CHR 60% / DEX 30%)
 -----------------------------------
-require('modules/custom/lua/overlords_ws_tree_helpers')
------------------------------------
-local h    = xi.overlords.wsTreeHelpers
-local regB = h.regB
-local N    = h.N
+local H    = require('modules/custom/lua/overlords_ws_tree_helpers')
+local regB = H.regBaseline
+local node = H.node
+
+local function N(key, name, tier, col, maxRank, req, zeroDesc, rankDesc, eff)
+    return node(tier, col, key, name, maxRank, zeroDesc, rankDesc, eff, req)
+end
 
 ---------------------------------------------------------------------------
 -- #241 PIROUETTE TOSS (Physical Ranged 1-Hit Opener, DEX 40% / AGI 20%, +1-2 FM)
