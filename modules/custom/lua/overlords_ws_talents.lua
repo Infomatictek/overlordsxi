@@ -2383,6 +2383,14 @@ function talents.sendWSDetail(player, wsId)
 
     sendProto(player, string.format('WS|%u|%s|%s|%s|%u|%s', ws.id, sanitizeField(ws.name), sanitizeField(ws.skillName), ws.wsType, wsSpent, sanitizeField(summary)))
 
+    local nodeBatch = {}
+    local function flushNodeBatch()
+        if #nodeBatch > 0 then
+            sendProto(player, 'NODES|' .. table.concat(nodeBatch, ';;'))
+            nodeBatch = {}
+        end
+    end
+
     for _, node in ipairs(tree.nodes) do
         local r = ranks[node.key] or 0
         local canLearn = talents.canInvest(player, jobId, wsId, node.key)
@@ -2397,7 +2405,7 @@ function talents.sendWSDetail(player, wsId)
         local scName = scId > 0 and (SC_SHORT[scId] or SC_NAMES[scId] or '') or ''
         local nextReqLvl = talents.getNodeNextReqLevel(node, r)
 
-        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
+        local entry = string.format('%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
             ws.id,
             node.key,
             node.tier,
@@ -2415,8 +2423,13 @@ function talents.sendWSDetail(player, wsId)
             scId,
             scName,
             node.slot or 0
-        ))
+        )
+        table.insert(nodeBatch, entry)
+        if #nodeBatch >= 3 then
+            flushNodeBatch()
+        end
     end
+    flushNodeBatch()
 
     sendProto(player, string.format('WS_END|%u|%u', ws.id, avail))
 end
