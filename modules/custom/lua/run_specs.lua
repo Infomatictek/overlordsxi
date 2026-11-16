@@ -460,36 +460,161 @@ local function getPartyMembersInRange(player, radius)
     return out
 end
 
-local function applyTimedEffectWithMods(target, effectId, power, duration, origin, subPower, iconId, mods)
-    if target == nil or not target.addStatusEffect then
-        return false
+local FALLBACK_EFFECT_MAP =
+{
+    [EFFECT_IRON_BATTUTA]      = 816, -- commander_bulwark
+    [EFFECT_RUNIC_AEGIS]       = 820, -- gladiator_ward
+    [EFFECT_RUNIC_CONVERGENCE] = 818, -- commander_regroup
+    [EFFECT_EDGEFLARE]         = 819, -- berserker_surge
+    [EFFECT_FONT_OF_LIFE]      = 817, -- commander_cadence
+    [EFFECT_SANCTIFIED_WARD]   = 820, -- gladiator_ward
+    [EFFECT_CONDUCTION]        = 815, -- commander_breach
+    [EFFECT_RUNIC_ASCENDANCE]  = 818, -- commander_regroup
+}
+
+local pendingRunEffectMods = {}
+
+local function applyPendingRunEffectMods(target, effect)
+    if target == nil or effect == nil or not target.getID then
+        return
     end
 
-    if target:hasStatusEffect(effectId) then
+    local targetId = target:getID()
+    local mods     = pendingRunEffectMods[targetId]
+    if type(mods) == 'table' and effect.addMod then
+        for _, pair in ipairs(mods) do
+            if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
+                effect:addMod(pair[1], pair[2])
+            end
+        end
+        pendingRunEffectMods[targetId] = nil
+    end
+end
+
+for _, effKey in ipairs({
+    'inquisitor_battuta',
+    'inquisitor_aegis',
+    'inquisitor_converge',
+    'spellblade_edgeflare',
+    'spellblade_overcharge',
+    'lifebinder_font',
+    'lifebinder_sanctuary',
+    'spellblade_conduction',
+    'spellblade_ascendance',
+}) do
+    xi.effects[effKey] = xi.effects[effKey] or {}
+    xi.effects[effKey].onEffectGain = function(target, effect)
+        applyPendingRunEffectMods(target, effect)
+    end
+    xi.effects[effKey].onEffectLose = function(_target, _effect)
+    end
+    m:addOverride('xi.effects.' .. effKey .. '.onEffectGain', function(target, effect)
+        applyPendingRunEffectMods(target, effect)
+    end)
+    m:addOverride('xi.effects.' .. effKey .. '.onEffectLose', function(_target, _effect)
+    end)
+end
+
+for _, fbKey in ipairs({
+    'commander_breach',
+    'commander_bulwark',
+    'commander_cadence',
+    'commander_regroup',
+    'berserker_surge',
+    'gladiator_ward',
+}) do
+    xi.effects[fbKey] = xi.effects[fbKey] or {}
+    m:addOverride('xi.effects.' .. fbKey .. '.onEffectGain', function(target, effect)
+        if super then
+            super(target, effect)
+        end
+        applyPendingRunEffectMods(target, effect)
+    end)
+end
+
+local function getRunCustomEffect(target, effectId)
+    if target == nil or not target.getStatusEffect then
+        return nil
+    end
+    local eff = target:getStatusEffect(effectId)
+    if eff ~= nil then
+        return eff
+    end
+    local fbId = FALLBACK_EFFECT_MAP[effectId]
+    if fbId ~= nil then
+        return target:getStatusEffect(fbId)
+    end
+    return nil
+end
+
+local function hasRunCustomEffect(target, effectId)
+    return getRunCustomEffect(target, effectId) ~= nil
+end
+
+local function delRunCustomEffectSilent(target, effectId)
+    if target == nil or not target.delStatusEffectSilent then
+        return
+    end
+    if target.hasStatusEffect and target:hasStatusEffect(effectId) then
         target:delStatusEffectSilent(effectId)
     end
+    local fbId = FALLBACK_EFFECT_MAP[effectId]
+    if fbId ~= nil and target.hasStatusEffect and target:hasStatusEffect(fbId) then
+        target:delStatusEffectSilent(fbId)
+    end
+end
 
-    local ok = target:addStatusEffect(effectId,
+local function applyTimedEffectWithMods(target, effectId, power, duration, origin, subPower, iconId, mods)
+    if target == nil or not target.addStatusEffect then
+        return false, effectId
+    end
+
+    delRunCustomEffectSilent(target, effectId)
+
+    local targetId = target.getID and target:getID() or 0
+    pendingRunEffectMods[targetId] = mods
+
+    local params =
     {
         power    = power or 1,
         duration = duration or 15,
         origin   = origin or target,
         subPower = subPower or 0,
         icon     = iconId or effectId,
-    })
+    }
 
-    if ok then
-        local eff = target:getStatusEffect(effectId)
-        if eff ~= nil and eff.addMod and type(mods) == 'table' then
-            for _, pair in ipairs(mods) do
+    local actualId = effectId
+    local ok       = target:addStatusEffect(effectId, params)
+    if not ok or (target.hasStatusEffect and not target:hasStatusEffect(effectId)) then
+        local fbId = FALLBACK_EFFECT_MAP[effectId]
+        if fbId ~= nil then
+            pendingRunEffectMods[targetId] = mods
+            if target.hasStatusEffect and target:hasStatusEffect(fbId) then
+                target:delStatusEffectSilent(fbId)
+            end
+            ok       = target:addStatusEffect(fbId, params)
+            actualId = fbId
+        end
+    end
+
+    -- Fallback if onEffectGain did not consume pendingRunEffectMods
+    local leftover = pendingRunEffectMods[targetId]
+    pendingRunEffectMods[targetId] = nil
+    if ok and type(leftover) == 'table' then
+        local eff = target.getStatusEffect and target:getStatusEffect(actualId) or nil
+        if eff ~= nil and eff.addMod then
+            for _, pair in ipairs(leftover) do
                 if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
                     eff:addMod(pair[1], pair[2])
+                    if target.addMod then
+                        target:addMod(pair[1], pair[2])
+                    end
                 end
             end
         end
     end
 
-    return ok
+    return ok, actualId
 end
 
 local function bindAbility(name, checkFn, useFn)
@@ -515,27 +640,21 @@ local function syncConductionStatusEffect(player, stacks)
         return
     end
     if stacks <= 0 then
-        if player.delStatusEffectSilent then
-            player:delStatusEffectSilent(EFFECT_CONDUCTION)
-        end
+        delRunCustomEffectSilent(player, EFFECT_CONDUCTION)
         return
     end
 
     local iconId = (xi.effect and xi.effect.CHAINBOUND) or (xi.effect and xi.effect.INSPIRE) or EFFECT_CONDUCTION
-    if player.hasStatusEffect and player:hasStatusEffect(EFFECT_CONDUCTION) then
-        player:delStatusEffectSilent(EFFECT_CONDUCTION)
-    end
-    if player.addStatusEffect then
-        player:addStatusEffect(EFFECT_CONDUCTION,
-        {
-            power    = stacks,
-            duration = 30,
-            origin   = player,
-            subPower = stacks,
-            tier     = stacks,
-            icon     = iconId,
-        })
-    end
+    applyTimedEffectWithMods(
+        player,
+        EFFECT_CONDUCTION,
+        stacks,
+        30,
+        player,
+        stacks,
+        iconId,
+        nil
+    )
 end
 
 local function clearConduction(player, reasonMsg)
@@ -579,10 +698,7 @@ local function addConductionStacks(player, delta)
 end
 
 local function hasEdgeflare(player, activeElement)
-    if player == nil or not player.getStatusEffect then
-        return false
-    end
-    local eff = player:getStatusEffect(EFFECT_EDGEFLARE)
+    local eff = getRunCustomEffect(player, EFFECT_EDGEFLARE)
     if eff == nil then
         return false
     end
@@ -614,10 +730,7 @@ local function grantOrRefreshEdgeflare(player, element)
 end
 
 local function hasRunicAscendance(player)
-    if player == nil or not player.hasStatusEffect then
-        return false
-    end
-    return player:hasStatusEffect(EFFECT_RUNIC_ASCENDANCE)
+    return hasRunCustomEffect(player, EFFECT_RUNIC_ASCENDANCE)
 end
 
 -- Check if target has Spellblade Gambit active for the given element (returns 1.10 or 1.0)
@@ -991,7 +1104,7 @@ local function attachRunListeners(player)
         if engaged then
             actor:setLocalVar('OX_RUN_DISENGAGE_TS', 0)
             -- Keep Conduction status indicator refreshed while engaged
-            if actor.hasStatusEffect and not actor:hasStatusEffect(EFFECT_CONDUCTION) then
+            if not hasRunCustomEffect(actor, EFFECT_CONDUCTION) then
                 syncConductionStatusEffect(actor, stacks)
             end
         else
@@ -1072,10 +1185,10 @@ if xi.job and xi.job.RUN then
                 detachRunListeners(player)
             end,
             onRemove = function(player)
-                if player ~= nil and player.delStatusEffectSilent then
-                    player:delStatusEffectSilent(EFFECT_IRON_BATTUTA)
-                    player:delStatusEffectSilent(EFFECT_RUNIC_AEGIS)
-                    player:delStatusEffectSilent(EFFECT_RUNIC_CONVERGENCE)
+                if player ~= nil then
+                    delRunCustomEffectSilent(player, EFFECT_IRON_BATTUTA)
+                    delRunCustomEffectSilent(player, EFFECT_RUNIC_AEGIS)
+                    delRunCustomEffectSilent(player, EFFECT_RUNIC_CONVERGENCE)
                 end
             end,
         },
@@ -1140,10 +1253,8 @@ if xi.job and xi.job.RUN then
                         player:setLocalVar('OX_RUN_MP_FRAC', 0)
                     end
                     clearConduction(player, nil)
-                    if player.delStatusEffectSilent then
-                        player:delStatusEffectSilent(EFFECT_EDGEFLARE)
-                        player:delStatusEffectSilent(EFFECT_RUNIC_ASCENDANCE)
-                    end
+                    delRunCustomEffectSilent(player, EFFECT_EDGEFLARE)
+                    delRunCustomEffectSilent(player, EFFECT_RUNIC_ASCENDANCE)
                 end
                 detachRunListeners(player)
             end,
@@ -1218,8 +1329,8 @@ m:addOverride('xi.job_utils.rune_fencer.useRuneEnchantment', function(player, ta
         local power      = getSpellbladeRuneResistancePower(runLevel)
         local prevNewest = target.getNewestRuneEffect and target:getNewestRuneEffect() or 0
 
-        if prevNewest ~= 0 and prevNewest ~= effect and target.delStatusEffectSilent then
-            target:delStatusEffectSilent(EFFECT_EDGEFLARE)
+        if prevNewest ~= 0 and prevNewest ~= effect then
+            delRunCustomEffectSilent(target, EFFECT_EDGEFLARE)
         end
 
         if target.removeAllRunes then
@@ -1296,7 +1407,7 @@ local function dealRunicRiposte(defender, attacker)
     local weaponDmg = defender.getWeaponDmg and defender:getWeaponDmg() or 10
     local vitStat   = defender.getStat and defender:getStat(xi.mod.VIT) or lvl
     local runeCount = defender.getActiveRuneCount and defender:getActiveRuneCount() or 1
-    local stanceMult = (defender.hasStatusEffect and defender:hasStatusEffect(EFFECT_IRON_BATTUTA)) and 1.35 or 1.0
+    local stanceMult = hasRunCustomEffect(defender, EFFECT_IRON_BATTUTA) and 1.35 or 1.0
 
     local rawDmg = math.max(5, math.floor((weaponDmg * 0.45 + vitStat * 0.25 + lvl * 0.30 + runeCount * 4) * stanceMult))
     if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
@@ -1909,11 +2020,10 @@ end, function(player, _target, _ability)
     local skinPct   = scaleTier(lvl, 4, 6, 8, 10)
     local iconId    = (xi.effect and xi.effect.BATTUTA) or EFFECT_IRON_BATTUTA
 
-    if player.delStatusEffectSilent then
-        player:delStatusEffectSilent(EFFECT_RUNIC_AEGIS)
-    end
+    refreshActiveRuneDurations(player)
+    delRunCustomEffectSilent(player, EFFECT_RUNIC_AEGIS)
 
-    applyTimedEffectWithMods(
+    local _, appliedId = applyTimedEffectWithMods(
         player,
         EFFECT_IRON_BATTUTA,
         parryBonus,
@@ -1935,10 +2045,9 @@ end, function(player, _target, _ability)
         player:addStatusEffect(xi.effect.STONESKIN, { power = skinVal, duration = 60, origin = player })
     end
 
-    refreshActiveRuneDurations(player)
     pulseNearbyEnmity(player, 160, 420, 12.0)
 
-    return EFFECT_IRON_BATTUTA
+    return appliedId or EFFECT_IRON_BATTUTA
 end)
 
 -- 2) Inquisitor: Stance: Runic Aegis (413, 15s CD, Self)
@@ -1956,9 +2065,8 @@ end, function(player, _target, _ability)
     local pulsePct  = scaleTier(lvl, 4, 6, 8, 10)
     local iconId    = (xi.effect and xi.effect.VALLATION) or EFFECT_RUNIC_AEGIS
 
-    if player.delStatusEffectSilent then
-        player:delStatusEffectSilent(EFFECT_IRON_BATTUTA)
-    end
+    refreshActiveRuneDurations(player)
+    delRunCustomEffectSilent(player, EFFECT_IRON_BATTUTA)
 
     local mods =
     {
@@ -1973,7 +2081,7 @@ end, function(player, _target, _ability)
         table.insert(mods, { xi.mod.MAGIC_ABSORB, absorbPct })
     end
 
-    applyTimedEffectWithMods(
+    local _, appliedId = applyTimedEffectWithMods(
         player,
         EFFECT_RUNIC_AEGIS,
         mevaBonus,
@@ -1992,10 +2100,9 @@ end, function(player, _target, _ability)
     end
 
     cleanseTargetDebuffs(player, tier >= 3 and 2 or 1)
-    refreshActiveRuneDurations(player)
     pulseNearbyEnmity(player, 160, 420, 12.0)
 
-    return EFFECT_RUNIC_AEGIS
+    return appliedId or EFFECT_RUNIC_AEGIS
 end)
 
 -- 3) Inquisitor: Runic Convergence (414, 30s CD, 10s Self)
@@ -2014,7 +2121,9 @@ end, function(player, _target, _ability)
     local enmityVal  = scaleTier(lvl, 30, 40, 50, 60)
     local iconId     = (xi.effect and xi.effect.ELEMENTAL_SFORZO) or EFFECT_RUNIC_CONVERGENCE
 
-    applyTimedEffectWithMods(
+    refreshActiveRuneDurations(player)
+
+    local _, appliedId = applyTimedEffectWithMods(
         player,
         EFFECT_RUNIC_CONVERGENCE,
         parryBonus,
@@ -2034,10 +2143,9 @@ end, function(player, _target, _ability)
         player:addHP(math.max(12, math.floor(player:getMaxHP() * 0.03 * runeCount)))
     end
 
-    refreshActiveRuneDurations(player)
     pulseNearbyEnmity(player, 240, 680, 12.0)
 
-    return EFFECT_RUNIC_CONVERGENCE
+    return appliedId or EFFECT_RUNIC_CONVERGENCE
 end)
 
 -----------------------------------

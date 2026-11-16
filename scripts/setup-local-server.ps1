@@ -247,6 +247,53 @@ try {
         return $ok
     }
 
+    $patchNeedsCleanReapply = $false
+    for ($i = 0; $i -lt $patchFiles.Count; $i++) {
+        $patch = $patchFiles[$i]
+        if (Test-PatchApplied $patch.FullName) {
+            continue
+        }
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        git apply --check $patch.FullName 2>&1 | Out-Null
+        $checkCode = $LASTEXITCODE
+        if ($checkCode -ne 0) {
+            git apply --check --ignore-space-change $patch.FullName 2>&1 | Out-Null
+            $checkCode = $LASTEXITCODE
+        }
+        $ErrorActionPreference = $prevEap
+        if ($checkCode -ne 0) {
+            $curTargets = Get-PatchTargetFiles $patch.FullName
+            $supersededBy = $null
+            for ($j = $i + 1; $j -lt $patchFiles.Count; $j++) {
+                $later = $patchFiles[$j]
+                $laterTargets = Get-PatchTargetFiles $later.FullName
+                $overlaps = (@($curTargets | Where-Object { $laterTargets -contains $_ })).Count -gt 0
+                if ($overlaps -and (Test-PatchApplied $later.FullName)) {
+                    $supersededBy = $later.Name
+                    break
+                }
+            }
+            if (-not $supersededBy) {
+                $patchNeedsCleanReapply = $true
+                break
+            }
+        }
+    }
+
+    if ($patchNeedsCleanReapply) {
+        Write-Host '==> Detected updated OverlordsXI patch; resetting patched server files to clean upstream before re-applying all patches...' -ForegroundColor Yellow
+        $allTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($p in $patchFiles) {
+            foreach ($tf in (Get-PatchTargetFiles $p.FullName)) {
+                [void]$allTargets.Add($tf)
+            }
+        }
+        if ($allTargets.Count -gt 0) {
+            git checkout -- @($allTargets)
+        }
+    }
+
     for ($i = 0; $i -lt $patchFiles.Count; $i++) {
         $patch = $patchFiles[$i]
         Write-Host "==> Checking patch: $($patch.Name)" -ForegroundColor Cyan
@@ -316,6 +363,7 @@ try {
     $srcModules = Join-Path $RepoRoot 'modules\custom'
     $dstModules = Join-Path $ServerDir 'modules\custom'
     $changedCppFiles = [System.Collections.Generic.List[string]]::new()
+    $changedSqlFiles = [System.Collections.Generic.List[string]]::new()
     foreach ($sub in @('lua', 'cpp', 'sql', 'commands')) {
         $srcSub = Join-Path $srcModules $sub
         $dstSub = Join-Path $dstModules $sub
@@ -324,6 +372,10 @@ try {
             if ($sub -eq 'cpp') {
                 foreach ($f in $synced) {
                     [void]$changedCppFiles.Add("modules/custom/cpp/$f")
+                }
+            } elseif ($sub -eq 'sql') {
+                foreach ($f in $synced) {
+                    [void]$changedSqlFiles.Add("modules/custom/sql/$f")
                 }
             }
         }
@@ -670,13 +722,16 @@ try {
         }
     }
 
-    # 8. Optional dbtool migration / custom SQL import
-    if ($RunDbTool) {
+    # 8. Optional dbtool migration / custom SQL import (runs automatically if any custom SQL file changed)
+    if ($RunDbTool -or $changedSqlFiles.Count -gt 0) {
         Write-Host '==> Importing custom SQL modules via tools/dbtool.py...' -ForegroundColor Yellow
         $pyCode = "import sys; sys.path.insert(0, 'tools'); import dbtool; dbtool.fetch_credentials(); dbtool.fetch_configs(); dbtool.connect(); dbtool.fetch_module_files(); [dbtool.import_file(f) for f in dbtool.import_files]"
         python -c $pyCode
         if ($LASTEXITCODE -ne 0) {
-            throw 'dbtool custom SQL import failed.'
+            Write-Warning 'dbtool custom SQL import returned non-zero; ensure MariaDB is running or run with -RunDbTool.'
+            if ($RunDbTool) {
+                throw 'dbtool custom SQL import failed.'
+            }
         }
     }
 }

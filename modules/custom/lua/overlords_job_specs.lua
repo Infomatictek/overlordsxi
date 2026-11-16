@@ -331,7 +331,13 @@ function spec.canSwap(player)
 end
 
 local function syncAbilitiesTable(player)
-    if player ~= nil and player.recalculateAbilitiesTable then
+    if player == nil then
+        return
+    end
+    if player.recalculateSkillsTable then
+        player:recalculateSkillsTable()
+    end
+    if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
     end
 end

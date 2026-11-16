@@ -1052,16 +1052,20 @@ if xi.job and xi.job.BLM then
             extraTraits = { TRAIT_HARBINGERS_DRAIN, TRAIT_DARK_PACT, TRAIT_GRIM_CONVERSION },
             mods = function(player)
                 local lvl = player ~= nil and player:getMainLvl() or 10
+                local scytheAPlus = lvl <= 50 and (6 + (lvl - 1) * 3)
+                    or (lvl <= 60 and (153 + (lvl - 50) * 5))
+                    or (lvl <= 70 and math.floor(203 + (lvl - 60) * 4.85))
+                    or (251 + (lvl - 70) * 5)
                 return
                 {
                     { xi.mod.HPP,           10 },
-                    { xi.mod.SCYTHE,        math.max(10, math.floor(lvl * 0.95)) },
+                    { xi.mod.SCYTHE,        math.max(10, scytheAPlus) },
                     { xi.mod.OCCULT_ACUMEN, scaleTier(lvl, 25, 40, 55, 75) },
                 }
             end,
             onApply = function(player)
-                if player ~= nil and player.capSkill then
-                    player:capSkill(xi.skill.SCYTHE)
+                if player ~= nil and player.recalculateSkillsTable then
+                    player:recalculateSkillsTable()
                 end
                 attachNecroListeners(player)
                 syncDarkPactMods(player)
@@ -1069,6 +1073,9 @@ if xi.job and xi.job.BLM then
             end,
             onRemove = function(player)
                 detachNecroListeners(player)
+                if player ~= nil and player.recalculateSkillsTable then
+                    player:recalculateSkillsTable()
+                end
                 if player ~= nil and player.hasPet and player:hasPet() then
                     local pet = player:getPet()
                     if pet ~= nil and UNDEAD_PETS[pet:getPetID()] and player.despawnPet then

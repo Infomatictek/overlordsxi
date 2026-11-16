@@ -8,6 +8,8 @@
 -- Post-75 RUN abilities scaled to <= Lv 75 & un-gated from merit addType
 UPDATE `abilities` SET `level` = 75 WHERE `abilityId` IN (373, 374, 378) AND `level` > 75;
 UPDATE `abilities` SET `addType` = 0 WHERE `abilityId` IN (375, 376);
+-- Hide empty Ward (379) and Effusion (380) category headers (RUN abilities are top-level in 114.DAT so 0x16/0x17 stay free for BLM Necromancer)
+UPDATE `abilities` SET `level` = 255 WHERE `abilityId` IN (379, 380);
 
 -- Allow RUN (job 22 = byte 22 of jobs blob) to learn Regen IV (spellId 477) at Lv 75 (0x4B)
 UPDATE `spell_list`
