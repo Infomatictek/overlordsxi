@@ -12,7 +12,7 @@ UPDATE `abilities` SET `addType` = 0 WHERE `abilityId` IN (375, 376);
 -- Allow RUN (job 22 = byte 22 of jobs blob) to learn Regen IV (spellId 477) at Lv 75 (0x4B)
 UPDATE `spell_list`
 SET `jobs` = CONCAT(SUBSTRING(`jobs`, 1, 21), CHAR(75))
-WHERE `spell_id` = 477 AND LENGTH(`jobs`) >= 22;
+WHERE `spellid` = 477 AND LENGTH(`jobs`) >= 22;
 
 -- Custom RUN Spec Job Abilities (412-418)
 DELETE FROM `abilities`
