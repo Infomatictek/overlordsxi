@@ -31,6 +31,7 @@ local PET_UNDEAD_DULLAHAN  = 133
 
 local TRAIT_HARBINGERS_DRAIN = 147
 local TRAIT_DARK_PACT        = 148
+local TRAIT_GRIM_CONVERSION  = 149
 
 local UNDEAD_PETS =
 {
@@ -177,6 +178,79 @@ local function syncDarkPactMods(player)
 end
 
 -----------------------------------
+-- Grim Conversion (Lv.10+: MACC->ACC, MATT->ATT, FASTCAST->Haste, MB Bonus->WSD)
+-- Elemental Celerity (xi.mod.ELEMENTAL_CELERITY) is left untouched.
+-----------------------------------
+local MOD_MB_BONUS = xi.mod and (xi.mod.MAG_BURST_BONUS or xi.mod.MAGIC_BURST_BONUS) or nil
+
+local function clearConversionMods(player)
+    if player == nil then
+        return
+    end
+    local cMacc = player:getLocalVar('OX_NECRO_CONV_MACC')
+    local cMatt = player:getLocalVar('OX_NECRO_CONV_MATT')
+    local cFc   = player:getLocalVar('OX_NECRO_CONV_FC')
+    local cMbb  = player:getLocalVar('OX_NECRO_CONV_MBB')
+
+    if cMacc > 0 then
+        player:delMod(xi.mod.ACC, cMacc)
+        player:addMod(xi.mod.MACC, cMacc)
+        player:setLocalVar('OX_NECRO_CONV_MACC', 0)
+    end
+    if cMatt > 0 then
+        player:delMod(xi.mod.ATT, cMatt)
+        player:addMod(xi.mod.MATT, cMatt)
+        player:setLocalVar('OX_NECRO_CONV_MATT', 0)
+    end
+    if cFc > 0 then
+        player:delMod(xi.mod.HASTE_ABILITY, cFc * 100)
+        player:addMod(xi.mod.FASTCAST, cFc)
+        player:setLocalVar('OX_NECRO_CONV_FC', 0)
+    end
+    if cMbb > 0 and MOD_MB_BONUS ~= nil then
+        player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbb)
+        player:addMod(MOD_MB_BONUS, cMbb)
+        player:setLocalVar('OX_NECRO_CONV_MBB', 0)
+    end
+end
+
+local function syncConversionMods(player)
+    if player == nil or not player:isPC() then
+        return
+    end
+    clearConversionMods(player)
+    if not isNecromancer(player) or player:getMainLvl() < 10 then
+        return
+    end
+
+    local macc = math.max(0, player:getMod(xi.mod.MACC))
+    local matt = math.max(0, player:getMod(xi.mod.MATT))
+    local fc   = math.max(0, player:getMod(xi.mod.FASTCAST))
+    local mbb  = MOD_MB_BONUS ~= nil and math.max(0, player:getMod(MOD_MB_BONUS)) or 0
+
+    if macc > 0 then
+        player:delMod(xi.mod.MACC, macc)
+        player:addMod(xi.mod.ACC, macc)
+        player:setLocalVar('OX_NECRO_CONV_MACC', macc)
+    end
+    if matt > 0 then
+        player:delMod(xi.mod.MATT, matt)
+        player:addMod(xi.mod.ATT, matt)
+        player:setLocalVar('OX_NECRO_CONV_MATT', matt)
+    end
+    if fc > 0 then
+        player:delMod(xi.mod.FASTCAST, fc)
+        player:addMod(xi.mod.HASTE_ABILITY, fc * 100)
+        player:setLocalVar('OX_NECRO_CONV_FC', fc)
+    end
+    if mbb > 0 and MOD_MB_BONUS ~= nil then
+        player:delMod(MOD_MB_BONUS, mbb)
+        player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbb)
+        player:setLocalVar('OX_NECRO_CONV_MBB', mbb)
+    end
+end
+
+-----------------------------------
 -- Harbinger's Drain (WS Damage heals active Undead Pet)
 -----------------------------------
 local function attachNecroListeners(player)
@@ -212,6 +286,12 @@ local function attachNecroListeners(player)
                 clearDarkPactMods(actor)
             end
         end
+        syncConversionMods(actor)
+    end)
+
+    player:removeListener('OX_NECRO_EQUIP_SYNC')
+    player:addListener('ITEM_EQUIP', 'OX_NECRO_EQUIP_SYNC', function(actor)
+        syncConversionMods(actor)
     end)
 end
 
@@ -221,7 +301,9 @@ local function detachNecroListeners(player)
     end
     player:removeListener('OX_NECRO_WS_DRAIN')
     player:removeListener('OX_NECRO_PET_CHECK')
+    player:removeListener('OX_NECRO_EQUIP_SYNC')
     clearDarkPactMods(player)
+    clearConversionMods(player)
 end
 
 -- Restrict non-vanilla Scythes to BLM Necromancer spec only
@@ -487,6 +569,7 @@ if xi.job and xi.job.BLM then
                 'Dark Pact: While an undead summon is alive, gain Double Attack, Store TP, and Accuracy.',
                 'Corpse Explosion: Detonate your summon for massive Dark AoE damage.',
                 'Grim Reaping & Grim Incantations: Command Warrior/Dullahan cleaves or Mage/Corse dark bursts.',
+                'Grim Conversion: Converts MACC->ACC, MATT->ATT, Fast Cast->Haste, and Magic Burst Bonus->WSD (Elemental Celerity unchanged).',
             },
             extraAbilities = function(player)
                 local list =
@@ -503,7 +586,7 @@ if xi.job and xi.job.BLM then
                 end
                 return list
             end,
-            extraTraits = { TRAIT_HARBINGERS_DRAIN, TRAIT_DARK_PACT },
+            extraTraits = { TRAIT_HARBINGERS_DRAIN, TRAIT_DARK_PACT, TRAIT_GRIM_CONVERSION },
             mods = function(player)
                 local lvl = player ~= nil and player:getMainLvl() or 10
                 return
@@ -516,6 +599,7 @@ if xi.job and xi.job.BLM then
             onApply = function(player)
                 attachNecroListeners(player)
                 syncDarkPactMods(player)
+                syncConversionMods(player)
             end,
             onRemove = function(player)
                 detachNecroListeners(player)
