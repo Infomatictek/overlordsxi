@@ -2,7 +2,7 @@ diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
 index b2c79a12..c8a4f2d1 100644
 --- a/src/map/utils/petutils.cpp
 +++ b/src/map/utils/petutils.cpp
-@@ -1072,7 +1072,13 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+@@ -1072,7 +1072,12 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
      highestLvl    = std::min(highestLvl, capLevel);
  
      // Randomize: 0-2 lvls lower, less Monster Gloves(+1/+2) bonus
@@ -16,7 +16,7 @@ index b2c79a12..c8a4f2d1 100644
      {
          highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
      }
-@@ -1089,6 +1095,22 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+@@ -1089,6 +1094,21 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
          PPet->SetSJob(static_cast<uint8>(xi::Job::RDM));
          PPet->SetSLevel(PPet->GetMLevel());
      }
@@ -38,7 +38,7 @@ index b2c79a12..c8a4f2d1 100644
      LoadJugStats(PPet, PPetData); // follow monster calcs (w/o SJ)
  
      luautils::callGlobal<void>("xi.pets.jug.onPetStatCalculate", PMaster, PPet);
-@@ -2006,6 +2028,42 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
+@@ -2006,6 +2026,42 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
              PPet->SetSLevel(mainLevel);
              PPet->setSpawnLevel(mainLevel);
          }
