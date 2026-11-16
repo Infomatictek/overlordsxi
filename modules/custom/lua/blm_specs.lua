@@ -624,6 +624,12 @@ local function addPetEnmity(mob, pet, ce, ve)
     if mob == nil or pet == nil then
         return
     end
+    if mob.updateClaim then
+        local master = pet.getMaster and pet:getMaster() or nil
+        if master == nil or not master.hasClaim or not master:hasClaim(mob) then
+            mob:updateClaim(pet)
+        end
+    end
     if mob.addEnmity then
         mob:addEnmity(pet, ce, ve)
     elseif mob.updateEnmityFromDamage then
@@ -833,7 +839,7 @@ end, function(player, target, ability, action)
     local dmg     = utils.handleStoneskin(target, baseDmg, xi.attackType.MAGICAL)
 
     target:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
-    target:updateEnmityFromDamage(pet, dmg)
+    addPetEnmity(target, pet, 80, 200)
     if action and action.recordDamage then
         action:recordDamage(target, xi.attackType.MAGICAL, dmg)
     end
@@ -881,6 +887,7 @@ end, function(player, target, ability, action)
     if not pet:isEngaged() then
         player:petAttack(target)
     end
+    addPetEnmity(target, pet, 120, 300)
     local isCorse = (petId == PET_UNDEAD_CORSE)
     local evaDown = isCorse and 35 or 25
     target:addStatusEffect(xi.effect.EVASION_DOWN, { power = evaDown, duration = 60, origin = pet })
@@ -920,7 +927,7 @@ end, function(player, target, ability, action)
     local dmg     = utils.handleStoneskin(target, baseDmg, xi.attackType.MAGICAL)
 
     target:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
-    target:updateEnmityFromDamage(pet, dmg)
+    addPetEnmity(target, pet, 150, 350)
     if action and action.recordDamage then
         action:recordDamage(target, xi.attackType.MAGICAL, dmg)
     end
@@ -959,7 +966,7 @@ end, function(player, target, ability, action)
     local dmg     = utils.handleStoneskin(target, baseDmg, xi.attackType.MAGICAL)
 
     target:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
-    target:updateEnmityFromDamage(pet, dmg)
+    addPetEnmity(target, pet, 200, 450)
     if action and action.recordDamage then
         action:recordDamage(target, xi.attackType.MAGICAL, dmg)
     end

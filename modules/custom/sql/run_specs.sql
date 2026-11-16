@@ -47,8 +47,8 @@ VALUES
     -- Inquisitor (Tank): Runic Convergence (414, 30s CD, Self, recastId 201)
     (414, 'runic_convergence', 22, 255, 1, 30, 201, 100, 0, 302, 2000,    0, 6,  0.0, 0,  0, 200, 600, 0, 0, NULL),
     -- Spellblade (DPS) Legacy JA Aliases (415 & 416, hidden unless called by macro)
-    (415, 'runic_bolt',        22, 255, 32,  8, 202, 110, 0,  10, 1500, 2000, 6, 10.0, 0,  0,   1,  80, 0, 0, NULL),
-    (416, 'runic_sever',       22, 255, 32, 30, 203, 110, 0,  20, 1500, 3000, 6, 10.0, 0,  0,   1, 120, 0, 0, NULL),
+    (415, 'runic_bolt',        22, 255,  4,  8, 202, 110, 0,  10, 1500, 2000, 6, 10.0, 0,  0,   1,  80, 0, 0, NULL),
+    (416, 'runic_sever',       22, 255,  4, 30, 203, 110, 0,  20, 1500, 3000, 6, 10.0, 0,  0,   1, 120, 0, 0, NULL),
     -- Lifebinder (Healer): Font of Life (417, 20s CD, Self/Party 15y, recastId 204)
     (417, 'font_of_life',      22, 255, 3, 20, 204, 102, 0, 327, 2000,    0, 6, 15.0, 0,  0,   1, 120, 0, 0, NULL),
     -- Lifebinder (Healer): Sanctified Ward (418, 35s CD, Self/Party 12y AoE, recastId 205)
