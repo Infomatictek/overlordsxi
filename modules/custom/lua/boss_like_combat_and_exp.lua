@@ -45,8 +45,9 @@ xi.customBossServer = xi.customBossServer or {}
 
 xi.customBossServer.config =
 {
-    -- Always-on baseline combat pace applied to all players so combat feels
-    -- brisk and responsive from Lv 1 to 75 without requiring Haste gear first.
+    -- Always-on baseline combat pace & deep HP pool applied to all players so
+    -- combat feels brisk and healing spells/abilities have a deep health pool
+    -- to work with instead of constantly overhealing.
     -- Note: Regain is intentionally NOT applied as a passive xi.mod.REGAIN modifier;
     -- it is granted via combatRegain ONLY while in verified active combat.
     playerCombatPace =
@@ -56,10 +57,13 @@ xi.customBossServer.config =
         { mod = xi.mod.STORETP,       amount = 25 },   -- +25 Store TP
         { mod = xi.mod.FASTCAST,      amount = 15 },   -- +15% Fast Cast
     },
+    playerBaseHpp     = 100, -- +100% Max HP (2.0x base + gear HP)
+    playerHpPerLevel  = 6,   -- +6 base HP per level (becomes +12 HP/lvl after +100% HPP)
 
-    -- Always-on baseline combat pace applied to player pets/companions.
+    -- Always-on baseline combat pace & HP pool applied to player pets/companions.
     petCombatPace =
     {
+        { mod = xi.mod.HPP,           amount = 100 },  -- +100% Pet Max HP (2.0x HP)
         { mod = xi.mod.HASTE_MAGIC,   amount = 1500 }, -- +15% Haste
         { mod = xi.mod.STORETP,       amount = 25 },
     },
@@ -75,8 +79,8 @@ xi.customBossServer.config =
     },
 
     -- Modifiers added to every regular (non-NM) mob on spawn (scaled by getMobLevelScale(lvl)).
-    -- At scale = 1.0 (~Lv 25): +45% HP, +22% ATT, +25% DEF, +22 ACC, +14 EVA, +18 MDEF/MEVA, +18% Haste.
-    -- At Lv 75 (scale = 2.15): +96% HP, +47% ATT, +53% DEF, +47 ACC, +30 EVA, +38 MDEF/MEVA, +25% Haste.
+    -- Higher ATTP & MATT pair with levelGap.normalMobBaseDmgMult (1.65x) so mobs chunk
+    -- through the deeper player HP pools and make healing feel impactful.
     normalMob =
     {
         hpp                 = 45,
@@ -85,9 +89,9 @@ xi.customBossServer.config =
         defp                = 25,
         mdef                = 18,
         meva                = 18,
-        attp                = 22,
-        matt                = 14,
-        acc                 = 22,
+        attp                = 45,
+        matt                = 32,
+        acc                 = 24,
         eva                 = 14,
         haste               = 1800,
         maxHaste            = 2500,
@@ -105,9 +109,9 @@ xi.customBossServer.config =
         defp                = 38,
         mdef                = 28,
         meva                = 30,
-        attp                = 32,
-        matt                = 22,
-        acc                 = 34,
+        attp                = 65,
+        matt                = 50,
+        acc                 = 36,
         eva                 = 22,
         haste               = 2200,
         maxHaste            = 3000,
@@ -116,13 +120,16 @@ xi.customBossServer.config =
         magicCoolMultiplier = 0.58,
     },
 
-    -- Level-difference scaling (dLvl = mobLvl - playerLvl):
-    --   dLvl <= 1  : Even Match / low Tough (1.00x dmg dealt, 1.00x dmg taken)
+    -- Level-difference & baseline mob outgoing damage scaling (dLvl = mobLvl - playerLvl):
+    --   normalMobBaseDmgMult / nmBaseDmgMult : Baseline outgoing damage multiplier for all wild mobs
+    --   dLvl <= 1  : Even Match / low Tough (1.00x player dmg dealt, 1.00x * baseMobMult taken)
     --   dLvl 2..7  : Tough -> IT+ (soloable with a good spec, but takes longer & hits harder)
     --   dLvl >= 8  : IT++ Wall (8+ levels above player: steep mitigation & heavy incoming threat)
     levelGap =
     {
-        wallStartDiff = 8,
+        wallStartDiff        = 8,
+        normalMobBaseDmgMult = 1.65, -- 1.65x baseline outgoing damage for normal mobs
+        nmBaseDmgMult        = 1.85, -- 1.85x baseline outgoing damage for NMs
 
         -- Player/Pet damage dealt multiplier vs higher-level mob (dLvl >= 2)
         playerDmgDealt =
@@ -140,7 +147,7 @@ xi.customBossServer.config =
         playerDmgDealtStepAfter10 = 0.03,
         playerDmgDealtFloor       = 0.12,
 
-        -- Wild Mob damage dealt multiplier vs lower-level player/pet (dLvl >= 2)
+        -- Wild Mob extra damage multiplier vs lower-level player/pet (dLvl >= 2), multiplied by baseDmgMult
         mobDmgDealt =
         {
             [2] = 1.08, -- Tough (+8%)
@@ -157,14 +164,14 @@ xi.customBossServer.config =
         mobDmgDealtCap         = 3.00,
     },
 
-    -- Breath & HP-based suicide move anti-one-shot tuning.
+    -- Breath & HP-based suicide move anti-one-shot tuning (scaled for deeper player HP pools).
     breath =
     {
-        baseHpDamageMultiplier = 0.55, -- Scales down vanilla HP-based breath formula
-        normalPerLevelCap      = 4.5,  -- Normal mob breath cap: lvl * 4.5 + 15
-        normalFlatCap          = 15,
-        nmPerLevelCap          = 6.0,  -- NM breath cap: lvl * 6.0 + 25
-        nmFlatCap              = 25,
+        baseHpDamageMultiplier = 0.85, -- Scales unboosted mob HP breath formula for 2x+ player HP
+        normalPerLevelCap      = 9.5,  -- Normal mob breath cap: lvl * 9.5 + 35
+        normalFlatCap          = 35,
+        nmPerLevelCap          = 13.0, -- NM breath cap: lvl * 13.0 + 55
+        nmFlatCap              = 55,
         normalMaxTargetHpShare = 0.35, -- Max 35% of target Max HP at EM/T (scales up on VT/IT/IT++)
         nmMaxTargetHpShare     = 0.45, -- Max 45% of target Max HP for NMs at EM/T
         hardMaxTargetHpShare   = 0.75, -- Absolute cap even on IT++ (75% of target Max HP)
@@ -942,9 +949,19 @@ local function applyPetCombatPace(pet)
     end
 
     local paceCfg = xi.customBossServer.config.petCombatPace or {}
+    local prevHpp = pet.getHPP and pet:getHPP() or 100
     if pet.addMod then
         for _, entry in ipairs(paceCfg) do
             pet:addMod(entry.mod, entry.amount)
+        end
+    end
+
+    if pet.updateHealth then
+        pet:updateHealth()
+        if (not pet.isEngaged or not pet:isEngaged()) or prevHpp >= 95 then
+            if pet.addHP and pet.getMaxHP then
+                pet:addHP(pet:getMaxHP())
+            end
         end
     end
 
@@ -1110,21 +1127,23 @@ local function getLevelGapDamageMultiplier(attacker, defender)
     -- Case 2: Wild Mob attacking a Player / Pet / Trust
     local defenderPlayerLvl = getPlayerSideLevel(defender)
     if isWildMob(attacker) and defenderPlayerLvl ~= nil then
-        local mobLvl = attacker:getMainLvl()
-        local dLvl   = mobLvl - defenderPlayerLvl
+        local mobLvl  = attacker:getMainLvl()
+        local dLvl    = mobLvl - defenderPlayerLvl
+        local isNM    = attacker.isNM and attacker:isNM() or false
+        local baseOut = isNM and (gapCfg.nmBaseDmgMult or 1.85) or (gapCfg.normalMobBaseDmgMult or 1.65)
         if dLvl <= 1 then
-            return 1.0
+            return baseOut
         end
 
         local tbl = gapCfg.mobDmgDealt or {}
         if tbl[dLvl] ~= nil then
-            return tbl[dLvl]
+            return baseOut * tbl[dLvl]
         end
 
         local base10 = tbl[10] or 2.55
         local step   = gapCfg.mobDmgDealtStepAfter10 or 0.15
         local cap    = gapCfg.mobDmgDealtCap or 3.00
-        return math.min(cap, base10 + math.max(0, dLvl - 10) * step)
+        return baseOut * math.min(cap, base10 + math.max(0, dLvl - 10) * step)
     end
 
     return 1.0
@@ -1327,27 +1346,81 @@ local function showStarterWeaponsMenu(player, menuPage)
     end)
 end
 
--- Applies or removes the always-on baseline player combat pace cleanly without stacking.
+-- Applies or refreshes the always-on baseline player combat pace & deep HP pool cleanly without stacking.
 xi.customBossServer.applyPlayerCombatPace = function(player, enable)
     if player == nil or not player.getLocalVar then
         return
     end
 
+    local cfg       = xi.customBossServer.config
+    local paceCfg   = cfg.playerCombatPace or {}
     local isApplied = player:getLocalVar('[CustomBoss]PaceApplied') == 1
-    local paceCfg   = xi.customBossServer.config.playerCombatPace or {}
+    local prevHpp   = player:getLocalVar('[CustomBoss]PaceHpp')
+    local prevFlat  = player:getLocalVar('[CustomBoss]PaceFlatHp')
+    local curHppPct = player.getHPP and player:getHPP() or 100
 
-    if enable and not isApplied then
+    if not enable then
+        if isApplied then
+            for _, entry in ipairs(paceCfg) do
+                player:delMod(entry.mod, entry.amount)
+            end
+            player:setLocalVar('[CustomBoss]PaceApplied', 0)
+        end
+        if prevHpp > 0 then
+            player:delMod(xi.mod.HPP, prevHpp)
+            player:setLocalVar('[CustomBoss]PaceHpp', 0)
+        end
+        if prevFlat > 0 then
+            player:delMod(xi.mod.HP, prevFlat)
+            player:setLocalVar('[CustomBoss]PaceFlatHp', 0)
+        end
+        if player.updateHealth then
+            player:updateHealth()
+        end
+        return
+    end
+
+    if not isApplied then
         for _, entry in ipairs(paceCfg) do
             player:addMod(entry.mod, entry.amount)
         end
-
         player:setLocalVar('[CustomBoss]PaceApplied', 1)
-    elseif not enable and isApplied then
-        for _, entry in ipairs(paceCfg) do
-            player:delMod(entry.mod, entry.amount)
-        end
+    end
 
-        player:setLocalVar('[CustomBoss]PaceApplied', 0)
+    local lvl        = (player.getMainLvl and player:getMainLvl()) or 1
+    local targetHpp  = math.max(0, math.floor(tonumber(cfg.playerBaseHpp) or 100))
+    local targetFlat = math.max(0, math.floor(lvl * (tonumber(cfg.playerHpPerLevel) or 6)))
+    local hpChanged  = false
+
+    if prevHpp ~= targetHpp then
+        if prevHpp > 0 then
+            player:delMod(xi.mod.HPP, prevHpp)
+        end
+        if targetHpp > 0 then
+            player:addMod(xi.mod.HPP, targetHpp)
+        end
+        player:setLocalVar('[CustomBoss]PaceHpp', targetHpp)
+        hpChanged = true
+    end
+
+    if prevFlat ~= targetFlat then
+        if prevFlat > 0 then
+            player:delMod(xi.mod.HP, prevFlat)
+        end
+        if targetFlat > 0 then
+            player:addMod(xi.mod.HP, targetFlat)
+        end
+        player:setLocalVar('[CustomBoss]PaceFlatHp', targetFlat)
+        hpChanged = true
+    end
+
+    if hpChanged and player.updateHealth then
+        player:updateHealth()
+        if not isInActualCombat(player) or curHppPct >= 95 then
+            if player.addHP and player.getMaxHP then
+                player:addHP(player:getMaxHP())
+            end
+        end
     end
 end
 
@@ -1815,40 +1888,67 @@ local combatCmd = {}
 combatCmd.cmdprops =
 {
     permission = 0,
-    parameters = 'i',
+    parameters = 'ss',
 }
 
-combatCmd.onTrigger = function(player, sampleLvl)
+combatCmd.onTrigger = function(player, arg1, arg2)
+    local cfg    = xi.customBossServer.config
+    local action = arg1 and string.lower(tostring(arg1)) or nil
+
+    if action == 'hp' then
+        local num = tonumber(arg2)
+        if num == nil or num < 0 or num > 300 then
+            player:printToPlayer('Usage: !combat hp <0-300> (sets Player baseline +Max HP%, default 100)', xi.msg.channel.SYSTEM_3, '')
+            return
+        end
+        cfg.playerBaseHpp = math.floor(num + 0.5)
+        xi.customBossServer.applyPlayerCombatPace(player, true)
+        player:printToPlayer(string.format('Set Player baseline Max HP bonus to +%d%% (current Max HP: %d).', cfg.playerBaseHpp, player:getMaxHP()), xi.msg.channel.SYSTEM_3, '')
+        return
+    elseif action == 'mobdmg' then
+        local num = tonumber(arg2)
+        if num == nil or num < 0.5 or num > 5.0 then
+            player:printToPlayer('Usage: !combat mobdmg <0.5-5.0> (sets Normal Mob outgoing damage multiplier, default 1.65)', xi.msg.channel.SYSTEM_3, '')
+            return
+        end
+        cfg.levelGap.normalMobBaseDmgMult = math.floor(num * 100 + 0.5) / 100
+        cfg.levelGap.nmBaseDmgMult        = math.floor((num + 0.20) * 100 + 0.5) / 100
+        player:printToPlayer(string.format('Set Mob Outgoing Damage Multiplier to %.2fx (Normal) / %.2fx (NM).', cfg.levelGap.normalMobBaseDmgMult, cfg.levelGap.nmBaseDmgMult), xi.msg.channel.SYSTEM_3, '')
+        return
+    end
+
     local pLvl   = (player and player.getMainLvl and player:getMainLvl()) or 1
-    local mLvl   = tonumber(sampleLvl) or pLvl
+    local mLvl   = tonumber(arg1) or pLvl
     mLvl         = math.max(1, math.min(99, math.floor(mLvl)))
     local scale  = getMobLevelScale(mLvl)
-    local cfg    = xi.customBossServer.config
     local norm   = cfg.normalMob
     local breath = cfg.breath
+    local gapCfg = cfg.levelGap
 
     local hpp    = mLvl >= 2 and math.floor((norm.hpp or 45) * scale) or 0
-    local attp   = math.floor((norm.attp or 22) * scale)
+    local attp   = math.floor((norm.attp or 45) * scale)
     local defp   = math.floor((norm.defp or 25) * scale)
-    local acc    = math.floor((norm.acc or 22) * scale)
+    local acc    = math.floor((norm.acc or 24) * scale)
     local eva    = math.floor((norm.eva or 14) * scale)
     local mdef   = math.floor((norm.mdef or 18) * scale)
     local haste  = math.min(norm.maxHaste or 2500, math.floor((norm.haste or 1800) * scale))
-    local bCap   = math.floor(mLvl * (breath.normalPerLevelCap or 4.5) + (breath.normalFlatCap or 15))
+    local bCap   = math.floor(mLvl * (breath.normalPerLevelCap or 9.5) + (breath.normalFlatCap or 35))
+    local mBase  = gapCfg.normalMobBaseDmgMult or 1.65
 
     if player and player.getZone then
         scanAndScaleZoneMobs(player:getZone())
     end
 
     player:printToPlayer(
-        'Player Pace: +25% Haste (+15% Gear / +10% JA), +25 Store TP, +20 Combat-Only Regain, +15% Fast Cast.',
+        string.format('Player Pace & Pool: +%d%% Max HP (+%d HP/lvl), +25%% Haste, +25 Store TP, +20 Combat-Only Regain, +15%% Fast Cast.',
+            cfg.playerBaseHpp or 100, cfg.playerHpPerLevel or 6),
         xi.msg.channel.SYSTEM_3, '')
     player:printToPlayer(
-        string.format('Lv.%d Normal Mob (%.2fx scale): +%d%% HP | +%d%% ATT | +%d%% DEF | +%d ACC/+%d EVA | +%d MDEF | +%.1f%% Haste | Breath Cap ~%d (<=35%% MaxHP at EM).',
-            mLvl, scale, hpp, attp, defp, acc, eva, mdef, haste / 100, bCap),
+        string.format('Lv.%d Normal Mob (%.2fx): +%d%% HP | +%d%% ATT (%.2fx OutDmg) | +%d%% DEF | +%d ACC/+%d EVA | +%d MDEF | +%.1f%% Haste | Breath Cap ~%d.',
+            mLvl, scale, hpp, attp, mBase, defp, acc, eva, mdef, haste / 100, bCap),
         xi.msg.channel.SYSTEM_3, '')
     player:printToPlayer(
-        'Level Gap (Mob vs You): +3 VT (88% dealt / 116% taken) | +5 IT (72% dealt / 138% taken) | +8 IT++ Wall (38% dealt / 195% taken).',
+        'Usage: !combat [mobLvl] | !combat hp <0-300> | !combat mobdmg <0.5-5.0>',
         xi.msg.channel.SYSTEM_3, '')
 end
 
