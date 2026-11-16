@@ -99,3 +99,191 @@ index 9d41e210..b1e4a8c3 100644
  };
  
  struct Pet_t
+diff --git a/src/map/ai/controllers/mob_controller.cpp b/src/map/ai/controllers/mob_controller.cpp
+index 0f2c38b9..c64e19a2 100644
+--- a/src/map/ai/controllers/mob_controller.cpp
++++ b/src/map/ai/controllers/mob_controller.cpp
+@@ -703,6 +703,18 @@ auto CMobController::ShouldCloseToTarget(const float currentDistance) -> bool
+ 
+     auto* PTarget = target().resolve<CBattleEntity>();
+ 
++    if (PMob->objtype == TYPE_PET)
++    {
++        const auto* PPet = static_cast<CPetEntity*>(PMob);
++        if (PPet->getPetType() == PET_TYPE::JUG_PET &&
++            (PPet->petID() == PETID_UNDEAD_MAGE || PPet->petID() == PETID_UNDEAD_CORSE) &&
++            PTarget && PTarget->GetBattleTarget() != PMob &&
++            currentDistance <= 16.0f && CanSeeTargetCached())
++        {
++            return false;
++        }
++    }
++
+     // Each LOS check sits last in its chain so cheaper predicates short-circuit the shared raycast away.
+ 
+     const auto standbackRangeMod    = PMob->getMobMod(xi::MobMod::StandbackRange);
+@@ -1201,6 +1213,17 @@ void CMobController::Move()
+     // Ranged attack range wins over skill-list ranges, which are not fully audited.
+     const auto attackRange = [&]() -> float
+     {
++        if (PMob->objtype == TYPE_PET)
++        {
++            const auto* PPet = static_cast<CPetEntity*>(PMob);
++            if (PPet->getPetType() == PET_TYPE::JUG_PET &&
++                (PPet->petID() == PETID_UNDEAD_MAGE || PPet->petID() == PETID_UNDEAD_CORSE) &&
++                PTarget && PTarget->GetBattleTarget() != PMob)
++            {
++                return 16.0f;
++            }
++        }
++
+         if (IsRangedAttackEnabled())
+         {
+             return PMob->GetRangedAttackRange();
+@@ -1277,6 +1300,28 @@ void CMobController::Move()
+     {
+         // Settle and attack unless the mob must not close, or the navmesh route is a detour worth walking instead.
+         const bool canMove = PMob->GetSpeed() != 0 && PMob->getMobMod(xi::MobMod::NoMove) == 0 && m_Tick >= m_LastSpecialTime;
++        if (canMove && PMob->objtype == TYPE_PET)
++        {
++            const auto* PPet = static_cast<CPetEntity*>(PMob);
++            if (PPet->getPetType() == PET_TYPE::JUG_PET &&
++                (PPet->petID() == PETID_UNDEAD_MAGE || PPet->petID() == PETID_UNDEAD_CORSE) &&
++                PTarget->GetBattleTarget() != PMob &&
++                currentDistance < 8.5f)
++            {
++                const uint8 retreatRot = (currentDistance < 0.2f && PMob->PMaster)
++                                             ? worldAngle(PTarget->loc.p, PMob->PMaster->loc.p)
++                                             : worldAngle(PTarget->loc.p, PMob->loc.p);
++                const auto  retreatPos = nearPosition(PTarget->loc.p, 11.5f, rotationToRadian(retreatRot));
++                if (!PMob->PAI->PathFind->IsFollowingPath() ||
++                    !isWithinDistance(PMob->PAI->PathFind->GetDestination(), retreatPos, 2.0f))
++                {
++                    PMob->PAI->PathFind->PathTo(retreatPos, PATHFLAG_RUN);
++                }
++                PMob->PAI->PathFind->FollowPath(m_Tick);
++                FaceTarget();
++                return;
++            }
++        }
+         if (!canMove || !ShouldCloseToTarget(currentDistance))
+         {
+             FaceTarget();
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+index 8b772263..e91d40b8 100644
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -21,6 +21,8 @@
+ 
+ #include "mob_entity.h"
+ 
++#include "action/action.h"
++#include "action/interrupts.h"
+ #include "ai/ai_container.h"
+ #include "ai/controllers/mob_controller.h"
+ #include "ai/helpers/pathfind.h"
+@@ -1322,6 +1324,20 @@ auto CMobEntity::CanAttack(CBattleEntity* PTarget, std::unique_ptr<CBasicPacket>
+         }
+     }
+ 
++    if (this->objtype == TYPE_PET)
++    {
++        auto* PPet = static_cast<CPetEntity*>(this);
++        if (PPet->getPetType() == PET_TYPE::JUG_PET &&
++            (PPet->petID() == PETID_UNDEAD_MAGE || PPet->petID() == PETID_UNDEAD_CORSE))
++        {
++            const float maxRange = 20.0f + modelHitboxSize + PTarget->modelHitboxSize;
++            return distance(loc.p, PTarget->loc.p) <= maxRange &&
++                   PAI->GetController()->IsAutoAttackEnabled() &&
++                   !PTarget->PAI->IsUntargetable() &&
++                   CanSeeTarget(PTarget);
++        }
++    }
++
+     // Refuse the attack while the navmesh route is far longer than the straight line, until we have walked the detour.
+     if (PAI->PathFind && PAI->PathFind->IsFollowingPath() && !PAI->PathFind->IsPathDirect())
+     {
+@@ -1546,6 +1562,83 @@ auto CMobEntity::OnAttack(CAttackState& state, action_t& action) -> bool
+ 
+     TapDeaggroTime();
+ 
++    if (this->objtype == TYPE_PET)
++    {
++        auto* PPet = static_cast<CPetEntity*>(this);
++        if (PPet->getPetType() == PET_TYPE::JUG_PET &&
++            (PPet->petID() == PETID_UNDEAD_MAGE || PPet->petID() == PETID_UNDEAD_CORSE))
++        {
++            auto* PTarget = state.target().resolve<CBattleEntity>();
++            if (!PTarget || !PTarget->isAlive() || !this->isAlive())
++            {
++                return false;
++            }
++
++            battleutils::ClaimMob(PTarget, this);
++            PTarget->LastAttacked = timer::now();
++
++            if (PAI->PathFind)
++            {
++                PAI->PathFind->LookAt(PTarget->loc.p);
++            }
++
++            if (battleutils::IsParalyzed(this))
++            {
++                ActionInterrupts::AttackParalyzed(this, PTarget);
++                return true;
++            }
++
++            if (battleutils::IsIntimidated(this, PTarget))
++            {
++                ActionInterrupts::AttackIntimidated(this, PTarget);
++                return true;
++            }
++
++            const int32 lvl     = std::max<int32>(1, GetMLevel());
++            const int32 petInt  = INT();
++            const int32 dInt    = std::max<int32>(-15, petInt - static_cast<int32>(PTarget->INT()));
++            int32       mab     = getMod(xi::Mod::MATT);
++            if (PMaster)
++            {
++                mab += std::max<int32>(0, PMaster->getMod(xi::Mod::MATT)) +
++                       static_cast<int32>(PMaster->GetLocalVar("OX_NECRO_CONV_MATT"));
++            }
++
++            const float tierMult = (PPet->petID() == PETID_UNDEAD_CORSE) ? 1.25f : 1.0f;
++            const float mabMult  = std::max<float>(0.5f, (100.0f + static_cast<float>(mab)) / (100.0f + static_cast<float>(PTarget->getMod(xi::Mod::MDEF))));
++            int32       baseDmg  = static_cast<int32>(std::floor(((lvl * 1.6f) + 6.0f + (dInt * 0.75f)) * tierMult * mabMult));
++            baseDmg              = std::max<int32>(1, baseDmg);
++
++            int32 dmg = battleutils::HandleStoneskin(PTarget, baseDmg, xi::AttackType::Magical);
++            dmg       = PTarget->takeDamage(dmg, this, xi::AttackType::Magical, xi::DamageType::Dark);
++
++            this->addTP(100);
++            PTarget->addTP(50);
++
++            if (auto* PTargetMob = dynamic_cast<CMobEntity*>(PTarget))
++            {
++                PTargetMob->PEnmityContainer->UpdateEnmityFromDamage(this, std::max<int32>(0, dmg));
++            }
++            battleutils::DirtyExp(PTarget, this);
++
++            action.actiontype             = ActionCategory::BasicAttack;
++            action.actorId                = this->id;
++            action_target_t& list         = action.addTarget(PTarget->id);
++            action_result_t& actionResult = list.addResult();
++            actionResult.resolution       = ActionResolution::Hit;
++            actionResult.animation        = ActionAnimation::None;
++            actionResult.messageID        = MsgBasic::AttackHits;
++            actionResult.recordDamage(attack_outcome_t{
++                .atkType    = xi::AttackType::Magical,
++                .damage     = std::max<int32>(0, dmg),
++                .target     = PTarget,
++                .isCritical = false,
++            });
++
++            return true;
++        }
++    }
++
+     if (getMobMod(xi::MobMod::AttackSkillList))
+     {
+         return static_cast<CMobController*>(PAI->GetController())->MobSkill(getMobMod(xi::MobMod::AttackSkillList));

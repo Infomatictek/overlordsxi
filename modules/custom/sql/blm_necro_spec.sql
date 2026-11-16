@@ -1,12 +1,17 @@
 -- OverlordsXI BLM Necromancer Spec Data
--- Custom Job Abilities (405-411), Undead Pets (130-133), Spell Lists (601-602),
+-- Custom Job Abilities (405-411, 419-428), Undead Pets (130-133), Spell Lists (601-602),
 -- and Scythe equipment eligibility for BLM (job bit 8).
 
 -- ---------------------------------------------------------------------------
 -- 1. Custom Job Abilities (Level 255 so they stay hidden unless unlocked by spec)
 -- ---------------------------------------------------------------------------
-DELETE FROM `abilities` WHERE `abilityId` IN (405, 406, 407, 408, 409, 410, 411)
-    OR `name` IN ('summon_undead_warrior', 'summon_undead_mage', 'corpse_explosion', 'grim_reaping', 'grim_incantations', 'summon_corse', 'summon_dullahan');
+DELETE FROM `abilities` WHERE `abilityId` IN (405, 406, 407, 408, 409, 410, 411, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428)
+    OR `name` IN (
+        'summon_undead_warrior', 'summon_undead_mage', 'corpse_explosion',
+        'grim_reaping', 'grim_incantations', 'summon_corse', 'summon_dullahan',
+        'grave_provoke', 'black_cloud', 'bone_aegis', 'blood_saber', 'aegis_schism',
+        'necrotic_bolt', 'covenant_of_ash', 'curse_of_the_fallen', 'soul_harvest', 'danse_macabre'
+    );
 
 INSERT INTO `abilities`
     (`abilityId`, `name`, `job`, `level`, `validTarget`, `recastTime`, `recastId`, `message1`, `message2`,
@@ -14,19 +19,33 @@ INSERT INTO `abilities`
      `meritModID`, `addType`, `content_tag`)
 VALUES
     -- Summon Undead Warrior (Lv.10+ Necromancer, 60s recast, shared summon recastId 194)
-    (405, 'summon_undead_warrior', 4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL),
+    (405, 'summon_undead_warrior', 4, 255,  1, 60, 194, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,    1,   80, 0, 0, NULL),
     -- Summon Undead Mage (Lv.10+ Necromancer, 60s recast, shared summon recastId 194)
-    (406, 'summon_undead_mage',    4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL),
+    (406, 'summon_undead_mage',    4, 255,  1, 60, 194, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,    1,   80, 0, 0, NULL),
     -- Corpse Explosion (Lv.10+ Necromancer, 45s recast, recastId 195)
-    (407, 'corpse_explosion',      4, 255, 1, 45, 195, 0, 0, 182, 2000, 0, 6, 0.0, 0, 0, 200, 600, 0, 0, NULL),
-    -- Grim Reaping (Warrior / Dullahan command, 30s recast, recastId 196)
-    (408, 'grim_reaping',          4, 255, 4, 30, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0, 120, 300, 0, 0, NULL),
-    -- Grim Incantations (Mage / Corse command, 30s recast, recastId 197)
-    (409, 'grim_incantations',     4, 255, 4, 30, 197, 0, 0, 171, 1500, 0, 6, 20.0, 0, 0, 100, 250, 0, 0, NULL),
+    (407, 'corpse_explosion',      4, 255,  1, 45, 195, 0, 0, 182, 2000, 0, 6,  0.0, 0, 0,  200,  600, 0, 0, NULL),
+    -- Grim Reaping (Sub-Menu Opener for Tank Pets: Undead Warrior / Dullahan, recastId 196)
+    (408, 'grim_reaping',          4, 255,  1, 25, 196, 0, 0, 171, 1500, 0, 6,  0.0, 0, 0,    0,    0, 0, 0, NULL),
+    -- Grim Incantations (Sub-Menu Opener for Caster/Party DPS Pets: Undead Mage / Corse, recastId 197)
+    (409, 'grim_incantations',     4, 255,  1, 25, 197, 0, 0, 171, 1500, 0, 6,  0.0, 0, 0,    0,    0, 0, 0, NULL),
     -- Summon Corse (Lv.75+ Necromancer, 60s recast, shared summon recastId 194)
-    (410, 'summon_corse',          4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL),
+    (410, 'summon_corse',          4, 255,  1, 60, 194, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,    1,   80, 0, 0, NULL),
     -- Summon Dullahan (Lv.75+ Necromancer, 60s recast, shared summon recastId 194)
-    (411, 'summon_dullahan',       4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL);
+    (411, 'summon_dullahan',       4, 255,  1, 60, 194, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,    1,   80, 0, 0, NULL),
+
+    -- Grim Reaping Sub-Menu Skills (419-423: Tank Pet Commands, shared 25s recastId 196)
+    (419, 'grave_provoke',         4, 255, 32, 25, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0, 1800, 5400, 0, 0, NULL),
+    (420, 'black_cloud',           4, 255, 32, 25, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0,  900, 2400, 0, 0, NULL),
+    (421, 'bone_aegis',            4, 255,  1, 25, 196, 0, 0, 171, 1500, 0, 6,  0.0, 0, 0,  600, 1800, 0, 0, NULL),
+    (422, 'blood_saber',           4, 255, 32, 25, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0, 1100, 2800, 0, 0, NULL),
+    (423, 'aegis_schism',          4, 255, 32, 25, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0, 1600, 4200, 0, 0, NULL),
+
+    -- Grim Incantations Sub-Menu Skills (424-428: Party DPS & Dark Caster Commands, shared 25s recastId 197)
+    (424, 'necrotic_bolt',         4, 255, 32, 25, 197, 0, 0, 171, 1500, 0, 6, 20.0, 0, 0,   80,  200, 0, 0, NULL),
+    (425, 'covenant_of_ash',       4, 255,  1, 25, 197, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0,   80,  200, 0, 0, NULL),
+    (426, 'curse_of_the_fallen',   4, 255, 32, 25, 197, 0, 0, 171, 1500, 0, 6, 20.0, 0, 0,  120,  300, 0, 0, NULL),
+    (427, 'soul_harvest',          4, 255, 32, 25, 197, 0, 0, 171, 1500, 0, 6, 20.0, 0, 0,  150,  350, 0, 0, NULL),
+    (428, 'danse_macabre',         4, 255, 32, 25, 197, 0, 0, 171, 1500, 0, 6, 20.0, 0, 0,  200,  450, 0, 0, NULL);
 
 -- Allow Sic (72) to work on Jug/Undead Pets (ADDTYPE_JUGPET | ADDTYPE_CHARMPET = 192)
 UPDATE `abilities` SET `addType` = 192 WHERE `abilityId` = 72;
