@@ -1,0 +1,42 @@
+name: Update OverlordsXI Wiki Data
+
+on:
+  push:
+    branches:
+      - main
+      - feat/**
+    paths-ignore:
+      - 'site/data.json'
+      - 'site/data.js'
+      - 'logs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-wiki-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate site/data.json and site/data.js from Lua & SQL modules
+        run: python scripts/generate-site-data.py
+
+      - name: Commit updated wiki data if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data.json site/data.js
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(wiki): auto-update site/data.json from latest server modules [skip ci]"
+            git push
+          fi

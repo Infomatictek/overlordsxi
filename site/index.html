@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OverlordsXI Wiki — Custom FFXI Server Encyclopedia</title>
+  <meta name="description" content="Official OverlordsXI Server Wiki: Level 75 Cap + Level 99 QoL, Job Soul Crystals & Specs, 219 Bespoke Weaponskill Talent Trees, Companions, and Boss-Like Combat." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-brand" id="brandHomeBtn" role="button" tabindex="0">
+      <div class="brand-crest" aria-hidden="true">
+        <svg viewBox="0 0 36 36" fill="none">
+          <path d="M18 2L31 9.5V26.5L18 34L5 26.5V9.5L18 2Z" stroke="currentColor" stroke-width="2" fill="rgba(56,189,248,0.12)"/>
+          <path d="M18 7L26 18L18 29L10 18L18 7Z" stroke="#fbbf24" stroke-width="1.8" fill="rgba(251,191,36,0.2)"/>
+        </svg>
+      </div>
+      <div class="brand-titles">
+        <span class="brand-name">OVERLORDS<span class="brand-accent">XI</span></span>
+        <span class="brand-sub">Server Encyclopedia &amp; Live Wiki</span>
+      </div>
+    </div>
+
+    <div class="topbar-search">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none">
+          <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <input
+          type="search"
+          id="globalSearchInput"
+          placeholder="Search wiki (e.g. Gladiator, Fast Blade, Eos, Chakram, !gear, Haste)..."
+          autocomplete="off"
+        />
+        <kbd class="search-kbd">/</kbd>
+      </div>
+      <div id="searchResultsDropdown" class="search-dropdown hidden"></div>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="sync-pill" id="syncStatusPill" title="Automatically synced from GitHub">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncText">Synced</span>
+      </div>
+      <button class="btn-icon" id="openSyncConfigBtn" title="Configure GitHub Live Sync / Private Feed">
+        <svg viewBox="0 0 20 20" fill="none">
+          <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M16.2 12.2a1.4 1.4 0 00.28 1.54l.05.05a1.7 1.7 0 01-2.4 2.4l-.05-.05a1.4 1.4 0 00-1.54-.28 1.4 1.4 0 00-.84 1.28v.14a1.7 1.7 0 01-3.4 0v-.07a1.4 1.4 0 00-.92-1.28 1.4 1.4 0 00-1.54.28l-.05.05a1.7 1.7 0 01-2.4-2.4l.05-.05a1.4 1.4 0 00.28-1.54 1.4 1.4 0 00-1.28-.84H2.3a1.7 1.7 0 010-3.4h.07a1.4 1.4 0 001.28-.92 1.4 1.4 0 00-.28-1.54l-.05-.05a1.7 1.7 0 012.4-2.4l.05.05a1.4 1.4 0 001.54.28h.07a1.4 1.4 0 00.84-1.28V2.3a1.7 1.7 0 013.4 0v.07a1.4 1.4 0 00.84 1.28 1.4 1.4 0 001.54-.28l.05-.05a1.7 1.7 0 012.4 2.4l-.05.05a1.4 1.4 0 00-.28 1.54v.07a1.4 1.4 0 001.28.84h.14a1.7 1.7 0 010 3.4h-.07a1.4 1.4 0 00-1.28.84z" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+      <a class="btn-primary topbar-cta" href="https://github.com/Infomatictek/overlordsxi-launcher/releases" target="_blank" rel="noopener">
+        Download Launcher
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Wiki Shell -->
+  <div class="wiki-layout">
+    <!-- Left Wiki Sidebar -->
+    <aside class="wiki-sidebar" id="wikiSidebar">
+      <div class="sidebar-group">
+        <div class="sidebar-heading">Wiki Encyclopedia</div>
+        <button class="nav-item active" data-page="overview">
+          <span class="nav-icon">🏛️</span>
+          <span class="nav-label">Overview &amp; Quick Start</span>
+        </button>
+        <button class="nav-item" data-page="combat">
+          <span class="nav-icon">⚔️</span>
+          <span class="nav-label">Combat, EXP &amp; 99 QoL</span>
+        </button>
+        <button class="nav-item" data-page="crystals">
+          <span class="nav-icon">💎</span>
+          <span class="nav-label">Job Soul Crystals</span>
+          <span class="nav-badge" id="badgeCrystalsCount">11</span>
+        </button>
+        <button class="nav-item" data-page="talents">
+          <span class="nav-icon">🌟</span>
+          <span class="nav-label">WS Talent Trees</span>
+          <span class="nav-badge" id="badgeWsCount">219</span>
+        </button>
+        <button class="nav-item" data-page="companions">
+          <span class="nav-icon">🧚</span>
+          <span class="nav-label">Companions &amp; Gear</span>
+        </button>
+        <button class="nav-item" data-page="commands">
+          <span class="nav-icon">⌨️</span>
+          <span class="nav-label">Player Commands &amp; UI</span>
+        </button>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-heading">Job Crystal Guides</div>
+        <div id="sidebarJobLinks" class="sidebar-sublist"></div>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-heading">Technical &amp; Updates</div>
+        <button class="nav-item" data-page="patches">
+          <span class="nav-icon">🔧</span>
+          <span class="nav-label">Engine Patches &amp; Updates</span>
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="meta-line">
+          <span>Level Cap</span>
+          <strong>Lv. 75 (99 QoL)</strong>
+        </div>
+        <div class="meta-line">
+          <span>Soul Crystals</span>
+          <strong>Unlock @ Lv. 10</strong>
+        </div>
+        <div class="meta-line">
+          <span>WS Talent Cap</span>
+          <strong>225 pts (4 Max WSs)</strong>
+        </div>
+        <div class="meta-line" id="sidebarCommitRow">
+          <span>Build Revision</span>
+          <code id="sidebarCommitHash">latest</code>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Wiki Content Area -->
+    <main class="wiki-main" id="wikiMainContent">
+      <!-- Dynamic Wiki Article injected by app.js -->
+    </main>
+  </div>
+
+  <!-- Sync Settings Modal (Supports Public Repo, Custom Feed URL, or Private Repo Read-Only Token) -->
+  <div class="modal-backdrop hidden" id="syncConfigModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>GitHub Live Data Source</h3>
+        <button class="modal-close" id="closeSyncConfigBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          This wiki loads its data from <code>data.json</code> (auto-built by GitHub Actions on every push) and can also query the GitHub API directly for live commit updates.
+        </p>
+        <label class="form-label">
+          GitHub Repository (<code>owner/repo</code>)
+          <input type="text" id="cfgRepoInput" class="form-input" placeholder="Infomatictek/overlordsxi" />
+        </label>
+        <label class="form-label">
+          Branch
+          <input type="text" id="cfgBranchInput" class="form-input" placeholder="main" />
+        </label>
+        <label class="form-label">
+          Custom <code>data.json</code> Feed URL (Optional — e.g. GitHub Pages URL when repo is private)
+          <input type="text" id="cfgDataUrlInput" class="form-input" placeholder="Auto (./data.json or raw.githubusercontent.com)" />
+        </label>
+        <label class="form-label">
+          Optional Fine-Grained Read-Only GitHub Token (Only if querying a Private Repo directly without GitHub Pages)
+          <input type="password" id="cfgTokenInput" class="form-input" placeholder="github_pat_..." />
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="resetSyncConfigBtn">Reset Defaults</button>
+        <button class="btn-primary" id="saveSyncConfigBtn">Save &amp; Refresh Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pre-bundled fallback data so the wiki works immediately offline or on any static host -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
