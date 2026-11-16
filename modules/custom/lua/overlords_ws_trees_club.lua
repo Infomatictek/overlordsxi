@@ -476,9 +476,9 @@ regB(167, 'heavy', {
         { key = 'c167_v3', rank = 2 }),
 
     -- Col 2: Scholarly Arts
-    node(1, 2, 'c167_s1', 'Sanctified Blow', 7, 'Lv1+: +8..56 MAB & +6..42% MND WSC',
-        function(r) return string.format('+%d MAB, MND +%d%% WSC', r * 8, r * 6) end,
-        { matt = { 8,16,24,32,40,48,56 }, wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } } }),
+    node(1, 2, 'c167_s1', 'Sanctified Blow', 7, 'Lv1+: +4..28% WSD & +6..42% MND WSC',
+        function(r) return string.format('+%d%% WSD, MND +%d%% WSC', r * 4, r * 6) end,
+        { wsd = { 4,8,12,16,20,24,28 }, wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } } }),
     schStance(2, 2, 'c167_s2', 'Divine Verdict', 6, 'Eos Heal 15..90% & Spec +10..60% WSD',
         function(r) return string.format('Eos Heal %d%%, Spec +%d%% WSD', r * 15, r * 10) end,
         { eosHeal = { 15,30,45,60,75,90 }, stWsd = { 10,20,30,40,50,60 } },
@@ -488,9 +488,9 @@ regB(167, 'heavy', {
         { elemFollow = { ele = 'LIGHT', pct = { 14,28,42,56,70,84 } },
           targetDebuffs = {{ effect = xi.effect.MAGIC_DEF_DOWN, power = { 6,12,18,24,30,36 }, duration = 45 }} },
         { key = 'c167_s2', rank = 2 }),
-    node(4, 2, 'c167_s4', 'High Judgment', 4, '+20..80% WSD, +15..60 MAB & Party Heal 8..32%',
-        function(r) return string.format('+%d%% WSD, +%d MAB, Party +%d%% HP', r * 20, r * 15, r * 8) end,
-        { wsd = { 20,40,60,80 }, matt = { 15,30,45,60 }, partyHealPct = { 8,16,24,32 } },
+    node(4, 2, 'c167_s4', 'High Judgment', 4, '+20..80% WSD, +100..400 TP Bonus & Party Heal 8..32%',
+        function(r) return string.format('+%d%% WSD, +%d TP, Party +%d%% HP', r * 20, r * 100, r * 8) end,
+        { wsd = { 20,40,60,80 }, tpBonus = { 100,200,300,400 }, partyHealPct = { 8,16,24,32 } },
         { key = 'c167_s3', rank = 2 }),
 
     -- Col 3: Tactical Fury
@@ -533,9 +533,9 @@ regB(168, 'crit', {
         { key = 'c168_v3', rank = 2 }),
 
     -- Col 2: Scholarly Arts
-    node(1, 2, 'c168_s1', 'Sacred Barrage', 7, 'Lv1+: +6..42 Acc & +7..49 MAB',
-        function(r) return string.format('+%d Acc, +%d MAB', r * 6, r * 7) end,
-        { acc = { 6,12,18,24,30,36,42 }, matt = { 7,14,21,28,35,42,49 } }),
+    node(1, 2, 'c168_s1', 'Sacred Barrage', 7, 'Lv1+: +6..42 Acc & +4..28% WSD',
+        function(r) return string.format('+%d Acc, +%d%% WSD', r * 6, r * 4) end,
+        { acc = { 6,12,18,24,30,36,42 }, wsd = { 4,8,12,16,20,24,28 } }),
     schStance(2, 2, 'c168_s2', 'Eos Harmony', 6, 'Eos Heal 15..90% & Spec +8..48% WSD',
         function(r) return string.format('Eos Heal %d%%, Spec +%d%% WSD', r * 15, r * 8) end,
         { eosHeal = { 15,30,45,60,75,90 }, stWsd = { 8,16,24,32,40,48 } },
@@ -589,20 +589,20 @@ regB(169, 'heavy', {
         { key = 'c169_v3', rank = 2 }),
 
     -- Col 2: Scholarly Arts
-    node(1, 2, 'c169_s1', 'Sage Halo', 7, 'Lv1+: +8..56 MAB & +6..42% MND WSC',
-        function(r) return string.format('+%d MAB, MND +%d%% WSC', r * 8, r * 6) end,
-        { matt = { 8,16,24,32,40,48,56 }, wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } } }),
-    schStance(2, 2, 'c169_s2', 'Titania Pact', 6, 'Eos/Titania Heal 15..90% & Spec +10..60 MAB',
-        function(r) return string.format('Pet Heal %d%%, Spec +%d MAB', r * 15, r * 10) end,
-        { eosHeal = { 15,30,45,60,75,90 }, stMatt = { 10,20,30,40,50,60 }, stWsd = { 8,16,24,32,40,48 } },
+    node(1, 2, 'c169_s1', 'Sage Halo', 7, 'Lv1+: +4..28% WSD & +6..42% MND WSC',
+        function(r) return string.format('+%d%% WSD, MND +%d%% WSC', r * 4, r * 6) end,
+        { wsd = { 4,8,12,16,20,24,28 }, wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } } }),
+    schStance(2, 2, 'c169_s2', 'Titania Pact', 6, 'Eos/Titania Heal 15..90% & Spec +10..60% WSD',
+        function(r) return string.format('Pet Heal %d%%, Spec +%d%% WSD', r * 15, r * 10) end,
+        { eosHeal = { 15,30,45,60,75,90 }, stWsd = { 10,20,30,40,50,60 } },
         { key = 'c169_s1', rank = 2 }),
     node(3, 2, 'c169_s3', 'Umbral Helix', 6, 'Dark Follow-up 12..72% & MP Drain 6..36%',
         function(r) return string.format('Dark +%d%%, MP Drain %d%%', r * 12, r * 6) end,
         { elemFollow = { ele = 'DARK', pct = { 12,24,36,48,60,72 } }, mpDrain = { 6,12,18,24,30,36 } },
         { key = 'c169_s2', rank = 2 }),
-    node(4, 2, 'c169_s4', 'Eclipse Halo', 4, '+20..80% WSD, +15..60 MAB & -10..40 MEVA',
-        function(r) return string.format('+%d%% WSD, +%d MAB, Target -%d MEVA', r * 20, r * 15, r * 10) end,
-        { wsd = { 20,40,60,80 }, matt = { 15,30,45,60 },
+    node(4, 2, 'c169_s4', 'Eclipse Halo', 4, '+20..80% WSD, 10..40% DEF Ign & -10..40 MEVA',
+        function(r) return string.format('+%d%% WSD, %d%% DEF Ign, Target -%d MEVA', r * 20, r * 10, r * 10) end,
+        { wsd = { 20,40,60,80 }, defIgnore = { .10,.20,.30,.40 },
           targetDebuffs = {{ effect = xi.effect.MAGIC_EVASION_DOWN, power = { 10,20,30,40 }, duration = 45 }} },
         { key = 'c169_s3', rank = 2 }),
 
@@ -877,9 +877,9 @@ regB(174, 'multihit', {
         { key = 'c174_v3', rank = 2 }),
 
     -- Col 2: Scholarly Arts
-    node(1, 2, 'c174_s1', 'Realm Arcana', 7, 'Lv1+: +6..42% MND WSC & +7..49 MAB',
-        function(r) return string.format('MND +%d%% WSC, +%d MAB', r * 6, r * 7) end,
-        { wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } }, matt = { 7,14,21,28,35,42,49 } }),
+    node(1, 2, 'c174_s1', 'Realm Arcana', 7, 'Lv1+: +6..42% MND WSC & +4..28% WSD',
+        function(r) return string.format('MND +%d%% WSC, +%d%% WSD', r * 6, r * 4) end,
+        { wsc = { mnd = { .06,.12,.18,.24,.30,.36,.42 } }, wsd = { 4,8,12,16,20,24,28 } }),
     schStance(2, 2, 'c174_s2', 'Eos Flurry', 6, 'Eos Heal 15..90% & Spec +8..48% WSD',
         function(r) return string.format('Eos Heal %d%%, Spec +%d%% WSD', r * 15, r * 8) end,
         { eosHeal = { 15,30,45,60,75,90 }, stWsd = { 8,16,24,32,40,48 } },
@@ -932,10 +932,10 @@ regB(175, 'heavy', {
         { key = 'c175_v3', rank = 2 }),
 
     -- Col 2: Scholarly Arts
-    node(1, 2, 'c175_s1', 'Erudite Force', 7, 'Lv1+: +6..42% INT/MND WSC & +7..49 MAB',
-        function(r) return string.format('INT/MND +%d%% WSC, +%d MAB', r * 6, r * 7) end,
+    node(1, 2, 'c175_s1', 'Erudite Force', 7, 'Lv1+: +6..42% INT/MND WSC & +4..28% WSD',
+        function(r) return string.format('INT/MND +%d%% WSC, +%d%% WSD', r * 6, r * 4) end,
         { wsc = { int = { .06,.12,.18,.24,.30,.36,.42 }, mnd = { .06,.12,.18,.24,.30,.36,.42 } },
-          matt = { 7,14,21,28,35,42,49 } }),
+          wsd = { 4,8,12,16,20,24,28 } }),
     schStance(2, 2, 'c175_s2', 'Scholarly Surge', 6, 'Eos Heal 15..90% & Spec +10..60% WSD',
         function(r) return string.format('Eos Heal %d%%, Spec +%d%% WSD', r * 15, r * 10) end,
         { eosHeal = { 15,30,45,60,75,90 }, stWsd = { 10,20,30,40,50,60 } },
@@ -944,9 +944,9 @@ regB(175, 'heavy', {
         function(r) return string.format('Dark +%d%%, MP Drain %d%%', r * 12, r * 6) end,
         { elemFollow = { ele = 'DARK', pct = { 12,24,36,48,60,72 } }, mpDrain = { 6,12,18,24,30,36 } },
         { key = 'c175_s2', rank = 2 }),
-    node(4, 2, 'c175_s4', 'Grand Exudation', 4, '+20..80% WSD, +15..60 MAB & Party Heal 8..32%',
-        function(r) return string.format('+%d%% WSD, +%d MAB, Party +%d%% HP', r * 20, r * 15, r * 8) end,
-        { wsd = { 20,40,60,80 }, matt = { 15,30,45,60 }, partyHealPct = { 8,16,24,32 } },
+    node(4, 2, 'c175_s4', 'Grand Exudation', 4, '+20..80% WSD, +100..400 TP Bonus & Party Heal 8..32%',
+        function(r) return string.format('+%d%% WSD, +%d TP, Party +%d%% HP', r * 20, r * 100, r * 8) end,
+        { wsd = { 20,40,60,80 }, tpBonus = { 100,200,300,400 }, partyHealPct = { 8,16,24,32 } },
         { key = 'c175_s3', rank = 2 }),
 
     -- Col 3: Tactical Fury

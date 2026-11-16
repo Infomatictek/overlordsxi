@@ -366,12 +366,14 @@ end
 
 local SPEC_KEY_TO_CATEGORY =
 {
+    tank        = 'tank',
     inquisitor  = 'tank',
     gladiator   = 'tank',
     sensei      = 'tank',
     spellblade  = 'spellblade',
     sage        = 'spellblade',
     necromancer = 'spellblade',
+    healer      = 'healer',
     lifebinder  = 'healer',
     medic       = 'healer',
     commander   = 'commander',
