@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T16:12:32.603584+00:00",
+  "generatedAt": "2026-11-16T16:40:06.646799+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "12652cb",
+  "headCommit": "07eee03",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -36985,6 +36985,48 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "07eee032e3eab8b60269d33ece14c27ca2122485",
+      "shortHash": "07eee03",
+      "author": "Infomatictek",
+      "date": "2026-11-16T16:39:57Z",
+      "subject": "Allow BLM (Necromancer) to equip all scythes in SQL and test gear vendor",
+      "files": [
+        {
+          "path": "modules/custom/lua/overlords_test_gear.lua",
+          "added": 0,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 3,
+          "removed": 11
+        }
+      ],
+      "totalAdded": 3,
+      "totalRemoved": 14
+    },
+    {
+      "hash": "16b5d3fd5348ab1d7446aa0bd6f1a4d6858dbb29",
+      "shortHash": "16b5d3f",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T16:12:32Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 39,
+          "removed": 39
+        },
+        {
+          "path": "site/data.json",
+          "added": 39,
+          "removed": 39
+        }
+      ],
+      "totalAdded": 78,
+      "totalRemoved": 78
+    },
+    {
       "hash": "12652cbaca83bc1e7088e10c3385938c40b7e920",
       "shortHash": "12652cb",
       "author": "nappypup",
@@ -38361,43 +38403,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 83,
       "totalRemoved": 28
-    },
-    {
-      "hash": "ae2db3322e15b09b94e31bb8229863c77137e3ee",
-      "shortHash": "ae2db33",
-      "author": "Infomatictek",
-      "date": "2026-11-15T09:56:57Z",
-      "subject": "fix(dnc): fire auto-ranged attack in CAttackState like melee and stop [OXSPEC] chat spam",
-      "files": [
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 0,
-          "removed": 1
-        },
-        {
-          "path": "patches/0014-auto-ranged-attack.patch",
-          "added": 72,
-          "removed": 5
-        }
-      ],
-      "totalAdded": 72,
-      "totalRemoved": 6
-    },
-    {
-      "hash": "fc19f5faa2040fb9e24b054c0571d6d33881b83a",
-      "shortHash": "fc19f5f",
-      "author": "Infomatictek",
-      "date": "2026-11-15T09:41:24Z",
-      "subject": "Make all chakrams DNC-only with competitive Lv 10-75 damage",
-      "files": [
-        {
-          "path": "modules/custom/sql/dnc_chakram_spec.sql",
-          "added": 45,
-          "removed": 22
-        }
-      ],
-      "totalAdded": 45,
-      "totalRemoved": 22
     }
   ]
 };
