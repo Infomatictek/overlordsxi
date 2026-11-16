@@ -18,6 +18,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/lua/sch_specs.lua` defines the SCH Medic and Sage crystal behavior.
 - `modules/custom/lua/war_specs.lua` defines the WAR Commander, Berserker, and Gladiator crystal passives and ability transformations.
 - `modules/custom/lua/mnk_specs.lua` defines the MNK Sensei crystal passives, Staff Evasion/Parry/Counter engine, and ability transformations.
+- `modules/custom/lua/run_specs.lua` defines the RUN Inquisitor, Spellblade, and Lifebinder crystal passives, 3-rune Lv.10+ mastery, Runic Riposte/Brand/Lifetap engines, and ability/spell transformations.
 - `modules/custom/lua/dot_damage_log.lua` preserves DoT caster/pet `origin` attribution on `takeDamage` for Lua-ticked DoTs (`Helix` and Nightmare `Bio`) on mobs.
 - `modules/custom/lua/overlords_test_gear.lua` defines the level-appropriate 16-slot test gear resolver across all 22 jobs, OverlordsXI crystal specs, weapon types, and level brackets (`1`–`99`).
 - `modules/custom/commands/spec.lua` adds `!spec` (`customMenu` crystal selector, CLI subcommands, and `[OXSPEC]` Ashita v4 sync protocol).
@@ -29,6 +30,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/sql/eos_companion.sql` defines `Call Eos` (`231`), `Call Titania` (`289`), pet rows (`128`/`129`), mob pools (`6020`/`6021`), spell lists (`566`/`600`), and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - `modules/custom/sql/war_commander_abilities.sql` defines the 4 WAR Commander custom Job Abilities (`396`–`399`: `tactical_breach`, `formation_bulwark`, `battle_cadence`, `rallying_horn`) with independent recast timers (`186`–`189`) and dynamic Lv.10+ crystal unlocking.
+- `modules/custom/sql/run_specs.sql` backports RUN `Liement` (`373`), `One for All` (`374`), `Odyllic Subterfuge` (`378`), and `Regen IV` (`477`) to Lv.75, removes merit gating from `Rayke` (`375`) and `Battuta` (`376`), and defines the 7 RUN crystal Job Abilities (`412`–`418`: `iron_battuta`, `runic_aegis`, `runic_convergence`, `effusion_slash`, `overcharge_runes`, `font_of_life`, `sanctified_ward`) with recast IDs `198`, `199`, `201`–`205`.
 - Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
 Twelve small engine patches are required:
@@ -43,10 +45,10 @@ Twelve small engine patches are required:
 - `patches/0008-titania-sage-pet.patch` raises `MAX_PETID` to `130` (`PETID_FAERIE_TITANIA = 129`) and deterministically spawns Titania at the master's level with `BLM` main job and `RDM` subjob.
 - `patches/0009-crystal-socket-packets.patch` adds custom packets `0x11F` (`GP_CLI_COMMAND_CRYSTAL_SOCKET`, C2S) and `0x1FF` (`GP_SERV_COMMAND_CRYSTAL_COLLECTION` `CRYS` / `GP_SERV_COMMAND_CRYSTAL_CATALOG` `CRYC`, S2C) backed by `xi.overlords.spec` for the Ashita v4 `crystalsocket` Equipment UI.
 - `patches/0010-spec-trait-sync-and-unlocks.patch` expands `MAX_TRAIT_ID` / `CCharEntity::m_TraitList` to `256` (`32` bytes matching `GP_SERV_COMMAND_COMMAND_DATA`), overrides `CCharEntity::hasTrait`, refreshes spec crystal mods/listeners/UI on every `charutils::BuildingCharTraitsTable` rebuild (job change, subjob change, level change, level sync), and injects crystal-gated custom Job Traits (`xi.overlords.spec.getExtraTraits`) directly into the Traits menu.
-- `patches/0011-commander-status-effects.patch` raises `MAX_EFFECTID` to `832` and configures custom status effect IDs `815`–`818` (`commander_breach`, `commander_bulwark`, `commander_cadence`, `commander_regroup`).
+- `patches/0011-commander-status-effects.patch` raises `MAX_EFFECTID` to `832` and configures custom status effect IDs `815`–`826` (`commander_breach`, `commander_bulwark`, `commander_cadence`, `commander_regroup`, `berserker_bloodlust`, `gladiator_bastion`, `inquisitor_battuta`, `inquisitor_aegis`, `inquisitor_converge`, `spellblade_overcharge`, `lifebinder_font`, `lifebinder_sanctuary`).
 - `patches/0012-dot-damage-log.patch` attributes player/pet/trust DoT ticks on mobs (`Dia`, `Bio`, `Poison`, `Burn`/`Frost`/`Choke`/`Rasp`/`Shock`/`Drown`, `Requiem`, `Kaustra`, `Geo-Poison`, `Helix`) and emits parser-friendly `0x017` `MESSAGE_SYSTEM_3` combat log lines (`"<Caster>'s <Effect> deals <Amount> point(s) of damage to <Mob>."`).
 
-The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`–`0005` power the per-character weaponskill unlock and talent skillchain system. Patches `0007`, `0010`, and `0011` allow job crystals to dynamically grant and hide ability and trait menu entries per character, run custom Commander tactical status effects cleanly, and keep crystal passives synchronized across all job/level/sync transitions.
+The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`–`0005` power the per-character weaponskill unlock and talent skillchain system. Patches `0007`, `0010`, and `0011` allow job crystals to dynamically grant and hide ability and trait menu entries per character, run custom crystal tactical status effects cleanly, and keep crystal passives synchronized across all job/level/sync transitions.
 
 ## Client Launcher & Client Files
 
@@ -102,6 +104,7 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\eos_companio
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\sch_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\war_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\mnk_specs.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\run_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\dot_damage_log.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_spec_runtime.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\spec.lua .\modules\custom\commands\
@@ -112,6 +115,7 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\kazenoeye_sy
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companion.sql .\modules\custom\sql\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\sch_specs.sql .\modules\custom\sql\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\war_commander_abilities.sql .\modules\custom\sql\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\run_specs.sql .\modules\custom\sql\
 ```
 
 Add these lines to `modules/init.txt`:
@@ -125,6 +129,7 @@ custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/lua/war_specs.lua
 custom/lua/mnk_specs.lua
+custom/lua/run_specs.lua
 custom/lua/dot_damage_log.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
@@ -132,6 +137,7 @@ custom/cpp/kazenoeye_sync.cpp
 custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
 custom/sql/war_commander_abilities.sql
+custom/sql/run_specs.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua
@@ -154,16 +160,17 @@ The overlay updates:
 - ability display ID `743` (`231 + 512`) to show `Call Eos`
 - ability display ID `801` (`289 + 512`) to show `Call Titania`
 - ability display IDs `908`–`911` (`396`–`399 + 512`) to show WAR Commander's custom JAs (`Tactical Breach`, `Formation: Bulwark`, `Battle Cadence`, `Rallying Horn`) with recast IDs `186`–`189`
+- ability display IDs `924`–`930` (`412`–`418 + 512`) to show RUN crystal custom JAs (`Stance: Iron Battuta`, `Stance: Runic Aegis`, `Runic Convergence`, `Effusion Slash`, `Overcharge Runes`, `Font of Life`, `Sanctified Ward`) with recast IDs `198`, `199`, `201`–`205`
 - Call Eos / Call Titania target metadata to self (`validTarget = Self`)
 - Call Eos / Call Titania client recast metadata to the DAT-safe cap
-- custom Job Trait IDs `140`–`145` (display IDs `1676`–`1681`, `1536 + traitId`) to show crystal traits in the in-game Job Traits menu (`Commander's Tactics`, `Berserker's Fury`, `Gladiator's Bastion`, `Sensei's Flow`, `Medic's Grace`, `Sage's Wisdom`; up to Trait ID `255` supported)
+- custom Job Trait IDs `140`–`152` (display IDs `1676`–`1688`, `1536 + traitId`) to show crystal traits in the in-game Job Traits menu (`Commander's Tactics`, `Berserker's Fury`, `Gladiator's Bastion`, `Sensei's Flow`, `Medic's Grace`, `Sage's Wisdom`, `Bladewheel Mastery`, `Harbinger's Drain`, `Dark Pact`, `Grim Conversion`, `Inquisitor's Ward`, `Runic Brand`, `Sacred Pulse`; up to Trait ID `255` supported)
 - Orphic Egg item text to show Eos & Titania Refresh scaling
 
 The server enforces the real 5 minute recast.
 
 ## Job Specs / Crystals
 
-The package includes a reusable **Job Crystal / Spec** system (`overlords_job_specs.lua`) with session-safe scaling passive modifiers (`overlords_job_spec_runtime.lua`), an interactive `customMenu` crystal selector (`!spec`), and a silent `[OXSPEC]` sync protocol for custom Ashita v4 UIs. Spec choices are persisted as character variables, one per job (`OX_SPEC_<JOB>`, e.g. `OX_SPEC_WAR`, `OX_SPEC_SCH`).
+The package includes a reusable **Job Crystal / Spec** system (`overlords_job_specs.lua`) with session-safe scaling passive modifiers (`overlords_job_spec_runtime.lua`), an interactive `customMenu` crystal selector (`!spec`), and a silent `[OXSPEC]` sync protocol for custom Ashita v4 UIs. Spec choices are persisted as character variables, one per job (`OX_SPEC_<JOB>`, e.g. `OX_SPEC_WAR`, `OX_SPEC_SCH`, `OX_SPEC_RUN`).
 
 - **Level 10 Baseline Unlock:** All job crystals / souls require **Lv10** (`DEFAULT_REQ_LEVEL = 10`) in that job to unlock, socket, and activate. If a player level-syncs below Lv10, their socketed crystal remains saved in `OX_SPEC_<JOB>` while its passives and spec hooks are safely suspended until Lv10+ is restored.
 
@@ -201,6 +208,12 @@ Players can use:
 - `medic` / **Medic** (*Light Arts / Eos Support*): Addendum: White remains a 2 hour stance, Sublimation charging stores MP twice as fast without HP drain, Cure/Regen spells use Accession-style 10y AoE without consuming Stratagem charges, and **Call Eos** (`231`) is dynamically unlocked at Lv.10+ (hidden otherwise; Eos despawns if removing or suspending the Medic crystal).
 - `sage` / **Sage** (*Dark Arts / Helix Master & Titania*): Addendum: Black remains a 2 hour stance, Ebullience is permanent for black magic, Helix damage is increased by 50%, Helix duration is extended to 2 hours, magic attack bonus is increased by 30, elemental magic gets a 10% target Magic Evasion bypass as bonus accuracy, and **Call Titania** (`289`) is dynamically unlocked at Lv.10+ (summons a Dark Pixie companion that enfeebles, drains/aspirs, and elemental nukes; Titania despawns if removing or suspending the Sage crystal).
 
+### Rune Fencer Crystals (`OX_SPEC_RUN`, Lv10+)
+
+- `inquisitor` / **Inquisitor** (*Hybrid Stance-Swapping Ward Tank*): Passives (Lv10/30/50/70+) `+8/12/16/22% Max HP`, `+10/18/26/36% DEF`, `-5/8/12/16% DT`, `-6/10/14/18% MDT`, `+15/28/42/60 Parry Skill`, `+6/10/14/18% Parry Rate`, `+18/30/45/65 Enmity`, `-25/40/55/70% Enmity Loss`, `+10/16/22/30 MEVA`; unlocks **3-Rune Mastery** at Lv.10+; **Parry & Runic Riposte** heals `2% Max HP`, restores `1.5% Max MP`, grants `+60 TP` & Enmity, and deals an elemental counter-slash on every Parry; **Swipe / Lunge / Gambit / Rayke** do **not** consume runes and generate heavy bonus Enmity; **Vallation / Valiance** grant party Phalanx & `-10% DT`; **Pflug / Battuta / Liement / One for All** gain extended durations & mitigation; unlocks **Stance: Iron Battuta** (`412`, 10s CD: physical parry/counter stance + transition AoE Enmity flash), **Stance: Runic Aegis** (`413`, 10s CD: magic ward stance + transition 10y party Stoneskin), and **Runic Convergence** (`414`, 45s CD, 15s: runs both stances simultaneously + `15% Max HP` heal & 10y party `-10% DT`).
+- `spellblade` / **Spellblade** (*Elemental Effusion & Great Sword Magic-Burst DPS*): Passives (Lv10/30/50/70+) `+10/18/28/40 Great Sword & Sword Skill`, `+8/15/24/35 ACC & MACC`, `+8/12/16/22% Attack`, `+12/22/34/48 MAB`, `+6/10/14/18% Double Attack`, `+5/8/12/16% WSD`, `+6/12/18/25 Store TP`, `+8/12/16/22% Skillchain & Magic Burst Bonus`, `-15/20/25/30 Enmity`; unlocks **3-Rune Mastery** at Lv.10+; **Runic Brand** triggers elemental discharges on every melee hit (`+15 TP`) and Weaponskill (`15–35%` bonus elemental burst + `1.5% Max MP` per rune); **Mono-Element vs. Tri-Element Resonance** grants `+20 MACC / +15 MAB` with 3 matching runes or `+12% SC Bonus / +8% Triple Attack` with 3 distinct runes; **Swipe / Lunge** deal `+35%` damage, never consume runes, and grant `+250 / +500 TP`; **Gambit / Rayke** never consume runes and apply `-20% Defense Down` / `+15% SC & Crit DMG taken`; **Embolden** enhances offensive buffs by `+50%` without duration halving; unlocks **Effusion Slash** (`415`, 20s CD: `2.5x` rune-element strike that opens/closes SC & inflicts `-25 MEVA`) and **Overcharge Runes** (`416`, 45s CD, 15s: doubles Runic Brand damage, `+20% Haste`, `+25 MAB`, `+15% WSD`, `+300 TP`).
+- `lifebinder` / **Lifebinder** (*Vivacious Pulse & Runic Mending Healer*): Passives (Lv10/30/50/70+) `+10/18/26/35% Max MP`, `+8/15/24/35 MND`, `+15/28/42/60 Healing & Enhancing Skill`, `+12/18/24/30% Cure Potency`, `+10/15/20/25% Fast Cast`, `+2/4/6/9/tick Refresh`, `+10/16/22/30 Cure Spellcasting Time -%`, `-15/22/30/40 Enmity`; unlocks **3-Rune Mastery** at Lv.10+; unlocks **Sacred Pulse** (**Vivacious Pulse** `383` at Lv.10+ on a **15s CD** as a **12y Party AoE heal** with per-rune **Lux** AoE Regen, **Unda** progressive debuff cleanse, **Tenebrae** AoE MP restore + Refresh, and **Elemental** `25%` heal Stoneskin); **Runic Lifetap** splashes `35%` of melee damage and `20%` of WS damage as an instant mend to the most injured party member within 15y while restoring `2% Max MP`; **Regen I–IV** (`+50%` potency, `+60s` duration) and **Cure I–IV** project to all party members within **10y**; unlocks **Font of Life** (`417`, 25s CD: single-target `35% Max HP` instant mend, 2-debuff cleanse, `+15% Cure Rcvd`, `-12% DT` for 15s) and **Sanctified Ward** (`418`, 45s CD, 15s, Party 12y: `20% Max HP` Stoneskin, `+25/tick` Regen, `+5/tick` Refresh, `-15% DT`).
+
 Spell and ability modules can branch with:
 
 ```lua
@@ -208,6 +221,9 @@ xi.overlords.spec.is(player, xi.job.WAR, 'commander')
 xi.overlords.spec.is(player, xi.job.MNK, 'sensei')
 xi.overlords.spec.is(player, xi.job.SCH, 'medic')
 xi.overlords.spec.is(player, xi.job.SCH, 'sage')
+xi.overlords.spec.is(player, xi.job.RUN, 'inquisitor')
+xi.overlords.spec.is(player, xi.job.RUN, 'spellblade')
+xi.overlords.spec.is(player, xi.job.RUN, 'lifebinder')
 ```
 
 ### Ashita v4 Custom Crystal Addon Protocol (`[OXSPEC]`)
@@ -233,7 +249,10 @@ Server responses:
 - **Call Eos**: Ability ID `231` (display `743`), Pet ID `128`, Pool ID `6020` (Light Pixie `0x07EE`), Spell List ID `566`
 - **Call Titania**: Ability ID `289` (display `801`), Pet ID `129`, Pool ID `6021` (Dark Pixie `0x07F0`), Spell List ID `600`
 - **WAR Commander Commands**: Ability IDs `396`–`399` (display `908`–`911`, recast IDs `186`–`189`): `Tactical Breach` (`396`), `Formation: Bulwark` (`397`), `Battle Cadence` (`398`), `Rallying Horn` (`399`)
-- Commander custom status IDs: `815` (`commander_breach`), `816` (`commander_bulwark`), `817` (`commander_cadence`), `818` (`commander_regroup`)
+- **RUN Crystal Abilities**: Ability IDs `412`–`418` (display `924`–`930`, recast IDs `198`, `199`, `201`–`205`): `Stance: Iron Battuta` (`412`), `Stance: Runic Aegis` (`413`), `Runic Convergence` (`414`), `Effusion Slash` (`415`), `Overcharge Runes` (`416`), `Font of Life` (`417`), `Sanctified Ward` (`418`)
+- **RUN Crystal Traits**: Trait IDs `150`–`152` (display `1686`–`1688`): `Inquisitor's Ward` (`150`), `Runic Brand` (`151`), `Sacred Pulse` (`152`)
+- Commander & WAR custom status IDs: `815` (`commander_breach`), `816` (`commander_bulwark`), `817` (`commander_cadence`), `818` (`commander_regroup`), `819` (`berserker_bloodlust`), `820` (`gladiator_bastion`)
+- RUN custom status IDs: `821` (`inquisitor_battuta`), `822` (`inquisitor_aegis`), `823` (`inquisitor_converge`), `824` (`spellblade_overcharge`), `825` (`lifebinder_font`), `826` (`lifebinder_sanctuary`)
 - Eos Regen status ID: `789`
 - Faerie hidden Refresh/buff carrier status ID: `814`
 - Orphic Egg item ID: `18256`

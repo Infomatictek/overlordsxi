@@ -2728,6 +2728,13 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.GEO or 21) then
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'Geomancer (Club & Handbell)' }
     elseif jobId == (j.RUN or 22) then
+        if specKey == 'inquisitor' then
+            return { role = 'tank', weapon = 'gsword', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'RUN Inquisitor (Great Sword Ward Tank)', specEntry = specEntry }
+        elseif specKey == 'spellblade' then
+            return { role = 'melee', weapon = 'gsword', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_melee', label = 'RUN Spellblade (Great Sword Effusion DPS)', specEntry = specEntry }
+        elseif specKey == 'lifebinder' then
+            return { role = 'caster', weapon = 'gsword', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'RUN Lifebinder (Great Sword Runic Healer)', specEntry = specEntry }
+        end
         return { role = 'tank', weapon = 'gsword', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'Rune Fencer (Great Sword Tank)' }
     end
 
