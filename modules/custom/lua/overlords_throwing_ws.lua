@@ -37,6 +37,33 @@ local function consumeAllFinishingMoves(player)
     return power
 end
 
+-- Ensure Throwing weaponskills (Chakrams in SLOT_RANGED with empty SLOT_AMMO)
+-- execute all multi-hits and bonusHits instead of stopping at 1 hit from ammoCount = 0.
+if xi.weaponskills ~= nil and xi.weaponskills.calculateRawWSDmg ~= nil then
+    xi.weaponskills._origCalculateRawWSDmg = xi.weaponskills._origCalculateRawWSDmg or xi.weaponskills.calculateRawWSDmg
+    xi.weaponskills.calculateRawWSDmg = function(attacker, target, wsID, tp, action, wsParams, calcParams)
+        local restoreRangedSlot = false
+        if
+            calcParams ~= nil and
+            calcParams.attackInfo ~= nil and
+            calcParams.attackInfo.slot == xi.slot.RANGED and
+            (calcParams.skillType == xi.skill.THROWING or (wsID ~= nil and wsID >= 241 and wsID <= 252)) and
+            attacker ~= nil and
+            attacker:isPC() and
+            attacker:getEquippedItem(xi.slot.AMMO) == nil
+        then
+            calcParams.attackInfo.slot = xi.slot.AMMO
+            restoreRangedSlot = true
+        end
+
+        local res = xi.weaponskills._origCalculateRawWSDmg(attacker, target, wsID, tp, action, wsParams, calcParams)
+        if restoreRangedSlot and res ~= nil and res.attackInfo ~= nil then
+            res.attackInfo.slot = xi.slot.RANGED
+        end
+        return res
+    end
+end
+
 local function registerRangedWs(key, paramsBuilder, afterHitFn)
     xi.actions.weaponskills[key] = xi.actions.weaponskills[key] or {}
     xi.actions.weaponskills[key].onUseWeaponSkill = function(player, target, wsID, tp, primary, action, taChar)
