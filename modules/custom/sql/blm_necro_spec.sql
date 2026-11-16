@@ -161,9 +161,19 @@ INSERT INTO `mob_spell_lists` (`spell_list_name`, `spell_list_id`, `spell_id`, `
     ('undead_corse', 602, 168, 91, 255); -- Thunder V
 
 -- ---------------------------------------------------------------------------
--- 4. Allow BLM (job bit 8 = 1 << (4 - 1)) to equip Scythes (skill = 7)
+-- 4. Allow BLM (job bit 8 = 1 << (4 - 1)) to equip shared/multi-job Scythes (skill = 7),
+--    while keeping DRK-exclusive Scythes (jobs = 128, e.g., Apocalypse, Liberator,
+--    Redemption, Death Scythe, Vassago's Scythe) restricted to DRK.
 -- ---------------------------------------------------------------------------
 UPDATE `item_equipment` ie
 INNER JOIN `item_weapon` iw ON ie.`itemId` = iw.`itemId`
+SET ie.`jobs` = 128
+WHERE iw.`skill` = 7
+  AND ie.`jobs` = (128 | 8);
+
+UPDATE `item_equipment` ie
+INNER JOIN `item_weapon` iw ON ie.`itemId` = iw.`itemId`
 SET ie.`jobs` = (ie.`jobs` | 8)
-WHERE iw.`skill` = 7;
+WHERE iw.`skill` = 7
+  AND ie.`jobs` <> 128;
+

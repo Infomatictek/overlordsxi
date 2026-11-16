@@ -52,8 +52,8 @@ local function delaySendMenu(player, menuBuilder)
 end
 
 local function printUsage(player)
-    tell(player, 'Usage: !gear | !gear menu | !gear <level> [weapon] | !gear <weapon> [level]')
-    tell(player, '       !gear role <melee|tank|ranged|caster> | !gear level <1-99> | !gear info | !gear bag')
+    tell(player, 'Usage: !gear | !gear tp | !gear ws | !gear menu | !gear <level> [weapon] | !gear <weapon> [level]')
+    tell(player, '       !gear role <tp|ws|tank|ranged|caster> | !gear level <1-99> | !gear info | !gear bag')
     tell(player, 'Weapons: h2h, dagger, sword, gs, axe, gaxe, scythe, polearm, katana, gk, club, staff, bow, crossbow, gun, throwing, chakram')
 end
 
@@ -132,10 +132,11 @@ local openLevelMenu
 
 local function getAvailableWeaponKeys(player)
     local lvl = player:getMainLvl()
+    local profile = testGear.getDefaultProfile(player, player:getMainJob(), lvl)
     local available = {}
     for _, wKey in ipairs(testGear.WEAPON_ORDER) do
         local info = testGear.WEAPON_INFO[wKey]
-        if info ~= nil then
+        if info ~= nil and testGear.isWeaponAllowedForJob(player, wKey) then
             if wKey == 'bow' or wKey == 'crossbow' or wKey == 'gun' or wKey == 'throwing' then
                 local item = testGear.pickFromPool(player, testGear.RANGED[wKey], lvl)
                 if item ~= nil then
@@ -148,9 +149,20 @@ local function getAvailableWeaponKeys(player)
                     table.insert(available, { key = wKey, label = info.label, item = item })
                 end
             else
-                local item = testGear.pickFromPool(player, testGear.WEAPONS[wKey], lvl, { weaponKey = wKey })
+                local poolKey = wKey
+                local label = info.label
+                if wKey == 'scythe' and player:getMainJob() == (xi.job and xi.job.BLM or 4) then
+                    poolKey = 'scythe_blm'
+                elseif wKey == 'club' and profile.role == 'caster' then
+                    poolKey = 'club_mage'
+                    label = testGear.WEAPON_INFO.club_mage and testGear.WEAPON_INFO.club_mage.label or label
+                elseif wKey == 'staff' and profile.role == 'caster' then
+                    poolKey = 'staff_mage'
+                    label = testGear.WEAPON_INFO.staff_mage and testGear.WEAPON_INFO.staff_mage.label or label
+                end
+                local item = testGear.pickFromPool(player, testGear.WEAPONS[poolKey] or testGear.WEAPONS[wKey], lvl, { weaponKey = poolKey })
                 if item ~= nil then
-                    table.insert(available, { key = wKey, label = info.label, item = item })
+                    table.insert(available, { key = wKey, label = label, item = item })
                 end
             end
         end
@@ -220,10 +232,11 @@ end
 openRoleMenu = function(player)
     local roles =
     {
-        { key = 'melee',  label = 'Melee DPS Gear' },
-        { key = 'tank',   label = 'Tank / Mitigation Gear' },
-        { key = 'ranged', label = 'Ranged DPS Gear' },
-        { key = 'caster', label = 'Caster / Healer Gear' },
+        { key = 'tp',     label = 'TP Set (Haste / Store TP / Multi)' },
+        { key = 'ws',     label = 'WS Set (STR / DEX / WSD / Attack)' },
+        { key = 'tank',   label = 'Tank / Mitigation Set' },
+        { key = 'ranged', label = 'Ranged DPS Set' },
+        { key = 'caster', label = 'Caster / Healer Set' },
     }
     local options = {}
 
@@ -249,7 +262,7 @@ openRoleMenu = function(player)
 
     return
     {
-        title   = 'Select Armor Role',
+        title   = 'Select Gear Set Role',
         options = options,
     }
 end
@@ -325,13 +338,25 @@ openRootMenu = function(player)
             end,
         },
         {
+            string.format('Equip TP Set (Lv.%d)', lvl),
+            function(p)
+                executeEquip(p, { role = 'tp' })
+            end,
+        },
+        {
+            string.format('Equip WS Set (Lv.%d)', lvl),
+            function(p)
+                executeEquip(p, { role = 'ws' })
+            end,
+        },
+        {
             'Choose Weapon Type...',
             function(p)
                 delaySendMenu(p, function() return openWeaponMenu(p, 1) end)
             end,
         },
         {
-            'Choose Role Preset...',
+            'Choose Role / Set Preset...',
             function(p)
                 delaySendMenu(p, function() return openRoleMenu(p) end)
             end,
@@ -501,11 +526,11 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
         return
     end
 
-    -- 8. Explicit Role Override (!gear role <melee|tank|ranged|caster> [weapon|level])
+    -- 8. Explicit Role Override (!gear role <tp|ws|tank|ranged|caster> [weapon|level])
     if cmd == 'role' or cmd == 'set' then
         local rKey = testGear.resolveRoleKey(arg2)
         if rKey == nil then
-            tell(player, 'Usage: !gear role <melee|tank|ranged|caster> [weapon|level]')
+            tell(player, 'Usage: !gear role <tp|ws|tank|ranged|caster> [weapon|level]')
             return
         end
         local opts, err = parseExtraOpts(arg3, nil, { role = rKey })
@@ -552,4 +577,7 @@ xi.commands.gear = commandObj
 if xi.module and xi.module.registerCommand then
     xi.module.registerCommand('gear', commandObj)
 end
+
+return commandObj
+
 

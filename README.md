@@ -185,10 +185,12 @@ Players can use:
 !eos heal
 !eos dismiss
 !gear
+!gear tp
+!gear ws
 !gear menu
 !gear <level> [weapon]
 !gear <weapon> [level]
-!gear role <melee|tank|ranged|caster>
+!gear role <tp|ws|tank|ranged|caster>
 !gear level <1-99>
 !gear info
 ```
