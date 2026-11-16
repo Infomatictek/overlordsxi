@@ -1153,18 +1153,22 @@ local function ensureRunSpells(player, isSpellblade)
     end
     for _, spellId in ipairs(RUN_NATIVE_SPELLS) do
         if not player:hasSpell(spellId) then
-            player:addSpell(spellId, true, true)
+            player:addSpell(spellId, { silentLog = true, saveToDB = true, sendUpdate = true })
         end
     end
     if isSpellblade then
-        player:addSpell(SPELL_RUNIC_BOLT, true, true)
-        player:addSpell(SPELL_RUNIC_SEVER, true, true)
+        if not player:hasSpell(SPELL_RUNIC_BOLT) then
+            player:addSpell(SPELL_RUNIC_BOLT, { silentLog = true, saveToDB = true, sendUpdate = true })
+        end
+        if not player:hasSpell(SPELL_RUNIC_SEVER) then
+            player:addSpell(SPELL_RUNIC_SEVER, { silentLog = true, saveToDB = true, sendUpdate = true })
+        end
     elseif player.delSpell then
         if player:hasSpell(SPELL_RUNIC_BOLT) then
-            player:delSpell(SPELL_RUNIC_BOLT)
+            player:delSpell(SPELL_RUNIC_BOLT, { saveToDB = true, sendUpdate = true })
         end
         if player:hasSpell(SPELL_RUNIC_SEVER) then
-            player:delSpell(SPELL_RUNIC_SEVER)
+            player:delSpell(SPELL_RUNIC_SEVER, { saveToDB = true, sendUpdate = true })
         end
     end
 end
@@ -2277,7 +2281,7 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     local element    = RUNE_ELEMENT_MAP[newestRune] or xi.element.FIRE
     local infoVal    = RUNE_EFFUSION_INFO_MAP[newestRune] or 2
 
-    if action ~= nil then
+    if spellObj == nil and action ~= nil then
         if action.info then
             action:info(target:getID(), infoVal)
         end
@@ -2511,9 +2515,6 @@ local function checkRunicMagicSpell(caster, target, spell, isSever)
 
     local baseCastMs = isSever and 3000 or 2000
     local prepCastMs = math.max(250, baseCastMs - (stacks * 500))
-    if caster.hasStatusEffect and caster:hasStatusEffect(xi.effect.HASSO) then
-        prepCastMs = math.floor(prepCastMs * 1.5)
-    end
 
     if caster.setLocalVar then
         caster:setLocalVar('OX_RUN_PREP_STACKS', stacks)
