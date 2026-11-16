@@ -599,6 +599,9 @@ if xi.job and xi.job.BLM then
                 }
             end,
             onApply = function(player)
+                if player ~= nil and player.capSkill then
+                    player:capSkill(xi.skill.SCYTHE)
+                end
                 attachNecroListeners(player)
                 syncDarkPactMods(player)
                 syncConversionMods(player)
