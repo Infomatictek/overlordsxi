@@ -382,38 +382,42 @@ local function doSummon(player, petId, label)
     return 0
 end
 
-m:addOverride('xi.actions.abilities.summon_undead_warrior.onAbilityCheck', function(player, target, ability)
+local function bindAbility(name, checkFn, useFn)
+    xi.actions.abilities[name] = xi.actions.abilities[name] or {}
+    xi.actions.abilities[name].onAbilityCheck = checkFn
+    xi.actions.abilities[name].onUseAbility   = useFn
+    m:addOverride('xi.actions.abilities.' .. name .. '.onAbilityCheck', checkFn)
+    m:addOverride('xi.actions.abilities.' .. name .. '.onUseAbility', useFn)
+end
+
+bindAbility('summon_undead_warrior', function(player, target, ability)
     return checkSummon(player, 10, 'Summon Undead Warrior')
-end)
-m:addOverride('xi.actions.abilities.summon_undead_warrior.onUseAbility', function(player, target, ability)
+end, function(player, target, ability)
     return doSummon(player, PET_UNDEAD_WARRIOR, 'Undead Warrior')
 end)
 
-m:addOverride('xi.actions.abilities.summon_undead_mage.onAbilityCheck', function(player, target, ability)
+bindAbility('summon_undead_mage', function(player, target, ability)
     return checkSummon(player, 10, 'Summon Undead Mage')
-end)
-m:addOverride('xi.actions.abilities.summon_undead_mage.onUseAbility', function(player, target, ability)
+end, function(player, target, ability)
     return doSummon(player, PET_UNDEAD_MAGE, 'Undead Mage')
 end)
 
-m:addOverride('xi.actions.abilities.summon_corse.onAbilityCheck', function(player, target, ability)
+bindAbility('summon_corse', function(player, target, ability)
     return checkSummon(player, 75, 'Summon Corse')
-end)
-m:addOverride('xi.actions.abilities.summon_corse.onUseAbility', function(player, target, ability)
+end, function(player, target, ability)
     return doSummon(player, PET_UNDEAD_CORSE, 'Corse')
 end)
 
-m:addOverride('xi.actions.abilities.summon_dullahan.onAbilityCheck', function(player, target, ability)
+bindAbility('summon_dullahan', function(player, target, ability)
     return checkSummon(player, 75, 'Summon Dullahan')
-end)
-m:addOverride('xi.actions.abilities.summon_dullahan.onUseAbility', function(player, target, ability)
+end, function(player, target, ability)
     return doSummon(player, PET_UNDEAD_DULLAHAN, 'Dullahan')
 end)
 
 -----------------------------------
 -- Corpse Explosion (407): Detonate Undead Pet for Dark AoE Damage
 -----------------------------------
-m:addOverride('xi.actions.abilities.corpse_explosion.onAbilityCheck', function(player, target, ability)
+bindAbility('corpse_explosion', function(player, target, ability)
     if not isNecromancer(player) then
         tell(player, 'Corpse Explosion is only available to BLM Necromancer spec.')
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
@@ -424,9 +428,7 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onAbilityCheck', function(p
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
     return 0, 0
-end)
-
-m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(player, target, ability)
+end, function(player, target, ability)
     if target ~= nil and target:getID() ~= player:getID() then
         return 0
     end
@@ -491,7 +493,7 @@ end)
 -----------------------------------
 -- Grim Reaping (408): Warrior / Dullahan Physical Dark Cleave
 -----------------------------------
-m:addOverride('xi.actions.abilities.grim_reaping.onAbilityCheck', function(player, target, ability)
+bindAbility('grim_reaping', function(player, target, ability)
     if not isNecromancer(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
@@ -504,9 +506,7 @@ m:addOverride('xi.actions.abilities.grim_reaping.onAbilityCheck', function(playe
         return xi.msg.basic.CANNOT_ATTACK_TARGET, 0
     end
     return 0, 0
-end)
-
-m:addOverride('xi.actions.abilities.grim_reaping.onUseAbility', function(player, target, ability, action)
+end, function(player, target, ability, action)
     local pet, petId = getUndeadPet(player)
     if pet == nil or target == nil or not target:isAlive() then
         return 0
@@ -538,7 +538,7 @@ end)
 -----------------------------------
 -- Grim Incantations (409): Mage / Corse Dark Nuke + Drain/Aspir
 -----------------------------------
-m:addOverride('xi.actions.abilities.grim_incantations.onAbilityCheck', function(player, target, ability)
+bindAbility('grim_incantations', function(player, target, ability)
     if not isNecromancer(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
@@ -551,9 +551,7 @@ m:addOverride('xi.actions.abilities.grim_incantations.onAbilityCheck', function(
         return xi.msg.basic.CANNOT_ATTACK_TARGET, 0
     end
     return 0, 0
-end)
-
-m:addOverride('xi.actions.abilities.grim_incantations.onUseAbility', function(player, target, ability, action)
+end, function(player, target, ability, action)
     local pet, petId = getUndeadPet(player)
     if pet == nil or target == nil or not target:isAlive() then
         return 0
