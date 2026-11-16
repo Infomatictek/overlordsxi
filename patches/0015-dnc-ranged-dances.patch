@@ -67,7 +67,7 @@ index 682027aa..f998a771 100644
  
          if (isChar)
          {
-+            if (static_cast<CCharEntity*>(this)->GetLocalVar("OX_DNC_RANGED") == 1 && actionResult.param > 0)
++            if (actionResult.param > 0)
 +            {
 +                battleutils::HandleRangedSamba(this, PTarget, &actionResult, static_cast<uint16>(GetRangedWeaponDelay(false)), actionResult.param);
 +            }
@@ -79,7 +79,7 @@ diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
 index e27b61ed..fffa2154 100644
 --- a/src/map/utils/battleutils.cpp
 +++ b/src/map/utils/battleutils.cpp
-@@ -1231,6 +1231,101 @@ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntit
+@@ -1231,6 +1231,170 @@ void HandleSpikesStatusEffect(const CBattleEntity* PAttacker, const CBattleEntit
   *                                                                       *
   ************************************************************************/
  
@@ -90,42 +90,111 @@ index e27b61ed..fffa2154 100644
 +        return;
 +    }
 +
-+    xi::StatusEffect daze      = xi::StatusEffect::None;
-+    uint16           dazePower = 0;
++    auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
 +
-+    if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainSamba) && PDefender->m_EcoSystem != xi::Ecosystem::Undead)
++    // 1. If attacker is a Bladewheel DNC with a Samba active, apply/refresh Daze on the target for the party.
++    if (PChar != nullptr && PChar->GetLocalVar("OX_DNC_RANGED") == 1)
 +    {
-+        daze      = xi::StatusEffect::DrainDaze;
-+        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::DrainSamba)->GetPower();
-+    }
-+    else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirSamba))
-+    {
-+        daze      = xi::StatusEffect::AspirDaze;
-+        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::AspirSamba)->GetPower();
-+    }
-+    else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::HasteSamba))
-+    {
-+        daze      = xi::StatusEffect::HasteDaze;
-+        dazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::HasteSamba)->GetPower();
++        xi::StatusEffect applyDaze      = xi::StatusEffect::None;
++        uint16           applyDazePower = 0;
++
++        if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainSamba) && PDefender->m_EcoSystem != xi::Ecosystem::Undead)
++        {
++            applyDaze      = xi::StatusEffect::DrainDaze;
++            applyDazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::DrainSamba)->GetPower();
++        }
++        else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirSamba))
++        {
++            applyDaze      = xi::StatusEffect::AspirDaze;
++            applyDazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::AspirSamba)->GetPower();
++        }
++        else if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::HasteSamba))
++        {
++            applyDaze      = xi::StatusEffect::HasteDaze;
++            applyDazePower = PAttacker->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::HasteSamba)->GetPower();
++        }
++
++        if (applyDaze != xi::StatusEffect::None && applyDazePower > 0)
++        {
++            if (PAttacker->PParty != nullptr)
++            {
++                for (auto* PMember : PAttacker->PParty->members)
++                {
++                    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::DrainDaze, PMember->id);
++                    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::HasteDaze, PMember->id);
++                    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::AspirDaze, PMember->id);
++                }
++            }
++            else
++            {
++                PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::DrainDaze, PAttacker->id);
++                PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::HasteDaze, PAttacker->id);
++                PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::AspirDaze, PAttacker->id);
++            }
++            PDefender->StatusEffectContainer->AddStatusEffectSilent(applyDaze, 0, applyDazePower, 0s, 10s, PAttacker->id);
++        }
 +    }
 +
-+    if (daze == xi::StatusEffect::None || dazePower == 0)
++    // 2. Proc active Daze on the target if applied by the attacker or a party member.
++    const bool hasDrainDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainDaze);
++    const bool hasAspirDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirDaze);
++    const bool hasHasteDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::HasteDaze);
++
++    if (!hasDrainDaze && !hasAspirDaze && !hasHasteDaze)
 +    {
 +        return;
 +    }
 +
-+    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::DrainDaze, PAttacker->id);
-+    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::HasteDaze, PAttacker->id);
-+    PDefender->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::AspirDaze, PAttacker->id);
-+    PDefender->StatusEffectContainer->AddStatusEffectSilent(daze, 0, dazePower, 0s, 10s, PAttacker->id);
++    xi::StatusEffect daze = xi::StatusEffect::None;
++    if (hasDrainDaze)
++    {
++        daze = xi::StatusEffect::DrainDaze;
++    }
++    else if (hasAspirDaze)
++    {
++        daze = xi::StatusEffect::AspirDaze;
++    }
++    else if (hasHasteDaze)
++    {
++        daze = xi::StatusEffect::HasteDaze;
++    }
 +
-+    auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
-+    const int32 amMult = (PChar != nullptr && PChar->GetLocalVar("OX_CHAKRAM_AM") > 0) ? 2 : 1;
++    auto* dazeEffect = PDefender->StatusEffectContainer->GetStatusEffect(daze);
++    if (dazeEffect == nullptr)
++    {
++        return;
++    }
++
++    const uint32 dazeOwnerID = dazeEffect->GetSubID();
++    uint16       dazePower   = 0;
++
++    if (dazeOwnerID == PAttacker->id)
++    {
++        dazePower = dazeEffect->GetPower();
++    }
++    else if (PChar != nullptr && PChar->PParty != nullptr)
++    {
++        PChar->ForPartyWithTrusts([&](CBattleEntity* PMember)
++        {
++            if (dazeOwnerID == PMember->id)
++            {
++                dazePower = dazeEffect->GetPower();
++            }
++        });
++    }
++
++    if (dazePower == 0)
++    {
++        return;
++    }
++
++    const int32 amMult      = (PChar != nullptr && PChar->GetLocalVar("OX_CHAKRAM_AM") > 0) ? 2 : 1;
++    const int32 scaledDelay = std::max<int32>(180, delay / 10);
 +
 +    if (daze == xi::StatusEffect::DrainDaze)
 +    {
 +        const uint16 multiplier = static_cast<uint16>(3 + 5.5f * (dazePower - 1));
-+        int32        samba      = xirand::GetRandomNumber(1, (delay * multiplier) / 100 + 1) * amMult;
++        int32        samba      = xirand::GetRandomNumber(1, (scaledDelay * multiplier) / 100 + 1) * amMult;
 +        int8         lvlDiff    = PDefender->GetMLevel() - PAttacker->GetMLevel();
 +        if (lvlDiff > 0)
 +        {
@@ -152,7 +221,7 @@ index e27b61ed..fffa2154 100644
 +    else if (daze == xi::StatusEffect::AspirDaze && PDefender->GetMaxMP() > 0)
 +    {
 +        const uint16 multiplier = 1 + 2 * (dazePower - 1);
-+        int32        samba      = xirand::GetRandomNumber(1, (delay * multiplier) / 100 + 1) * amMult;
++        int32        samba      = xirand::GetRandomNumber(1, (scaledDelay * multiplier) / 100 + 1) * amMult;
 +        if (finaldamage <= 2 || samba < 0)
 +        {
 +            samba = 0;
@@ -181,6 +250,89 @@ index e27b61ed..fffa2154 100644
  void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 finaldamage, CAttack& attack)
  {
      auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
+@@ -1673,7 +1837,7 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+             Action->addEffectMessage = MsgBasic::AddEffectRecoversHP;
+         }
+     }
+-    else
++    if (!Action->hasAdditionalEffect())
+     {
+         bool hasDrainDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainDaze);
+         bool hasAspirDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirDaze);
+@@ -1702,42 +1866,44 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+ 
+             attackerID = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetSubID();
+ 
+-            if (dynamic_cast<const CCharEntity*>(PAttacker) != nullptr && PAttacker->PParty != nullptr)
++            if (attackerID == PAttacker->id)
+             {
+-                if (PChar)
+-                {
+-                    // clang-format off
+-                        PChar->ForPartyWithTrusts([&](CBattleEntity* PMember)
+-                        {
+-                            if (attackerID == PMember->id)
+-                            {
+-                                power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
+-                            }
+-                        });
+-                    // clang-format on
+-                }
++                power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++            }
++            else if (PChar != nullptr && PAttacker->PParty != nullptr)
++            {
++                // clang-format off
++                    PChar->ForPartyWithTrusts([&](CBattleEntity* PMember)
++                    {
++                        if (attackerID == PMember->id)
++                        {
++                            power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++                        }
++                    });
++                // clang-format on
+             }
+-            else if (PAttacker->objtype == TYPE_TRUST)
++            else if (PAttacker->PMaster != nullptr)
+             {
+                 if (auto* PMaster = dynamic_cast<CCharEntity*>(PAttacker->PMaster))
+                 {
+-                    // clang-format off
+-                        PMaster->ForPartyWithTrusts([&](CBattleEntity* PMember)
+-                        {
+-                            if (attackerID == PMember->id)
+-                            {
+-                                power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
+-                            }
+-                        });
+-                    // clang-format on
+-                }
+-            }
+-            else if (PAttacker->PMaster == nullptr)
+-            {
+-                if (attackerID == PAttacker->id)
+-                {
+-                    power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++                    if (attackerID == PMaster->id)
++                    {
++                        power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++                    }
++                    else
++                    {
++                        // clang-format off
++                            PMaster->ForPartyWithTrusts([&](CBattleEntity* PMember)
++                            {
++                                if (attackerID == PMember->id)
++                                {
++                                    power = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetPower();
++                                }
++                            });
++                        // clang-format on
++                    }
+                 }
+             }
+ 
+             if (daze == xi::StatusEffect::DrainDaze && power > 0)
 diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
 index 649635cd..ae75abcb 100644
 --- a/src/map/utils/battleutils.h
