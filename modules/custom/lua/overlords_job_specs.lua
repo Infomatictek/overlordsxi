@@ -597,6 +597,7 @@ function spec.onTraitsRebuild(player)
     end
 
     local charKey = getCharKey(player)
+    local sessionReset = player.getLocalVar and player:getLocalVar('OX_SPEC_SYNCED') == 0
     local prev = spec.appliedByCharId[charKey]
     local prevJobId = prev and prev.jobId or nil
     local prevLvl = prev and prev.level or nil
@@ -608,11 +609,17 @@ function spec.onTraitsRebuild(player)
     local curSpecId = active and active.id or 0
 
     if
+        sessionReset or
         prev == nil or
         prevJobId ~= curJobId or
         prevLvl ~= curLvl or
         prevSpecId ~= curSpecId
     then
+        -- BuildingCharSkillsTable runs before BuildingCharTraitsTable in C++, so
+        -- recalculate skills now that spec skill mods (e.g. Elemental/Scythe) are applied.
+        if player.recalculateSkillsTable then
+            player:recalculateSkillsTable()
+        end
         if xi.overlords.wsTalents and xi.overlords.wsTalents.sendMetaAndSpent then
             xi.overlords.wsTalents.sendMetaAndSpent(player)
         end

@@ -616,9 +616,6 @@ local function applyTimedEffectWithMods(target, effectId, power, duration, origi
             for _, pair in ipairs(leftover) do
                 if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
                     eff:addMod(pair[1], pair[2])
-                    if target.addMod then
-                        target:addMod(pair[1], pair[2])
-                    end
                 end
             end
         end
@@ -955,7 +952,7 @@ local function evaluateRuneEdgeRound(actor, target, action)
 
     if damage > 0 and target.takeDamage then
         -- Rune Edge does not generate target/attacker TP or build the accumulative magic wall
-        target:takeDamage(damage, actor, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element, { giveTPToVictim = false })
+        target:takeDamage(damage, actor, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
     end
 
     if action ~= nil then
@@ -1151,8 +1148,10 @@ end
 -----------------------------------
 -- Crystal Definitions (RUN)
 -----------------------------------
-local SPELL_RUNIC_BOLT  = 754
-local SPELL_RUNIC_SEVER = 755
+local SPELL_RUNIC_BOLT         = 363
+local SPELL_RUNIC_SEVER        = 364
+local LEGACY_SPELL_RUNIC_BOLT  = 754
+local LEGACY_SPELL_RUNIC_SEVER = 755
 
 local RUN_NATIVE_SPELLS =
 {
@@ -1173,6 +1172,14 @@ local function ensureRunSpells(player, isSpellblade)
     for _, spellId in ipairs(RUN_NATIVE_SPELLS) do
         if not player:hasSpell(spellId) then
             player:addSpell(spellId, { silentLog = true, saveToDB = true, sendUpdate = true })
+        end
+    end
+    if player.delSpell then
+        if player:hasSpell(LEGACY_SPELL_RUNIC_BOLT) then
+            player:delSpell(LEGACY_SPELL_RUNIC_BOLT, { saveToDB = true, sendUpdate = true })
+        end
+        if player:hasSpell(LEGACY_SPELL_RUNIC_SEVER) then
+            player:delSpell(LEGACY_SPELL_RUNIC_SEVER, { saveToDB = true, sendUpdate = true })
         end
     end
     if isSpellblade then
@@ -1310,6 +1317,9 @@ if xi.job and xi.job.RUN then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 1)
                     player:setLocalVar('OX_RUN_WPN_SIG', getMainSubWeaponSignature(player))
                 end
+                if player ~= nil and player.recalculateSkillsTable then
+                    player:recalculateSkillsTable()
+                end
                 ensureRunSpells(player, true)
                 attachRunListeners(player)
             end,
@@ -1318,6 +1328,9 @@ if xi.job and xi.job.RUN then
                     if player.setLocalVar then
                         player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                         player:setLocalVar('OX_RUN_MP_FRAC', 0)
+                    end
+                    if player.recalculateSkillsTable then
+                        player:recalculateSkillsTable()
                     end
                     ensureRunSpells(player, false)
                     clearConduction(player, nil)
@@ -1374,7 +1387,7 @@ if xi.job and xi.job.RUN then
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                 end
-                ensureRunSpells(player)
+                ensureRunSpells(player, false)
                 clearConduction(player, nil)
                 attachRunListeners(player)
             end,
@@ -2455,13 +2468,9 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
         finalDamage = target:checkDamageCap(finalDamage)
     end
 
-    if finalDamage > 0 then
+    if finalDamage > 0 and target.takeDamage then
         -- Neither spell generates TP or creates a skillchain
-        if spellObj ~= nil and target.takeSpellDamage then
-            target:takeSpellDamage(player, spellObj, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
-        elseif target.takeDamage then
-            target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element, { giveTPToVictim = false })
-        end
+        target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
     end
     if target.updateEnmityFromDamage then
         target:updateEnmityFromDamage(player, finalDamage)

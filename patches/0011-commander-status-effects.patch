@@ -55,37 +55,37 @@ index a80259d..4c4edb9 100644
 +
 +    // OverlordsXI RUN custom status effects (821-828).
 +    EffectsParams[821].Name             = "inquisitor_battuta";
-+    EffectsParams[821].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[821].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[821].SortKey          = 10000;
 +    EffectsParams[821].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[822].Name             = "inquisitor_aegis";
-+    EffectsParams[822].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[822].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[822].SortKey          = 10000;
 +    EffectsParams[822].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[823].Name             = "inquisitor_converge";
-+    EffectsParams[823].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[823].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[823].SortKey          = 10000;
 +    EffectsParams[823].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[824].Name             = "spellblade_edgeflare";
-+    EffectsParams[824].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[824].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[824].SortKey          = 10000;
 +    EffectsParams[824].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[825].Name             = "lifebinder_font";
-+    EffectsParams[825].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[825].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[825].SortKey          = 10000;
 +    EffectsParams[825].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[826].Name             = "lifebinder_sanctuary";
-+    EffectsParams[826].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[826].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[826].SortKey          = 10000;
 +    EffectsParams[826].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[827].Name             = "spellblade_conduction";
-+    EffectsParams[827].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::Erasable;
++    EffectsParams[827].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[827].SortKey          = 10000;
 +    EffectsParams[827].WearOffMessageId = MsgStd::EffectWearsOff;
 +
