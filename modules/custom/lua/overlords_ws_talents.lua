@@ -2383,16 +2383,6 @@ function talents.sendWSDetail(player, wsId)
 
     sendProto(player, string.format('WS|%u|%s|%s|%s|%u|%s', ws.id, sanitizeField(ws.name), sanitizeField(ws.skillName), ws.wsType, wsSpent, sanitizeField(summary)))
 
-    local nodeBatch = {}
-    local nodeBatchLen = 0
-    local function flushNodeBatch()
-        if #nodeBatch > 0 then
-            sendProto(player, 'NODES|' .. table.concat(nodeBatch, ';;'))
-            nodeBatch = {}
-            nodeBatchLen = 0
-        end
-    end
-
     for _, node in ipairs(tree.nodes) do
         local r = ranks[node.key] or 0
         local canLearn = talents.canInvest(player, jobId, wsId, node.key)
@@ -2407,7 +2397,7 @@ function talents.sendWSDetail(player, wsId)
         local scName = scId > 0 and (SC_SHORT[scId] or SC_NAMES[scId] or '') or ''
         local nextReqLvl = talents.getNodeNextReqLevel(node, r)
 
-        local entry = string.format('%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
+        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
             ws.id,
             node.key,
             node.tier,
@@ -2425,17 +2415,11 @@ function talents.sendWSDetail(player, wsId)
             scId,
             scName,
             node.slot or 0
-        )
-        local addLen = #entry + (#nodeBatch > 0 and 2 or 0)
-        if #nodeBatch > 0 and (nodeBatchLen + addLen) > 180 then
-            flushNodeBatch()
-        end
-        table.insert(nodeBatch, entry)
-        nodeBatchLen = nodeBatchLen + #entry + (#nodeBatch > 1 and 2 or 0)
+        ))
     end
-    flushNodeBatch()
 
-    sendProto(player, string.format('WS_END|%u|%u', ws.id, avail))
+    local wsUnlocked = talents.isWSUnlocked(player, ws.id, jobId) and 1 or 0
+    sendProto(player, string.format('WS_END|%u|%u|%u', ws.id, avail, wsUnlocked))
 end
 
 -----------------------------------
@@ -2450,6 +2434,20 @@ end
 --   7 = uresetws (wsId)
 --   8 = ureset (all WSs for active job/spec)
 -----------------------------------
+local function sendMetaOnly(player)
+    if player == nil then
+        return
+    end
+    local jobId = player:getMainJob()
+    local jobKey = talents.getJobKey(jobId)
+    local jobLvl = math.max(1, player:getJobLevel(jobId))
+    local avail, earned, spent = talents.getAvailablePoints(player, jobId)
+    local mainSkill = player:getWeaponSkillType(xi.slot.MAIN) or 0
+    local rangedSkill = player:getWeaponSkillType(xi.slot.RANGED) or 0
+    local _, _, specName = talents.getActiveSpec(player, jobId)
+    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s', jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill, sanitizeField(specName)))
+end
+
 function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
     if player == nil then
         return
@@ -2477,7 +2475,7 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
             if not ok then
                 sendProto(player, 'ERR|' .. sanitizeField(res))
             end
-            talents.sendMetaAndSpent(player)
+            sendMetaOnly(player)
             talents.sendWSDetail(player, wid)
         end
     elseif op == 5 then
@@ -2488,7 +2486,7 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
             if not ok then
                 sendProto(player, 'ERR|' .. sanitizeField(res))
             end
-            talents.sendMetaAndSpent(player)
+            sendMetaOnly(player)
             talents.sendWSDetail(player, wid)
         end
     elseif op == 6 then
@@ -2504,7 +2502,7 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
     elseif op == 7 then
         if wid > 0 then
             talents.resetWS(player, jobId, wid)
-            talents.sendMetaAndSpent(player)
+            sendMetaOnly(player)
             talents.sendWSDetail(player, wid)
         end
     elseif op == 8 then
