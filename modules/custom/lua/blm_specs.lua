@@ -281,10 +281,22 @@ local function attachNecroListeners(player)
 
     player:removeListener('OX_NECRO_PET_CHECK')
     player:addListener('COMBAT_TICK', 'OX_NECRO_PET_CHECK', function(actor)
-        if actor:getLocalVar('OX_NECRO_PACT_DA') > 0 then
-            local pet = getUndeadPet(actor)
-            if pet == nil or not pet:isAlive() then
+        local pet = getUndeadPet(actor)
+        if pet == nil or not pet:isAlive() then
+            if actor:getLocalVar('OX_NECRO_PACT_DA') > 0 then
                 clearDarkPactMods(actor)
+            end
+        else
+            -- Auto-assist master's battle target when not already engaged or in Stay
+            if
+                not pet:isEngaged() and
+                not pet:hasStatusEffect(xi.effect.HEALING) and
+                actor:isEngaged()
+            then
+                local masterTarget = actor:getTarget()
+                if masterTarget ~= nil and masterTarget:isAlive() and actor:checkDistance(pet) <= 25 then
+                    actor:petAttack(masterTarget)
+                end
             end
         end
         syncConversionMods(actor)
@@ -354,6 +366,15 @@ local function doSummon(player, petId, label)
     xi.pet.spawnPet(player, petId)
     syncDarkPactMods(player)
     if player:hasPet() then
+        if player.recalculateAbilitiesTable then
+            player:recalculateAbilitiesTable()
+        end
+        if player:isEngaged() then
+            local masterTarget = player:getTarget()
+            if masterTarget ~= nil and masterTarget:isAlive() then
+                player:petAttack(masterTarget)
+            end
+        end
         tell(player, string.format('%s answers your call!', label))
     else
         tell(player, string.format('Failed to summon %s (ensure blm_necro_spec.sql is imported and xi_map restarted).', label))
@@ -406,6 +427,9 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onAbilityCheck', function(p
 end)
 
 m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(player, target, ability)
+    if target ~= nil and target:getID() ~= player:getID() then
+        return 0
+    end
     local pet, petId = getUndeadPet(player)
     if pet == nil then
         return 0
@@ -413,7 +437,7 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(pla
 
     local petHp    = pet:getHP()
     local petMaxHp = math.max(1, pet:getMaxHP())
-    local hpRatio  = math.clamp(petHp / petMaxHp, 0.25, 1.0)
+    local hpRatio  = math.min(1.0, math.max(0.25, petHp / petMaxHp))
     local lvl      = player:getMainLvl()
     local intStat  = player:getStat(xi.mod.INT)
     local mab      = 1.0 + (player:getMod(xi.mod.MATT) / 100.0)
@@ -422,24 +446,31 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(pla
     local baseDmg = math.floor(((lvl * 6.5) + (intStat * 2.2) + (petHp * 0.35)) * hpRatio * mab * tierMult)
     baseDmg = math.max(25, baseDmg)
 
-    local petPos = pet:getPos()
-    local zone   = player:getZone()
-    local hits   = 0
+    local zone = player:getZone()
+    local hits = 0
 
-    if zone ~= nil then
-        local nearby = pet:getEntitiesInRange(10.0)
-        for _, mob in ipairs(nearby) do
+    if zone ~= nil and zone.getMobs then
+        for _, mob in ipairs(zone:getMobs()) do
             if
                 mob ~= nil and
                 mob:isMob() and
                 mob:isAlive() and
-                player:canAttack(mob)
+                mob:getID() ~= pet:getID() and
+                mob:getMaster() == nil and
+                mob:getAllegiance() ~= player:getAllegiance() and
+                not mob:getUntargetable() and
+                pet:checkDistance(mob) <= 10.0
             then
                 local dmg = utils.handleStoneskin(mob, baseDmg, xi.attackType.MAGICAL)
+                if mob.updateClaim and not player:hasClaim(mob) then
+                    mob:updateClaim(player)
+                end
                 mob:takeDamage(dmg, player, xi.attackType.MAGICAL, xi.damageType.DARK)
-                mob:updateEnmityFromDamage(player, dmg)
+                if mob.updateEnmityFromDamage then
+                    mob:updateEnmityFromDamage(player, dmg)
+                end
                 if not mob:hasStatusEffect(xi.effect.BIO) then
-                    mob:addStatusEffect(xi.effect.BIO, math.max(2, math.floor(lvl / 8)), 3, 30)
+                    mob:addStatusEffect(xi.effect.BIO, { power = math.max(2, math.floor(lvl / 8)), tick = 3, duration = 30, origin = player })
                 end
                 hits = hits + 1
             end
@@ -450,8 +481,11 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(pla
         pet:getName(), baseDmg, hits, hits == 1 and '' or 's'))
 
     player:despawnPet()
+    if player.recalculateAbilitiesTable then
+        player:recalculateAbilitiesTable()
+    end
     clearDarkPactMods(player)
-    return 0
+    return baseDmg
 end)
 
 -----------------------------------
@@ -478,8 +512,8 @@ m:addOverride('xi.actions.abilities.grim_reaping.onUseAbility', function(player,
         return 0
     end
 
-    if not pet:isEngaged() and pet.engage then
-        pet:engage(target:getTargID())
+    if not pet:isEngaged() then
+        player:petAttack(target)
     end
 
     local lvl      = pet:getMainLvl()
@@ -494,7 +528,7 @@ m:addOverride('xi.actions.abilities.grim_reaping.onUseAbility', function(player,
     action:recordDamage(target, xi.attackType.PHYSICAL, dmg)
 
     if isDull then
-        target:addStatusEffect(xi.effect.DEFENSE_DOWN, 15, 0, 30)
+        target:addStatusEffect(xi.effect.DEFENSE_DOWN, { power = 15, duration = 30, origin = pet })
     end
 
     tell(player, string.format('%s unleashes Grim Reaping on %s for %d damage!', pet:getName(), target:getName(), dmg))
@@ -525,8 +559,8 @@ m:addOverride('xi.actions.abilities.grim_incantations.onUseAbility', function(pl
         return 0
     end
 
-    if not pet:isEngaged() and pet.engage then
-        pet:engage(target:getTargID())
+    if not pet:isEngaged() then
+        player:petAttack(target)
     end
 
     local lvl     = pet:getMainLvl()
@@ -546,7 +580,7 @@ m:addOverride('xi.actions.abilities.grim_incantations.onUseAbility', function(pl
     pet:addHP(math.max(10, math.floor(dmg * 0.25)))
 
     if isCorse then
-        target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, 15, 0, 30)
+        target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, { power = 15, duration = 30, origin = pet })
     end
 
     tell(player, string.format('%s casts Grim Incantations on %s for %d Dark damage (+%d MP)!',
@@ -581,6 +615,11 @@ if xi.job and xi.job.BLM then
             extraAbilities = function(player)
                 local list =
                 {
+                    69, -- Fight (Pet Command)
+                    70, -- Heel (Pet Command)
+                    71, -- Leave (Pet Command)
+                    72, -- Sic (Pet Command)
+                    73, -- Stay (Pet Command)
                     ABIL_SUMMON_WARRIOR,
                     ABIL_SUMMON_MAGE,
                     ABIL_CORPSE_EXPLODE,

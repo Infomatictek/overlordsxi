@@ -18,7 +18,7 @@ VALUES
     -- Summon Undead Mage (Lv.10+ Necromancer, 60s recast, shared summon recastId 194)
     (406, 'summon_undead_mage',    4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL),
     -- Corpse Explosion (Lv.10+ Necromancer, 45s recast, recastId 195)
-    (407, 'corpse_explosion',      4, 255, 1, 45, 195, 0, 0, 182, 2000, 0, 6, 0.0, 1, 10, 200, 600, 0, 0, NULL),
+    (407, 'corpse_explosion',      4, 255, 1, 45, 195, 0, 0, 182, 2000, 0, 6, 0.0, 0, 0, 200, 600, 0, 0, NULL),
     -- Grim Reaping (Warrior / Dullahan command, 30s recast, recastId 196)
     (408, 'grim_reaping',          4, 255, 4, 30, 196, 0, 0, 171, 1500, 0, 6, 15.0, 0, 0, 120, 300, 0, 0, NULL),
     -- Grim Incantations (Mage / Corse command, 30s recast, recastId 197)
@@ -27,6 +27,9 @@ VALUES
     (410, 'summon_corse',          4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL),
     -- Summon Dullahan (Lv.75+ Necromancer, 60s recast, shared summon recastId 194)
     (411, 'summon_dullahan',       4, 255, 1, 60, 194, 0, 0, 171, 2000, 0, 6, 0.0, 0, 0, 1, 80, 0, 0, NULL);
+
+-- Allow Sic (72) to work on Jug/Undead Pets (ADDTYPE_JUGPET | ADDTYPE_CHARMPET = 192)
+UPDATE `abilities` SET `addType` = 192 WHERE `abilityId` = 72;
 
 -- ---------------------------------------------------------------------------
 -- 2. Undead Pets (Pet IDs 130-133 require patches/0016-blm-necromancer-pets.patch)

@@ -20,7 +20,7 @@ local function addFinishingMoves(player, amount)
         current = effect:getPower()
         effect:setPower(math.min(maxMoves, current + amount))
     else
-        player:addStatusEffect(xi.effect.FINISHING_MOVE_1, math.min(maxMoves, amount), 0, 7200)
+        player:addStatusEffect(xi.effect.FINISHING_MOVE_1, { power = math.min(maxMoves, amount), duration = 7200, origin = player })
     end
 end
 
@@ -132,8 +132,8 @@ registerRangedWs('stutter_disc', function()
         agi_wsc = 0.4,
         chr_wsc = 0.2,
     }
-end, function(_player, target)
-    target:addStatusEffect(xi.effect.MAGIC_EVASION_DOWN, 15, 0, 60)
+end, function(player, target)
+    target:addStatusEffect(xi.effect.MAGIC_EVASION_DOWN, { power = 15, duration = 60, origin = player })
 end)
 
 -- #246 Feathered Ring
@@ -144,8 +144,8 @@ registerRangedWs('feathered_ring', function()
         dex_wsc    = 0.6,
         critVaries = { 0.15, 0.25, 0.35 },
     }
-end, function(_player, target)
-    target:addStatusEffect(xi.effect.BEWILDERED_DAZE_1, 1, 0, 60)
+end, function(player, target)
+    target:addStatusEffect(xi.effect.BEWILDERED_DAZE_1, { power = 1, duration = 60, origin = player })
 end)
 
 -- #247 Bolero Cyclone (Wind AoE Magic + Evasion Down)
@@ -158,8 +158,8 @@ registerMagicWs('bolero_cyclone', function()
         skill   = xi.skill.THROWING,
         includemab = true,
     }
-end, function(_player, target)
-    target:addStatusEffect(xi.effect.EVASION_DOWN, 20, 0, 60)
+end, function(player, target)
+    target:addStatusEffect(xi.effect.EVASION_DOWN, { power = 20, duration = 60, origin = player })
 end)
 
 -- #248 Flamenco Finale (Consumes Finishing Moves for +fTP)
@@ -184,7 +184,7 @@ registerRangedWs('tarantella_storm', function()
     }
 end, function(player, _target, _wsID, _tp, _dmg, criticalHit)
     if criticalHit then
-        player:addStatusEffect(xi.effect.HASTE_SAMBA, 1, 0, 30)
+        player:addStatusEffect(xi.effect.HASTE_SAMBA, { power = 1, duration = 30, origin = player })
     end
 end)
 
@@ -196,8 +196,8 @@ registerRangedWs('grand_jete', function()
         dex_wsc = 0.6,
         agi_wsc = 0.2,
     }
-end, function(_player, target)
-    target:addStatusEffect(xi.effect.DEFENSE_DOWN, 20, 0, 60)
+end, function(player, target)
+    target:addStatusEffect(xi.effect.DEFENSE_DOWN, { power = 20, duration = 60, origin = player })
 end)
 
 -- #251 Aurora Fandango
@@ -209,8 +209,8 @@ registerRangedWs('aurora_fandango', function()
         chr_wsc = 0.4,
     }
 end, function(player, target)
-    target:addStatusEffect(xi.effect.EVASION_DOWN, 10, 0, 60)
-    player:addStatusEffect(xi.effect.HASTE_SAMBA, 1, 0, 60)
+    target:addStatusEffect(xi.effect.EVASION_DOWN, { power = 10, duration = 60, origin = player })
+    player:addStatusEffect(xi.effect.HASTE_SAMBA, { power = 1, duration = 60, origin = player })
 end)
 
 -- #252 Terpsichore's Halo
@@ -226,5 +226,5 @@ registerMagicWs('terpsichores_halo', function()
 end, function(player, _target, _wsID, tp)
     local dur = (tp >= 3000 and 180) or (tp >= 2000 and 120) or 60
     player:setLocalVar('OX_CHAKRAM_AM', os.time() + dur)
-    player:addStatusEffect(xi.effect.AFTERMATH_LV1, 1, 0, dur)
+    player:addStatusEffect(xi.effect.AFTERMATH_LV1, { power = 1, duration = dur, origin = player })
 end)
