@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T08:48:23.545982+00:00",
+  "generatedAt": "2026-11-16T08:54:11.337309+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "b0e0600",
+  "headCommit": "0c9ab8e",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38233,6 +38233,57 @@
   ],
   "commits": [
     {
+      "hash": "0c9ab8e2cab419d266ed47af93463bbbb645088a",
+      "shortHash": "0c9ab8e",
+      "author": "nappypup",
+      "date": "2026-11-16T02:53:59-06:00",
+      "subject": "Add OverlordsXI static Wiki & Encyclopedia web app with auto-synced GitHub data",
+      "files": [
+        {
+          "path": ".github/workflows/update-wiki.yml",
+          "added": 42,
+          "removed": 0
+        },
+        {
+          "path": "scripts/generate-site-data.py",
+          "added": 1371,
+          "removed": 0
+        },
+        {
+          "path": "site/SWAG-SETUP.md",
+          "added": 45,
+          "removed": 0
+        },
+        {
+          "path": "site/app.js",
+          "added": 1425,
+          "removed": 0
+        },
+        {
+          "path": "site/data.js",
+          "added": 40096,
+          "removed": 0
+        },
+        {
+          "path": "site/data.json",
+          "added": 40096,
+          "removed": 0
+        },
+        {
+          "path": "site/index.html",
+          "added": 175,
+          "removed": 0
+        },
+        {
+          "path": "site/styles.css",
+          "added": 1072,
+          "removed": 0
+        }
+      ],
+      "totalAdded": 84322,
+      "totalRemoved": 0
+    },
+    {
       "hash": "b0e0600a98023c7116238c4eb8ec21390ec03819",
       "shortHash": "b0e0600",
       "author": "nappypup",
@@ -38288,7 +38339,7 @@
       "hash": "3ee5a3397e600da302e8e019ae0bf41e9298676a",
       "shortHash": "3ee5a33",
       "author": "Infomatictek",
-      "date": "2026-11-16T08:18:13+00:00",
+      "date": "2026-11-16T08:18:13Z",
       "subject": "Add Rune Fencer (RUN) Inquisitor, Spellblade, and Lifebinder crystal specs",
       "files": [
         {
@@ -38329,7 +38380,7 @@
       "hash": "d6acbd87929295ca6c0afb497e4651ac22367f10",
       "shortHash": "d6acbd8",
       "author": "Infomatictek",
-      "date": "2026-11-16T08:18:00+00:00",
+      "date": "2026-11-16T08:18:00Z",
       "subject": "Add kazenoeye_sync C++ module for live server status/timer packets (0x1FE OXKE)",
       "files": [
         {
@@ -38482,7 +38533,7 @@
       "hash": "caca89ed13c27106e0439a1f47941c54fc221241",
       "shortHash": "caca89e",
       "author": "Infomatictek",
-      "date": "2026-11-16T04:47:20+00:00",
+      "date": "2026-11-16T04:47:20Z",
       "subject": "Fix !gear command registration on FileWatcher hot-reload",
       "files": [
         {
@@ -38518,7 +38569,7 @@
       "hash": "413d300de9edf88e1af7d74b9b06fbf71dd76cb4",
       "shortHash": "413d300",
       "author": "Infomatictek",
-      "date": "2026-11-16T04:31:05+00:00",
+      "date": "2026-11-16T04:31:05Z",
       "subject": "feat(commands): add !gear command for level-appropriate test loadouts",
       "files": [
         {
@@ -38549,7 +38600,7 @@
       "hash": "82f73d338ffa40736d82cc501a631b55b3b36f6a",
       "shortHash": "82f73d3",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:48:13+00:00",
+      "date": "2026-11-16T03:48:13Z",
       "subject": "fix(blm): return 0/dmg from Necromancer JAs and print summon feedback",
       "files": [
         {
@@ -38596,7 +38647,7 @@
       "hash": "9fac555d72beb3a46f6397c2945bf4c50a55003c",
       "shortHash": "9fac555",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:17:47+00:00",
+      "date": "2026-11-16T03:17:47Z",
       "subject": "fix(blm): call capSkill(SCYTHE) on Necromancer apply so client skills menu updates",
       "files": [
         {
@@ -38612,7 +38663,7 @@
       "hash": "fba9cc0d07962b80c129f8f8fc5a528157c858ad",
       "shortHash": "fba9cc0",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:11:54+00:00",
+      "date": "2026-11-16T03:11:54Z",
       "subject": "fix(modules): add blm_specs.lua and blm_necro_spec.sql to modules/init.append.txt",
       "files": [
         {
@@ -38628,7 +38679,7 @@
       "hash": "9d294210954d391bfae3dac22b34a7e845ac846f",
       "shortHash": "9d29421",
       "author": "Infomatictek",
-      "date": "2026-11-16T03:07:18+00:00",
+      "date": "2026-11-16T03:07:18Z",
       "subject": "fix(blm): use xi.player.onGameIn and require scripts/globals/player so blm_specs loads",
       "files": [
         {
@@ -38644,7 +38695,7 @@
       "hash": "ac989b417ac1b25a32918a809e361d92d07865a4",
       "shortHash": "ac989b4",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:52:56+00:00",
+      "date": "2026-11-16T02:52:56Z",
       "subject": "fix(patches): correct hunk line counts in 0017-blm-necromancer-pets.patch",
       "files": [
         {
@@ -38660,7 +38711,7 @@
       "hash": "5250d92c3b601cc5e932e343a9f9951d95f19c48",
       "shortHash": "5250d92",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:49:06+00:00",
+      "date": "2026-11-16T02:49:06Z",
       "subject": "chore(patches): rename 0016-blm-necromancer-pets to 0017 to avoid 0016 collision",
       "files": [
         {
@@ -38676,7 +38727,7 @@
       "hash": "1924243e5287542fe2f835c21aff2abea2f71dc3",
       "shortHash": "1924243",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:47:31+00:00",
+      "date": "2026-11-16T02:47:31Z",
       "subject": "feat(blm): add Lv.10 Grim Conversion trait (MACC->ACC, MATT->ATT, FC->Haste, MB->WSD)",
       "files": [
         {
@@ -38692,7 +38743,7 @@
       "hash": "04bd0fd972dc2bdb17bbc09dc2c9e5e9caa1c09b",
       "shortHash": "04bd0fd",
       "author": "Infomatictek",
-      "date": "2026-11-16T02:43:55+00:00",
+      "date": "2026-11-16T02:43:55Z",
       "subject": "feat(blm): add Necromancer spec with undead summons, Corpse Explosion, Dark Pact, Harbinger's Drain, and A+ Scythe",
       "files": [
         {
@@ -38718,7 +38769,7 @@
       "hash": "8fcee92149bce93968659b476460f3db980e1c20",
       "shortHash": "8fcee92",
       "author": "Infomatictek",
-      "date": "2026-11-15T23:25:47+00:00",
+      "date": "2026-11-15T23:25:47Z",
       "subject": "Fix Eos and Titania summoning, spell casting, and Regen I-V handling",
       "files": [
         {
@@ -38749,7 +38800,7 @@
       "hash": "7436fcb1533db24465f791fded9682bd1d996789",
       "shortHash": "7436fcb",
       "author": "Infomatictek",
-      "date": "2026-11-15T21:55:55+00:00",
+      "date": "2026-11-15T21:55:55Z",
       "subject": "fix(ws-talents): preserve CUSTOM_TREES across module double-loads and invalidate treeCache on reload",
       "files": [
         {
@@ -38765,7 +38816,7 @@
       "hash": "a7a7e4880d1a6d0bf5ea819bb132804fa59500eb",
       "shortHash": "a7a7e48",
       "author": "Infomatictek",
-      "date": "2026-11-15T21:43:45+00:00",
+      "date": "2026-11-15T21:43:45Z",
       "subject": "Overhaul Club, Staff, and Throwing WS talents with 3-branch spec-inspired trees and usable baseline",
       "files": [
         {
@@ -38806,7 +38857,7 @@
       "hash": "2d3168aee49526023b369b25183c7a3e6711f5e6",
       "shortHash": "2d3168a",
       "author": "Infomatictek",
-      "date": "2026-11-15T10:47:04+00:00",
+      "date": "2026-11-15T10:47:04Z",
       "subject": "fix(war): change Crimson Crush animation from SCH book (244) to Weapon Bash (201)",
       "files": [
         {
@@ -38822,7 +38873,7 @@
       "hash": "ceeaae44cb203b2660d1c43eb194be65e1246114",
       "shortHash": "ceeaae4",
       "author": "Infomatictek",
-      "date": "2026-11-15T10:34:31+00:00",
+      "date": "2026-11-15T10:34:31Z",
       "subject": "fix(dnc): return 0 from throwing_stance.onUseAbility",
       "files": [
         {
@@ -38838,7 +38889,7 @@
       "hash": "075a01126af41a5809a8838adb3a3e5e073f9b0f",
       "shortHash": "075a011",
       "author": "Infomatictek",
-      "date": "2026-11-15T10:09:31+00:00",
+      "date": "2026-11-15T10:09:31Z",
       "subject": "fix(patch-0014): forward state.IsOutOfRange() and state.IsRapidShot() in OnRangedAttack",
       "files": [
         {
@@ -38854,7 +38905,7 @@
       "hash": "f00e6d32a9c5a0a18013344db2eca4626a03b9d9",
       "shortHash": "f00e6d3",
       "author": "Infomatictek",
-      "date": "2026-11-15T10:00:32+00:00",
+      "date": "2026-11-15T10:00:32Z",
       "subject": "feat(dnc): add Throwing Stance JA (404) to override melee auto-attacks with ranged chakram",
       "files": [
         {
@@ -38880,7 +38931,7 @@
       "hash": "ae2db3322e15b09b94e31bb8229863c77137e3ee",
       "shortHash": "ae2db33",
       "author": "Infomatictek",
-      "date": "2026-11-15T09:56:57+00:00",
+      "date": "2026-11-15T09:56:57Z",
       "subject": "fix(dnc): fire auto-ranged attack in CAttackState like melee and stop [OXSPEC] chat spam",
       "files": [
         {
@@ -38901,7 +38952,7 @@
       "hash": "fc19f5faa2040fb9e24b054c0571d6d33881b83a",
       "shortHash": "fc19f5f",
       "author": "Infomatictek",
-      "date": "2026-11-15T09:41:24+00:00",
+      "date": "2026-11-15T09:41:24Z",
       "subject": "Make all chakrams DNC-only with competitive Lv 10-75 damage",
       "files": [
         {
@@ -38917,7 +38968,7 @@
       "hash": "e84b7181cdaa96639091b94fa9758e82cd31de80",
       "shortHash": "e84b718",
       "author": "Infomatictek",
-      "date": "2026-11-15T09:19:05+00:00",
+      "date": "2026-11-15T09:19:05Z",
       "subject": "Fix H.hits hitSeq table arguments in overlords_ws_trees_throwing.lua",
       "files": [
         {
@@ -38933,7 +38984,7 @@
       "hash": "92aac3c013b9822103d2dcae2565f0ed77ef3d4e",
       "shortHash": "92aac3c",
       "author": "Infomatictek",
-      "date": "2026-11-15T09:10:29+00:00",
+      "date": "2026-11-15T09:10:29Z",
       "subject": "Skip unchanged C++ builds and target only modified server binaries",
       "files": [
         {
@@ -38954,7 +39005,7 @@
       "hash": "7d7bb89b4157698a4512f7f72449e4bd6bbbca98",
       "shortHash": "7d7bb89",
       "author": "Infomatictek",
-      "date": "2026-11-15T09:00:44+00:00",
+      "date": "2026-11-15T09:00:44Z",
       "subject": "Log setup-local-server.ps1 output to logs/setup-latest.log",
       "files": [
         {
@@ -38970,7 +39021,7 @@
       "hash": "90cf56557c32bd20ea8152769972d1ba3f4f99a1",
       "shortHash": "90cf565",
       "author": "Infomatictek",
-      "date": "2026-11-15T08:59:21+00:00",
+      "date": "2026-11-15T08:59:21Z",
       "subject": "Renumber throwing/ranged patches to 0013-0015 after 0011-0012",
       "files": [
         {
@@ -38996,7 +39047,7 @@
       "hash": "7f6503861a537dcc17885839d1b0cf9eb9c8132e",
       "shortHash": "7f65038",
       "author": "Infomatictek",
-      "date": "2026-11-15T08:57:37+00:00",
+      "date": "2026-11-15T08:57:37Z",
       "subject": "Fix AddStatusEffectSilent call in 0013-dnc-ranged-dances.patch",
       "files": [
         {
@@ -39012,7 +39063,7 @@
       "hash": "e937f5788b10efb0e0f577f1e3a0aec80db2636f",
       "shortHash": "e937f57",
       "author": "Infomatictek",
-      "date": "2026-11-15T08:53:19+00:00",
+      "date": "2026-11-15T08:53:19Z",
       "subject": "Add Dancer Bladewheel chakram spec, 12 Throwing WSs, and auto-ranged/ranged-dance patches",
       "files": [
         {
@@ -39083,7 +39134,7 @@
       "hash": "7c1d11b28473b73d5360e3470426cb2df60a54b8",
       "shortHash": "7c1d11b",
       "author": "Infomatictek",
-      "date": "2026-11-15T01:16:08+00:00",
+      "date": "2026-11-15T01:16:08Z",
       "subject": "Add mob DoT combat log attribution for parser tracking",
       "files": [
         {
@@ -39119,7 +39170,7 @@
       "hash": "ca88f942e5eff4cdc461ff04613c7a8062a184a3",
       "shortHash": "ca88f94",
       "author": "Infomatictek",
-      "date": "2026-11-15T01:01:15+00:00",
+      "date": "2026-11-15T01:01:15Z",
       "subject": "Balance MNK Sensei staff riposte damage and add combat log messages",
       "files": [
         {
@@ -39135,7 +39186,7 @@
       "hash": "d81fd3dfddde7ff2faeb5d13fb87329364d70b03",
       "shortHash": "d81fd3d",
       "author": "Infomatictek",
-      "date": "2026-11-15T00:54:35+00:00",
+      "date": "2026-11-15T00:54:35Z",
       "subject": "Add Lv10+ active JAs for WAR Gladiator (Crimson Crush & Vanguard Ward)",
       "files": [
         {
@@ -39166,7 +39217,7 @@
       "hash": "d06afa294f762a7a6c066386f7b545002f1b3b90",
       "shortHash": "d06afa2",
       "author": "Infomatictek",
-      "date": "2026-11-15T00:48:36+00:00",
+      "date": "2026-11-15T00:48:36Z",
       "subject": "Add Lv10+ active JAs for WAR Berserker (Bloodlust Surge & Savage Cleave)",
       "files": [
         {
@@ -39197,7 +39248,7 @@
       "hash": "980e1b5ca5b784ac5fc29da9949eb1fd5f7fb877",
       "shortHash": "980e1b5",
       "author": "Infomatictek",
-      "date": "2026-11-15T00:40:02+00:00",
+      "date": "2026-11-15T00:40:02Z",
       "subject": "Add Lv10+ active tactical JAs for WAR Commander",
       "files": [
         {
@@ -39233,7 +39284,7 @@
       "hash": "2c72febfe324ec09063a163dd3b6d15a8e018bca",
       "shortHash": "2c72feb",
       "author": "Infomatictek",
-      "date": "2026-11-14T22:22:26+00:00",
+      "date": "2026-11-14T22:22:26Z",
       "subject": "Remove +Enmity passive from WAR Commander crystal",
       "files": [
         {
@@ -39254,7 +39305,7 @@
       "hash": "1af44beaadcc681648541fe6fb5c19703a566552",
       "shortHash": "1af44be",
       "author": "Infomatictek",
-      "date": "2026-11-14T22:14:29+00:00",
+      "date": "2026-11-14T22:14:29Z",
       "subject": "Handle Windows CRLF line endings in patch idempotency checks",
       "files": [
         {
@@ -39286,7 +39337,7 @@
       "hash": "21985b6b8aa8c9d563447c8dce6379d9a23fa8bb",
       "shortHash": "21985b6",
       "author": "Infomatictek",
-      "date": "2026-11-14T22:01:15+00:00",
+      "date": "2026-11-14T22:01:15Z",
       "subject": "Add spec lifecycle sync & custom in-game job traits (0010)",
       "files": [
         {
@@ -39353,7 +39404,7 @@
       "hash": "663f3a1b1d954f7a8b9bb4673bb42043ed37e056",
       "shortHash": "663f3a1",
       "author": "Infomatictek",
-      "date": "2026-11-14T21:39:11+00:00",
+      "date": "2026-11-14T21:39:11Z",
       "subject": "Add Titania Sage pet and gate Call Eos behind Medic crystal",
       "files": [
         {
@@ -39409,7 +39460,7 @@
       "hash": "4c3668de2d50e230ce64aeeab88f879eb91c2501",
       "shortHash": "4c3668d",
       "author": "Infomatictek",
-      "date": "2026-11-14T21:20:52+00:00",
+      "date": "2026-11-14T21:20:52Z",
       "subject": "Add C++ dynamic job ability unlocks for crystal specs",
       "files": [
         {
@@ -39465,7 +39516,7 @@
       "hash": "7c73d6640b22b290d3d27f361542a934c48a19b8",
       "shortHash": "7c73d66",
       "author": "Infomatictek",
-      "date": "2026-11-14T21:07:06+00:00",
+      "date": "2026-11-14T21:07:06Z",
       "subject": "Add Monk Sensei crystal (Staff Evasion & Counter Tank)",
       "files": [
         {
@@ -39496,7 +39547,7 @@
       "hash": "fbba8c6aeaf95c77246b57f00ae918091710628f",
       "shortHash": "fbba8c6",
       "author": "Infomatictek",
-      "date": "2026-11-14T20:54:02+00:00",
+      "date": "2026-11-14T20:54:02Z",
       "subject": "Keep Gladiator Warcry +12 Enmity self-only while party receives -8% DT",
       "files": [
         {
@@ -39517,7 +39568,7 @@
       "hash": "eeeaee969e7da86b7df7468f002bc10b61983b26",
       "shortHash": "eeeaee9",
       "author": "Infomatictek",
-      "date": "2026-11-14T20:44:32+00:00",
+      "date": "2026-11-14T20:44:32Z",
       "subject": "Rework WAR Gladiator spec into Bloodthirsty Club & Shield Tank",
       "files": [
         {
@@ -39538,7 +39589,7 @@
       "hash": "b3b1703add4e352316be9caee051f0910761fdcf",
       "shortHash": "b3b1703",
       "author": "Infomatictek",
-      "date": "2026-11-14T20:32:24+00:00",
+      "date": "2026-11-14T20:32:24Z",
       "subject": "Add Lv10 Job Crystal system, WAR specs (Commander/Berserker/Gladiator), and [OXSPEC] sync protocol",
       "files": [
         {
@@ -39589,7 +39640,7 @@
       "hash": "0f4598ba7dfc1691ecadf155f04a13bbd91a253c",
       "shortHash": "0f4598b",
       "author": "Infomatictek",
-      "date": "2026-11-14T20:07:44+00:00",
+      "date": "2026-11-14T20:07:44Z",
       "subject": "Move client DAT overlay and Ashita addon to Infomatictek/overlordsxi-launcher",
       "files": [
         {
@@ -39650,7 +39701,7 @@
       "hash": "b8a9f2a44a4eb92fe510a2a777350eba1b6045c9",
       "shortHash": "b8a9f2a",
       "author": "Infomatictek",
-      "date": "2026-11-14T19:54:19+00:00",
+      "date": "2026-11-14T19:54:19Z",
       "subject": "Remove launcher C# source now hosted in Infomatictek/overlordsxi-launcher",
       "files": [
         {
@@ -39776,7 +39827,7 @@
       "hash": "6eaef1c65a02e56f5adb333a99ad4c8ba7eb3082",
       "shortHash": "6eaef1c",
       "author": "Infomatictek",
-      "date": "2026-11-14T19:54:10+00:00",
+      "date": "2026-11-14T19:54:10Z",
       "subject": "Move launcher C# source and CI workflow to Infomatictek/overlordsxi-launcher",
       "files": [
         {
@@ -39797,7 +39848,7 @@
       "hash": "cc1c2c7d43dfe2f6fed1ef17e8e08373a777c83b",
       "shortHash": "cc1c2c7",
       "author": "Infomatictek",
-      "date": "2026-11-14T19:50:53+00:00",
+      "date": "2026-11-14T19:50:53Z",
       "subject": "Add distributable OverlordsXI WPF client launcher and release workflow",
       "files": [
         {
@@ -40060,37 +40111,6 @@
       ],
       "totalAdded": 6126,
       "totalRemoved": 287
-    },
-    {
-      "hash": "d9b72acc1fd9a1d49b4e909e7a26016f4c8eefb1",
-      "shortHash": "d9b72ac",
-      "author": "Infomatictek",
-      "date": "2026-11-14T06:14:18+00:00",
-      "subject": "Expand WS talent trees to 56 pts (3/Lv), unlock utility at Lv 1, and fix Ashita SC controls",
-      "files": [
-        {
-          "path": "addons/ashita4/overlords_talents/overlords_talents.lua",
-          "added": 7,
-          "removed": 3
-        },
-        {
-          "path": "modules/custom/commands/talent.lua",
-          "added": 2,
-          "removed": 2
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_overrides.lua",
-          "added": 462,
-          "removed": 310
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_talents.lua",
-          "added": 770,
-          "removed": 499
-        }
-      ],
-      "totalAdded": 1241,
-      "totalRemoved": 814
     }
   ]
 }
