@@ -136,22 +136,27 @@ local function makeEnumTable(preset, reverseMap)
     })
 end
 
-local function makeNestedProxy()
+local function makeEnumNamespace()
     return setmetatable({}, {
         __index = function(self, key)
-            local sub = setmetatable({}, {
-                __index = function(s2, k2)
-                    nextAutoId = nextAutoId + 1
-                    rawset(s2, k2, nextAutoId)
-                    return nextAutoId
-                end,
-                __call = function() return 0 end,
-            })
+            local sub = makeEnumTable({})
+            rawset(self, key, sub)
+            return sub
+        end,
+    })
+end
+
+local function makeTableProxy()
+    local mt
+    mt = {
+        __index = function(self, key)
+            local sub = setmetatable({}, mt)
             rawset(self, key, sub)
             return sub
         end,
         __call = function() return 0 end,
-    })
+    }
+    return setmetatable({}, mt)
 end
 
 -- Global LandSandBoat sandbox stubs
@@ -217,25 +222,25 @@ xi.objType      = makeEnumTable({})
 xi.subEffect    = makeEnumTable({})
 xi.zoneMisc     = makeEnumTable({})
 xi.aftermath    = makeEnumTable({})
-xi.msg          = makeNestedProxy()
-xi.magic        = makeNestedProxy()
-xi.combat       = makeNestedProxy()
-xi.job_utils    = makeNestedProxy()
-xi.actions      = makeNestedProxy()
-xi.effects      = makeNestedProxy()
-xi.player       = makeNestedProxy()
-xi.mob          = makeNestedProxy()
-xi.mobskills    = makeNestedProxy()
-xi.pet          = makeNestedProxy()
-xi.shop         = makeNestedProxy()
-xi.experiencePoints = makeNestedProxy()
-xi.weaponskills = makeNestedProxy()
-xi.data         = makeNestedProxy()
-xi.settings     = makeNestedProxy()
-xi.zones        = makeNestedProxy()
+xi.msg          = makeEnumNamespace()
+xi.magic        = makeEnumNamespace()
+xi.combat       = makeTableProxy()
+xi.job_utils    = makeTableProxy()
+xi.actions      = makeTableProxy()
+xi.effects      = makeTableProxy()
+xi.player       = makeTableProxy()
+xi.mob          = makeTableProxy()
+xi.mobskills    = makeTableProxy()
+xi.pet          = makeTableProxy()
+xi.shop         = makeTableProxy()
+xi.experiencePoints = makeTableProxy()
+xi.weaponskills = makeTableProxy()
+xi.data         = makeTableProxy()
+xi.settings     = makeTableProxy()
+xi.zones        = makeTableProxy()
 xi.jp           = makeEnumTable({})
 xi.merit        = makeEnumTable({})
-xi.server       = makeNestedProxy()
+xi.server       = makeTableProxy()
 
 _G.Module = {
     new = function(_, name)
@@ -297,7 +302,8 @@ local spec = require('modules/custom/lua/overlords_job_specs')
 for _, sf in ipairs(specFiles) do
     local ok, err = pcall(require, sf)
     if not ok then
-        io.stderr:write('WARN failed loading spec module ' .. tostring(sf) .. ': ' .. tostring(err) .. '\n')
+        io.stderr:write('ERROR loading spec module ' .. tostring(sf) .. ': ' .. tostring(err) .. '\n')
+        os.exit(1)
     end
 end
 
@@ -307,7 +313,8 @@ local talents = require('modules/custom/lua/overlords_ws_talents')
 for _, tf in ipairs(treeFiles) do
     local ok, err = pcall(require, tf)
     if not ok then
-        io.stderr:write('WARN failed loading tree module ' .. tostring(tf) .. ': ' .. tostring(err) .. '\n')
+        io.stderr:write('ERROR loading tree module ' .. tostring(tf) .. ': ' .. tostring(err) .. '\n')
+        os.exit(1)
     end
 end
 

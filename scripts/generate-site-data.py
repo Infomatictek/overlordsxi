@@ -1854,14 +1854,21 @@ def main():
                 cname = c["name"]
                 passive_mods = [format_evaluated_mod(m["mod"], m["values"]) for m in c.get("evaluatedMods", [])]
 
-                # Prefer curated ability list if present, otherwise auto-resolve from SQL abilities
-                curated_abils = CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey))
-                if curated_abils is not None:
-                    spec_abilities = curated_abils
-                else:
-                    spec_abilities = [
-                        sql_abils[aid] for aid in c.get("extraAbilities", []) if aid in sql_abils
-                    ]
+                # Merge curated descriptions with all abilities from Lua extraAbilities + SQL
+                curated_by_id = {a["id"]: a for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), [])}
+                extra_ids = c.get("extraAbilities", [])
+                spec_abilities = []
+                seen_aids = set()
+                for aid in extra_ids:
+                    if aid in curated_by_id:
+                        spec_abilities.append(curated_by_id[aid])
+                        seen_aids.add(aid)
+                    elif aid in sql_abils:
+                        spec_abilities.append(sql_abils[aid])
+                        seen_aids.add(aid)
+                for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), []):
+                    if a["id"] not in seen_aids:
+                        spec_abilities.append(a)
 
                 spec_traits = []
                 for tid in c.get("extraTraits", []):
