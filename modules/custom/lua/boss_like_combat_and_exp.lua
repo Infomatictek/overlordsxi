@@ -47,12 +47,13 @@ xi.customBossServer.config =
 {
     -- Always-on baseline combat pace applied to all players so combat feels
     -- brisk and responsive from Lv 1 to 75 without requiring Haste gear first.
+    -- Note: Regain is intentionally NOT applied as a passive xi.mod.REGAIN modifier;
+    -- it is granted via combatRegain ONLY while in verified active combat.
     playerCombatPace =
     {
         { mod = xi.mod.HASTE_GEAR,    amount = 1500 }, -- +15% Gear Haste
         { mod = xi.mod.HASTE_ABILITY, amount = 1000 }, -- +10% Ability Haste (25% total baseline Haste)
         { mod = xi.mod.STORETP,       amount = 25 },   -- +25 Store TP
-        { mod = xi.mod.REGAIN,        amount = 20 },   -- 20 TP/tick in combat
         { mod = xi.mod.FASTCAST,      amount = 15 },   -- +15% Fast Cast
     },
 
@@ -61,7 +62,16 @@ xi.customBossServer.config =
     {
         { mod = xi.mod.HASTE_MAGIC,   amount = 1500 }, -- +15% Haste
         { mod = xi.mod.STORETP,       amount = 25 },
-        { mod = xi.mod.REGAIN,        amount = 15 },
+    },
+
+    -- Active-combat-only Regain (ticks every 3s ONLY when actively exchanging blows/casts/damage
+    -- with a live, engaged mob within the last `windowSec` seconds; engaging from afar gives 0).
+    combatRegain =
+    {
+        windowSec    = 6,  -- Must have dealt/taken a real combat action within the last 6s
+        playerAmount = 20, -- +20 TP/tick in actual combat
+        stanceAmount = 15, -- +15 extra TP/tick in actual combat when !bossstance is enabled
+        petAmount    = 15, -- +15 TP/tick for player pets in actual combat
     },
 
     -- Modifiers added to every regular (non-NM) mob on spawn (scaled by getMobLevelScale(lvl)).
@@ -222,7 +232,7 @@ xi.customBossServer.config =
     },
 
     -- Toggleable with `!bossstance` — edit or expand these mods when adding
-    -- custom player damage-boosting abilities.
+    -- custom player damage-boosting abilities (Regain is handled in combatRegain.stanceAmount).
     playerBuffStance =
     {
         { mod = xi.mod.ATTP,        amount = 35 },
@@ -230,7 +240,6 @@ xi.customBossServer.config =
         { mod = xi.mod.MATT,        amount = 30 },
         { mod = xi.mod.ACC,         amount = 40 },
         { mod = xi.mod.STORETP,     amount = 25 },
-        { mod = xi.mod.REGAIN,      amount = 15 },
         { mod = xi.mod.CRITHITRATE, amount = 10 },
     },
 
@@ -727,18 +736,208 @@ local function getPlayerSideLevel(entity)
     return nil
 end
 
+local function nowSeconds()
+    if GetSystemTime then
+        return GetSystemTime()
+    end
+    return os.time()
+end
+
+-- Stamps verified active combat between a player/pet and a wild mob.
+-- Engaging (/attack) from afar does NOT call this; an actual swing, WS, spell,
+-- ability, or damage exchange must occur.
+local function markInActualCombat(actor, target)
+    if actor == nil or target == nil or actor == target then
+        return
+    end
+
+    local mobEntity    = nil
+    local playerEntity = nil
+    local petEntity    = nil
+
+    if isWildMob(actor) then
+        mobEntity = actor
+    elseif isWildMob(target) then
+        mobEntity = target
+    end
+
+    if mobEntity == nil or (mobEntity.isAlive and not mobEntity:isAlive()) then
+        return
+    end
+
+    local other = (mobEntity == actor) and target or actor
+    if other.isPC and other:isPC() then
+        playerEntity = other
+        if other.getPet then
+            petEntity = other:getPet()
+        end
+    elseif other.isPet and other:isPet() then
+        petEntity = other
+        if other.getMaster then
+            local m = other:getMaster()
+            if m and m.isPC and m:isPC() then
+                playerEntity = m
+            end
+        end
+    end
+
+    if playerEntity == nil and petEntity == nil then
+        return
+    end
+
+    local ts    = nowSeconds()
+    local mobId = (mobEntity.getID and mobEntity:getID()) or 0
+
+    if mobEntity.setLocalVar then
+        mobEntity:setLocalVar('[CustomBoss]LastCombatTs', ts)
+    end
+
+    if playerEntity and playerEntity.setLocalVar then
+        playerEntity:setLocalVar('[CustomBoss]LastCombatTs', ts)
+        if mobId > 0 then
+            playerEntity:setLocalVar('[CustomBoss]CombatMobId', mobId)
+        end
+    end
+
+    if petEntity and petEntity.setLocalVar and petEntity.isAlive and petEntity:isAlive() then
+        petEntity:setLocalVar('[CustomBoss]LastCombatTs', ts)
+        if mobId > 0 then
+            petEntity:setLocalVar('[CustomBoss]CombatMobId', mobId)
+        end
+    end
+end
+
+xi.customBossServer.markInActualCombat = markInActualCombat
+
+-- Returns true ONLY when the entity has dealt or taken an actual combat action
+-- within `combatRegain.windowSec` (default 6s) AND the enemy mob is still alive & engaged.
+local function isInActualCombat(entity)
+    if entity == nil or not entity.getLocalVar then
+        return false
+    end
+
+    if entity.isAlive and not entity:isAlive() then
+        return false
+    end
+
+    if entity.hasStatusEffect and xi.effect and xi.effect.HEALING and entity:hasStatusEffect(xi.effect.HEALING) then
+        return false
+    end
+
+    local regainCfg = xi.customBossServer.config.combatRegain or {}
+    local windowSec = regainCfg.windowSec or 6
+    local lastTs    = entity:getLocalVar('[CustomBoss]LastCombatTs')
+    if lastTs <= 0 or (nowSeconds() - lastTs) > windowSec then
+        return false
+    end
+
+    if isWildMob(entity) then
+        return (entity.isEngaged and entity:isEngaged()) or false
+    end
+
+    -- Check current target first
+    local targ = entity.getTarget and entity:getTarget() or nil
+    if isWildMob(targ) and (not targ.isAlive or targ:isAlive()) and (not targ.isEngaged or targ:isEngaged()) then
+        return true
+    end
+
+    -- Or check the last combat mob ID in the same zone
+    local mobId = entity:getLocalVar('[CustomBoss]CombatMobId')
+    if mobId > 0 and GetMobByID then
+        local mob = GetMobByID(mobId)
+        if isWildMob(mob) and (not mob.isAlive or mob:isAlive()) and (not mob.isEngaged or mob:isEngaged()) then
+            return true
+        end
+    end
+
+    return false
+end
+
+xi.customBossServer.isInActualCombat = isInActualCombat
+
+-- Processes 3s combat-only Regain on EFFECTS_TICK and cancels any out-of-combat
+-- xi.mod.REGAIN tick from TickRegen so Regain NEVER ticks out of actual combat.
+local function onEntityCombatRegainTick(entity)
+    if entity == nil or (entity.isAlive and not entity:isAlive()) then
+        return
+    end
+
+    local inCombat  = isInActualCombat(entity)
+    local regainCfg = xi.customBossServer.config.combatRegain or {}
+
+    if isWildMob(entity) then
+        if inCombat and entity.addTP then
+            local mobRegain = entity:getLocalVar('[CustomBoss]MobRegain')
+            if mobRegain > 0 then
+                entity:addTP(mobRegain)
+            end
+        end
+        return
+    end
+
+    if not inCombat then
+        -- Cancel out any xi.mod.REGAIN that CStatusEffectContainer::TickRegen just added
+        -- so gear/buff Regain never builds TP while idle or /attack-locked from afar.
+        if entity.getMod and entity.delTP and entity.getTP then
+            local passiveRegain = (entity:getMod(xi.mod.REGAIN) or 0) - (entity:getMod(xi.mod.REGAIN_DOWN) or 0)
+            if passiveRegain > 0 then
+                local curTp = entity:getTP() or 0
+                if curTp > 0 then
+                    entity:delTP(math.min(curTp, passiveRegain))
+                end
+            end
+        end
+        return
+    end
+
+    if entity.isPC and entity:isPC() then
+        local amt = regainCfg.playerAmount or 20
+        if entity:getLocalVar('[CustomBoss]StanceApplied') == 1 then
+            amt = amt + (regainCfg.stanceAmount or 15)
+        end
+        if amt > 0 and entity.addTP then
+            entity:addTP(amt)
+        end
+    elseif entity.isPet and entity:isPet() then
+        local amt = regainCfg.petAmount or 15
+        if amt > 0 and entity.addTP then
+            entity:addTP(amt)
+        end
+    end
+end
+
+xi.customBossServer.onEntityCombatRegainTick = onEntityCombatRegainTick
+
 -- Applies or refreshes the baseline combat pace on a player pet without stacking.
 local function applyPetCombatPace(pet)
-    if
-        pet == nil or
-        not pet.getLocalVar or
-        pet:getLocalVar('[CustomBoss]PetPaceApplied') == 1
-    then
+    if pet == nil or not pet.getLocalVar then
         return
     end
 
     local master = pet.getMaster and pet:getMaster() or nil
     if master == nil or not master.isPC or not master:isPC() then
+        return
+    end
+
+    if pet.addListener and pet:getLocalVar('[CustomBoss]PetListenersBound') == 0 then
+        pet:setLocalVar('[CustomBoss]PetListenersBound', 1)
+        pet:addListener('EFFECTS_TICK', 'CUSTOM_BOSS_PET_REGAIN', function(p)
+            onEntityCombatRegainTick(p)
+        end)
+        pet:addListener('MELEE_SWING_HIT', 'CUSTOM_BOSS_PET_HIT', function(p, targ)
+            markInActualCombat(p, targ)
+        end)
+        pet:addListener('MELEE_SWING_MISS', 'CUSTOM_BOSS_PET_MISS', function(p, targ)
+            markInActualCombat(p, targ)
+        end)
+        pet:addListener('TAKE_DAMAGE', 'CUSTOM_BOSS_PET_DMG', function(p, amount, attacker)
+            if (tonumber(amount) or 0) > 0 and attacker then
+                markInActualCombat(p, attacker)
+            end
+        end)
+    end
+
+    if pet:getLocalVar('[CustomBoss]PetPaceApplied') == 1 then
         return
     end
 
@@ -758,8 +957,8 @@ local function applyMobScaling(mob)
         return
     end
 
-    -- Attach persistent spawn/engage listeners once per mob entity so respawns
-    -- are scaled immediately at spawn even without a C++ rebuild.
+    -- Attach persistent spawn/engage/tick listeners once per mob entity so respawns
+    -- are scaled immediately at spawn and Regain only ticks during active combat.
     if mob.addListener and mob:getLocalVar('[CustomBoss]ListenersBound') == 0 then
         mob:setLocalVar('[CustomBoss]ListenersBound', 1)
         mob:addListener('SPAWN', 'CUSTOM_BOSS_SPAWN', function(spawnedMob)
@@ -776,6 +975,9 @@ local function applyMobScaling(mob)
                 applyPetCombatPace(target)
             end
         end)
+        mob:addListener('EFFECTS_TICK', 'CUSTOM_BOSS_MOB_REGAIN', function(tickMob)
+            onEntityCombatRegainTick(tickMob)
+        end)
     end
 
     if mob:getLocalVar('[CustomBoss]Applied') == 1 then
@@ -784,17 +986,21 @@ local function applyMobScaling(mob)
 
     mob:setLocalVar('[CustomBoss]Applied', 1)
 
-    local mobLvl   = mob:getMainLvl()
-    local cfg      = xi.customBossServer.config
-    local preset   = mob:isNM() and cfg.nm or cfg.normalMob
-    local scale    = getMobLevelScale(mobLvl)
-    local hasteAmt = math.min(preset.maxHaste or 2500, math.floor((preset.haste or 1800) * scale))
-    local fcAmt    = math.min(preset.maxFastcast or 35, math.floor((preset.fastcast or 15) * scale))
-    local hppBonus = (mobLvl >= 2 and preset.hpp and preset.hpp > 0) and math.floor(preset.hpp * scale) or 0
+    local mobLvl    = mob:getMainLvl()
+    local cfg       = xi.customBossServer.config
+    local preset    = mob:isNM() and cfg.nm or cfg.normalMob
+    local scale     = getMobLevelScale(mobLvl)
+    local hasteAmt  = math.min(preset.maxHaste or 2500, math.floor((preset.haste or 1800) * scale))
+    local fcAmt     = math.min(preset.maxFastcast or 35, math.floor((preset.fastcast or 15) * scale))
+    local hppBonus  = (mobLvl >= 2 and preset.hpp and preset.hpp > 0) and math.floor(preset.hpp * scale) or 0
+    local mobRegain = math.floor((preset.regain or 30) * scale)
+
+    -- Store combat-only Regain on localVar instead of xi.mod.REGAIN so mobs only gain
+    -- Regain TP while actively fighting (never when idle or kited without combat).
+    mob:setLocalVar('[CustomBoss]MobRegain', mobRegain)
 
     local mobMods =
     {
-        { xi.mod.REGAIN,      math.floor((preset.regain or 30) * scale) },
         { xi.mod.STORETP,     math.floor((preset.storetp or 35) * scale) },
         { xi.mod.DEFP,        math.floor((preset.defp or 25) * scale) },
         { xi.mod.MDEF,        math.floor((preset.mdef or 18) * scale) },
@@ -931,6 +1137,8 @@ xi.customBossServer.scaleDamageByLevelGap = function(attacker, defender, damage)
     if dmg <= 0 then
         return 0
     end
+
+    markInActualCombat(attacker, defender)
 
     local mult = getLevelGapDamageMultiplier(attacker, defender)
     if mult == 1.0 then
@@ -1168,6 +1376,15 @@ local function attachPlayerCombatListeners(player)
     end
 
     player:removeListener('CUSTOM_BOSS_PC_ENGAGE')
+    player:removeListener('CUSTOM_BOSS_PC_DISENGAGE')
+    player:removeListener('CUSTOM_BOSS_PC_REGAIN')
+    player:removeListener('CUSTOM_BOSS_PC_HIT')
+    player:removeListener('CUSTOM_BOSS_PC_MISS')
+    player:removeListener('CUSTOM_BOSS_PC_DMG')
+    player:removeListener('CUSTOM_BOSS_PC_WS')
+    player:removeListener('CUSTOM_BOSS_PC_MAGIC')
+    player:removeListener('CUSTOM_BOSS_PC_ABILITY')
+
     player:addListener('ENGAGE', 'CUSTOM_BOSS_PC_ENGAGE', function(pc, target)
         if isWildMob(target) then
             applyMobScaling(target)
@@ -1176,6 +1393,70 @@ local function attachPlayerCombatListeners(player)
             local pet = pc:getPet()
             if pet then
                 applyPetCombatPace(pet)
+            end
+        end
+    end)
+
+    player:addListener('DISENGAGE', 'CUSTOM_BOSS_PC_DISENGAGE', function(pc)
+        if pc and pc.setLocalVar then
+            pc:setLocalVar('[CustomBoss]LastCombatTs', 0)
+            pc:setLocalVar('[CustomBoss]CombatMobId', 0)
+        end
+    end)
+
+    player:addListener('EFFECTS_TICK', 'CUSTOM_BOSS_PC_REGAIN', function(pc)
+        onEntityCombatRegainTick(pc)
+        if pc and pc.getPet then
+            local pet = pc:getPet()
+            if pet then
+                applyPetCombatPace(pet)
+            end
+        end
+    end)
+
+    player:addListener('MELEE_SWING_HIT', 'CUSTOM_BOSS_PC_HIT', function(pc, target)
+        markInActualCombat(pc, target)
+    end)
+
+    player:addListener('MELEE_SWING_MISS', 'CUSTOM_BOSS_PC_MISS', function(pc, target)
+        markInActualCombat(pc, target)
+    end)
+
+    player:addListener('TAKE_DAMAGE', 'CUSTOM_BOSS_PC_DMG', function(pc, amount, attacker)
+        if (tonumber(amount) or 0) > 0 and attacker then
+            markInActualCombat(pc, attacker)
+        end
+    end)
+
+    player:addListener('WEAPONSKILL_USE', 'CUSTOM_BOSS_PC_WS', function(pc, target)
+        markInActualCombat(pc, target)
+    end)
+
+    player:addListener('MAGIC_USE', 'CUSTOM_BOSS_PC_MAGIC', function(pc, target)
+        if isWildMob(target) then
+            markInActualCombat(pc, target)
+        elseif target ~= nil and isInActualCombat(target) then
+            -- Party healer/buffer casting on an ally who is actively in combat
+            local mobId = target.getLocalVar and target:getLocalVar('[CustomBoss]CombatMobId') or 0
+            if pc.setLocalVar then
+                pc:setLocalVar('[CustomBoss]LastCombatTs', nowSeconds())
+                if mobId > 0 then
+                    pc:setLocalVar('[CustomBoss]CombatMobId', mobId)
+                end
+            end
+        end
+    end)
+
+    player:addListener('ABILITY_USE', 'CUSTOM_BOSS_PC_ABILITY', function(pc, target)
+        if isWildMob(target) then
+            markInActualCombat(pc, target)
+        elseif target ~= nil and target ~= pc and isInActualCombat(target) then
+            local mobId = target.getLocalVar and target:getLocalVar('[CustomBoss]CombatMobId') or 0
+            if pc.setLocalVar then
+                pc:setLocalVar('[CustomBoss]LastCombatTs', nowSeconds())
+                if mobId > 0 then
+                    pc:setLocalVar('[CustomBoss]CombatMobId', mobId)
+                end
             end
         end
     end)
@@ -1274,6 +1555,7 @@ end)
 -----------------------------------
 m:addOverride('xi.combat.physical.calculateMeleePDIF', function(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, weaponSlot, isCannonball)
     ensureCombatEntitiesScaled(actor, target)
+    markInActualCombat(actor, target)
     local pdif = super(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, weaponSlot, isCannonball)
     local mult = getLevelGapDamageMultiplier(actor, target)
     return pdif * mult
@@ -1281,6 +1563,7 @@ end)
 
 m:addOverride('xi.combat.physical.calculateRangedPDIF', function(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, bonusRangedAttack)
     ensureCombatEntitiesScaled(actor, target)
+    markInActualCombat(actor, target)
     local pdif = super(actor, target, weaponType, wsAttackMod, isCritical, applyLevelCorrection, tpIgnoresDefense, tpFactor, isWeaponskill, bonusRangedAttack)
     local mult = getLevelGapDamageMultiplier(actor, target)
     return pdif * mult
@@ -1322,6 +1605,7 @@ m:addOverride('xi.combat.magicHitRate.calculateResistRate', function(actor, targ
 end)
 
 m:addOverride('xi.spells.damage.calculateMagicBonusDiff', function(caster, target, spellId, skillType, spellElement, bonusMATT)
+    markInActualCombat(caster, target)
     local diff = super(caster, target, spellId, skillType, spellElement, bonusMATT)
     local mult = getLevelGapDamageMultiplier(caster, target)
     return diff * mult
@@ -1329,6 +1613,7 @@ end)
 
 m:addOverride('xi.weaponskills.takeWeaponskillDamage', function(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
     ensureCombatEntitiesScaled(attacker, defender)
+    markInActualCombat(attacker, defender)
     if
         wsResults and
         type(wsResults.finalDmg) == 'number' and
@@ -1345,6 +1630,7 @@ end)
 -- Normalize mob breath attacks so boosted boss HP never causes one-shots.
 m:addOverride('xi.mobskills.mobBreathMove', function(mob, target, skill, action, skillParams)
     ensureCombatEntitiesScaled(mob, target)
+    markInActualCombat(mob, target)
 
     local adjustedParams = skillParams
     local breathCfg      = xi.customBossServer.config.breath or {}
@@ -1398,6 +1684,7 @@ end)
 -- that pass skill:getMobHP() into mobMagicalMove so boosted mob HP doesn't one-shot players.
 m:addOverride('xi.mobskills.mobMagicalMove', function(mob, target, skill, action, skillParams)
     ensureCombatEntitiesScaled(mob, target)
+    markInActualCombat(mob, target)
 
     local adjustedParams = skillParams
     if isWildMob(mob) and type(skillParams) == 'table' and type(skillParams.baseDamage) == 'number' then
@@ -1554,7 +1841,7 @@ combatCmd.onTrigger = function(player, sampleLvl)
     end
 
     player:printToPlayer(
-        'Player Pace: +25% Haste (+15% Gear / +10% JA), +25 Store TP, +20 Regain, +15% Fast Cast.',
+        'Player Pace: +25% Haste (+15% Gear / +10% JA), +25 Store TP, +20 Combat-Only Regain, +15% Fast Cast.',
         xi.msg.channel.SYSTEM_3, '')
     player:printToPlayer(
         string.format('Lv.%d Normal Mob (%.2fx scale): +%d%% HP | +%d%% ATT | +%d%% DEF | +%d ACC/+%d EVA | +%d MDEF | +%.1f%% Haste | Breath Cap ~%d (<=35%% MaxHP at EM).',
