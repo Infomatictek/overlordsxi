@@ -30,3 +30,4 @@ custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua
 custom/commands/gear.lua
+custom/commands/camp.lua
