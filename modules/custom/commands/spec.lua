@@ -326,4 +326,16 @@ commandObj.onTrigger = function(player, action, value, extra)
     tell(player, string.format('Socketed %s crystal: %s (%s).', jobName(jobId), selected.name, selected.role))
 end
 
-xi.module.registerCommand('spec', commandObj)
+xi.commands = xi.commands or {}
+xi.commands.spec = commandObj
+
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('spec', commandObj)
+end
+
+if xi.commands.gear == nil then
+    package.loaded['modules/custom/commands/gear'] = nil
+    pcall(require, 'modules/custom/commands/gear')
+end
+
+

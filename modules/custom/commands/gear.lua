@@ -4,6 +4,7 @@
 --       the player's main job, active OverlordsXI crystal spec, role, and weapon.
 -----------------------------------
 require('modules/custom/lua/overlords_job_specs')
+package.loaded['modules/custom/lua/overlords_test_gear'] = nil
 require('modules/custom/lua/overlords_test_gear')
 -----------------------------------
 ---@type TCommand
@@ -545,5 +546,10 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
     executeEquip(player, parsedOpts)
 end
 
-xi.module.registerCommand('gear', commandObj)
-return commandObj
+xi.commands = xi.commands or {}
+xi.commands.gear = commandObj
+
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('gear', commandObj)
+end
+

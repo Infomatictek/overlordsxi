@@ -82,4 +82,10 @@ commandObj.onTrigger = function(player, action)
     printUsage(player)
 end
 
-xi.module.registerCommand('eos', commandObj)
+xi.commands = xi.commands or {}
+xi.commands.eos = commandObj
+
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('eos', commandObj)
+end
+

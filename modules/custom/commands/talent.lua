@@ -527,4 +527,16 @@ commandObj.onTrigger = function(player, action, arg1, arg2, arg3)
     tell(player, 'Unknown subcommand. Use !talent or !talent help.')
 end
 
-xi.module.registerCommand('talent', commandObj)
+xi.commands = xi.commands or {}
+xi.commands.talent = commandObj
+
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('talent', commandObj)
+end
+
+if xi.commands.gear == nil then
+    package.loaded['modules/custom/commands/gear'] = nil
+    pcall(require, 'modules/custom/commands/gear')
+end
+
+

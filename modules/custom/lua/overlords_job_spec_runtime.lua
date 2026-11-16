@@ -51,4 +51,9 @@ m:addOverride('xi.player.onPlayerLevelDown', function(player)
     end
 end)
 
+-- Ensure !gear is registered even when hot-synced into a running xi_map process via FileWatcher
+package.loaded['modules/custom/commands/gear'] = nil
+pcall(require, 'modules/custom/commands/gear')
+
 return m
+
