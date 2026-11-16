@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T09:32:58.809044+00:00",
+  "generatedAt": "2026-11-16T09:46:31.105645+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "25f433b",
+  "headCommit": "23f879a",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -12,7 +12,7 @@
     "totalCompanions": 4,
     "totalWeaponskills": 219,
     "totalWeaponSkillsCategories": 15,
-    "totalPatches": 17,
+    "totalPatches": 18,
     "totalRecentCommits": 60
   },
   "serverRules": {
@@ -38208,9 +38208,67 @@
       ],
       "linesAdded": 200,
       "linesRemoved": 2
+    },
+    {
+      "number": "0018",
+      "filename": "0018-search-job-labels.patch",
+      "title": "Search Job Labels",
+      "description": "Engine patch modifying src/search/data_loader.cpp, src/search/data_loader.h, src/search/packets/search_list.cpp, src/search/packets/search_list.h, src/search/search.h, src/search/search_handler.cpp.",
+      "files": [
+        "src/search/data_loader.cpp",
+        "src/search/data_loader.h",
+        "src/search/packets/search_list.cpp",
+        "src/search/packets/search_list.h",
+        "src/search/search.h",
+        "src/search/search_handler.cpp"
+      ],
+      "linesAdded": 92,
+      "linesRemoved": 10
     }
   ],
   "commits": [
+    {
+      "hash": "23f879a9eea344049e1cf24eecfad5c043aa1389",
+      "shortHash": "23f879a",
+      "author": "nappypup",
+      "date": "2026-11-16T03:46:01-06:00",
+      "subject": "Add Search soul job label support (0018-search-job-labels.patch) and gate snapshot activeBranch by level",
+      "files": [
+        {
+          "path": "modules/custom/lua/overlords_job_specs.lua",
+          "added": 1,
+          "removed": 1
+        },
+        {
+          "path": "patches/0018-search-job-labels.patch",
+          "added": 211,
+          "removed": 0
+        }
+      ],
+      "totalAdded": 212,
+      "totalRemoved": 1
+    },
+    {
+      "hash": "5447666c8dccd8013b45b43558cfe6259088f06f",
+      "shortHash": "5447666",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T09:32:58Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 54,
+          "removed": 54
+        },
+        {
+          "path": "site/data.json",
+          "added": 54,
+          "removed": 54
+        }
+      ],
+      "totalAdded": 108,
+      "totalRemoved": 108
+    },
     {
       "hash": "25f433bd27eb871fd02ee5a748d1177b93deb78f",
       "shortHash": "25f433b",
@@ -39608,118 +39666,6 @@
       ],
       "totalAdded": 882,
       "totalRemoved": 2
-    },
-    {
-      "hash": "663f3a1b1d954f7a8b9bb4673bb42043ed37e056",
-      "shortHash": "663f3a1",
-      "author": "Infomatictek",
-      "date": "2026-11-14T21:39:11Z",
-      "subject": "Add Titania Sage pet and gate Call Eos behind Medic crystal",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 25,
-          "removed": 20
-        },
-        {
-          "path": "modules/custom/commands/eos.lua",
-          "added": 24,
-          "removed": 17
-        },
-        {
-          "path": "modules/custom/cpp/eos_companion.cpp",
-          "added": 463,
-          "removed": 71
-        },
-        {
-          "path": "modules/custom/lua/eos_companion.lua",
-          "added": 37,
-          "removed": 8
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 17,
-          "removed": 14
-        },
-        {
-          "path": "modules/custom/lua/sch_specs.lua",
-          "added": 51,
-          "removed": 16
-        },
-        {
-          "path": "modules/custom/sql/eos_companion.sql",
-          "added": 79,
-          "removed": 5
-        },
-        {
-          "path": "patches/{0005-spec-ability-unlocks.patch => 0007-spec-ability-unlocks.patch}",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "patches/0008-titania-sage-pet.patch",
-          "added": 59,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 755,
-      "totalRemoved": 151
-    },
-    {
-      "hash": "4c3668de2d50e230ce64aeeab88f879eb91c2501",
-      "shortHash": "4c3668d",
-      "author": "Infomatictek",
-      "date": "2026-11-14T21:20:52Z",
-      "subject": "Add C++ dynamic job ability unlocks for crystal specs",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 4,
-          "removed": 7
-        },
-        {
-          "path": "modules/custom/lua/mnk_specs.lua",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 53,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/mnk_specs.sql",
-          "added": 0,
-          "removed": 8
-        },
-        {
-          "path": "modules/custom/sql/war_specs.sql",
-          "added": 0,
-          "removed": 8
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 0,
-          "removed": 2
-        },
-        {
-          "path": "patches/0005-spec-ability-unlocks.patch",
-          "added": 95,
-          "removed": 0
-        },
-        {
-          "path": "scripts/setup-local-server.ps1",
-          "added": 16,
-          "removed": 4
-        }
-      ],
-      "totalAdded": 170,
-      "totalRemoved": 29
     }
   ]
 }
