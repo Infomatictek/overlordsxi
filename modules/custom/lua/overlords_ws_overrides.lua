@@ -2342,7 +2342,7 @@ m:addOverride('xi.actions.weaponskills.dagan.onUseWeaponSkill', function(player,
     end)
 
     local mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
-    local healed = player:addHP(math.floor(player:getMaxHP() * 0.22 * mult))
+    local healed = player:addHP(math.floor(player:getMaxHP() * 0.11 * mult))
     if healed > 0 and player.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
         player:messagePublic(xi.msg.basic.RECOVERS_HP, player, 0, healed)
     end

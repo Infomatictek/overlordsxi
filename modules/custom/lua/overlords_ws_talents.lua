@@ -376,10 +376,10 @@ local SPEC_KEY_TO_CATEGORY =
     healer      = 'healer',
     lifebinder  = 'healer',
     medic       = 'healer',
-    chiweaver   = 'healer',
+    chiweaver   = 'chiweaver',
     commander   = 'commander',
     berserker   = 'berserker',
-    blackbelt   = 'berserker',
+    blackbelt   = 'blackbelt',
     bladewheel  = 'berserker',
 }
 
@@ -1978,12 +1978,21 @@ local function buildGenericTreeForWS(ws)
     return finalizeTree(ws, archetype, nodes)
 end
 
+local SPEC_CATEGORY_FALLBACK =
+{
+    blackbelt = 'berserker',
+    chiweaver = 'healer',
+}
+
 local function buildTreeForWS(ws, specCat)
     local custom = CUSTOM_TREES[ws.id]
     if custom ~= nil then
         local srcNodes = custom.nodes
         if custom.specNodes ~= nil then
-            srcNodes = custom.specNodes[specCat or 'berserker']
+            local cat = specCat or 'berserker'
+            local fb = SPEC_CATEGORY_FALLBACK[cat]
+            srcNodes = custom.specNodes[cat]
+                or (fb and custom.specNodes[fb])
                 or custom.specNodes.default
                 or custom.specNodes.berserker
                 or custom.nodes

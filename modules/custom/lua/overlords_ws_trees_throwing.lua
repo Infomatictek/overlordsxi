@@ -105,9 +105,9 @@ regB(241, 'heavy',
 
     -- Tier 4
     N('c1_t4', 'Encore Spin', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Refunds 120..360 TP and heals self for 8..24% Max HP',
-        function(r) return string.format('+%d TP Refund, %d%% Max HP Heal', r * 120, r * 8) end,
-        { nextWs = { tp = { 120, 240, 360 }, dur = 15 }, selfMaxHpHealPct = { 8, 16, 24 } }),
+        'Refunds 120..360 TP and heals self for 4..12% Max HP',
+        function(r) return string.format('+%d TP Refund, %d%% Max HP Heal', r * 120, r * 4) end,
+        { nextWs = { tp = { 120, 240, 360 }, dur = 15 }, selfMaxHpHealPct = { 4, 8, 12 } }),
     N('c2_t4', 'Pirouette Mastery', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.00..4.50 Single-Hit fTP, +8..32% WSD, +10..40% DEX WSC',
         function(r)
@@ -139,9 +139,12 @@ regB(242, 'magic',
 {
     -- Tier 1
     N('c1_t1', 'Soothing Spin', 1, 1, 6, nil,
-        'Heals party for 3..18% Max HP, -4..24 Enmity',
-        function(r) return string.format('Party Heal %d%% Max HP, -%d Enmity', r * 3, r * 4) end,
-        { partyHealPct = { 3, 6, 9, 12, 15, 18 }, enmity = { -4, -8, -12, -16, -20, -24 } }),
+        'Heals party for 2..9% Max HP, -4..24 Enmity',
+        function(r)
+            local h = ({ 2, 3, 5, 6, 8, 9 })[r]
+            return string.format('Party Heal %d%% Max HP, -%d Enmity', h, r * 4)
+        end,
+        { partyHealPct = { 2, 3, 5, 6, 8, 9 }, enmity = { -4, -8, -12, -16, -20, -24 } }),
     N('c2_t1', 'Waltz Momentum', 1, 2, 7, nil,
         '+0.60..4.50 Single-Hit fTP, +4..28% CHR WSC',
         function(r)
@@ -159,9 +162,9 @@ regB(242, 'magic',
 
     -- Tier 2
     N('c1_t2', 'Waltz of Renewal', 2, 1, 5, { key = 'c1_t1', rank = 2 },
-        'Grants Party Regen (6..30 HP/tick, 30s)',
-        function(r) return string.format('Party Regen %d HP/tick (30s)', r * 6) end,
-        { partyBuffs = { { effect = xi.effect.REGEN, power = { 6, 12, 18, 24, 30 }, duration = 30 } } }),
+        'Grants Party Regen (3..15 HP/tick, 30s)',
+        function(r) return string.format('Party Regen %d HP/tick (30s)', r * 3) end,
+        { partyBuffs = { { effect = xi.effect.REGEN, power = { 3, 6, 9, 12, 15 }, duration = 30 } } }),
     N('c2_t2', 'Graceful Arc', 2, 2, 5, { key = 'c2_t1', rank = 2 },
         '+0.55..3.00 Single-Hit fTP, +5..25% DEX WSC',
         function(r)
@@ -179,9 +182,9 @@ regB(242, 'magic',
 
     -- Tier 3
     N('c1_t3', 'Divine Ballroom', 3, 1, 5, { key = 'c1_t2', rank = 2 },
-        'Heals party for +4..20% Max HP and grants 30..150 Party TP',
-        function(r) return string.format('+%d%% Party Heal, +%d Party TP', r * 4, r * 30) end,
-        { partyHealPct = { 4, 8, 12, 16, 20 }, partyTp = { 30, 60, 90, 120, 150 } }),
+        'Heals party for +2..10% Max HP and grants 30..150 Party TP',
+        function(r) return string.format('+%d%% Party Heal, +%d Party TP', r * 2, r * 30) end,
+        { partyHealPct = { 2, 4, 6, 8, 10 }, partyTp = { 30, 60, 90, 120, 150 } }),
     N('c2_t3', 'Sunlit Crescendo', 3, 2, 5, { key = 'c2_t2', rank = 2 },
         '+0.65..3.50 Single-Hit fTP, +50..250 TP Bonus',
         function(r)
@@ -196,11 +199,11 @@ regB(242, 'magic',
 
     -- Tier 4
     N('c1_t4', 'Sanctuary Waltz', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Grants Party Refresh (3..9 MP/tick, 30s) and +8..24% Self Max HP Heal',
-        function(r) return string.format('Party Refresh %d MP/t, +%d%% Self Heal', r * 3, r * 8) end,
+        'Grants Party Refresh (3..9 MP/tick, 30s) and +4..12% Self Max HP Heal',
+        function(r) return string.format('Party Refresh %d MP/t, +%d%% Self Heal', r * 3, r * 4) end,
         {
             partyBuffs       = { { effect = xi.effect.REFRESH, power = { 3, 6, 9 }, duration = 30 } },
-            selfMaxHpHealPct = { 8, 16, 24 },
+            selfMaxHpHealPct = { 4, 8, 12 },
         }),
     N('c2_t4', 'Grand Waltz Finale', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.10..4.75 Single-Hit fTP, +8..32% WSD, +10..40% CHR WSC',
@@ -338,9 +341,12 @@ regB(244, 'magic',
 {
     -- Tier 1
     N('c1_t1', 'Sanguine Sip', 1, 1, 6, nil,
-        'Drains 5..30% of WS damage as HP, +3..18 Subtle Blow',
-        function(r) return string.format('%d%% HP Drain, +%d Subtle Blow', r * 5, r * 3) end,
-        { hpDrain = { 5, 10, 15, 20, 25, 30 }, subtleBlow = { 3, 6, 9, 12, 15, 18 } }),
+        'Drains 3..15% of WS damage as HP, +3..18 Subtle Blow',
+        function(r)
+            local d = ({ 3, 5, 8, 10, 13, 15 })[r]
+            return string.format('%d%% HP Drain, +%d Subtle Blow', d, r * 3)
+        end,
+        { hpDrain = { 3, 5, 8, 10, 13, 15 }, subtleBlow = { 3, 6, 9, 12, 15, 18 } }),
     N('c2_t1', 'Crimson Velocity', 1, 2, 7, nil,
         '+0.60..4.50 Single-Hit fTP, +4..28% CHR WSC',
         function(r)
@@ -378,9 +384,13 @@ regB(244, 'magic',
 
     -- Tier 3
     N('c1_t3', 'Blood Samba Surge', 3, 1, 5, { key = 'c1_t2', rank = 2 },
-        'Heals party for 3..15% Max HP and drains +5..25% HP',
-        function(r) return string.format('Party Heal %d%% Max HP, +%d%% HP Drain', r * 3, r * 5) end,
-        { partyHealPct = { 3, 6, 9, 12, 15 }, hpDrain = { 5, 10, 15, 20, 25 } }),
+        'Heals party for 2..8% Max HP and drains +3..13% HP',
+        function(r)
+            local ph = ({ 2, 3, 5, 6, 8 })[r]
+            local d  = ({ 3, 5, 8, 10, 13 })[r]
+            return string.format('Party Heal %d%% Max HP, +%d%% HP Drain', ph, d)
+        end,
+        { partyHealPct = { 2, 3, 5, 6, 8 }, hpDrain = { 3, 5, 8, 10, 13 } }),
     N('c2_t3', 'Nocturne Torque', 3, 2, 5, { key = 'c2_t2', rank = 2 },
         '+0.65..3.50 Single-Hit fTP, +50..250 TP Bonus',
         function(r)
@@ -395,12 +405,12 @@ regB(244, 'magic',
 
     -- Tier 4
     N('c1_t4', 'Immortal Samba', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Drains +10..30% HP, +6..18% MP, and grants Party Regen (8..24 HP/t)',
-        function(r) return string.format('+%d%% HP/+%d%% MP Drain, Party Regen %d', r * 10, r * 6, r * 8) end,
+        'Drains +5..15% HP, +6..18% MP, and grants Party Regen (4..12 HP/t)',
+        function(r) return string.format('+%d%% HP/+%d%% MP Drain, Party Regen %d', r * 5, r * 6, r * 4) end,
         {
-            hpDrain    = { 10, 20, 30 },
+            hpDrain    = { 5, 10, 15 },
             mpDrain    = { 6, 12, 18 },
-            partyBuffs = { { effect = xi.effect.REGEN, power = { 8, 16, 24 }, duration = 30 } },
+            partyBuffs = { { effect = xi.effect.REGEN, power = { 4, 8, 12 }, duration = 30 } },
         }),
     N('c2_t4', 'Crimson Eclipse', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.10..4.75 Single-Hit fTP, +8..32% WSD, +10..40% CHR WSC',
@@ -603,9 +613,9 @@ regB(246, 'crit',
 
     -- Tier 4
     N('c1_t4', 'Featherstorm Tempo', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Grants 60..180 Party TP and heals self for 8..24% Max HP',
-        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 60, r * 8) end,
-        { partyTp = { 60, 120, 180 }, selfMaxHpHealPct = { 8, 16, 24 } }),
+        'Grants 60..180 Party TP and heals self for 4..12% Max HP',
+        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 60, r * 4) end,
+        { partyTp = { 60, 120, 180 }, selfMaxHpHealPct = { 4, 8, 12 } }),
     N('c2_t4', 'Phoenix Ring Apex', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.20..5.25 Single-Hit fTP, +8..32% WSD, +10..40% DEX WSC',
         function(r)
@@ -785,9 +795,9 @@ regB(248, 'heavy',
 
     -- Tier 3
     N('c1_t3', 'Bravura Applause', 3, 1, 5, { key = 'c1_t2', rank = 2 },
-        'Grants 50..250 Party TP and heals self for 4..20% Max HP',
-        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 50, r * 4) end,
-        { partyTp = { 50, 100, 150, 200, 250 }, selfMaxHpHealPct = { 4, 8, 12, 16, 20 } }),
+        'Grants 50..250 Party TP and heals self for 2..10% Max HP',
+        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 50, r * 2) end,
+        { partyTp = { 50, 100, 150, 200, 250 }, selfMaxHpHealPct = { 2, 4, 6, 8, 10 } }),
     N('c2_t3', 'Compas Overdrive', 3, 2, 5, { key = 'c2_t2', rank = 2 },
         '+0.80..4.25 Single-Hit fTP, +5..25% Crit Rate',
         function(r)
@@ -901,9 +911,9 @@ regB(249, 'multihit',
 
     -- Tier 4
     N('c1_t4', 'Contagious Rhythm', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Grants 70..210 Party TP and heals self for 8..24% Max HP',
-        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 70, r * 8) end,
-        { partyTp = { 70, 140, 210 }, selfMaxHpHealPct = { 8, 16, 24 } }),
+        'Grants 70..210 Party TP and heals self for 4..12% Max HP',
+        function(r) return string.format('+%d Party TP, %d%% Self Max HP Heal', r * 70, r * 4) end,
+        { partyTp = { 70, 140, 210 }, selfMaxHpHealPct = { 4, 8, 12 } }),
     N('c2_t4', 'Apex Tarantella', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+0.65..2.60 fTP (All Hits), +1 Bonus Hit at R3, +6..24% WSD',
         function(r) return string.format('+%.2f fTP, %s+%d%% WSD', r * 0.65, r >= 3 and '+1 Hit, ' or '', r * 6) end,
@@ -998,9 +1008,9 @@ regB(250, 'heavy',
 
     -- Tier 4
     N('c1_t4', 'Ovation Recovery', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Heals self for 10..30% Max HP and grants Next WS +12..36% WSD',
-        function(r) return string.format('%d%% Self Max HP Heal, Next WS +%d%% WSD', r * 10, r * 12) end,
-        { selfMaxHpHealPct = { 10, 20, 30 }, nextWs = { wsd = { 12, 24, 36 }, dur = 15 } }),
+        'Heals self for 5..15% Max HP and grants Next WS +12..36% WSD',
+        function(r) return string.format('%d%% Self Max HP Heal, Next WS +%d%% WSD', r * 5, r * 12) end,
+        { selfMaxHpHealPct = { 5, 10, 15 }, nextWs = { wsd = { 12, 24, 36 }, dur = 15 } }),
     N('c2_t4', 'Grand Jete Mastery', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.60..6.50 Single-Hit fTP, +10..40% WSD, +10..40% DEX WSC',
         function(r)
@@ -1097,9 +1107,9 @@ regB(251, 'multihit',
 
     -- Tier 4
     N('c1_t4', 'Empyrean Encore', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Refunds 100..300 TP and heals party for 6..18% Max HP',
-        function(r) return string.format('+%d TP Refund, Party Heal %d%% Max HP', r * 100, r * 6) end,
-        { nextWs = { tp = { 100, 200, 300 }, dur = 15 }, partyHealPct = { 6, 12, 18 } }),
+        'Refunds 100..300 TP and heals party for 3..9% Max HP',
+        function(r) return string.format('+%d TP Refund, Party Heal %d%% Max HP', r * 100, r * 3) end,
+        { nextWs = { tp = { 100, 200, 300 }, dur = 15 }, partyHealPct = { 3, 6, 9 } }),
     N('c2_t4', 'Aurora Crown', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+0.75..3.00 fTP (All Hits), +1 Bonus Hit at R2 & R4, +7..28% WSD',
         function(r)
@@ -1131,9 +1141,9 @@ regB(252, 'magic',
 {
     -- Tier 1
     N('c1_t1', 'Muse\'s Grace', 1, 1, 6, nil,
-        'Heals party for 4..24% Max HP, +40..240 TP Bonus',
-        function(r) return string.format('Party Heal %d%% Max HP, +%d TP Bonus', r * 4, r * 40) end,
-        { partyHealPct = { 4, 8, 12, 16, 20, 24 }, tpBonus = { 40, 80, 120, 160, 200, 240 } }),
+        'Heals party for 2..12% Max HP, +40..240 TP Bonus',
+        function(r) return string.format('Party Heal %d%% Max HP, +%d TP Bonus', r * 2, r * 40) end,
+        { partyHealPct = { 2, 4, 6, 8, 10, 12 }, tpBonus = { 40, 80, 120, 160, 200, 240 } }),
     N('c2_t1', 'Terpsichore Velocity', 1, 2, 7, nil,
         '+0.85..6.00 Single-Hit fTP, +5..35% CHR WSC',
         function(r)
@@ -1151,11 +1161,11 @@ regB(252, 'magic',
 
     -- Tier 2
     N('c1_t2', 'Chorus of Light', 2, 1, 5, { key = 'c1_t1', rank = 2 },
-        'Grants Party Regen (8..40 HP/tick) and Refresh (2..10 MP/tick) for 30s',
-        function(r) return string.format('Party Regen %d, Refresh %d (30s)', r * 8, r * 2) end,
+        'Grants Party Regen (4..20 HP/tick) and Refresh (2..10 MP/tick) for 30s',
+        function(r) return string.format('Party Regen %d, Refresh %d (30s)', r * 4, r * 2) end,
         {
             partyBuffs = {
-                { effect = xi.effect.REGEN,   power = { 8, 16, 24, 32, 40 }, duration = 30 },
+                { effect = xi.effect.REGEN,   power = { 4, 8, 12, 16, 20 }, duration = 30 },
                 { effect = xi.effect.REFRESH, power = { 2, 4, 6, 8, 10 },    duration = 30 },
             },
         }),
@@ -1193,9 +1203,9 @@ regB(252, 'magic',
 
     -- Tier 4
     N('c1_t4', 'Eternal Ovations', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Heals party for +8..24% Max HP and grants Next WS +12..36% WSD',
-        function(r) return string.format('+%d%% Party Heal, Next WS +%d%% WSD', r * 8, r * 12) end,
-        { partyHealPct = { 8, 16, 24 }, nextWs = { wsd = { 12, 24, 36 }, dur = 15 } }),
+        'Heals party for +4..12% Max HP and grants Next WS +12..36% WSD',
+        function(r) return string.format('+%d%% Party Heal, Next WS +%d%% WSD', r * 4, r * 12) end,
+        { partyHealPct = { 4, 8, 12 }, nextWs = { wsd = { 12, 24, 36 }, dur = 15 } }),
     N('c2_t4', 'Apotheosis of Dance', 4, 2, 4, { key = 'c2_t3', rank = 2 },
         '+1.60..6.50 Single-Hit fTP, +10..40% WSD, +10..40% CHR WSC',
         function(r)

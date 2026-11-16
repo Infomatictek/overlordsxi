@@ -1,6 +1,6 @@
 -----------------------------------
 -- OverlordsXI Bespoke WS Trees: Great Sword (#48-#61)
--- Full 5-Spec (tank, spellblade, healer, commander, berserker) 3-Column Trees
+-- Full 7-Spec (berserker, blackbelt, commander, tank, spellblade, healer, chiweaver) 3-Column Trees
 -- (+ Col 4 Skillchain Augments = 16 nodes per spec view).
 -- Strictly respects wsType ('magic' on #50 Frostbite, #51 Freezebite, #58 Herculean Slash
 -- uses ZERO physical Attack, Accuracy, Crit, DEF Ignore, or Multi-Hit).
@@ -16,15 +16,17 @@ local HL_EFF   = { xi.effect.VALIANCE, xi.effect.VALLATION, xi.effect.SWORDPLAY,
 local CMD_EFF  = { xi.effect.WARCRY, xi.effect.BERSERK, xi.effect.RESTRAINT, xi.effect.AGGRESSOR, xi.effect.RETALIATION }
 local ZERK_EFF = { xi.effect.BERSERK, xi.effect.BLOOD_RAGE, xi.effect.LAST_RESORT, xi.effect.SOULEATER, xi.effect.RESTRAINT }
 
--- Helper to register a Great Sword WS with bespoke Berserker nodes and tailored Tank/Spellblade/Healer/Commander overrides
+-- Helper to register a Great Sword WS with bespoke Berserker nodes and tailored 7-spec trees
 local function regGS(wsId, archetype, zerkNodes, customSpecs)
     customSpecs = customSpecs or {}
     local specNodes =
     {
         berserker  = customSpecs.berserker  or H.buildBerserkerSpecNodes(wsId, archetype, zerkNodes),
+        blackbelt  = customSpecs.blackbelt  or H.buildBlackBeltSpecNodes(wsId, archetype, zerkNodes),
         tank       = customSpecs.tank       or H.buildTankSpecNodes(wsId, archetype, zerkNodes),
         spellblade = customSpecs.spellblade or H.buildSpellbladeSpecNodes(wsId, archetype, zerkNodes),
         healer     = customSpecs.healer     or H.buildHealerSpecNodes(wsId, archetype, zerkNodes),
+        chiweaver  = customSpecs.chiweaver  or H.buildChiWeaverSpecNodes(wsId, archetype, zerkNodes),
         commander  = customSpecs.commander  or H.buildCommanderSpecNodes(wsId, archetype, zerkNodes),
     }
     regSpec(wsId, archetype, specNodes)
@@ -113,9 +115,9 @@ local zerk49 = {
         { critDmg = { 9,18,27,36,45 } }),
     stance(3, 2, 'ps_st', 'Fury Stance', 5, 'Berserk/LR/BloodRage', ZERK_EFF,
         { wsd = { 8,16,24,32,40 }, critDmg = { 5,10,15,20,25 }, zeroDesc = 'Berserk/LR/BloodRage: +8..40% WSD & +CrDmg' }),
-    node(3, 3, 'ps_leech', 'Savage Reaping', 5, 'Drains 6..30% WS dmg as HP & +5..25% WSD',
-        function(r) return string.format('%d%% HP Drain, +%d%% WSD', r * 6, r * 5) end,
-        { hpDrain = { 6,12,18,24,30 }, wsd = { 5,10,15,20,25 } }),
+    node(3, 3, 'ps_leech', 'Savage Reaping', 5, 'Drains 3..15% WS dmg as HP & +5..25% WSD',
+        function(r) return string.format('%d%% HP Drain, +%d%% WSD', r * 3, r * 5) end,
+        { hpDrain = { 3,6,9,12,15 }, wsd = { 5,10,15,20,25 } }),
     node(4, 1, 'capstone', 'Absolute Power', 3, '1->2 Hits, fTP ALL & +12/24/36% WSD',
         function(r) return string.format('2 Hits, fTP ALL, +%d%% WSD', r * 12) end,
         { hits = { 2,2,2 }, wsd = { 12,24,36 }, multiHitfTPAt = 1 }),
@@ -230,9 +232,9 @@ local zerk52 = {
     elemFollow(3, 1, 'sw_dark', 'Dark Shockwave', 'DARK', 'Dark', 12, true),
     stance(3, 2, 'sw_st', 'Pack Fury Stance', 5, 'Berserk/LR/Warcry', ZERK_EFF,
         { wsd = { 8,16,24,32,40 }, atkPct = { 8,16,24,32,40 }, zeroDesc = 'Berserk/LR: +8..40% WSD & +8..40% Atk' }),
-    node(3, 3, 'sw_drain', 'Seismic Leech', 5, 'Drains 6..30% WS dmg as HP & +5..25% Crit',
-        function(r) return string.format('%d%% HP Drain, +%d%% Crit', r * 6, r * 5) end,
-        { hpDrain = { 6,12,18,24,30 }, crit = { 5,10,15,20,25 } }),
+    node(3, 3, 'sw_drain', 'Seismic Leech', 5, 'Drains 3..15% WS dmg as HP & +5..25% Crit',
+        function(r) return string.format('%d%% HP Drain, +%d%% Crit', r * 3, r * 5) end,
+        { hpDrain = { 3,6,9,12,15 }, crit = { 5,10,15,20,25 } }),
     node(4, 1, 'capstone', 'Cataclysmic Wave', 3, '1->2h, +12/22/32% WSD & AoE -20..30% Atk',
         function(r) return string.format('2h, +%d%% WSD, -%d%% Atk', ({12,22,32})[r], 15 + r * 5) end,
         { hits = { 2,2,2 }, wsd = { 12,22,32 }, targetDebuffs = {{ effect = xi.effect.ATTACK_DOWN, power = { 20,25,30 }, duration = 45 }} }),
@@ -403,9 +405,9 @@ local zerk57 = {
     H.critMast(2, 1, 'sc_crit', 'Doombringer Crit', 5, 6),
     stance(2, 2, 'sc_st', 'Valhalla Stance', 5, 'LR/Souleater/Berserk', ZERK_EFF,
         { wsd = { 9,18,27,36,45 }, crit = { 4,8,12,16,20 }, zeroDesc = 'LR/Souleater/Berserk: +9..45% WSD & +Crit' }),
-    node(2, 3, 'sc_leech', 'Ragnarok Drain', 5, 'Drains 7..35% WS dmg as HP & +5..25% WSD',
-        function(r) return string.format('%d%% HP Drain, +%d%% WSD', r * 7, r * 5) end,
-        { hpDrain = { 7,14,21,28,35 }, wsd = { 5,10,15,20,25 } }),
+    node(2, 3, 'sc_leech', 'Ragnarok Drain', 5, 'Drains 4..18% WS dmg as HP & +5..25% WSD',
+        function(r) return string.format('%d%% HP Drain, +%d%% WSD', ({4,7,11,14,18})[r], r * 5) end,
+        { hpDrain = { 4,7,11,14,18 }, wsd = { 5,10,15,20,25 } }),
     echo('aftermath_echo', 'Relic Echo', 6, 70),
     elemFollow(3, 1, 'sc_light', 'Twilight Burst', 'LIGHT', 'Light', 11, false),
     node(3, 3, 'sc_sc', 'Relic Chain', 5, '+9..45% SC Dmg & +8..40% WS Atk',
