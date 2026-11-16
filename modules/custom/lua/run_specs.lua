@@ -11,11 +11,12 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
+require('scripts/combat/basic/damage_multipliers')
 require('scripts/combat/basic/magic_aoe')
-require('scripts/combat/damage')
-require('scripts/combat/magic_burst')
-require('scripts/combat/magic_hit_rate')
+require('scripts/combat/basic/magic_burst')
+require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
+require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/rune_fencer')
 require('scripts/globals/spells/damage_spell')
 -----------------------------------
