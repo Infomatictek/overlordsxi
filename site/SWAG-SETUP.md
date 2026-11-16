@@ -39,7 +39,31 @@ location = /data.json {
 }
 ```
 
-With that 10-line block in SWAG:
-1. Your `Infomatictek/overlordsxi` repo can be **100% Private**.
-2. Every time you `git push` to `Infomatictek/overlordsxi`, the GitHub Action (`.github/workflows/update-wiki.yml`) automatically runs `scripts/generate-site-data.py` and updates `site/data.json` in the repo.
-3. Your SWAG server proxies `/data.json` from the private repo using your read-only token—so **nothing on your SWAG server ever needs to be manually updated**.
+## Option 3: 100% Zero-Touch SWAG Proxy (Auto-Updates BOTH Data AND UI Forever)
+
+If you never want to copy `index.html`, `app.js`, or `styles.css` to SWAG again—even when the Wiki UI itself gets new features—you can have SWAG proxy the entire `site/` folder directly from GitHub (works for both **Public** and **Private** repos, while setting proper MIME types since `raw.githubusercontent.com` returns `text/plain`):
+
+```nginx
+# Inside your server { ... } block in SWAG:
+location / {
+    proxy_ssl_server_name on;
+    proxy_set_header Host raw.githubusercontent.com;
+    # If your repo is Private, uncomment and add a Fine-Grained Token with ONLY "Contents: Read-only":
+    # proxy_set_header Authorization "Bearer github_pat_YOUR_READ_ONLY_TOKEN_HERE";
+    proxy_hide_header Set-Cookie;
+    proxy_hide_header Content-Type;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_ignore_headers Set-Cookie;
+
+    rewrite ^/$ /index.html break;
+    proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site/;
+
+    location ~* \.html$ { add_header Content-Type "text/html; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.css$  { add_header Content-Type "text/css; charset=utf-8";  proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.js$   { add_header Content-Type "application/javascript; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.json$ { add_header Content-Type "application/json; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+}
+```
+
+With Option 3, **nothing lives on SWAG at all**—every push to `Infomatictek/overlordsxi` updates both the wiki data (`data.json`) and any future UI updates (`index.html`, `app.js`, `styles.css`) automatically.
+

@@ -16,11 +16,14 @@ import copy
 import datetime
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LUA_DIR = ROOT_DIR / "modules" / "custom" / "lua"
+CMD_DIR = ROOT_DIR / "modules" / "custom" / "commands"
+SQL_DIR = ROOT_DIR / "modules" / "custom" / "sql"
 PATCH_DIR = ROOT_DIR / "patches"
 SITE_DIR = ROOT_DIR / "site"
 
@@ -1593,50 +1596,137 @@ def parse_server_rules() -> dict:
 # ---------------------------------------------------------------------------
 # 5. Parse Custom Player Commands, Engine Patches & Git Commits
 # ---------------------------------------------------------------------------
+def find_lua_binary() -> str | None:
+    for cand in ("lua5.3", "lua5.4", "luajit", "lua"):
+        path = shutil.which(cand)
+        if path:
+            return path
+    return None
+
+
+def parse_sql_custom_abilities() -> dict[int, dict]:
+    """Dynamically parse INSERT INTO abilities from all modules/custom/sql/*.sql files."""
+    abils = {}
+    for sql_file in sorted(SQL_DIR.glob("*.sql")):
+        txt = sql_file.read_text(encoding="utf-8", errors="replace")
+        for m in re.finditer(
+            r"\(\s*(\d+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*,\s*(\d+)\s*,\s*(\d+)",
+            txt,
+        ):
+            aid = int(m.group(1))
+            raw_name = m.group(2)
+            recast = int(m.group(6))
+            rng = float(m.group(8))
+            is_aoe = int(m.group(9))
+            radius = int(m.group(10))
+            valid_target = int(m.group(5))
+            if is_aoe and radius > 0:
+                target_lbl = f"Party ({radius}y AoE)" if valid_target in (1, 3) else f"AoE ({radius}y)"
+            elif valid_target == 4:
+                target_lbl = f"Enemy ({int(rng)}y)" if rng > 0 else "Enemy"
+            elif valid_target == 3:
+                target_lbl = f"Ally ({int(rng)}y)" if rng > 0 else "Ally"
+            else:
+                target_lbl = "Self"
+            abils[aid] = {
+                "id": aid,
+                "name": raw_name.replace("_", " ").title(),
+                "cd": f"{recast}s",
+                "target": target_lbl,
+                "desc": f"Custom Job Ability (#{aid}) defined in modules/custom/sql/{sql_file.name}.",
+            }
+    return abils
+
+
+def format_evaluated_mod(mod_code: str, values: list) -> dict:
+    label, unit, mult = MOD_LABELS.get(mod_code, (mod_code.replace("_", " ").title(), "", 1))
+
+    def fmt_num(v: float) -> str:
+        val = float(v) * mult
+        sign = "+" if val > 0 else ""
+        if abs(val - round(val)) < 1e-6:
+            return f"{sign}{int(round(val))}"
+        return f"{sign}{val:.1f}"
+
+    clean_vals = [v for v in values if isinstance(v, (int, float))]
+    if not clean_vals:
+        return {"mod": mod_code, "label": label, "value": "-", "bracket": "Passive"}
+
+    if len(set(clean_vals)) == 1:
+        return {"mod": mod_code, "label": label, "value": f"{fmt_num(clean_vals[0])}{unit}", "bracket": "Always Active"}
+
+    # Check if Lv 70 differs from Lv 50
+    if len(clean_vals) >= 4 and clean_vals[3] == clean_vals[2]:
+        val_str = f"{fmt_num(clean_vals[0])} / {fmt_num(clean_vals[1])} / {fmt_num(clean_vals[2])}{unit}"
+        return {"mod": mod_code, "label": label, "value": val_str, "bracket": "Lv.10 / 30 / 50+"}
+
+    val_str = " / ".join(fmt_num(v) for v in clean_vals) + unit
+    return {"mod": mod_code, "label": label, "value": val_str, "bracket": "Lv.10 / 30 / 50 / 70+"}
+
+
+def run_lua_exporter(lua_bin: str) -> dict | None:
+    """Execute scripts/export_lua_wiki_data.lua via real Lua for 100% ground-truth data."""
+    exporter = ROOT_DIR / "scripts" / "export_lua_wiki_data.lua"
+    if not exporter.exists():
+        return None
+    spec_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("*_specs.lua"))]
+    tree_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))]
+    cmd = [lua_bin, str(exporter), str(ROOT_DIR)] + spec_mods + tree_mods
+    try:
+        res = subprocess.run(
+            cmd,
+            cwd=str(ROOT_DIR),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+        )
+        if res.returncode != 0:
+            print(f"[warn] Lua exporter exited {res.returncode}: {res.stderr.strip()}")
+            return None
+        return json.loads(res.stdout)
+    except Exception as exc:
+        print(f"[warn] Lua exporter failed ({exc}), falling back to Python parser.")
+        return None
+
+
 def parse_commands() -> list[dict]:
-    return [
-        {
-            "command": "!spec",
-            "sourceFile": "modules/custom/commands/spec.lua",
-            "summary": "Interactive Job Crystal / Soul Spec selector menu, CLI inspector, and Ashita v4 [OXSPEC] sync.",
-            "usage": [
-                "!spec",
-                "!spec list",
-                "!spec info [crystal]",
-                "!spec set <crystal>",
-                "!spec remove",
-            ],
-        },
-        {
-            "command": "!talent",
-            "sourceFile": "modules/custom/commands/talent.lua",
-            "summary": "Spec-adaptive Weaponskill Talent Tree builder (4 Tiers, 56 pts per WS, Tier-1 WS unlock, Skillchain selector) & Ashita v4 0x1FD binary /talents UI bridge.",
-            "usage": [
-                "!talent",
-                "/talents (or /tal in Ashita v4 UI)",
-            ],
-        },
-        {
-            "command": "!gear",
-            "sourceFile": "modules/custom/commands/gear.lua",
-            "summary": "Auto-grants and equips a full 16-slot level-appropriate gear loadout tailored to your Job, active Crystal Spec, Role, and Weapon.",
-            "usage": [
-                "!gear",
-                "!gear menu",
-                "!gear <level> [weapon]",
-                "!gear role <melee|tank|ranged|caster>",
-                "!gear info",
-            ],
-        },
-        {
-            "command": "!eos",
-            "sourceFile": "modules/custom/commands/eos.lua",
-            "summary": "Controls Scholar's Eos (Medic) or Titania (Sage) faerie companion.",
-            "usage": [
-                "!eos heal",
-                "!eos dismiss",
-            ],
-        },
+    """Dynamically scan modules/custom/commands/*.lua + boss_like_combat_and_exp.lua."""
+    known_summaries = {
+        "spec": "Interactive Job Crystal / Soul Spec selector menu, CLI inspector, and Ashita v4 [OXSPEC] sync.",
+        "talent": "Spec-adaptive Weaponskill Talent Tree builder (4 Tiers, 56 pts per WS, Tier-1 WS unlock, Skillchain selector) & Ashita v4 0x1FD binary /talents UI bridge.",
+        "gear": "Auto-grants and equips a full 16-slot level-appropriate gear loadout tailored to your Job, active Crystal Spec, Role, and Weapon.",
+        "eos": "Controls Scholar's Eos (Medic) or Titania (Sage) faerie companion.",
+    }
+    cmds = []
+    for cfile in sorted(CMD_DIR.glob("*.lua")):
+        raw = cfile.read_text(encoding="utf-8", errors="replace")
+        func_m = re.search(r"--\s*func:\s*(.+)", raw)
+        desc_m = re.search(r"--\s*desc:\s*(.+)", raw)
+        cmd_name = func_m.group(1).strip() if func_m else cfile.stem
+        summary = known_summaries.get(cmd_name, desc_m.group(1).strip() if desc_m else f"Custom !{cmd_name} command.")
+
+        usages = []
+        for um in re.finditer(r"Usage:\s*([^'\"]+)", raw):
+            for part in um.group(1).split("|"):
+                p = part.strip()
+                if p and p not in usages:
+                    usages.append(p)
+        if not usages:
+            usages = [f"!{cmd_name}"]
+
+        cmds.append(
+            {
+                "command": f"!{cmd_name}",
+                "sourceFile": f"modules/custom/commands/{cfile.name}",
+                "summary": summary,
+                "usage": usages,
+            }
+        )
+
+    # Also include inline commands from boss_like_combat_and_exp.lua
+    cmds.append(
         {
             "command": "!weapons / !starterkit / !combat",
             "sourceFile": "modules/custom/lua/boss_like_combat_and_exp.lua",
@@ -1647,8 +1737,9 @@ def parse_commands() -> list[dict]:
                 "!combat",
                 "!bossstance",
             ],
-        },
-    ]
+        }
+    )
+    return cmds
 
 
 def parse_patches() -> list[dict]:
@@ -1748,10 +1839,94 @@ def parse_git_commits(limit: int = 50) -> list[dict]:
 def main():
     SITE_DIR.mkdir(parents=True, exist_ok=True)
 
-    jobs = parse_job_specs()
-    ws_catalog = parse_ws_catalog()
-    ws_trees = parse_ws_trees(ws_catalog)
-    rules = parse_server_rules()
+    sql_abils = parse_sql_custom_abilities()
+    lua_bin = find_lua_binary()
+    lua_data = run_lua_exporter(lua_bin) if lua_bin else None
+
+    if lua_data:
+        print(f"Using real Lua runtime ({lua_bin}) for exact module evaluation.")
+        jobs = []
+        for j in lua_data.get("jobSpecs", []):
+            jkey = j["jobKey"]
+            crystals_out = []
+            for c in j.get("crystals", []):
+                ckey = c["key"]
+                cname = c["name"]
+                passive_mods = [format_evaluated_mod(m["mod"], m["values"]) for m in c.get("evaluatedMods", [])]
+
+                # Prefer curated ability list if present, otherwise auto-resolve from SQL abilities
+                curated_abils = CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey))
+                if curated_abils is not None:
+                    spec_abilities = curated_abils
+                else:
+                    spec_abilities = [
+                        sql_abils[aid] for aid in c.get("extraAbilities", []) if aid in sql_abils
+                    ]
+
+                spec_traits = []
+                for tid in c.get("extraTraits", []):
+                    if tid in CUSTOM_TRAITS:
+                        spec_traits.append(CUSTOM_TRAITS[tid])
+                    else:
+                        spec_traits.append(
+                            {"id": tid, "name": f"{cname} Trait #{tid}", "job": jkey, "crystal": cname, "desc": f"Custom Job Trait #{tid} unlocked by {cname}."}
+                        )
+
+                crystals_out.append(
+                    {
+                        "id": c["id"],
+                        "key": ckey,
+                        "name": cname,
+                        "role": c["role"],
+                        "icon": c["icon"],
+                        "reqLevel": c["reqLevel"],
+                        "description": c["description"],
+                        "highlights": c["highlights"],
+                        "passiveMods": passive_mods,
+                        "customAbilities": spec_abilities,
+                        "customTraits": spec_traits,
+                    }
+                )
+            jobs.append(
+                {
+                    "jobKey": jkey,
+                    "jobId": j["jobId"],
+                    "jobName": j["jobName"],
+                    "color": j["color"],
+                    "crystals": crystals_out,
+                }
+            )
+
+        ws_trees = lua_data.get("weaponskills", [])
+        rules = parse_server_rules()
+        if lua_data.get("tierGates"):
+            rules["tierGates"] = {int(k): v for k, v in lua_data["tierGates"].items()}
+        if lua_data.get("rankLevelTables"):
+            rules["rankLevelTables"] = lua_data["rankLevelTables"]
+        if lua_data.get("maxWsPoints"):
+            rules["pointsPerMaxedWS"] = lua_data["maxWsPoints"]
+        # Update combat pace dynamically from live boss_like_combat_and_exp.lua config if exported
+        b_cfg = lua_data.get("bossConfig", {})
+        if b_cfg.get("playerCombatPace"):
+            pace_map = {x["mod"]: x["amount"] for x in b_cfg["playerCombatPace"]}
+            haste_g = pace_map.get("HASTE_GEAR", 1500) / 100
+            haste_a = pace_map.get("HASTE_ABILITY", 1000) / 100
+            stp = pace_map.get("STORETP", 25)
+            reg = pace_map.get("REGAIN", 20)
+            fc = pace_map.get("FASTCAST", 15)
+            rules["baselinePlayerPace"] = [
+                {"stat": "Baseline Haste", "value": f"+{int(haste_g + haste_a)}% (+{int(haste_g)}% Gear + {int(haste_a)}% Ability)", "desc": "Brisk combat speed right from Level 1 without needing endgame Haste gear first."},
+                {"stat": "Baseline Store TP", "value": f"+{stp}", "desc": "Faster TP generation on every melee and ranged swing."},
+                {"stat": "Combat Regain", "value": f"{reg} TP / tick", "desc": "Passive TP regeneration while engaged in battle."},
+                {"stat": "Baseline Fast Cast", "value": f"+{fc}%", "desc": "Snappier spell casting and shorter recasts across all jobs."},
+            ]
+    else:
+        print("Lua runtime not found locally; using Python Lua parser fallback.")
+        jobs = parse_job_specs()
+        ws_catalog = parse_ws_catalog()
+        ws_trees = parse_ws_trees(ws_catalog)
+        rules = parse_server_rules()
+
     wiki_extras = get_companions_and_equipment()
     commands = parse_commands()
     patches = parse_patches()

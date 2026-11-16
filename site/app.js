@@ -845,13 +845,27 @@
       ? (specTrees[state.selectedWsSpec] ? state.selectedWsSpec : 'berserker')
       : Object.keys(specTrees)[0] || 'default';
     const activeNodes = (isSpecAdaptive ? specTrees[activeSpecKey] : specTrees[activeSpecKey] || ws.nodes) || [];
-    const activeSpecInfo = SPEC_VIEW_META.find((s) => s.key === activeSpecKey);
+    const specList = (state.data.serverRules?.specCategories || []).map((s) => ({
+      key: s.key,
+      label: s.label,
+      hint: s.specs || s.hint || '',
+    }));
+    const effectiveSpecs = specList.length > 0 ? specList : SPEC_VIEW_META;
+    const activeSpecInfo = effectiveSpecs.find((s) => s.key === activeSpecKey);
+
+    const tg = state.data.serverRules?.tierGates || {};
+    const tGate = (n, defLvl, defPts, sfx = ' Required') => {
+      const g = tg[n] || tg[String(n)];
+      const lvl = g ? g.reqLevel : defLvl;
+      const pts = g ? g.reqWsPoints : defPts;
+      return `Lv. ${lvl}+ &bull; ${pts}+ WS Pts${sfx}`;
+    };
 
     const tierMeta = {
-      1: { title: 'Tier 1 — Foundation & Unlock Gate', gate: 'Lv. 1+ &bull; 0+ WS Pts (Invest 1 pt here to unlock WS)' },
-      2: { title: 'Tier 2 — Specialization', gate: 'Lv. 5+ &bull; 2+ WS Pts Required' },
-      3: { title: 'Tier 3 — Mastery', gate: 'Lv. 10+ &bull; 5+ WS Pts Required' },
-      4: { title: 'Tier 4 — Capstone & Apex', gate: 'Lv. 15+ &bull; 8+ WS Pts Required' },
+      1: { title: 'Tier 1 — Foundation & Unlock Gate', gate: tGate(1, 1, 0, ' (Invest 1 pt here to unlock WS)') },
+      2: { title: 'Tier 2 — Specialization', gate: tGate(2, 5, 2) },
+      3: { title: 'Tier 3 — Mastery', gate: tGate(3, 10, 5) },
+      4: { title: 'Tier 4 — Capstone & Apex', gate: tGate(4, 15, 8) },
     };
 
     return `
@@ -891,7 +905,7 @@
             <span style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml(activeSpecInfo?.hint || '')}</span>
           </div>
           <div class="job-filter-bar" style="margin-bottom:0;">
-            ${SPEC_VIEW_META.map(
+            ${effectiveSpecs.map(
               (sp) => `
               <button class="filter-chip ${activeSpecKey === sp.key ? 'active' : ''}" data-ws-spec="${escapeHtml(sp.key)}">
                 ${escapeHtml(sp.label)}
