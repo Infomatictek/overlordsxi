@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T09:20:06.964041+00:00",
+  "generatedAt": "2026-11-16T09:32:58.809044+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "30b862c",
+  "headCommit": "25f433b",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38212,6 +38212,58 @@
   ],
   "commits": [
     {
+      "hash": "25f433bd27eb871fd02ee5a748d1177b93deb78f",
+      "shortHash": "25f433b",
+      "author": "Infomatictek",
+      "date": "2026-11-16T09:32:28Z",
+      "subject": "Fix !gear job weapon restrictions, exclude REMA/DRK-only scythes, and add TP/WS sets",
+      "files": [
+        {
+          "path": "README.md",
+          "added": 3,
+          "removed": 1
+        },
+        {
+          "path": "modules/custom/commands/gear.lua",
+          "added": 41,
+          "removed": 13
+        },
+        {
+          "path": "modules/custom/lua/overlords_test_gear.lua",
+          "added": 3193,
+          "removed": 2290
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 12,
+          "removed": 2
+        }
+      ],
+      "totalAdded": 3249,
+      "totalRemoved": 2306
+    },
+    {
+      "hash": "48ae5079bf6b45fd5f9cc98cc672e956a93a848b",
+      "shortHash": "48ae507",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T09:20:07Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 39,
+          "removed": 74
+        },
+        {
+          "path": "site/data.json",
+          "added": 39,
+          "removed": 74
+        }
+      ],
+      "totalAdded": 78,
+      "totalRemoved": 148
+    },
+    {
       "hash": "30b862c57ef14b93fec7027e4a7dbad55b217b90",
       "shortHash": "30b862c",
       "author": "nappypup",
@@ -39668,58 +39720,6 @@
       ],
       "totalAdded": 170,
       "totalRemoved": 29
-    },
-    {
-      "hash": "7c73d6640b22b290d3d27f361542a934c48a19b8",
-      "shortHash": "7c73d66",
-      "author": "Infomatictek",
-      "date": "2026-11-14T21:07:06Z",
-      "subject": "Add Monk Sensei crystal (Staff Evasion & Counter Tank)",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 11,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/mnk_specs.lua",
-          "added": 551,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/mnk_specs.sql",
-          "added": 8,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 2,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 572,
-      "totalRemoved": 0
-    },
-    {
-      "hash": "fbba8c6aeaf95c77246b57f00ae918091710628f",
-      "shortHash": "fbba8c6",
-      "author": "Infomatictek",
-      "date": "2026-11-14T20:54:02Z",
-      "subject": "Keep Gladiator Warcry +12 Enmity self-only while party receives -8% DT",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 1,
-          "removed": 1
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 7,
-          "removed": 4
-        }
-      ],
-      "totalAdded": 8,
-      "totalRemoved": 5
     }
   ]
 }
