@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T08:54:11.337309+00:00",
+  "generatedAt": "2026-11-16T08:58:32.271861+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "0c9ab8e",
+  "headCommit": "d150f68",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -601,14 +601,14 @@
           "role": "Scythe & Undead Summoner",
           "icon": "onyx_tome",
           "reqLevel": 10,
-          "description": "Scythe-wielding Black Mage who commands undead summons, drains life through weaponskills, and detonates fallen thralls with Corpse Explosion.",
+          "description": "Scythe-wielding Black Mage who commands undead tank and ranged dark caster summons, drains life through weaponskills, and detonates thralls with Corpse Explosion.",
           "highlights": [
             "HP +10%, Scythe Skill raised to A+, and enhanced Occult Acumen.",
-            "Unlocks Summon Undead Warrior & Summon Undead Mage (Lv.10+), plus Corse & Dullahan (Lv.75+).",
+            "Undead Warrior & Dullahan: Frontline Tank summons with Grim Reaping sub-menu (Grave Provoke, Black Cloud, Bone Aegis, Blood Saber, Aegis Schism).",
+            "Undead Mage & Corse: Ranged never-missing Dark casters that stand back from the mob and empower party DPS via Grim Incantations.",
             "Harbinger's Drain: Weaponskill damage heals your active undead summon.",
             "Dark Pact: While an undead summon is alive, gain Double Attack, Store TP, and Accuracy.",
             "Corpse Explosion: Detonate your summon for massive Dark AoE damage.",
-            "Grim Reaping & Grim Incantations: Command Warrior/Dullahan cleaves or Mage/Corse dark bursts.",
             "Grim Conversion: Converts MACC->ACC, MATT->ATT, Fast Cast->Haste, and Magic Burst Bonus->WSD (Elemental Celerity unchanged)."
           ],
           "passiveMods": [
@@ -38224,14 +38224,63 @@
       "title": "Blm Necromancer Pets",
       "description": "Configures custom Undead Warrior, Undead Mage, Corse, and Dullahan pet IDs (130–133) for BLM Necromancer.",
       "files": [
+        "src/map/ai/controllers/mob_controller.cpp",
+        "src/map/entities/mob_entity.cpp",
         "src/map/utils/petutils.cpp",
         "src/map/utils/petutils.h"
       ],
-      "linesAdded": 62,
+      "linesAdded": 200,
       "linesRemoved": 2
     }
   ],
   "commits": [
+    {
+      "hash": "d150f6837f871caa5909194c1cc4fe67fcbbe11a",
+      "shortHash": "d150f68",
+      "author": "Infomatictek",
+      "date": "2026-11-16T08:58:24Z",
+      "subject": "feat(blm): add Necromancer pet sub-menus (Grim Reaping/Incantations) and ranged magical caster pet AI",
+      "files": [
+        {
+          "path": "modules/custom/lua/blm_specs.lua",
+          "added": 468,
+          "removed": 57
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 31,
+          "removed": 12
+        },
+        {
+          "path": "patches/0017-blm-necromancer-pets.patch",
+          "added": 188,
+          "removed": 0
+        }
+      ],
+      "totalAdded": 687,
+      "totalRemoved": 69
+    },
+    {
+      "hash": "e40056642163cee3587e1b9211ee66688844237a",
+      "shortHash": "e400566",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T08:54:11Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 98,
+          "removed": 78
+        },
+        {
+          "path": "site/data.json",
+          "added": 98,
+          "removed": 78
+        }
+      ],
+      "totalAdded": 196,
+      "totalRemoved": 156
+    },
     {
       "hash": "0c9ab8e2cab419d266ed47af93463bbbb645088a",
       "shortHash": "0c9ab8e",
@@ -39994,123 +40043,6 @@
       ],
       "totalAdded": 3918,
       "totalRemoved": 0
-    },
-    {
-      "hash": "80cccecdba5e036c79ebbe79005dbe82dfca0dee",
-      "shortHash": "80cccec",
-      "author": "Infomatictek",
-      "date": "2026-11-14T13:37:07-06:00",
-      "subject": "Fix +0/-0 talent descriptions and printf-unsafe ImGui text in Ashita addon (#5)",
-      "files": [
-        {
-          "path": "addons/ashita4/overlords_talents/overlords_talents.lua",
-          "added": 52,
-          "removed": 23
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_talents.lua",
-          "added": 59,
-          "removed": 17
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_tree_helpers.lua",
-          "added": 1,
-          "removed": 1
-        }
-      ],
-      "totalAdded": 112,
-      "totalRemoved": 41
-    },
-    {
-      "hash": "5c5a994288198bb3afbb74199b1ee74c3563f8cd",
-      "shortHash": "5c5a994",
-      "author": "Infomatictek",
-      "date": "2026-11-14T02:22:16-06:00",
-      "subject": "Revamp all remaining 192 weaponskills (#16-#235) with 4-tier bespoke talent trees (#4)",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 5,
-          "removed": 2
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_overrides.lua",
-          "added": 938,
-          "removed": 285
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_talents.lua",
-          "added": 70,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_tree_helpers.lua",
-          "added": 249,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_axe.lua",
-          "added": 353,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_club.lua",
-          "added": 430,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_dagger.lua",
-          "added": 489,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_gaxe.lua",
-          "added": 362,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_gkatana.lua",
-          "added": 354,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_gs.lua",
-          "added": 351,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_katana.lua",
-          "added": 354,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_polearm.lua",
-          "added": 344,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_ranged.lua",
-          "added": 595,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_scythe.lua",
-          "added": 344,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_staff.lua",
-          "added": 425,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_sword.lua",
-          "added": 463,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 6126,
-      "totalRemoved": 287
     }
   ]
 }
