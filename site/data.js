@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T14:31:40.194526+00:00",
+  "generatedAt": "2026-11-16T16:12:32.603584+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "9e17cb4",
+  "headCommit": "12652cb",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -36985,6 +36985,43 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "12652cbaca83bc1e7088e10c3385938c40b7e920",
+      "shortHash": "12652cb",
+      "author": "nappypup",
+      "date": "2026-11-16T10:12:23-06:00",
+      "subject": "fix(patch): align 0019-talent-ws-unlocks context with upstream lua_base_entity.cpp",
+      "files": [
+        {
+          "path": "patches/0019-talent-ws-unlocks.patch",
+          "added": 4,
+          "removed": 4
+        }
+      ],
+      "totalAdded": 4,
+      "totalRemoved": 4
+    },
+    {
+      "hash": "c3c28ae199ae86e2993e247257c3c8c923852378",
+      "shortHash": "c3c28ae",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T14:31:40Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 146,
+          "removed": 1349
+        },
+        {
+          "path": "site/data.json",
+          "added": 146,
+          "removed": 1349
+        }
+      ],
+      "totalAdded": 292,
+      "totalRemoved": 2698
+    },
+    {
       "hash": "9e17cb4e1c2d0f26e1e6386b6fdcf061e991cba1",
       "shortHash": "9e17cb4",
       "author": "Infomatictek",
@@ -38361,43 +38398,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 45,
       "totalRemoved": 22
-    },
-    {
-      "hash": "e84b7181cdaa96639091b94fa9758e82cd31de80",
-      "shortHash": "e84b718",
-      "author": "Infomatictek",
-      "date": "2026-11-15T09:19:05Z",
-      "subject": "Fix H.hits hitSeq table arguments in overlords_ws_trees_throwing.lua",
-      "files": [
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_throwing.lua",
-          "added": 3,
-          "removed": 3
-        }
-      ],
-      "totalAdded": 3,
-      "totalRemoved": 3
-    },
-    {
-      "hash": "92aac3c013b9822103d2dcae2565f0ed77ef3d4e",
-      "shortHash": "92aac3c",
-      "author": "Infomatictek",
-      "date": "2026-11-15T09:10:29Z",
-      "subject": "Skip unchanged C++ builds and target only modified server binaries",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 4,
-          "removed": 2
-        },
-        {
-          "path": "scripts/setup-local-server.ps1",
-          "added": 411,
-          "removed": 30
-        }
-      ],
-      "totalAdded": 415,
-      "totalRemoved": 32
     }
   ]
 };
