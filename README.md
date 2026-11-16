@@ -25,6 +25,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/commands/talent.lua` adds `!talent` (`customMenu` UI, CLI subcommands, and Ashita v4 `[OXTAL]` protocol).
 - `modules/custom/commands/gear.lua` adds `!gear` (auto-grants and equips a full 16-slot level-appropriate loadout tailored to main job, active crystal spec, role, and weapon type, with an interactive `customMenu` UI).
 - `modules/custom/cpp/eos_companion.cpp` defines Eos (Medic support AI), Titania (Sage enfeebling & elemental nuking AI), and Orphic Egg's fairy Refresh scaling.
+- `modules/custom/cpp/kazenoeye_sync.cpp` pushes live, authoritative mob/pet status effect icons and exact remaining times to nearby players (`0x1FE` `OXKE` packet) for the `kazenoeye` client HUD.
 - `modules/custom/sql/eos_companion.sql` defines `Call Eos` (`231`), `Call Titania` (`289`), pet rows (`128`/`129`), mob pools (`6020`/`6021`), spell lists (`566`/`600`), and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - `modules/custom/sql/war_commander_abilities.sql` defines the 4 WAR Commander custom Job Abilities (`396`–`399`: `tactical_breach`, `formation_bulwark`, `battle_cadence`, `rallying_horn`) with independent recast timers (`186`–`189`) and dynamic Lv.10+ crystal unlocking.
@@ -107,6 +108,7 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\spec.lu
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\eos.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\talent.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\eos_companion.cpp .\modules\custom\cpp\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\cpp\kazenoeye_sync.cpp .\modules\custom\cpp\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\eos_companion.sql .\modules\custom\sql\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\sch_specs.sql .\modules\custom\sql\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\war_commander_abilities.sql .\modules\custom\sql\
@@ -126,6 +128,7 @@ custom/lua/mnk_specs.lua
 custom/lua/dot_damage_log.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
+custom/cpp/kazenoeye_sync.cpp
 custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
 custom/sql/war_commander_abilities.sql
