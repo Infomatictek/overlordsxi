@@ -171,23 +171,37 @@ end
 local function getPartyInRange(player, anchor, maxDist)
     local members = {}
     local seen    = {}
-    local party   = player.getParty and player:getParty() or nil
+    local function tryInsert(entity)
+        if
+            entity ~= nil and
+            entity.getID and
+            not seen[entity:getID()] and
+            entity:isAlive() and
+            entity:getZoneID() == player:getZoneID() and
+            anchor:checkDistance(entity) <= maxDist
+        then
+            seen[entity:getID()] = true
+            table.insert(members, entity)
+        end
+    end
+
+    local party = player.getParty and player:getParty() or nil
     if party ~= nil then
         for _, member in ipairs(party) do
-            if
-                member ~= nil and
-                member:isAlive() and
-                member:getZoneID() == player:getZoneID() and
-                anchor:checkDistance(member) <= maxDist
-            then
-                seen[member:getID()] = true
-                table.insert(members, member)
+            tryInsert(member)
+            if member ~= nil and member.hasPet and member:hasPet() then
+                tryInsert(member:getPet())
             end
         end
     end
-    if not seen[player:getID()] and player:isAlive() then
-        table.insert(members, player)
+
+    if player:isAlive() then
+        tryInsert(player)
+        if player.hasPet and player:hasPet() then
+            tryInsert(player:getPet())
+        end
     end
+
     return members
 end
 
@@ -196,23 +210,28 @@ end
 -----------------------------------
 local function clearDarkPactMods(player)
     if player == nil then
-        return
+        return false
     end
     local prevDa  = player:getLocalVar('OX_NECRO_PACT_DA')
     local prevStp = player:getLocalVar('OX_NECRO_PACT_STP')
     local prevAcc = player:getLocalVar('OX_NECRO_PACT_ACC')
+    local changed = false
     if prevDa > 0 then
         player:delMod(xi.mod.DOUBLE_ATTACK, prevDa)
         player:setLocalVar('OX_NECRO_PACT_DA', 0)
+        changed = true
     end
     if prevStp > 0 then
         player:delMod(xi.mod.STORETP, prevStp)
         player:setLocalVar('OX_NECRO_PACT_STP', 0)
+        changed = true
     end
     if prevAcc > 0 then
         player:delMod(xi.mod.ACC, prevAcc)
         player:setLocalVar('OX_NECRO_PACT_ACC', 0)
+        changed = true
     end
+    return changed
 end
 
 local function syncDarkPactMods(player)
@@ -220,12 +239,16 @@ local function syncDarkPactMods(player)
         return
     end
     if not isNecromancer(player) then
-        clearDarkPactMods(player)
+        if clearDarkPactMods(player) and player.pushStatus then
+            player:pushStatus()
+        end
         return
     end
     local pet = getUndeadPet(player)
     if pet == nil or not pet:isAlive() then
-        clearDarkPactMods(player)
+        if clearDarkPactMods(player) and player.pushStatus then
+            player:pushStatus()
+        end
         return
     end
 
@@ -249,50 +272,100 @@ local function syncDarkPactMods(player)
     player:setLocalVar('OX_NECRO_PACT_DA', da)
     player:setLocalVar('OX_NECRO_PACT_STP', stp)
     player:setLocalVar('OX_NECRO_PACT_ACC', acc)
+    if player.pushStatus then
+        player:pushStatus()
+    end
 end
 
 -----------------------------------
 -- Grim Conversion (Lv.10+: MACC->ACC, MATT->ATT, FASTCAST->Haste, MB Bonus->WSD)
 -- Elemental Celerity (xi.mod.ELEMENTAL_CELERITY) is left untouched.
 -----------------------------------
-local MOD_MB_BONUS_CAPPED   = xi.mod and (xi.mod.MAGIC_BURST_BONUS_CAPPED or xi.mod.MAG_BURST_BONUS) or nil
-local MOD_MB_BONUS_UNCAPPED = xi.mod and xi.mod.MAGIC_BURST_BONUS_UNCAPPED or nil
+local function getMbBonusCappedMod()
+    return xi.mod and (xi.mod.MAGIC_BURST_BONUS_CAPPED or xi.mod.MAG_BURST_BONUS) or nil
+end
+
+local function getMbBonusUncappedMod()
+    return xi.mod and xi.mod.MAGIC_BURST_BONUS_UNCAPPED or nil
+end
+
+local function getUfastcastMod()
+    return xi.mod and xi.mod.UFASTCAST or nil
+end
 
 local function clearConversionMods(player)
     if player == nil then
-        return
+        return false
     end
-    local cMacc = player:getLocalVar('OX_NECRO_CONV_MACC')
-    local cMatt = player:getLocalVar('OX_NECRO_CONV_MATT')
-    local cFc   = player:getLocalVar('OX_NECRO_CONV_FC')
-    local cMbbC = player:getLocalVar('OX_NECRO_CONV_MBB_C')
-    local cMbbU = player:getLocalVar('OX_NECRO_CONV_MBB_U')
+    local modMbCapped   = getMbBonusCappedMod()
+    local modMbUncapped = getMbBonusUncappedMod()
+    local modUfastcast  = getUfastcastMod()
 
+    local cMacc   = player:getLocalVar('OX_NECRO_CONV_MACC')
+    local cMatt   = player:getLocalVar('OX_NECRO_CONV_MATT')
+    local cFc     = player:getLocalVar('OX_NECRO_CONV_FC')
+    local cUfc    = player:getLocalVar('OX_NECRO_CONV_UFC')
+    local cHasteA = player:getLocalVar('OX_NECRO_CONV_HASTE_A')
+    local cHasteG = player:getLocalVar('OX_NECRO_CONV_HASTE_G')
+    local cHasteM = player:getLocalVar('OX_NECRO_CONV_HASTE_M')
+    local cMbbC   = player:getLocalVar('OX_NECRO_CONV_MBB_C')
+    local cMbbU   = player:getLocalVar('OX_NECRO_CONV_MBB_U')
+
+    if cHasteA == 0 and cHasteG == 0 and cHasteM == 0 and cFc > 0 then
+        cHasteA = cFc * 100
+    end
+
+    local changed = false
     if cMacc > 0 then
         player:delMod(xi.mod.ACC, cMacc)
         player:addMod(xi.mod.MACC, cMacc)
         player:setLocalVar('OX_NECRO_CONV_MACC', 0)
+        changed = true
     end
     if cMatt > 0 then
         player:delMod(xi.mod.ATT, cMatt)
         player:addMod(xi.mod.MATT, cMatt)
         player:setLocalVar('OX_NECRO_CONV_MATT', 0)
+        changed = true
     end
     if cFc > 0 then
-        player:delMod(xi.mod.HASTE_ABILITY, cFc * 100)
         player:addMod(xi.mod.FASTCAST, cFc)
         player:setLocalVar('OX_NECRO_CONV_FC', 0)
+        changed = true
     end
-    if cMbbC > 0 and MOD_MB_BONUS_CAPPED ~= nil then
+    if cUfc > 0 and modUfastcast ~= nil then
+        player:addMod(modUfastcast, cUfc)
+        player:setLocalVar('OX_NECRO_CONV_UFC', 0)
+        changed = true
+    end
+    if cHasteA > 0 then
+        player:delMod(xi.mod.HASTE_ABILITY, cHasteA)
+        player:setLocalVar('OX_NECRO_CONV_HASTE_A', 0)
+        changed = true
+    end
+    if cHasteG > 0 then
+        player:delMod(xi.mod.HASTE_GEAR, cHasteG)
+        player:setLocalVar('OX_NECRO_CONV_HASTE_G', 0)
+        changed = true
+    end
+    if cHasteM > 0 then
+        player:delMod(xi.mod.HASTE_MAGIC, cHasteM)
+        player:setLocalVar('OX_NECRO_CONV_HASTE_M', 0)
+        changed = true
+    end
+    if cMbbC > 0 and modMbCapped ~= nil then
         player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbbC)
-        player:addMod(MOD_MB_BONUS_CAPPED, cMbbC)
+        player:addMod(modMbCapped, cMbbC)
         player:setLocalVar('OX_NECRO_CONV_MBB_C', 0)
+        changed = true
     end
-    if cMbbU > 0 and MOD_MB_BONUS_UNCAPPED ~= nil then
+    if cMbbU > 0 and modMbUncapped ~= nil then
         player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbbU)
-        player:addMod(MOD_MB_BONUS_UNCAPPED, cMbbU)
+        player:addMod(modMbUncapped, cMbbU)
         player:setLocalVar('OX_NECRO_CONV_MBB_U', 0)
+        changed = true
     end
+    return changed
 end
 
 local function syncConversionMods(player)
@@ -300,52 +373,104 @@ local function syncConversionMods(player)
         return
     end
     if not isNecromancer(player) or player:getMainLvl() < 10 then
-        clearConversionMods(player)
+        if clearConversionMods(player) and player.pushStatus then
+            player:pushStatus()
+        end
         return
     end
+
+    local modMbCapped   = getMbBonusCappedMod()
+    local modMbUncapped = getMbBonusUncappedMod()
+    local modUfastcast  = getUfastcastMod()
 
     local rawMacc = player:getMod(xi.mod.MACC)
     local rawMatt = player:getMod(xi.mod.MATT)
     local rawFc   = player:getMod(xi.mod.FASTCAST)
-    local rawMbbC = MOD_MB_BONUS_CAPPED ~= nil and player:getMod(MOD_MB_BONUS_CAPPED) or 0
-    local rawMbbU = MOD_MB_BONUS_UNCAPPED ~= nil and player:getMod(MOD_MB_BONUS_UNCAPPED) or 0
+    local rawUfc  = modUfastcast ~= nil and player:getMod(modUfastcast) or 0
+    local rawMbbC = modMbCapped ~= nil and player:getMod(modMbCapped) or 0
+    local rawMbbU = modMbUncapped ~= nil and player:getMod(modMbUncapped) or 0
 
-    if rawMacc == 0 and rawMatt == 0 and rawFc == 0 and rawMbbC == 0 and rawMbbU == 0 then
+    if rawMacc == 0 and rawMatt == 0 and rawFc == 0 and rawUfc == 0 and rawMbbC == 0 and rawMbbU == 0 then
         return
     end
 
-    clearConversionMods(player)
+    local cleared = clearConversionMods(player)
 
     local macc = math.max(0, player:getMod(xi.mod.MACC))
     local matt = math.max(0, player:getMod(xi.mod.MATT))
     local fc   = math.max(0, player:getMod(xi.mod.FASTCAST))
-    local mbbC = MOD_MB_BONUS_CAPPED ~= nil and math.max(0, player:getMod(MOD_MB_BONUS_CAPPED)) or 0
-    local mbbU = MOD_MB_BONUS_UNCAPPED ~= nil and math.max(0, player:getMod(MOD_MB_BONUS_UNCAPPED)) or 0
+    local ufc  = modUfastcast ~= nil and math.max(0, player:getMod(modUfastcast)) or 0
+    local mbbC = modMbCapped ~= nil and math.max(0, player:getMod(modMbCapped)) or 0
+    local mbbU = modMbUncapped ~= nil and math.max(0, player:getMod(modMbUncapped)) or 0
 
+    local applied = false
     if macc > 0 then
         player:delMod(xi.mod.MACC, macc)
         player:addMod(xi.mod.ACC, macc)
         player:setLocalVar('OX_NECRO_CONV_MACC', macc)
+        applied = true
     end
     if matt > 0 then
         player:delMod(xi.mod.MATT, matt)
         player:addMod(xi.mod.ATT, matt)
         player:setLocalVar('OX_NECRO_CONV_MATT', matt)
+        applied = true
     end
     if fc > 0 then
         player:delMod(xi.mod.FASTCAST, fc)
-        player:addMod(xi.mod.HASTE_ABILITY, fc * 100)
         player:setLocalVar('OX_NECRO_CONV_FC', fc)
+        applied = true
     end
-    if mbbC > 0 and MOD_MB_BONUS_CAPPED ~= nil then
-        player:delMod(MOD_MB_BONUS_CAPPED, mbbC)
+    if ufc > 0 and modUfastcast ~= nil then
+        player:delMod(modUfastcast, ufc)
+        player:setLocalVar('OX_NECRO_CONV_UFC', ufc)
+        applied = true
+    end
+
+    local totalHasteBps = (fc + ufc) * 100
+    if totalHasteBps > 0 then
+        local rem   = totalHasteBps
+        local headA = math.max(0, 2500 - player:getMod(xi.mod.HASTE_ABILITY))
+        local addA  = math.min(rem, headA)
+        rem = rem - addA
+
+        local headG = math.max(0, 2500 - player:getMod(xi.mod.HASTE_GEAR))
+        local addG  = math.min(rem, headG)
+        rem = rem - addG
+
+        local headM = math.max(0, 4375 - player:getMod(xi.mod.HASTE_MAGIC))
+        local addM  = math.min(rem, headM)
+
+        if addA > 0 then
+            player:addMod(xi.mod.HASTE_ABILITY, addA)
+            player:setLocalVar('OX_NECRO_CONV_HASTE_A', addA)
+        end
+        if addG > 0 then
+            player:addMod(xi.mod.HASTE_GEAR, addG)
+            player:setLocalVar('OX_NECRO_CONV_HASTE_G', addG)
+        end
+        if addM > 0 then
+            player:addMod(xi.mod.HASTE_MAGIC, addM)
+            player:setLocalVar('OX_NECRO_CONV_HASTE_M', addM)
+        end
+        applied = true
+    end
+
+    if mbbC > 0 and modMbCapped ~= nil then
+        player:delMod(modMbCapped, mbbC)
         player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbbC)
         player:setLocalVar('OX_NECRO_CONV_MBB_C', mbbC)
+        applied = true
     end
-    if mbbU > 0 and MOD_MB_BONUS_UNCAPPED ~= nil then
-        player:delMod(MOD_MB_BONUS_UNCAPPED, mbbU)
+    if mbbU > 0 and modMbUncapped ~= nil then
+        player:delMod(modMbUncapped, mbbU)
         player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbbU)
         player:setLocalVar('OX_NECRO_CONV_MBB_U', mbbU)
+        applied = true
+    end
+
+    if (cleared or applied) and player.pushStatus then
+        player:pushStatus()
     end
 end
 
@@ -359,8 +484,11 @@ local function detachNecroListeners(player)
     player:removeListener('OX_NECRO_EQUIP_SYNC')
     player:removeListener('OX_NECRO_EFFECT_GAIN')
     player:removeListener('OX_NECRO_EFFECT_LOSE')
-    clearDarkPactMods(player)
-    clearConversionMods(player)
+    local cPact = clearDarkPactMods(player)
+    local cConv = clearConversionMods(player)
+    if (cPact or cConv) and player.pushStatus then
+        player:pushStatus()
+    end
 end
 
 -----------------------------------
@@ -386,8 +514,11 @@ local function attachNecroListeners(player)
         local missing = math.max(0, pet:getMaxHP() - pet:getHP())
         local actual = math.min(heal, missing)
         if actual > 0 then
-            pet:addHP(actual)
-            tell(actor, string.format("Harbinger's Drain restores %d HP to %s.", actual, pet:getName()))
+            local drained = pet:addHP(actual)
+            if drained > 0 and actor.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
+                actor:messagePublic(xi.msg.basic.RECOVERS_HP, pet, 0, drained)
+            end
+            tell(actor, string.format("Harbinger's Drain restores %d HP to %s.", drained, pet:getName()))
         end
     end)
 
@@ -855,9 +986,9 @@ end, function(player, target, ability, action)
         action:recordDamage(target, xi.attackType.PHYSICAL, dmg)
     end
 
-    local healed = math.min(dmg, math.max(0, pet:getMaxHP() - pet:getHP()))
-    if healed > 0 then
-        pet:addHP(healed)
+    local healed = pet:addHP(dmg)
+    if healed > 0 and player.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
+        player:messagePublic(xi.msg.basic.RECOVERS_HP, pet, 0, healed)
     end
     tell(player, string.format('%s strikes %s with Blood Saber for %d damage (+%d Pet HP)!',
         pet:getName(), target:getName(), dmg, healed))
@@ -1027,8 +1158,20 @@ end, function(player, target, ability, action)
     local pct     = isCorse and 0.20 or 0.15
     local tpGain  = isCorse and 200 or 150
     for _, member in ipairs(members) do
-        member:addHP(math.max(20, math.floor(member:getMaxHP() * pct)))
-        member:addMP(math.max(15, math.floor(member:getMaxMP() * pct)))
+        local rawHeal = math.max(20, math.floor(member:getMaxHP() * pct))
+        local healed  = member:addHP(rawHeal)
+        if
+            (healed > 0 or member:getID() ~= player:getID()) and
+            player.messagePublic and
+            xi.msg and
+            xi.msg.basic and
+            xi.msg.basic.RECOVERS_HP
+        then
+            player:messagePublic(xi.msg.basic.RECOVERS_HP, member, 0, healed)
+        end
+        if member.getMaxMP and member:getMaxMP() > 0 then
+            member:addMP(math.max(15, math.floor(member:getMaxMP() * pct)))
+        end
         member:addTP(tpGain)
     end
     tell(player, string.format('%s reaps %s with Soul Harvest for %d Dark damage (Party +%d%% HP/MP & +%d TP)!',

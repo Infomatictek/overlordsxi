@@ -426,7 +426,26 @@ local function getPartyMembersInRange(player, radius)
         return {}
     end
 
-    local maxDist = radius or 12.0
+    local maxDist  = radius or 12.0
+    local out      = {}
+    local seen     = {}
+    local pZone    = player.getZoneID and player:getZoneID() or nil
+    local playerId = player.getID and player:getID() or nil
+
+    local function tryInsert(entity)
+        if
+            entity ~= nil and
+            entity.getID and
+            not seen[entity:getID()] and
+            (not entity.isAlive or entity:isAlive()) and
+            (pZone == nil or not entity.getZoneID or entity:getZoneID() == pZone) and
+            ((playerId ~= nil and entity:getID() == playerId) or (player.checkDistance and player:checkDistance(entity) <= maxDist))
+        then
+            seen[entity:getID()] = true
+            table.insert(out, entity)
+        end
+    end
+
     local rawList = nil
     if player.getPartyWithTrusts then
         rawList = player:getPartyWithTrusts()
@@ -434,27 +453,18 @@ local function getPartyMembersInRange(player, radius)
         rawList = player:getParty()
     end
 
-    if type(rawList) ~= 'table' or #rawList == 0 then
-        return { player }
-    end
-
-    local out  = {}
-    local seen = {}
-    for _, member in pairs(rawList) do
-        if
-            member ~= nil and
-            member.getID and
-            not seen[member:getID()] and
-            (not member.isAlive or member:isAlive()) and
-            (member:getID() == player:getID() or (player.checkDistance and player:checkDistance(member) <= maxDist))
-        then
-            seen[member:getID()] = true
-            table.insert(out, member)
+    if type(rawList) == 'table' then
+        for _, member in pairs(rawList) do
+            tryInsert(member)
+            if member ~= nil and member.hasPet and member:hasPet() then
+                tryInsert(member:getPet())
+            end
         end
     end
 
-    if not seen[player:getID()] then
-        table.insert(out, player)
+    tryInsert(player)
+    if player.hasPet and player:hasPet() then
+        tryInsert(player:getPet())
     end
 
     return out
@@ -1015,7 +1025,16 @@ local function triggerLifebinderMend(actor, isWeaponskill)
     if mostInjured ~= nil and mostInjured.addHP then
         local targetMaxHp = mostInjured.getMaxHP and mostInjured:getMaxHP() or 100
         local healAmount  = math.max(6, math.floor((targetMaxHp * hpRatio + mndStat * 0.5 + #runes * 4) * curePot))
-        mostInjured:addHP(healAmount)
+        local healed      = mostInjured:addHP(healAmount)
+        if
+            healed > 0 and
+            actor.messagePublic and
+            xi.msg and
+            xi.msg.basic and
+            xi.msg.basic.RECOVERS_HP
+        then
+            actor:messagePublic(xi.msg.basic.RECOVERS_HP, mostInjured, 0, healed)
+        end
     end
 
     if actor.addMP and actor.getMaxMP then
@@ -1849,7 +1868,16 @@ m:addOverride('xi.job_utils.rune_fencer.useOneForAll', function(player, target, 
         local party       = getPartyMembersInRange(player, 12.0)
         for _, member in ipairs(party) do
             if member.addHP then
-                member:addHP(healAmount)
+                local healed = member:addHP(healAmount)
+                if
+                    (healed > 0 or member:getID() ~= player:getID()) and
+                    player.messagePublic and
+                    xi.msg and
+                    xi.msg.basic and
+                    xi.msg.basic.RECOVERS_HP
+                then
+                    player:messagePublic(xi.msg.basic.RECOVERS_HP, member, 0, healed)
+                end
             end
         end
     end
@@ -1952,13 +1980,20 @@ m:addOverride('xi.job_utils.rune_fencer.useVivaciousPulse', function(player, tar
         local actualHeal = math.min(memberHeal, math.max(0, maxHp - curHp))
 
         if member.restoreHP then
-            member:restoreHP(actualHeal)
+            actualHeal = member:restoreHP(actualHeal)
         elseif member.addHP then
-            member:addHP(actualHeal)
+            actualHeal = member:addHP(actualHeal)
         end
 
         if member:getID() == player:getID() then
             casterHealed = actualHeal
+        elseif
+            player.messagePublic and
+            xi.msg and
+            xi.msg.basic and
+            xi.msg.basic.RECOVERS_HP
+        then
+            player:messagePublic(xi.msg.basic.RECOVERS_HP, member, 0, actualHeal)
         end
 
         if undaCount > 0 then
@@ -1988,8 +2023,8 @@ m:addOverride('xi.combat.magicAoE.calculateTypeAndRadius', function(caster, spel
     if
         isRunSpec(caster, LIFEBINDER_KEY) and
         spell ~= nil and
-        spell.isAoE and
-        spell:isAoE() == xi.magic.aoe.RADIAL_ACCE
+        spell.getAoE and
+        spell:getAoE() == xi.magic.aoe.RADIAL_ACCE
     then
         local family = spell.getSpellFamily and spell:getSpellFamily() or nil
         if
@@ -2654,7 +2689,16 @@ end, function(player, target, _ability)
     local maxHp = recipient.getMaxHP and recipient:getMaxHP() or 100
     local healAmount = math.max(15, math.floor(maxHp * (healPct / 100) * curePot))
     if recipient.addHP then
-        recipient:addHP(healAmount)
+        local healed = recipient:addHP(healAmount)
+        if
+            (healed > 0 or recipient:getID() ~= player:getID()) and
+            player.messagePublic and
+            xi.msg and
+            xi.msg.basic and
+            xi.msg.basic.RECOVERS_HP
+        then
+            player:messagePublic(xi.msg.basic.RECOVERS_HP, recipient, 0, healed)
+        end
     end
 
     applyTimedEffectWithMods(

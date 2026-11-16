@@ -113,14 +113,40 @@ registerMagicWs('whirling_waltz', function()
 end, function(player, _target, _wsID, tp, damage)
     local ratio = (tp >= 3000 and 0.30) or (tp >= 2000 and 0.20) or 0.10
     local heal = math.max(1, math.floor(damage * ratio))
-    if player:getParty() ~= nil then
-        for _, member in ipairs(player:getParty()) do
-            if member ~= nil and member:isAlive() and player:checkDistance(member) <= 10 then
-                member:addHP(heal)
+    local party = (player.getPartyWithTrusts and player:getPartyWithTrusts())
+        or (player.getParty and player:getParty())
+        or { player }
+    local seen = {}
+    local function healEntity(entity)
+        if
+            entity ~= nil and
+            entity.getID and
+            not seen[entity:getID()] and
+            entity:isAlive() and
+            (entity:getID() == player:getID() or player:checkDistance(entity) <= 10)
+        then
+            seen[entity:getID()] = true
+            local actual = entity:addHP(heal)
+            if
+                (actual > 0 or entity:getID() ~= player:getID()) and
+                player.messagePublic and
+                xi.msg and
+                xi.msg.basic and
+                xi.msg.basic.RECOVERS_HP
+            then
+                player:messagePublic(xi.msg.basic.RECOVERS_HP, entity, 0, actual)
             end
         end
-    else
-        player:addHP(heal)
+    end
+    for _, member in ipairs(party) do
+        healEntity(member)
+        if member ~= nil and member.hasPet and member:hasPet() then
+            healEntity(member:getPet())
+        end
+    end
+    healEntity(player)
+    if player.hasPet and player:hasPet() then
+        healEntity(player:getPet())
     end
 end)
 
@@ -148,7 +174,10 @@ end, function(player, target, _wsID, tp, damage)
         return
     end
     local ratio = (tp >= 3000 and 0.45) or (tp >= 2000 and 0.30) or 0.15
-    player:addHP(math.max(1, math.floor(damage * ratio)))
+    local actual = player:addHP(math.max(1, math.floor(damage * ratio)))
+    if actual > 0 and player.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
+        player:messagePublic(xi.msg.basic.RECOVERS_HP, player, 0, actual)
+    end
 end)
 
 -- #245 Stutter Disc

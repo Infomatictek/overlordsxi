@@ -1199,7 +1199,16 @@ m:addOverride('xi.actions.abilities.rallying_horn.onUseAbility', function(player
     local maxHp = target.getMaxHP and target:getMaxHP() or 0
     local healAmount = math.max(8, math.floor(maxHp * healPct / 100))
     if maxHp > 0 and target.addHP then
-        target:addHP(healAmount)
+        local healed = target:addHP(healAmount)
+        if
+            (healed > 0 or target:getID() ~= player:getID()) and
+            player.messagePublic and
+            xi.msg and
+            xi.msg.basic and
+            xi.msg.basic.RECOVERS_HP
+        then
+            player:messagePublic(xi.msg.basic.RECOVERS_HP, target, 0, healed)
+        end
     end
 
     if target.addTP then

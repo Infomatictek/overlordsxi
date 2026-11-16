@@ -169,7 +169,7 @@ end)
 m:addOverride('xi.combat.magicAoE.calculateTypeAndRadius', function(caster, spell)
     if
         isMedic(caster) and
-        spell:isAoE() == xi.magic.aoe.RADIAL_ACCE and
+        spell:getAoE() == xi.magic.aoe.RADIAL_ACCE and
         isCureOrRegenSpell(spell)
     then
         return { xi.magic.aoe.RADIAL, 10 }

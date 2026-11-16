@@ -1,0 +1,127 @@
+diff --git a/src/map/ai/helpers/targetfind.cpp b/src/map/ai/helpers/targetfind.cpp
+index 2459cef..5a632ce 100644
+--- a/src/map/ai/helpers/targetfind.cpp
++++ b/src/map/ai/helpers/targetfind.cpp
+@@ -123,8 +123,8 @@ void CTargetFind::findWithinArea(CBattleEntity* PTarget, AOE_RADIUS radiusType,
+     // this is a buff because i'm targetting myself
+     bool withPet = PETS_CAN_AOE_BUFF || (m_findFlags & FINDFLAGS_PET) || (m_PMasterTarget->objtype != m_PBattleEntity->objtype);
+ 
+-    // Pets/trusts don't buff other pets with self-centered AoEs
+-    if (radiusType == AOE_RADIUS::ATTACKER && m_PBattleEntity->PMaster != nullptr)
++    // Pets/trusts don't buff other pets with self-centered AoEs unless explicitly flagged (e.g. healing)
++    if (radiusType == AOE_RADIUS::ATTACKER && m_PBattleEntity->PMaster != nullptr && !(m_findFlags & FINDFLAGS_PET))
+     {
+         withPet = false;
+     }
+@@ -601,8 +601,11 @@ auto CTargetFind::validEntity(CBattleEntity* PTarget) -> bool
+             }
+             else if (m_findType == FIND_TYPE::MONSTER_MONSTER || m_findType == FIND_TYPE::PLAYER_PLAYER)
+             {
+-                // Allow Trusts and summoner/jug pets in party-targeted AoEs
+-                return PTarget->objtype == TYPE_TRUST || PTarget->objtype == TYPE_PET;
++                // Allow Trusts and summoner/jug pets in party-targeted AoEs (still subject to area/cone checks below)
++                if (PTarget->objtype != TYPE_TRUST && PTarget->objtype != TYPE_PET)
++                {
++                    return false;
++                }
+             }
+         }
+     }
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index f68627d..6481291 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -2412,6 +2412,10 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
+     {
+         flags |= FINDFLAGS_DEAD;
+     }
++    if (PSpell->isHeal() || PSpell->getSpellFamily() == SPELLFAMILY_REGEN || PSpell->getID() == SpellID::White_Wind)
++    {
++        flags |= FINDFLAGS_PET;
++    }
+ 
+     const auto result    = luautils::callGlobal<sol::table>("xi.combat.magicAoE.calculateTypeAndRadius", this, PSpell);
+     SPELLAOE   aoeType   = result.get_or(1, SPELLAOE_NONE);
+@@ -2742,8 +2746,24 @@ void CBattleEntity::OnAbility(CAbilityState& state, action_t& action)
+ 
+         if (PAbility->isAoE())
+         {
++            uint8 abilityFindFlags = FINDFLAGS_NONE;
++            switch (PAbility->getID())
++            {
++                case ABILITY_BENEDICTION:
++                case ABILITY_DIVINE_WALTZ:
++                case ABILITY_DIVINE_WALTZ_II:
++                case 397: // Formation: Bulwark
++                case 398: // Battle Cadence
++                case 399: // Rallying Horn
++                case 418: // Sanctified Ward
++                    abilityFindFlags |= FINDFLAGS_PET;
++                    break;
++                default:
++                    break;
++            }
++
+             PAI->TargetFind->reset();
+-            PAI->TargetFind->findWithinArea(this, AOE_RADIUS::ATTACKER, PAbility->getRadius(), FINDFLAGS_NONE, PAbility->getValidTarget());
++            PAI->TargetFind->findWithinArea(this, AOE_RADIUS::ATTACKER, PAbility->getRadius(), abilityFindFlags, PAbility->getValidTarget());
+ 
+             auto prevMsg = MsgBasic::None;
+             for (auto&& PTargetFound : PAI->TargetFind->m_targets)
+@@ -2854,8 +2874,11 @@ void CBattleEntity::OnMobSkillFinished(CMobSkillState& state, action_t& action)
+     float distance  = PSkill->getDistance();
+     uint8 findFlags = 0;
+ 
+-    // Mob buff abilities also hit monster's pets
+-    if (PSkill->getValidTargets() == TARGET_SELF)
++    // Mob buff abilities also hit monster's pets, and player-aligned ally party/self skills also hit party pets
++    if (PSkill->getValidTargets() == TARGET_SELF ||
++        (this->allegiance == xi::Allegiance::Player &&
++         !(PSkill->getValidTargets() & TARGET_ENEMY) &&
++         (PSkill->getValidTargets() & (TARGET_SELF | TARGET_PLAYER_PARTY))))
+     {
+         findFlags |= FINDFLAGS_PET;
+     }
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index 4566d61..a60b9aa 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -11779,6 +11779,18 @@ void CLuaBaseEntity::sendTalentPacket(std::string const& payload)
+     PChar->pushPacket(std::move(packet));
+ }
+ 
++void CLuaBaseEntity::pushStatus()
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        return;
++    }
++
++    auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++    PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS>(PChar);
++    PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++}
++
+ /************************************************************************
+  *  Function: getEntitiesInRange()
+  *  Purpose : Returns a Lua table of entities within range of the base entity
+@@ -21240,6 +21252,7 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
+     SOL_REGISTER("sendTalentPacket", CLuaBaseEntity::sendTalentPacket);
++    SOL_REGISTER("pushStatus", CLuaBaseEntity::pushStatus);
+     SOL_REGISTER("getEntitiesInRange", CLuaBaseEntity::getEntitiesInRange);
+ 
+     // Parties and Alliances
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+index 1d29e28..b660f2d 100644
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -594,6 +594,7 @@ public:
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
+     void sendTalentPacket(std::string const& payload);
++    void pushStatus();
+     auto getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table;
+ 
+     // Parties and Alliances

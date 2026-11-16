@@ -1760,29 +1760,60 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             attacker:addStatusEffect(effId, opts)
         end
 
+        local function emitWsHealLog(entity, amt)
+            if
+                entity ~= nil and
+                attacker.messagePublic and
+                xi.msg and
+                xi.msg.basic and
+                xi.msg.basic.RECOVERS_HP
+            then
+                attacker:messagePublic(xi.msg.basic.RECOVERS_HP, entity, 0, amt)
+            end
+        end
+
         if selfMaxHpHealPct > 0 then
             local amt = math.floor(attacker:getMaxHP() * (selfMaxHpHealPct / 100))
             if amt > 0 then
-                attacker:addHP(amt)
+                local healed = attacker:addHP(amt)
+                if healed > 0 then
+                    emitWsHealLog(attacker, healed)
+                end
             end
         end
 
         if partyHealPct > 0 then
-            local party = attacker.getParty and attacker:getParty() or nil
-            if type(party) == 'table' and #party > 0 then
-                for _, member in ipairs(party) do
-                    if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
-                        local amt = math.floor(member:getMaxHP() * (partyHealPct / 100))
-                        if amt > 0 then
-                            member:addHP(amt)
+            local party = (attacker.getPartyWithTrusts and attacker:getPartyWithTrusts())
+                or (attacker.getParty and attacker:getParty())
+                or { attacker }
+            local seen = {}
+            local function healPartyEntity(entity)
+                if
+                    entity ~= nil and
+                    entity.getID and
+                    not seen[entity:getID()] and
+                    entity:isAlive() and
+                    (entity == attacker or entity:checkDistance(attacker) <= 15)
+                then
+                    seen[entity:getID()] = true
+                    local amt = math.floor(entity:getMaxHP() * (partyHealPct / 100))
+                    if amt > 0 and entity.addHP then
+                        local healed = entity:addHP(amt)
+                        if healed > 0 or entity ~= attacker then
+                            emitWsHealLog(entity, healed)
                         end
                     end
                 end
-            else
-                local amt = math.floor(attacker:getMaxHP() * (partyHealPct / 100))
-                if amt > 0 then
-                    attacker:addHP(amt)
+            end
+            for _, member in ipairs(party) do
+                healPartyEntity(member)
+                if member ~= nil and member.hasPet and member:hasPet() then
+                    healPartyEntity(member:getPet())
                 end
+            end
+            healPartyEntity(attacker)
+            if attacker.hasPet and attacker:hasPet() then
+                healPartyEntity(attacker:getPet())
             end
         end
 
@@ -1817,7 +1848,10 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if pet ~= nil and pet:isAlive() then
                 local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
                 if petHp > 0 and pet.addHP then
-                    pet:addHP(petHp)
+                    local healed = pet:addHP(petHp)
+                    if healed > 0 then
+                        emitWsHealLog(pet, healed)
+                    end
                 end
                 if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
                     local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
@@ -1836,7 +1870,10 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if hpDrainPct > 0 and (target == nil or not target:isUndead()) then
                 local amt = math.floor(baseDmg * (hpDrainPct / 100))
                 if amt > 0 then
-                    attacker:addHP(amt)
+                    local healed = attacker:addHP(amt)
+                    if healed > 0 then
+                        emitWsHealLog(attacker, healed)
+                    end
                 end
             end
             if mpDrainPct > 0 then
@@ -1848,13 +1885,19 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if selfHealPct > 0 then
                 local amt = math.floor(baseDmg * (selfHealPct / 100))
                 if amt > 0 then
-                    attacker:addHP(amt)
+                    local healed = attacker:addHP(amt)
+                    if healed > 0 then
+                        emitWsHealLog(attacker, healed)
+                    end
                 end
             end
             if mpToHpPct > 0 then
                 local amt = math.floor(baseDmg * (mpToHpPct / 100))
                 if amt > 0 then
-                    attacker:addHP(amt)
+                    local healed = attacker:addHP(amt)
+                    if healed > 0 then
+                        emitWsHealLog(attacker, healed)
+                    end
                 end
             end
         end
@@ -2299,7 +2342,10 @@ m:addOverride('xi.actions.weaponskills.dagan.onUseWeaponSkill', function(player,
     end)
 
     local mult = (1.0 + (data.potencyPct + data.nextWsd) / 100) * data.tpScale
-    player:addHP(math.floor(player:getMaxHP() * 0.22 * mult))
+    local healed = player:addHP(math.floor(player:getMaxHP() * 0.22 * mult))
+    if healed > 0 and player.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
+        player:messagePublic(xi.msg.basic.RECOVERS_HP, player, 0, healed)
+    end
     local mp = math.floor(player:getMaxMP() * 0.15 * mult)
     applyPostDamageTraits(player, target, wsID, data.ranks, mp, {})
     return 0, 0, false, mp
