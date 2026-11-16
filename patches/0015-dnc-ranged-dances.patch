@@ -259,7 +259,7 @@ index e27b61ed..fffa2154 100644
      {
          bool hasDrainDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DrainDaze);
          bool hasAspirDaze = PDefender->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AspirDaze);
-@@ -1702,42 +1866,44 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+@@ -1702,42 +1866,43 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
  
              attackerID = PDefender->StatusEffectContainer->GetStatusEffect(daze)->GetSubID();
  
