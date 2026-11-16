@@ -833,7 +833,7 @@ function spec.getCrystalSnapshot(player)
         end
 
         local active = spec.get(player, jobId)
-        local activeId = active and tonumber(active.id) or 0
+        local activeId = (active ~= nil and spec.isLevelEligible(player, jobId, active)) and tonumber(active.id) or 0
         jobsOut[jobId] =
         {
             ownedMask    = ownedMask,

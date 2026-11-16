@@ -1,0 +1,211 @@
+diff --git a/src/search/data_loader.cpp b/src/search/data_loader.cpp
+index bfac8bb022..af11269240 100644
+--- a/src/search/data_loader.cpp
++++ b/src/search/data_loader.cpp
+@@ -377,9 +377,19 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+     ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+ 
+     constexpr auto everyone = db::Query(
+-        "SELECT charid, partyid, charname, pos_zone, pos_prevzone, nation, rank_sandoria, rank_bastok, unity_leader, "
++        "SELECT accounts_sessions.charid AS charid, partyid, charname, pos_zone, pos_prevzone, nation, rank_sandoria, rank_bastok, unity_leader, "
+         "rank_windurst, race, mjob, sjob, mlvl, slvl, languages, settings, seacom_type, disconnecting, gmHiddenEnabled, muted, "
+-        "linkshellid1, linkshellid2 "
++        "linkshellid1, linkshellid2, "
++        "CASE "
++        "WHEN mlvl >= 10 AND ("
++        "(mjob IN (1, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
++        "(mjob IN (2, 4, 19) AND ox_spec.value = 1)"
++        ") THEN ox_spec.value "
++        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
++        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
++        "THEN crystal_active.value "
++        "ELSE 0 END AS crystalBranch "
+         "FROM accounts_sessions "
+         "LEFT JOIN accounts_parties USING (charid) "
+         "LEFT JOIN chars USING (charid) "
+@@ -387,14 +397,40 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+         "LEFT JOIN char_stats USING (charid) "
+         "LEFT JOIN char_profile USING(charid) "
+         "LEFT JOIN char_flags USING(charid) "
++        "LEFT JOIN char_vars AS ox_spec ON ox_spec.charid = accounts_sessions.charid "
++        "AND ox_spec.varname = CASE mjob "
++        "WHEN 1 THEN 'OX_SPEC_WAR' "
++        "WHEN 2 THEN 'OX_SPEC_MNK' "
++        "WHEN 4 THEN 'OX_SPEC_BLM' "
++        "WHEN 19 THEN 'OX_SPEC_DNC' "
++        "WHEN 20 THEN 'OX_SPEC_SCH' "
++        "WHEN 22 THEN 'OX_SPEC_RUN' "
++        "ELSE '' END "
++        "AND (ox_spec.expiry = 0 OR ox_spec.expiry > UNIX_TIMESTAMP()) "
++        "LEFT JOIN char_vars AS crystal_active ON crystal_active.charid = accounts_sessions.charid "
++        "AND crystal_active.varname = 'CrystalActive:1' "
++        "AND (crystal_active.expiry = 0 OR crystal_active.expiry > UNIX_TIMESTAMP()) "
++        "LEFT JOIN char_vars AS crystal_owned ON crystal_owned.charid = accounts_sessions.charid "
++        "AND crystal_owned.varname = 'CrystalOwned:1' "
++        "AND (crystal_owned.expiry = 0 OR crystal_owned.expiry > UNIX_TIMESTAMP()) "
+         "WHERE charname IS NOT NULL "
+         "AND (? = 0 OR mjob = ?) "
+         "AND (? = 0 OR (seacom_type & 0xF0) = ?) "
+         "ORDER BY charname ASC");
+     constexpr auto byIds = db::Query(
+-        "SELECT charid, partyid, charname, pos_zone, pos_prevzone, nation, rank_sandoria, rank_bastok, unity_leader, "
++        "SELECT accounts_sessions.charid AS charid, partyid, charname, pos_zone, pos_prevzone, nation, rank_sandoria, rank_bastok, unity_leader, "
+         "rank_windurst, race, mjob, sjob, mlvl, slvl, languages, settings, seacom_type, disconnecting, gmHiddenEnabled, muted, "
+-        "linkshellid1, linkshellid2 "
++        "linkshellid1, linkshellid2, "
++        "CASE "
++        "WHEN mlvl >= 10 AND ("
++        "(mjob IN (1, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
++        "(mjob IN (2, 4, 19) AND ox_spec.value = 1)"
++        ") THEN ox_spec.value "
++        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
++        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
++        "THEN crystal_active.value "
++        "ELSE 0 END AS crystalBranch "
+         "FROM JSON_TABLE(?, '$[*]' COLUMNS (charid INT UNSIGNED PATH '$')) AS ids "
+         "JOIN accounts_sessions USING (charid) "
+         "LEFT JOIN accounts_parties USING (charid) "
+@@ -403,6 +439,22 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+         "LEFT JOIN char_stats USING (charid) "
+         "LEFT JOIN char_profile USING(charid) "
+         "LEFT JOIN char_flags USING(charid) "
++        "LEFT JOIN char_vars AS ox_spec ON ox_spec.charid = accounts_sessions.charid "
++        "AND ox_spec.varname = CASE mjob "
++        "WHEN 1 THEN 'OX_SPEC_WAR' "
++        "WHEN 2 THEN 'OX_SPEC_MNK' "
++        "WHEN 4 THEN 'OX_SPEC_BLM' "
++        "WHEN 19 THEN 'OX_SPEC_DNC' "
++        "WHEN 20 THEN 'OX_SPEC_SCH' "
++        "WHEN 22 THEN 'OX_SPEC_RUN' "
++        "ELSE '' END "
++        "AND (ox_spec.expiry = 0 OR ox_spec.expiry > UNIX_TIMESTAMP()) "
++        "LEFT JOIN char_vars AS crystal_active ON crystal_active.charid = accounts_sessions.charid "
++        "AND crystal_active.varname = 'CrystalActive:1' "
++        "AND (crystal_active.expiry = 0 OR crystal_active.expiry > UNIX_TIMESTAMP()) "
++        "LEFT JOIN char_vars AS crystal_owned ON crystal_owned.charid = accounts_sessions.charid "
++        "AND crystal_owned.varname = 'CrystalOwned:1' "
++        "AND (crystal_owned.expiry = 0 OR crystal_owned.expiry > UNIX_TIMESTAMP()) "
+         "WHERE charname IS NOT NULL "
+         "AND (? = 0 OR mjob = ?) "
+         "AND (? = 0 OR (seacom_type & 0xF0) = ?) "
+@@ -435,6 +487,8 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+             player.slvl     = rset->get<uint8>("slvl");
+             player.race     = rset->get<uint8>("race");
+ 
++            player.crystalBranch = rset->get<uint8>("crystalBranch");
++
+             // TODO: Use a nation enum?
+             switch (player.nation)
+             {
+diff --git a/src/search/data_loader.h b/src/search/data_loader.h
+index 83f5773cb4..7049a4ebe0 100644
+--- a/src/search/data_loader.h
++++ b/src/search/data_loader.h
+@@ -70,6 +70,7 @@ struct SearchEntity
+     std::string name           = {};
+     uint32      id             = 0;
+     uint8       mjob           = 0;
++    uint8       crystalBranch  = 0;
+     uint8       mlvl           = 0;
+     uint8       sjob           = 0;
+     uint8       slvl           = 0;
+diff --git a/src/search/packets/search_list.cpp b/src/search/packets/search_list.cpp
+index 181d1e8003..3222ceb915 100644
+--- a/src/search/packets/search_list.cpp
++++ b/src/search/packets/search_list.cpp
+@@ -40,8 +40,29 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
+     ref<uint16>(m_data, (0x0E)) = Total; // The total number of character found (may differ from the amount that gets sent)
+ }
+ 
++namespace
++{
++constexpr auto isValidCrystalBranch(uint8 mjob, uint8 branch) -> bool
++{
++    switch (mjob)
++    {
++        case 1:  // WAR: Commander (1), Berserker (2), Gladiator (3)
++        case 22: // RUN: Inquisitor (1), Spellblade (2), Lifebinder (3)
++            return branch >= 1 && branch <= 3;
++        case 20: // SCH: Medic (1), Sage (2)
++            return branch >= 1 && branch <= 2;
++        case 2:  // MNK: Sensei (1)
++        case 4:  // BLM: Necromancer (1)
++        case 19: // DNC: Bladewheel (1)
++            return branch == 1;
++        default:
++            return false;
++    }
++}
++} // namespace
++
+ // A maximum of 20 characters can be added to a single packet.
+-auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
++auto CSearchListPacket::AddPlayer(const SearchEntity& player, bool crystalJobLabels) -> bool
+ {
+     const uint32 size_offset = m_offset / 8;
+     if ((sizeof(m_data) - size_offset) < (searchPacketTrailerSize + searchEntryMaxSize))
+@@ -92,7 +113,11 @@ auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
+     // Retail sends SearchType::LinkshellRank here in SEARCH_ALL replies: three 8 bit ranks then three 32 bit linkshell ids.
+ 
+     m_offset = packBitsLE(m_data, static_cast<uint64>(SearchType::Unknown0E), m_offset, 5);
+-    m_offset = packBitsLE(m_data, 0, m_offset, 32);
++    // Only opted-in clients consume this marker before the stock Search record is copied.
++    const bool showCrystal = crystalJobLabels &&
++                             isValidCrystalBranch(player.mjob, player.crystalBranch) &&
++                             !(player.flags1 & 0x4000) && !player.disconnecting;
++    m_offset = packBitsLE(m_data, showCrystal ? (0x43525900 | player.crystalBranch) : 0, m_offset, 32);
+ 
+     if (player.seacom_type != 0)
+     {
+diff --git a/src/search/packets/search_list.h b/src/search/packets/search_list.h
+index 0a28cb3cef..0ca72c5c18 100644
+--- a/src/search/packets/search_list.h
++++ b/src/search/packets/search_list.h
+@@ -29,7 +29,7 @@ class CSearchListPacket
+ public:
+     CSearchListPacket(uint32 Total);
+ 
+-    auto AddPlayer(const SearchEntity& player) -> bool;
++    auto AddPlayer(const SearchEntity& player, bool crystalJobLabels = false) -> bool;
+     void SetFinal();
+ 
+     auto GetData() -> uint8*;
+diff --git a/src/search/search.h b/src/search/search.h
+index 80ab48e2cb..bbd5779ded 100644
+--- a/src/search/search.h
++++ b/src/search/search.h
+@@ -54,8 +54,9 @@ struct SearchRequest
+     std::string   name;
+     uint8         nameLen{};
+     uint8         commentType{};
+-    bool          friendsOnly     = false;
+-    bool          requestListOnly = false;
++    bool          crystalJobLabels = false;
++    bool          friendsOnly      = false;
++    bool          requestListOnly  = false;
+ 
+     // category and descending flag, highest priority first
+     std::vector<std::pair<SearchType, bool>> sortOrder;
+diff --git a/src/search/search_handler.cpp b/src/search/search_handler.cpp
+index a34b8bff00..2d6f91714a 100644
+--- a/src/search/search_handler.cpp
++++ b/src/search/search_handler.cpp
+@@ -492,7 +492,7 @@ void SearchHandler::SendPlayersList(const SearchRequest& sr)
+ 
+         while (currentResult < totalResults)
+         {
+-            bool success = PSearchPacket.AddPlayer(*it);
++            bool success = PSearchPacket.AddPlayer(*it, sr.crystalJobLabels);
+             if (!success)
+             {
+                 break;
+@@ -589,6 +589,7 @@ auto SearchHandler::ParseSearchRequest(const uint16_t length) -> SearchRequest
+     // This function constructs a `search_req` based on which query should be sent to the database.
+     // The results from the database will eventually be sent to the client.
+     SearchRequest sr;
++    sr.crystalJobLabels = ref<uint32>(buffer_.data(), 0x0C) == 0x43525901;
+ 
+     uint32 bitOffset = 0;
+ 
