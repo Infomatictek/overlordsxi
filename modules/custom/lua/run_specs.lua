@@ -1128,6 +1128,29 @@ end
 -----------------------------------
 -- Crystal Definitions (RUN)
 -----------------------------------
+local RUN_NATIVE_SPELLS =
+{
+    43, 44, 45, 46,       -- Protect I-IV
+    48, 49, 50, 51, 52,   -- Shell I-V
+    53, 54, 55,           -- Blink, Stoneskin, Aquaveil
+    60, 61, 62, 63, 64, 65, -- Barfire..Barwater
+    72, 73, 74, 75, 76, 77, 78, 84, -- Barsleep..Baramnesia
+    106, 108, 109, 110, 111, 112, -- Phalanx, Regen I, Refresh, Regen II, Regen III, Flash
+    249, 250, 251,        -- Blaze/Ice/Shock Spikes
+    477, 840,             -- Regen IV, Foil
+}
+
+local function ensureRunSpells(player)
+    if player == nil or not player.addSpell or not player.hasSpell then
+        return
+    end
+    for _, spellId in ipairs(RUN_NATIVE_SPELLS) do
+        if not player:hasSpell(spellId) then
+            player:addSpell(spellId, true, true)
+        end
+    end
+end
+
 if xi.job and xi.job.RUN then
     spec.registerJob(xi.job.RUN, 'RUN',
     {
@@ -1181,6 +1204,7 @@ if xi.job and xi.job.RUN then
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                 end
+                ensureRunSpells(player)
                 clearConduction(player, nil)
                 detachRunListeners(player)
             end,
@@ -1244,6 +1268,7 @@ if xi.job and xi.job.RUN then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 1)
                     player:setLocalVar('OX_RUN_WPN_SIG', getMainSubWeaponSignature(player))
                 end
+                ensureRunSpells(player)
                 attachRunListeners(player)
             end,
             onRemove = function(player)
@@ -1306,6 +1331,7 @@ if xi.job and xi.job.RUN then
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                 end
+                ensureRunSpells(player)
                 clearConduction(player, nil)
                 attachRunListeners(player)
             end,
