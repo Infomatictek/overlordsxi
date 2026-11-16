@@ -19,9 +19,11 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/lua/war_specs.lua` defines the WAR Commander, Berserker, and Gladiator crystal passives and ability transformations.
 - `modules/custom/lua/mnk_specs.lua` defines the MNK Sensei crystal passives, Staff Evasion/Parry/Counter engine, and ability transformations.
 - `modules/custom/lua/dot_damage_log.lua` preserves DoT caster/pet `origin` attribution on `takeDamage` for Lua-ticked DoTs (`Helix` and Nightmare `Bio`) on mobs.
+- `modules/custom/lua/overlords_test_gear.lua` defines the level-appropriate 16-slot test gear resolver across all 22 jobs, OverlordsXI crystal specs, weapon types, and level brackets (`1`–`99`).
 - `modules/custom/commands/spec.lua` adds `!spec` (`customMenu` crystal selector, CLI subcommands, and `[OXSPEC]` Ashita v4 sync protocol).
 - `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss` (for both Eos and Titania).
 - `modules/custom/commands/talent.lua` adds `!talent` (`customMenu` UI, CLI subcommands, and Ashita v4 `[OXTAL]` protocol).
+- `modules/custom/commands/gear.lua` adds `!gear` (auto-grants and equips a full 16-slot level-appropriate loadout tailored to main job, active crystal spec, role, and weapon type, with an interactive `customMenu` UI).
 - `modules/custom/cpp/eos_companion.cpp` defines Eos (Medic support AI), Titania (Sage enfeebling & elemental nuking AI), and Orphic Egg's fairy Refresh scaling.
 - `modules/custom/sql/eos_companion.sql` defines `Call Eos` (`231`), `Call Titania` (`289`), pet rows (`128`/`129`), mob pools (`6020`/`6021`), spell lists (`566`/`600`), and Orphic Egg DB changes.
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
@@ -172,6 +174,13 @@ Players can use:
 !spec remove
 !eos heal
 !eos dismiss
+!gear
+!gear menu
+!gear <level> [weapon]
+!gear <weapon> [level]
+!gear role <melee|tank|ranged|caster>
+!gear level <1-99>
+!gear info
 ```
 
 ### Warrior Crystals (`OX_SPEC_WAR`, Lv10+)

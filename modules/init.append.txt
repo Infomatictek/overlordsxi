@@ -12,6 +12,7 @@ custom/lua/dot_damage_log.lua
 custom/lua/dnc_specs.lua
 custom/lua/blm_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
+custom/lua/overlords_test_gear.lua
 custom/cpp/eos_companion.cpp
 custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
@@ -23,3 +24,4 @@ custom/sql/blm_necro_spec.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua
+custom/commands/gear.lua
