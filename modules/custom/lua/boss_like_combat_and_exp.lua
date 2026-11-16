@@ -57,8 +57,8 @@ xi.customBossServer.config =
         { mod = xi.mod.STORETP,       amount = 25 },   -- +25 Store TP
         { mod = xi.mod.FASTCAST,      amount = 15 },   -- +15% Fast Cast
     },
-    playerBaseHpp     = 100, -- +100% Max HP (2.0x base + gear HP)
-    playerHpPerLevel  = 6,   -- +6 base HP per level (becomes +12 HP/lvl after +100% HPP)
+    playerBaseHpp     = 100, -- +100% of character Base HP (applied via BASE_HP so -HP / Convert HP->MP gear is NOT doubled)
+    playerHpPerLevel  = 12,  -- +12 Base HP per level
 
     -- Always-on baseline combat pace & HP pool applied to player pets/companions.
     petCombatPace =
@@ -1347,6 +1347,8 @@ local function showStarterWeaponsMenu(player, menuPage)
 end
 
 -- Applies or refreshes the always-on baseline player combat pace & deep HP pool cleanly without stacking.
+-- Uses xi.mod.BASE_HP (scaled from player:getBaseHP()) instead of xi.mod.HPP so negative-HP gear
+-- and "Convert HP to MP" items are never doubled.
 xi.customBossServer.applyPlayerCombatPace = function(player, enable)
     if player == nil or not player.getLocalVar then
         return
@@ -1357,7 +1359,18 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
     local isApplied = player:getLocalVar('[CustomBoss]PaceApplied') == 1
     local prevHpp   = player:getLocalVar('[CustomBoss]PaceHpp')
     local prevFlat  = player:getLocalVar('[CustomBoss]PaceFlatHp')
+    local prevBase  = player:getLocalVar('[CustomBoss]PaceBaseHp')
     local curHppPct = player.getHPP and player:getHPP() or 100
+
+    -- Clean up any legacy PaceHpp / PaceFlatHp from earlier versions
+    if prevHpp > 0 then
+        player:delMod(xi.mod.HPP, prevHpp)
+        player:setLocalVar('[CustomBoss]PaceHpp', 0)
+    end
+    if prevFlat > 0 then
+        player:delMod(xi.mod.HP, prevFlat)
+        player:setLocalVar('[CustomBoss]PaceFlatHp', 0)
+    end
 
     if not enable then
         if isApplied then
@@ -1366,13 +1379,9 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
             end
             player:setLocalVar('[CustomBoss]PaceApplied', 0)
         end
-        if prevHpp > 0 then
-            player:delMod(xi.mod.HPP, prevHpp)
-            player:setLocalVar('[CustomBoss]PaceHpp', 0)
-        end
-        if prevFlat > 0 then
-            player:delMod(xi.mod.HP, prevFlat)
-            player:setLocalVar('[CustomBoss]PaceFlatHp', 0)
+        if prevBase > 0 then
+            player:delMod(xi.mod.BASE_HP, prevBase)
+            player:setLocalVar('[CustomBoss]PaceBaseHp', 0)
         end
         if player.updateHealth then
             player:updateHealth()
@@ -1388,37 +1397,26 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
     end
 
     local lvl        = (player.getMainLvl and player:getMainLvl()) or 1
-    local targetHpp  = math.max(0, math.floor(tonumber(cfg.playerBaseHpp) or 100))
-    local targetFlat = math.max(0, math.floor(lvl * (tonumber(cfg.playerHpPerLevel) or 6)))
-    local hpChanged  = false
+    local rawBaseHp  = (player.getBaseHP and player:getBaseHP()) or (lvl * 20)
+    local hppPct     = math.max(0, tonumber(cfg.playerBaseHpp) or 100)
+    local perLvl     = math.max(0, tonumber(cfg.playerHpPerLevel) or 12)
+    local targetBase = math.max(0, math.floor(rawBaseHp * (hppPct / 100) + lvl * perLvl))
 
-    if prevHpp ~= targetHpp then
-        if prevHpp > 0 then
-            player:delMod(xi.mod.HPP, prevHpp)
+    if prevBase ~= targetBase then
+        if prevBase > 0 then
+            player:delMod(xi.mod.BASE_HP, prevBase)
         end
-        if targetHpp > 0 then
-            player:addMod(xi.mod.HPP, targetHpp)
+        if targetBase > 0 then
+            player:addMod(xi.mod.BASE_HP, targetBase)
         end
-        player:setLocalVar('[CustomBoss]PaceHpp', targetHpp)
-        hpChanged = true
-    end
+        player:setLocalVar('[CustomBoss]PaceBaseHp', targetBase)
 
-    if prevFlat ~= targetFlat then
-        if prevFlat > 0 then
-            player:delMod(xi.mod.HP, prevFlat)
-        end
-        if targetFlat > 0 then
-            player:addMod(xi.mod.HP, targetFlat)
-        end
-        player:setLocalVar('[CustomBoss]PaceFlatHp', targetFlat)
-        hpChanged = true
-    end
-
-    if hpChanged and player.updateHealth then
-        player:updateHealth()
-        if not isInActualCombat(player) or curHppPct >= 95 then
-            if player.addHP and player.getMaxHP then
-                player:addHP(player:getMaxHP())
+        if player.updateHealth then
+            player:updateHealth()
+            if not isInActualCombat(player) or curHppPct >= 95 then
+                if player.addHP and player.getMaxHP then
+                    player:addHP(player:getMaxHP())
+                end
             end
         end
     end
@@ -1478,6 +1476,7 @@ local function attachPlayerCombatListeners(player)
     end)
 
     player:addListener('EFFECTS_TICK', 'CUSTOM_BOSS_PC_REGAIN', function(pc)
+        xi.customBossServer.applyPlayerCombatPace(pc, true)
         onEntityCombatRegainTick(pc)
         if pc and pc.getPet then
             local pet = pc:getPet()
