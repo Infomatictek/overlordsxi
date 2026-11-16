@@ -2,7 +2,7 @@
 -- 1. Backport post-75 RUN abilities (Liement, One for All, Odyllic Subterfuge) to Lv 75
 --    and clear merit addType on Rayke (375) and Battuta (376) so crystal extraAbilities can unlock them.
 -- 2. Backport RUN Regen IV (spell 477) from Lv 99 (0x63) to Lv 75 (0x4B) and give RUN A-rank magic skills in skill_ranks.
--- 3. Define custom RUN Spellblade Magic Spells: Runic Bolt (spell 754, Lv 15) & Runic Sever (spell 755, Lv 55).
+-- 3. Define custom RUN Spellblade Magic Spells: Runic Bolt (spell 754, Lv 10) & Runic Sever (spell 755, Lv 55).
 -- 4. Define custom RUN spec Job Abilities (412-418) with independent recast timers (198, 199, 201-205)
 --    and level = 255 so they stay hidden unless dynamically unlocked via patch 0007.
 
@@ -20,7 +20,7 @@ UPDATE `spell_list`
 SET `jobs` = CONCAT(SUBSTRING(`jobs`, 1, 21), CHAR(75))
 WHERE `spellid` = 477 AND LENGTH(`jobs`) >= 22;
 
--- Custom RUN Spellblade Magic Spells (754 = runic_bolt at Lv 15, 755 = runic_sever at Lv 55)
+-- Custom RUN Spellblade Magic Spells (754 = runic_bolt at Lv 10, 755 = runic_sever at Lv 55)
 DELETE FROM `spell_list` WHERE `spellid` IN (754, 755) OR `name` IN ('runic_bolt', 'runic_sever');
 INSERT INTO `spell_list`
     (`spellid`, `name`, `jobs`, `group`, `family`, `element`, `zonemisc`, `validTargets`, `skill`,
@@ -28,8 +28,8 @@ INSERT INTO `spell_list`
      `AOE`, `base`, `multiplier`, `CE`, `VE`, `requirements`, `spell_range`, `radius`, `content_tag`,
      `status_effect`, `status_effect_tier`)
 VALUES
-    -- Runic Bolt (754): Black Magic (2), Elemental Skill (36), Enemy (4), Lv 15 RUN (byte 22 = 0x0F), 8 MP, 2000ms cast, 8000ms recast, 10y range (100)
-    (754, 'runic_bolt',  0x0000000000000000000000000000000000000000000F, 2, 0, 1, 0, 4, 36,  8, 2000,  8000, 2, 252, 144, 1500, 0, 35, 1.00, 1,  80, 0, 100, 0, NULL, NULL, 0),
+    -- Runic Bolt (754): Black Magic (2), Elemental Skill (36), Enemy (4), Lv 10 RUN (byte 22 = 0x0A), 8 MP, 2000ms cast, 8000ms recast, 10y range (100)
+    (754, 'runic_bolt',  0x0000000000000000000000000000000000000000000A, 2, 0, 1, 0, 4, 36,  8, 2000,  8000, 2, 252, 144, 1500, 0, 35, 1.00, 1,  80, 0, 100, 0, NULL, NULL, 0),
     -- Runic Sever (755): Black Magic (2), Elemental Skill (36), Enemy (4), Lv 55 RUN (byte 22 = 0x37), 22 MP, 3000ms cast, 30000ms recast, 10y range (100)
     (755, 'runic_sever', 0x00000000000000000000000000000000000000000037, 2, 0, 5, 0, 4, 36, 22, 3000, 30000, 2, 252, 165, 1500, 0, 85, 1.50, 1, 120, 0, 100, 0, NULL, NULL, 0);
 

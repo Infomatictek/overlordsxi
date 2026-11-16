@@ -690,7 +690,7 @@ local function addConductionStacks(player, delta)
         return 0
     end
     local lvl = player.getMainLvl and player:getMainLvl() or 1
-    if lvl < 15 or not isGreatSwordEquipped(player) then
+    if lvl < 10 or not isGreatSwordEquipped(player) then
         return getConductionStacks(player)
     end
     local cur = getConductionStacks(player)
@@ -803,9 +803,9 @@ local function evaluateRuneEdgeRound(actor, target, action)
         return
     end
 
-    -- 1. Conduction generation on any landed normal attack round (Lv.15+)
+    -- 1. Conduction generation on any landed normal attack round (Lv.10+)
     local lvl = actor.getMainLvl and actor:getMainLvl() or 10
-    if lvl >= 15 then
+    if lvl >= 10 then
         local gain = hasRunicAscendance(actor) and 2 or 1
         addConductionStacks(actor, gain)
     end
@@ -956,8 +956,8 @@ local function evaluateRuneEdgeRound(actor, target, action)
         end
     end
 
-    -- 3. Delay-adjusted fractional MP recovery on positive Rune Edge damage (Lv.15+)
-    if damage > 0 and lvl >= 15 and actor.addMP and actor.getLocalVar and actor.setLocalVar then
+    -- 3. Delay-adjusted fractional MP recovery on positive Rune Edge damage (Lv.10+)
+    if damage > 0 and lvl >= 10 and actor.addMP and actor.getLocalVar and actor.setLocalVar then
         local baseMpGain = 1
         if lvl >= 65 then
             baseMpGain = 3
@@ -1264,8 +1264,8 @@ if xi.job and xi.job.RUN then
             {
                 'Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).',
                 'Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).',
-                'Conduction (Lv15+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv15/40/65) scaled by Delay/480 on positive Rune Edge.',
-                'Magic Spell: Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).',
+                'Conduction (Lv10+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv10/40/65) scaled by Delay/480 on positive Rune Edge.',
+                'Magic Spell: Runic Bolt (Lv10, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).',
                 'Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.',
                 'Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).',
                 'Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s).',
@@ -2145,7 +2145,7 @@ end)
 -- 4 & 5) Spellblade Offensive Spells: Runic Bolt (415) & Runic Sever (416)
 -----------------------------------
 local function getRunicSpellBaseMp(isSever, lvl)
-    local l = utils.clamp(lvl or 75, 15, 75)
+    local l = utils.clamp(lvl or 75, 10, 75)
     if isSever then
         -- 40 MP at Lv.75 (scales from 32 at Lv.55 to 40 at Lv.75)
         if l <= 55 then
@@ -2153,13 +2153,16 @@ local function getRunicSpellBaseMp(isSever, lvl)
         end
         return 32 + math.floor(((l - 55) * 8) / 20 + 0.5)
     else
-        -- Scales linearly from 8 MP at Lv.15 to 24 MP at Lv.75
+        -- Scales linearly from 8 MP at Lv.10-15 to 24 MP at Lv.75
+        if l <= 15 then
+            return 8
+        end
         return 8 + math.floor(((l - 15) * 16) / 60 + 0.5)
     end
 end
 
 local function calculateConductionAdjustedCostAndCast(player, isSever, stacks)
-    local lvl       = player.getMainLvl and player:getMainLvl() or 15
+    local lvl       = player.getMainLvl and player:getMainLvl() or 10
     local baseMp    = getRunicSpellBaseMp(isSever, lvl)
     local baseCastMs = isSever and 3000 or 2000
 
@@ -2183,7 +2186,7 @@ local function checkRunicSpell(player, target, ability, isSever)
     end
 
     local lvl    = player.getMainLvl and player:getMainLvl() or 1
-    local minLvl = isSever and 55 or 15
+    local minLvl = isSever and 55 or 10
     if lvl < minLvl then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
@@ -2473,7 +2476,7 @@ local function checkRunicMagicSpell(caster, target, spell, isSever)
     end
 
     local lvl    = caster.getMainLvl and caster:getMainLvl() or 1
-    local minLvl = isSever and 55 or 15
+    local minLvl = isSever and 55 or 10
     if lvl < minLvl then
         return xi.msg.basic.CANNOT_CAST_SPELL or 47
     end
