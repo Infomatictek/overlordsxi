@@ -219,12 +219,13 @@ local function syncDarkPactMods(player)
     if player == nil or not player:isPC() then
         return
     end
-    clearDarkPactMods(player)
     if not isNecromancer(player) then
+        clearDarkPactMods(player)
         return
     end
     local pet = getUndeadPet(player)
     if pet == nil or not pet:isAlive() then
+        clearDarkPactMods(player)
         return
     end
 
@@ -233,6 +234,15 @@ local function syncDarkPactMods(player)
     local stp = scaleTier(lvl, 10, 15, 20, 25)
     local acc = scaleTier(lvl, 10, 20, 35, 50)
 
+    if
+        player:getLocalVar('OX_NECRO_PACT_DA') == da and
+        player:getLocalVar('OX_NECRO_PACT_STP') == stp and
+        player:getLocalVar('OX_NECRO_PACT_ACC') == acc
+    then
+        return
+    end
+
+    clearDarkPactMods(player)
     player:addMod(xi.mod.DOUBLE_ATTACK, da)
     player:addMod(xi.mod.STORETP, stp)
     player:addMod(xi.mod.ACC, acc)
@@ -245,7 +255,8 @@ end
 -- Grim Conversion (Lv.10+: MACC->ACC, MATT->ATT, FASTCAST->Haste, MB Bonus->WSD)
 -- Elemental Celerity (xi.mod.ELEMENTAL_CELERITY) is left untouched.
 -----------------------------------
-local MOD_MB_BONUS = xi.mod and (xi.mod.MAG_BURST_BONUS or xi.mod.MAGIC_BURST_BONUS) or nil
+local MOD_MB_BONUS_CAPPED   = xi.mod and (xi.mod.MAGIC_BURST_BONUS_CAPPED or xi.mod.MAG_BURST_BONUS) or nil
+local MOD_MB_BONUS_UNCAPPED = xi.mod and xi.mod.MAGIC_BURST_BONUS_UNCAPPED or nil
 
 local function clearConversionMods(player)
     if player == nil then
@@ -254,7 +265,8 @@ local function clearConversionMods(player)
     local cMacc = player:getLocalVar('OX_NECRO_CONV_MACC')
     local cMatt = player:getLocalVar('OX_NECRO_CONV_MATT')
     local cFc   = player:getLocalVar('OX_NECRO_CONV_FC')
-    local cMbb  = player:getLocalVar('OX_NECRO_CONV_MBB')
+    local cMbbC = player:getLocalVar('OX_NECRO_CONV_MBB_C')
+    local cMbbU = player:getLocalVar('OX_NECRO_CONV_MBB_U')
 
     if cMacc > 0 then
         player:delMod(xi.mod.ACC, cMacc)
@@ -271,10 +283,15 @@ local function clearConversionMods(player)
         player:addMod(xi.mod.FASTCAST, cFc)
         player:setLocalVar('OX_NECRO_CONV_FC', 0)
     end
-    if cMbb > 0 and MOD_MB_BONUS ~= nil then
-        player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbb)
-        player:addMod(MOD_MB_BONUS, cMbb)
-        player:setLocalVar('OX_NECRO_CONV_MBB', 0)
+    if cMbbC > 0 and MOD_MB_BONUS_CAPPED ~= nil then
+        player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbbC)
+        player:addMod(MOD_MB_BONUS_CAPPED, cMbbC)
+        player:setLocalVar('OX_NECRO_CONV_MBB_C', 0)
+    end
+    if cMbbU > 0 and MOD_MB_BONUS_UNCAPPED ~= nil then
+        player:delMod(xi.mod.ALL_WSDMG_ALL_HITS, cMbbU)
+        player:addMod(MOD_MB_BONUS_UNCAPPED, cMbbU)
+        player:setLocalVar('OX_NECRO_CONV_MBB_U', 0)
     end
 end
 
@@ -282,15 +299,28 @@ local function syncConversionMods(player)
     if player == nil or not player:isPC() then
         return
     end
-    clearConversionMods(player)
     if not isNecromancer(player) or player:getMainLvl() < 10 then
+        clearConversionMods(player)
         return
     end
+
+    local rawMacc = player:getMod(xi.mod.MACC)
+    local rawMatt = player:getMod(xi.mod.MATT)
+    local rawFc   = player:getMod(xi.mod.FASTCAST)
+    local rawMbbC = MOD_MB_BONUS_CAPPED ~= nil and player:getMod(MOD_MB_BONUS_CAPPED) or 0
+    local rawMbbU = MOD_MB_BONUS_UNCAPPED ~= nil and player:getMod(MOD_MB_BONUS_UNCAPPED) or 0
+
+    if rawMacc == 0 and rawMatt == 0 and rawFc == 0 and rawMbbC == 0 and rawMbbU == 0 then
+        return
+    end
+
+    clearConversionMods(player)
 
     local macc = math.max(0, player:getMod(xi.mod.MACC))
     local matt = math.max(0, player:getMod(xi.mod.MATT))
     local fc   = math.max(0, player:getMod(xi.mod.FASTCAST))
-    local mbb  = MOD_MB_BONUS ~= nil and math.max(0, player:getMod(MOD_MB_BONUS)) or 0
+    local mbbC = MOD_MB_BONUS_CAPPED ~= nil and math.max(0, player:getMod(MOD_MB_BONUS_CAPPED)) or 0
+    local mbbU = MOD_MB_BONUS_UNCAPPED ~= nil and math.max(0, player:getMod(MOD_MB_BONUS_UNCAPPED)) or 0
 
     if macc > 0 then
         player:delMod(xi.mod.MACC, macc)
@@ -307,11 +337,30 @@ local function syncConversionMods(player)
         player:addMod(xi.mod.HASTE_ABILITY, fc * 100)
         player:setLocalVar('OX_NECRO_CONV_FC', fc)
     end
-    if mbb > 0 and MOD_MB_BONUS ~= nil then
-        player:delMod(MOD_MB_BONUS, mbb)
-        player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbb)
-        player:setLocalVar('OX_NECRO_CONV_MBB', mbb)
+    if mbbC > 0 and MOD_MB_BONUS_CAPPED ~= nil then
+        player:delMod(MOD_MB_BONUS_CAPPED, mbbC)
+        player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbbC)
+        player:setLocalVar('OX_NECRO_CONV_MBB_C', mbbC)
     end
+    if mbbU > 0 and MOD_MB_BONUS_UNCAPPED ~= nil then
+        player:delMod(MOD_MB_BONUS_UNCAPPED, mbbU)
+        player:addMod(xi.mod.ALL_WSDMG_ALL_HITS, mbbU)
+        player:setLocalVar('OX_NECRO_CONV_MBB_U', mbbU)
+    end
+end
+
+local function detachNecroListeners(player)
+    if player == nil or not player:isPC() then
+        return
+    end
+    player:removeListener('OX_NECRO_WS_DRAIN')
+    player:removeListener('OX_NECRO_PET_CHECK')
+    player:removeListener('OX_NECRO_TICK')
+    player:removeListener('OX_NECRO_EQUIP_SYNC')
+    player:removeListener('OX_NECRO_EFFECT_GAIN')
+    player:removeListener('OX_NECRO_EFFECT_LOSE')
+    clearDarkPactMods(player)
+    clearConversionMods(player)
 end
 
 -----------------------------------
@@ -343,64 +392,106 @@ local function attachNecroListeners(player)
     end)
 
     player:removeListener('OX_NECRO_PET_CHECK')
-    player:addListener('COMBAT_TICK', 'OX_NECRO_PET_CHECK', function(actor)
+    player:removeListener('OX_NECRO_TICK')
+    player:addListener('TICK', 'OX_NECRO_TICK', function(actor)
+        if not isNecromancer(actor) then
+            detachNecroListeners(actor)
+            return
+        end
+
+        syncDarkPactMods(actor)
+        syncConversionMods(actor)
+
         local pet = getUndeadPet(actor)
-        if pet == nil or not pet:isAlive() then
-            if actor:getLocalVar('OX_NECRO_PACT_DA') > 0 then
-                clearDarkPactMods(actor)
-            end
-        else
-            -- Auto-assist master's battle target when not already engaged or in Stay
-            if
-                not pet:isEngaged() and
-                not pet:hasStatusEffect(xi.effect.HEALING) and
-                actor:isEngaged()
-            then
-                local masterTarget = actor:getTarget()
-                if masterTarget ~= nil and masterTarget:isAlive() and actor:checkDistance(pet) <= 25 then
-                    actor:petAttack(masterTarget)
-                end
+        if
+            pet ~= nil and
+            pet:isAlive() and
+            not pet:isEngaged() and
+            not pet:hasStatusEffect(xi.effect.HEALING) and
+            actor:isEngaged()
+        then
+            local masterTarget = actor:getTarget()
+            if masterTarget ~= nil and masterTarget:isAlive() and actor:checkDistance(pet) <= 25 then
+                actor:petAttack(masterTarget)
             end
         end
-        syncConversionMods(actor)
     end)
 
     player:removeListener('OX_NECRO_EQUIP_SYNC')
-    player:addListener('ITEM_EQUIP', 'OX_NECRO_EQUIP_SYNC', function(actor)
+    player:removeListener('OX_NECRO_EFFECT_GAIN')
+    player:addListener('EFFECT_GAIN', 'OX_NECRO_EFFECT_GAIN', function(actor)
+        syncConversionMods(actor)
+    end)
+
+    player:removeListener('OX_NECRO_EFFECT_LOSE')
+    player:addListener('EFFECT_LOSE', 'OX_NECRO_EFFECT_LOSE', function(actor)
         syncConversionMods(actor)
     end)
 end
 
-local function detachNecroListeners(player)
-    if player == nil or not player:isPC() then
-        return
+local function enforceNonNecroScytheGate(player)
+    if
+        player ~= nil and
+        player:isPC() and
+        player:getMainJob() == xi.job.BLM and
+        not isNecromancer(player)
+    then
+        local item = player:getEquippedItem(xi.slot.MAIN)
+        if
+            item ~= nil and
+            item.getSkillType and
+            item:getSkillType() == xi.skill.SCYTHE and
+            not VANILLA_BLM_SCYTHES[item:getID()]
+        then
+            player:unequipItem(xi.slot.MAIN)
+            tell(player, 'Only a BLM with the Necromancer crystal can wield that Scythe.')
+        end
     end
-    player:removeListener('OX_NECRO_WS_DRAIN')
-    player:removeListener('OX_NECRO_PET_CHECK')
-    player:removeListener('OX_NECRO_EQUIP_SYNC')
-    clearDarkPactMods(player)
-    clearConversionMods(player)
 end
 
--- Restrict non-vanilla Scythes to BLM Necromancer spec only
+-- Restrict non-vanilla Scythes to BLM Necromancer spec only and keep Necro traits synced
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     super(player, firstLogin, zoning)
     if player ~= nil and player:isPC() then
         player:removeListener('OX_BLM_SCYTHE_GATE')
-        player:addListener('ITEM_EQUIP', 'OX_BLM_SCYTHE_GATE', function(actor, item, slot)
-            if
-                slot == xi.slot.MAIN and
-                actor:getMainJob() == xi.job.BLM and
-                item ~= nil and
-                item.getSkillType and
-                item:getSkillType() == xi.skill.SCYTHE and
-                not VANILLA_BLM_SCYTHES[item:getID()] and
-                not isNecromancer(actor)
-            then
-                actor:unequipItem(xi.slot.MAIN)
-                tell(actor, 'Only a BLM with the Necromancer crystal can wield that Scythe.')
-            end
+        player:addListener('TICK', 'OX_BLM_SCYTHE_GATE', function(actor)
+            enforceNonNecroScytheGate(actor)
         end)
+        enforceNonNecroScytheGate(player)
+
+        if isNecromancer(player) then
+            attachNecroListeners(player)
+            syncDarkPactMods(player)
+            syncConversionMods(player)
+        else
+            detachNecroListeners(player)
+        end
+    end
+end)
+
+m:addOverride('xi.player.onPlayerLevelUp', function(player)
+    super(player)
+    if player ~= nil and player:isPC() then
+        if isNecromancer(player) then
+            attachNecroListeners(player)
+            syncDarkPactMods(player)
+            syncConversionMods(player)
+        else
+            detachNecroListeners(player)
+        end
+    end
+end)
+
+m:addOverride('xi.player.onPlayerLevelDown', function(player)
+    super(player)
+    if player ~= nil and player:isPC() then
+        if isNecromancer(player) then
+            attachNecroListeners(player)
+            syncDarkPactMods(player)
+            syncConversionMods(player)
+        else
+            detachNecroListeners(player)
+        end
     end
 end)
 
