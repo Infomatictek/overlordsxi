@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T09:07:53.013392+00:00",
+  "generatedAt": "2026-11-16T09:18:39.447436+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "27892a6",
+  "headCommit": "ad66d82",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38212,6 +38212,43 @@
   ],
   "commits": [
     {
+      "hash": "ad66d82889eaf27bd8e09283b483295f3f3d35b1",
+      "shortHash": "ad66d82",
+      "author": "nappypup",
+      "date": "2026-11-16T03:18:21-06:00",
+      "subject": "Fix spell_list primary key column name (spellid) in run_specs.sql",
+      "files": [
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 1,
+          "removed": 1
+        }
+      ],
+      "totalAdded": 1,
+      "totalRemoved": 1
+    },
+    {
+      "hash": "4b762c986eb112d0c8c276e82d935f0318b9e8d9",
+      "shortHash": "4b762c9",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T09:07:53Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 83,
+          "removed": 221
+        },
+        {
+          "path": "site/data.json",
+          "added": 83,
+          "removed": 221
+        }
+      ],
+      "totalAdded": 166,
+      "totalRemoved": 442
+    },
+    {
       "hash": "27892a65474474b577afbd25749c0fb92f31ace9",
       "shortHash": "27892a6",
       "author": "Infomatictek",
@@ -39718,193 +39755,6 @@
       ],
       "totalAdded": 1488,
       "totalRemoved": 100
-    },
-    {
-      "hash": "0f4598ba7dfc1691ecadf155f04a13bbd91a253c",
-      "shortHash": "0f4598b",
-      "author": "Infomatictek",
-      "date": "2026-11-14T20:07:44Z",
-      "subject": "Move client DAT overlay and Ashita addon to Infomatictek/overlordsxi-launcher",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 8,
-          "removed": 41
-        },
-        {
-          "path": "addons/ashita4/overlords_talents/overlords_talents.lua",
-          "added": 0,
-          "removed": 738
-        },
-        {
-          "path": "dat-overlay/README.md",
-          "added": 0,
-          "removed": 41
-        },
-        {
-          "path": "dat-overlay/ROM/118/108.DAT",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "dat-overlay/ROM/118/114.DAT",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "dat-overlay/ROM/181/72.DAT",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "dat-overlay/ROM/181/74.DAT",
-          "added": 0,
-          "removed": 0
-        },
-        {
-          "path": "launcher/manifest.json",
-          "added": 0,
-          "removed": 77
-        },
-        {
-          "path": "scripts/setup-local-server.ps1",
-          "added": 7,
-          "removed": 5
-        },
-        {
-          "path": "scripts/update-launcher-manifest.py",
-          "added": 0,
-          "removed": 67
-        }
-      ],
-      "totalAdded": 15,
-      "totalRemoved": 969
-    },
-    {
-      "hash": "b8a9f2a44a4eb92fe510a2a777350eba1b6045c9",
-      "shortHash": "b8a9f2a",
-      "author": "Infomatictek",
-      "date": "2026-11-14T19:54:19Z",
-      "subject": "Remove launcher C# source now hosted in Infomatictek/overlordsxi-launcher",
-      "files": [
-        {
-          "path": ".github/workflows/build-launcher.yml",
-          "added": 0,
-          "removed": 95
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/AshitaConfigGeneratorTests.cs",
-          "added": 0,
-          "removed": 175
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/ManifestTests.cs",
-          "added": 0,
-          "removed": 145
-        },
-        {
-          "path": "launcher/OverlordsLauncher.Tests/OverlordsLauncher.Tests.csproj",
-          "added": 0,
-          "removed": 24
-        },
-        {
-          "path": "launcher/OverlordsLauncher.sln",
-          "added": 0,
-          "removed": 27
-        },
-        {
-          "path": "launcher/OverlordsLauncher/App.xaml",
-          "added": 0,
-          "removed": 159
-        },
-        {
-          "path": "launcher/OverlordsLauncher/App.xaml.cs",
-          "added": 0,
-          "removed": 7
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Converters/UiConverters.cs",
-          "added": 0,
-          "removed": 59
-        },
-        {
-          "path": "launcher/OverlordsLauncher/MainWindow.xaml",
-          "added": 0,
-          "removed": 657
-        },
-        {
-          "path": "launcher/OverlordsLauncher/MainWindow.xaml.cs",
-          "added": 0,
-          "removed": 43
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/InstallDiagnostics.cs",
-          "added": 0,
-          "removed": 19
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/LauncherManifest.cs",
-          "added": 0,
-          "removed": 105
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/LauncherSettings.cs",
-          "added": 0,
-          "removed": 69
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Models/ServerStatus.cs",
-          "added": 0,
-          "removed": 12
-        },
-        {
-          "path": "launcher/OverlordsLauncher/OverlordsLauncher.csproj",
-          "added": 0,
-          "removed": 26
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/AshitaConfigGenerator.cs",
-          "added": 0,
-          "removed": 273
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/FfxiInstallDetector.cs",
-          "added": 0,
-          "removed": 163
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/GameLaunchService.cs",
-          "added": 0,
-          "removed": 26
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/ManifestUpdateService.cs",
-          "added": 0,
-          "removed": 494
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/ServerStatusService.cs",
-          "added": 0,
-          "removed": 91
-        },
-        {
-          "path": "launcher/OverlordsLauncher/Services/SettingsService.cs",
-          "added": 0,
-          "removed": 119
-        },
-        {
-          "path": "launcher/OverlordsLauncher/ViewModels/MainViewModel.cs",
-          "added": 0,
-          "removed": 875
-        },
-        {
-          "path": "launcher/OverlordsLauncher/ViewModels/RelayCommand.cs",
-          "added": 0,
-          "removed": 73
-        }
-      ],
-      "totalAdded": 0,
-      "totalRemoved": 3736
     }
   ]
 }
