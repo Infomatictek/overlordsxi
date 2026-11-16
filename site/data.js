@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T10:07:58.001741+00:00",
+  "generatedAt": "2026-11-16T10:42:12.279230+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "d8f4abf",
+  "headCommit": "c5c6a22",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -621,8 +621,8 @@ window.OVERLORDS_DATA = {
             {
               "mod": "SCYTHE",
               "label": "Scythe Skill",
-              "value": "+10 -> +71 (Rank A+)",
-              "bracket": "Scales w/ Level"
+              "value": "math.max(10, scytheAPlus)",
+              "bracket": "Passive"
             },
             {
               "mod": "OCCULT_ACUMEN",
@@ -38228,6 +38228,68 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "c5c6a22485319ce29f6e014841edafa58a9ad9b8",
+      "shortHash": "c5c6a22",
+      "author": "Infomatictek",
+      "date": "2026-11-16T10:42:00Z",
+      "subject": "Fix RUN Spellblade/Inquisitor skills/spells/stances/Vallation and BLM Necromancer Scythe WSs",
+      "files": [
+        {
+          "path": "modules/custom/lua/blm_specs.lua",
+          "added": 10,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/lua/overlords_job_specs.lua",
+          "added": 7,
+          "removed": 1
+        },
+        {
+          "path": "modules/custom/lua/overlords_test_gear.lua",
+          "added": 3,
+          "removed": 0
+        },
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 171,
+          "removed": 63
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 2,
+          "removed": 0
+        },
+        {
+          "path": "scripts/setup-local-server.ps1",
+          "added": 58,
+          "removed": 3
+        }
+      ],
+      "totalAdded": 251,
+      "totalRemoved": 70
+    },
+    {
+      "hash": "3c9804a1f35287f899df158e224dc6ae09634dd2",
+      "shortHash": "3c9804a",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T10:07:58Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 39,
+          "removed": 69
+        },
+        {
+          "path": "site/data.json",
+          "added": 39,
+          "removed": 69
+        }
+      ],
+      "totalAdded": 78,
+      "totalRemoved": 138
+    },
+    {
       "hash": "d8f4abf4c203062cf763739bd4d4df3a04904b00",
       "shortHash": "d8f4abf",
       "author": "nappypup",
@@ -39604,38 +39666,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 2,
       "totalRemoved": 3
-    },
-    {
-      "hash": "1af44beaadcc681648541fe6fb5c19703a566552",
-      "shortHash": "1af44be",
-      "author": "Infomatictek",
-      "date": "2026-11-14T22:14:29Z",
-      "subject": "Handle Windows CRLF line endings in patch idempotency checks",
-      "files": [
-        {
-          "path": "scripts/setup-local-server.ps1",
-          "added": 32,
-          "removed": 18
-        }
-      ],
-      "totalAdded": 32,
-      "totalRemoved": 18
-    },
-    {
-      "hash": "86e506c8487db7e80f1c816d2390fbb45e5223b2",
-      "shortHash": "86e506c",
-      "author": "nappypup",
-      "date": "2026-11-14T16:06:26-06:00",
-      "subject": "Fix Sol2 sparse table panic in crystal socket packets",
-      "files": [
-        {
-          "path": "patches/0009-crystal-socket-packets.patch",
-          "added": 350,
-          "removed": 100
-        }
-      ],
-      "totalAdded": 350,
-      "totalRemoved": 100
     }
   ]
 };
