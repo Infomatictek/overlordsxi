@@ -1655,7 +1655,7 @@ def format_evaluated_mod(mod_code: str, values: list) -> dict:
     if len(set(clean_vals)) == 1:
         return {"mod": mod_code, "label": label, "value": f"{fmt_num(clean_vals[0])}{unit}", "bracket": "Always Active"}
 
-    # Check if Lv 70 differs from Lv 50
+    # Check if Lv 75 differs from Lv 50
     if len(clean_vals) >= 4 and clean_vals[3] == clean_vals[2]:
         val_str = f"{fmt_num(clean_vals[0])} / {fmt_num(clean_vals[1])} / {fmt_num(clean_vals[2])}{unit}"
         return {"mod": mod_code, "label": label, "value": val_str, "bracket": "Lv.10 / 30 / 50+"}

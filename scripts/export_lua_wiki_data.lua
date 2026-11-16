@@ -285,9 +285,9 @@ local specFiles = {}
 local treeFiles = {}
 for i = 2, #(arg or {}) do
     local p = arg[i]
-    if p:match('_specs%.lua$') then
+    if p:match('_specs$') or p:match('_specs%.lua$') then
         table.insert(specFiles, p)
-    elseif p:match('overlords_ws_trees_.*%.lua$') then
+    elseif p:match('overlords_ws_trees_') then
         table.insert(treeFiles, p)
     end
 end
@@ -295,14 +295,20 @@ end
 -- 1. Load Job Crystal / Spec Registry + ALL *_specs.lua
 local spec = require('modules/custom/lua/overlords_job_specs')
 for _, sf in ipairs(specFiles) do
-    require(sf)
+    local ok, err = pcall(require, sf)
+    if not ok then
+        io.stderr:write('WARN failed loading spec module ' .. tostring(sf) .. ': ' .. tostring(err) .. '\n')
+    end
 end
 
 -- 2. Load Weaponskill Catalog + Talent Engine + ALL tree files
 local catalog = require('modules/custom/lua/overlords_ws_catalog')
 local talents = require('modules/custom/lua/overlords_ws_talents')
 for _, tf in ipairs(treeFiles) do
-    require(tf)
+    local ok, err = pcall(require, tf)
+    if not ok then
+        io.stderr:write('WARN failed loading tree module ' .. tostring(tf) .. ': ' .. tostring(err) .. '\n')
+    end
 end
 
 -- 3. Load Combat & EXP Rules module
@@ -345,7 +351,7 @@ for _, jid in ipairs(sortedJobIds) do
         local modsByModName = {}
         local modOrder = {}
         if type(entry.mods) == 'function' then
-            local levels = { 10, 30, 50, 70 }
+            local levels = { 10, 30, 50, 75 }
             for li, lvl in ipairs(levels) do
                 local ok, list = pcall(entry.mods, makeFakePlayer(jid, lvl), lvl)
                 if ok and type(list) == 'table' then
