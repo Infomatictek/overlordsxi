@@ -1333,13 +1333,17 @@ local function cleanupTempMods(attacker, tempMods)
     end
 end
 
-local function dealFollowUpElementalHit(attacker, target, pct, elementDmgType)
+local function dealFollowUpElementalHit(attacker, target, pct, elementDmgType, eleLabel)
     if attacker == nil or target == nil or not target:isAlive() or (pct or 0) <= 0 then
         return 0
     end
     local extra = math.floor(pct)
     if extra > 0 then
         target:takeDamage(extra, attacker, xi.attackType.BREATH, elementDmgType or xi.damageType.ELEMENTAL)
+        if attacker:isPC() then
+            local label = eleLabel and (eleLabel:sub(1, 1):upper() .. eleLabel:sub(2):lower()) or 'Elemental'
+            attacker:printToPlayer(string.format('[Follow-Up] %s takes %d %s damage.', target:getName(), extra, label), xi.msg.channel.SYSTEM_3)
+        end
     end
     return extra
 end
@@ -1885,7 +1889,7 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
         if baseDmg > 0 then
             for _, ef in ipairs(elemQueue) do
                 local mult = (ef.pct / 100) * (ef.scaleWithPack and (1 + 0.25 * (extraCtx and extraCtx.packExtras or 0)) or 1.0)
-                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, baseDmg * mult, resolveDamageType(ef.ele))
+                totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, baseDmg * mult, resolveDamageType(ef.ele), ef.ele)
             end
         end
     end
