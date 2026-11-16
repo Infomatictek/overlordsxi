@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T10:59:26.345420+00:00",
+  "generatedAt": "2026-11-16T13:40:14.441919+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "2264fb0",
+  "headCommit": "5f5bc52",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -1006,15 +1006,15 @@ window.OVERLORDS_DATA = {
           "role": "Greatsword & Conduction Spellweaver DPS",
           "icon": "spellblade",
           "reqLevel": 10,
-          "description": "Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).",
+          "description": "Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive magic spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).",
           "highlights": [
             "Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).",
             "Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).",
             "Conduction (Lv15+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv15/40/65) scaled by Delay/480 on positive Rune Edge.",
-            "Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).",
-            "Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.",
+            "Magic Spell: Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).",
+            "Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.",
             "Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).",
-            "Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend 3 Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s)."
+            "Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s)."
           ],
           "passiveMods": [
             {
@@ -38228,6 +38228,63 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "5f5bc52bd7381a2f0a119eade6eb5bc93f269b97",
+      "shortHash": "5f5bc52",
+      "author": "Infomatictek",
+      "date": "2026-11-16T13:39:48Z",
+      "subject": "fix(specs): add Runic Bolt & Runic Sever magic spells, unblock Spellblade JAs, and preserve capped skills/WS after recalculateSkillsTable",
+      "files": [
+        {
+          "path": "modules/custom/lua/overlords_job_specs.lua",
+          "added": 3,
+          "removed": 0
+        },
+        {
+          "path": "modules/custom/lua/overlords_test_gear.lua",
+          "added": 3,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 218,
+          "removed": 117
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 4,
+          "removed": 0
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 20,
+          "removed": 4
+        }
+      ],
+      "totalAdded": 248,
+      "totalRemoved": 124
+    },
+    {
+      "hash": "5a32f74bd83b195a3ab800627911c26692445bd4",
+      "shortHash": "5a32f74",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T10:59:26Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 44,
+          "removed": 59
+        },
+        {
+          "path": "site/data.json",
+          "added": 44,
+          "removed": 59
+        }
+      ],
+      "totalAdded": 88,
+      "totalRemoved": 118
+    },
+    {
       "hash": "2264fb065c3cf93e45ff63272d2d3876b87f8fa4",
       "shortHash": "2264fb0",
       "author": "Infomatictek",
@@ -39589,68 +39646,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 25,
       "totalRemoved": 7
-    },
-    {
-      "hash": "d81fd3dfddde7ff2faeb5d13fb87329364d70b03",
-      "shortHash": "d81fd3d",
-      "author": "Infomatictek",
-      "date": "2026-11-15T00:54:35Z",
-      "subject": "Add Lv10+ active JAs for WAR Gladiator (Crimson Crush & Vanguard Ward)",
-      "files": [
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 97,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/war_gladiator_abilities.sql",
-          "added": 22,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "patches/0011-commander-status-effects.patch",
-          "added": 8,
-          "removed": 1
-        }
-      ],
-      "totalAdded": 128,
-      "totalRemoved": 1
-    },
-    {
-      "hash": "d06afa294f762a7a6c066386f7b545002f1b3b90",
-      "shortHash": "d06afa2",
-      "author": "Infomatictek",
-      "date": "2026-11-15T00:48:36Z",
-      "subject": "Add Lv10+ active JAs for WAR Berserker (Bloodlust Surge & Savage Cleave)",
-      "files": [
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 98,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/war_berserker_abilities.sql",
-          "added": 22,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "patches/0011-commander-status-effects.patch",
-          "added": 7,
-          "removed": 1
-        }
-      ],
-      "totalAdded": 128,
-      "totalRemoved": 1
     }
   ]
 };
