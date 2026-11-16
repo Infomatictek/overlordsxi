@@ -1256,9 +1256,9 @@ m:addOverride('xi.actions.abilities.bloodlust_surge.onUseAbility', function(play
         tier,
         iconId,
         {
-            { xi.mod.ATTP,   attp },
-            { xi.mod.DA_DMG, daDmg },
-            { xi.mod.DEFP,   -10 },
+            { xi.mod.ATTP,              attp },
+            { xi.mod.DOUBLE_ATTACK_DMG, daDmg },
+            { xi.mod.DEFP,              -10 },
         }
     )
 

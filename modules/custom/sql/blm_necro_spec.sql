@@ -54,7 +54,8 @@ SELECT
     0, 0, 0, 0, 0, `skill_list_id`, `resist_id`,
     0, 6
 FROM `mob_pools`
-WHERE `name` IN ('Crossbones', 'Skeleton_Warrior', 'Ghoul')
+WHERE `name` IN ('Wight_war', 'Guard_Skeleton_war_SSR', 'Crossbones', 'Skeleton_Warrior', 'Ghoul')
+   OR `poolid` IN (4337, 6556)
 LIMIT 1;
 
 -- 6023: Undead Mage (Skeleton Mage / Lich model)
@@ -69,7 +70,8 @@ SELECT
     0, 0, 601, 0, 0, `skill_list_id`, `resist_id`,
     0, 6
 FROM `mob_pools`
-WHERE `name` IN ('Tomb_Mage', 'Lich', 'Fallen_Mage', 'Crossbones')
+WHERE `name` IN ('Doom_Mage_SSR', 'Guard_Skeleton_blm_SSR', 'Tomb_Mage', 'Lich', 'Fallen_Mage', 'Crossbones')
+   OR `poolid` IN (6533, 6555)
 LIMIT 1;
 
 -- 6024: Corse (Corse model)

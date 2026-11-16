@@ -95,11 +95,10 @@ local function dealStaffRiposte(defender, attacker, isDodgeBonus)
     end
 
     if dealt > 0 then
-        local retaliateMsg = (xi.msg and xi.msg.basic and xi.msg.basic.RETALIATE_DAMAGE) or 536
-        if attacker.messagePublic then
-            attacker:messagePublic(retaliateMsg, defender, dealt, dealt)
-        elseif defender.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.HIT_DMG then
-            defender:messagePublic(xi.msg.basic.HIT_DMG, attacker, dealt, dealt)
+        -- Use HIT_DMG (0x029 Data / \x12\x01); RETALIATE_DAMAGE (536) reads 0x028 spikesParam (\x12\x03) and renders as 0 over messagePublic.
+        local hitMsg = (xi.msg and xi.msg.basic and xi.msg.basic.HIT_DMG) or 1
+        if defender.messagePublic then
+            defender:messagePublic(hitMsg, attacker, dealt, dealt)
         end
     end
 

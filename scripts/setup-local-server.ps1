@@ -391,6 +391,12 @@ try {
 
     # 5. Sync DAT overlay
     $srcDat = Join-Path $RepoRoot 'dat-overlay\ROM'
+    if (-not (Test-Path $srcDat)) {
+        $launcherDat = 'C:\overlordsxi-launcher\dat-overlay\ROM'
+        if (Test-Path $launcherDat) {
+            $srcDat = $launcherDat
+        }
+    }
     if ((Test-Path $srcDat) -and ((Get-ChildItem -Path $srcDat -Force | Measure-Object).Count -gt 0)) {
         $dstDat = Join-Path $DatOverlayDir 'ROM'
         $changedDat = Sync-DirectoryChangedOnly -SourceDir $srcDat -DestDir $dstDat
@@ -664,12 +670,13 @@ try {
         }
     }
 
-    # 8. Optional dbtool migration
+    # 8. Optional dbtool migration / custom SQL import
     if ($RunDbTool) {
-        Write-Host '==> Running tools/dbtool.py...' -ForegroundColor Yellow
-        python tools\dbtool.py
+        Write-Host '==> Importing custom SQL modules via tools/dbtool.py...' -ForegroundColor Yellow
+        $pyCode = "import sys; sys.path.insert(0, 'tools'); import dbtool; dbtool.fetch_credentials(); dbtool.fetch_configs(); dbtool.connect(); dbtool.fetch_module_files(); [dbtool.import_file(f) for f in dbtool.import_files]"
+        python -c $pyCode
         if ($LASTEXITCODE -ne 0) {
-            throw 'dbtool.py failed.'
+            throw 'dbtool custom SQL import failed.'
         }
     }
 }
