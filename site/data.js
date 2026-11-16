@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T16:41:04.273347+00:00",
+  "generatedAt": "2026-11-16T16:57:51.938066+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "f56b4a7",
+  "headCommit": "5ffc721",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -36985,6 +36985,53 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "5ffc721c156031a467d012f00eccfbc429bc6222",
+      "shortHash": "5ffc721",
+      "author": "Infomatictek",
+      "date": "2026-11-16T16:57:42Z",
+      "subject": "Fix validTarget=4 (TARGET_ENEMY) for BLM Necromancer mob-targeting pet commands and Runic JA aliases",
+      "files": [
+        {
+          "path": "modules/custom/lua/blm_specs.lua",
+          "added": 10,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 8,
+          "removed": 8
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 2,
+          "removed": 2
+        }
+      ],
+      "totalAdded": 20,
+      "totalRemoved": 13
+    },
+    {
+      "hash": "a45e9b0aab8be0d27176b95c382f9539efdea91d",
+      "shortHash": "a45e9b0",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T16:41:04Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 68,
+          "removed": 58
+        },
+        {
+          "path": "site/data.json",
+          "added": 68,
+          "removed": 58
+        }
+      ],
+      "totalAdded": 136,
+      "totalRemoved": 116
+    },
+    {
       "hash": "f56b4a70d2fb38f86910fdbdb5c24434d3c45ced",
       "shortHash": "f56b4a7",
       "author": "Infomatictek",
@@ -38381,38 +38428,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 2237,
       "totalRemoved": 1057
-    },
-    {
-      "hash": "2d3168aee49526023b369b25183c7a3e6711f5e6",
-      "shortHash": "2d3168a",
-      "author": "Infomatictek",
-      "date": "2026-11-15T10:47:04Z",
-      "subject": "fix(war): change Crimson Crush animation from SCH book (244) to Weapon Bash (201)",
-      "files": [
-        {
-          "path": "modules/custom/sql/war_gladiator_abilities.sql",
-          "added": 1,
-          "removed": 1
-        }
-      ],
-      "totalAdded": 1,
-      "totalRemoved": 1
-    },
-    {
-      "hash": "ceeaae44cb203b2660d1c43eb194be65e1246114",
-      "shortHash": "ceeaae4",
-      "author": "Infomatictek",
-      "date": "2026-11-15T10:34:31Z",
-      "subject": "fix(dnc): return 0 from throwing_stance.onUseAbility",
-      "files": [
-        {
-          "path": "modules/custom/lua/dnc_specs.lua",
-          "added": 1,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 1,
-      "totalRemoved": 0
     }
   ]
 };
