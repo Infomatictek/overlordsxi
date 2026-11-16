@@ -403,9 +403,10 @@ local function buildTankSpecNodes(wsId, archetype, baseNodes)
             and H.node(3, 3, 'tk_t3_c3', 'Bastion Focus', 5, '+6..30% WSD, +6..30 Enmity & +60..300 TP Bonus',
                 function(r) return string.format('+%d%% WSD, +%d Enmity, +%d TP', r * 6, r * 6, r * 60) end,
                 { wsd = { 6,12,18,24,30 }, enmity = { 6,12,18,24,30 }, tpBonus = { 60,120,180,240,300 } })
-            or H.node(3, 3, 'tk_t3_c3', 'Vanguard Force', 5, '+1 Bonus Hit, +8..40% Atk & +8..40 Acc',
-                function(r) return string.format('+1 Hit, +%d%% Atk, +%d Acc', r * 8, r * 8) end,
-                { bonusHits = { 1,1,1,1,1 }, atkPct = { 8,16,24,32,40 }, acc = { 8,16,24,32,40 } }))
+            or H.node(3, 3, 'tk_t3_c3', 'Bastion Force', 5, '+6..30 Enmity, +8..40 Acc & +15..75 DEF (20s)',
+                function(r) return string.format('+%d Enmity, +%d Acc, +%d DEF', r * 6, r * 8, r * 15) end,
+                { enmity = { 6,12,18,24,30 }, acc = { 8,16,24,32,40 },
+                  postBuff = { effect = xi.effect.DEFENSE_BOOST, duration = 20, mods = {{ mod = xi.mod.DEF, val = { 15,30,45,60,75 } }} } }))
     local c3_t4 = isMagDmg
         and H.node(4, 3, 'tk_t4_c3', 'Vanguard Mastery', 5, '+7..35% WSD, +8..40 MAB & +6..30 Enmity',
             function(r) return string.format('+%d%% WSD, +%d MAB, +%d Enmity', r * 7, r * 8, r * 6) end,
@@ -585,7 +586,9 @@ local function buildHealerSpecNodes(wsId, archetype, baseNodes)
         function(r) return string.format('Stoneskin %d, Party +%d TP', 125 + r * 125, r * 80) end,
         { partyTp = { 80,160,240 }, statusBuffs = {{ effect = xi.effect.STONESKIN, power = { 250,375,500 }, duration = 45, tier = 3 }} })
 
-    local c3_t2 = H.elemFollow(2, 3, 'hl_t2_c3', 'Luminous Pulse', 'LIGHT', 'Light', 11, false)
+    local c3_t2 = H.node(2, 3, 'hl_t2_c3', 'Luminous Grace', 5, 'Party +10..50 Magic Eva (30s) & -4..20 Enmity',
+        function(r) return string.format('Party +%d MEVA (30s), -%d Enmity', r * 10, r * 4) end,
+        { enmity = { -4,-8,-12,-16,-20 }, partyBuffs = {{ effect = xi.effect.MAGIC_EVASION_BOOST, power = { 10,20,30,40,50 }, duration = 30 }} })
     local c3_t3 = H.node(3, 3, 'hl_t3_c3', 'Mending Tempo', 5, '+70..350 TP Bonus & Target -6..30 M.Atk (45s)',
         function(r) return string.format('+%d TP Bonus, Target -%d M.Atk', r * 70, r * 6) end,
         { tpBonus = { 70,140,210,280,350 }, targetDebuffs = {{ effect = xi.effect.MAGIC_ATK_DOWN, power = { 6,12,18,24,30 }, duration = 45 }} })
