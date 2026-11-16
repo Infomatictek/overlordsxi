@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T09:46:31.105645+00:00",
+  "generatedAt": "2026-11-16T10:07:58.001741+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "23f879a",
+  "headCommit": "d8f4abf",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38228,6 +38228,43 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "d8f4abf4c203062cf763739bd4d4df3a04904b00",
+      "shortHash": "d8f4abf",
+      "author": "nappypup",
+      "date": "2026-11-16T04:07:24-06:00",
+      "subject": "Restrict Regain to verified active combat only (prevent out-of-combat and /attack-from-afar exploits)",
+      "files": [
+        {
+          "path": "modules/custom/lua/boss_like_combat_and_exp.lua",
+          "added": 307,
+          "removed": 20
+        }
+      ],
+      "totalAdded": 307,
+      "totalRemoved": 20
+    },
+    {
+      "hash": "6b11cfef88268aceb4c1352c11577e73ae5178c8",
+      "shortHash": "6b11cfe",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T09:46:31Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 61,
+          "removed": 115
+        },
+        {
+          "path": "site/data.json",
+          "added": 61,
+          "removed": 115
+        }
+      ],
+      "totalAdded": 122,
+      "totalRemoved": 230
+    },
+    {
       "hash": "23f879a9eea344049e1cf24eecfad5c043aa1389",
       "shortHash": "23f879a",
       "author": "nappypup",
@@ -39599,73 +39636,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 350,
       "totalRemoved": 100
-    },
-    {
-      "hash": "21985b6b8aa8c9d563447c8dce6379d9a23fa8bb",
-      "shortHash": "21985b6",
-      "author": "Infomatictek",
-      "date": "2026-11-14T22:01:15Z",
-      "subject": "Add spec lifecycle sync & custom in-game job traits (0010)",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 6,
-          "removed": 3
-        },
-        {
-          "path": "modules/custom/lua/mnk_specs.lua",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_spec_runtime.lua",
-          "added": 15,
-          "removed": 5
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 122,
-          "removed": 24
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 3,
-          "removed": 0
-        },
-        {
-          "path": "patches/0010-spec-trait-sync-and-unlocks.patch",
-          "added": 156,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 303,
-      "totalRemoved": 32
-    },
-    {
-      "hash": "804964228b6276023834b3c66f1a51fc67e7c657",
-      "shortHash": "8049642",
-      "author": "nappypup",
-      "date": "2026-11-14T15:44:44-06:00",
-      "subject": "Add Crystal Socket 0x11F/0x1FF packets and Lua spec bridge",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 4,
-          "removed": 2
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 114,
-          "removed": 0
-        },
-        {
-          "path": "patches/0009-crystal-socket-packets.patch",
-          "added": 764,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 882,
-      "totalRemoved": 2
     }
   ]
 };
