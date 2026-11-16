@@ -350,38 +350,43 @@ local function checkSummon(player, minLevel, label)
     return 0, 0
 end
 
-local function doSummon(player, petId, abilityId)
+local function doSummon(player, petId, label)
     xi.pet.spawnPet(player, petId)
     syncDarkPactMods(player)
-    return abilityId
+    if player:hasPet() then
+        tell(player, string.format('%s answers your call!', label))
+    else
+        tell(player, string.format('Failed to summon %s (ensure blm_necro_spec.sql is imported and xi_map restarted).', label))
+    end
+    return 0
 end
 
 m:addOverride('xi.actions.abilities.summon_undead_warrior.onAbilityCheck', function(player, target, ability)
     return checkSummon(player, 10, 'Summon Undead Warrior')
 end)
 m:addOverride('xi.actions.abilities.summon_undead_warrior.onUseAbility', function(player, target, ability)
-    return doSummon(player, PET_UNDEAD_WARRIOR, ABIL_SUMMON_WARRIOR)
+    return doSummon(player, PET_UNDEAD_WARRIOR, 'Undead Warrior')
 end)
 
 m:addOverride('xi.actions.abilities.summon_undead_mage.onAbilityCheck', function(player, target, ability)
     return checkSummon(player, 10, 'Summon Undead Mage')
 end)
 m:addOverride('xi.actions.abilities.summon_undead_mage.onUseAbility', function(player, target, ability)
-    return doSummon(player, PET_UNDEAD_MAGE, ABIL_SUMMON_MAGE)
+    return doSummon(player, PET_UNDEAD_MAGE, 'Undead Mage')
 end)
 
 m:addOverride('xi.actions.abilities.summon_corse.onAbilityCheck', function(player, target, ability)
     return checkSummon(player, 75, 'Summon Corse')
 end)
 m:addOverride('xi.actions.abilities.summon_corse.onUseAbility', function(player, target, ability)
-    return doSummon(player, PET_UNDEAD_CORSE, ABIL_SUMMON_CORSE)
+    return doSummon(player, PET_UNDEAD_CORSE, 'Corse')
 end)
 
 m:addOverride('xi.actions.abilities.summon_dullahan.onAbilityCheck', function(player, target, ability)
     return checkSummon(player, 75, 'Summon Dullahan')
 end)
 m:addOverride('xi.actions.abilities.summon_dullahan.onUseAbility', function(player, target, ability)
-    return doSummon(player, PET_UNDEAD_DULLAHAN, ABIL_SUMMON_DULLAHAN)
+    return doSummon(player, PET_UNDEAD_DULLAHAN, 'Dullahan')
 end)
 
 -----------------------------------
@@ -446,7 +451,7 @@ m:addOverride('xi.actions.abilities.corpse_explosion.onUseAbility', function(pla
 
     player:despawnPet()
     clearDarkPactMods(player)
-    return ABIL_CORPSE_EXPLODE
+    return 0
 end)
 
 -----------------------------------
@@ -493,7 +498,7 @@ m:addOverride('xi.actions.abilities.grim_reaping.onUseAbility', function(player,
     end
 
     tell(player, string.format('%s unleashes Grim Reaping on %s for %d damage!', pet:getName(), target:getName(), dmg))
-    return ABIL_GRIM_REAPING
+    return dmg
 end)
 
 -----------------------------------
@@ -546,7 +551,7 @@ m:addOverride('xi.actions.abilities.grim_incantations.onUseAbility', function(pl
 
     tell(player, string.format('%s casts Grim Incantations on %s for %d Dark damage (+%d MP)!',
         pet:getName(), target:getName(), dmg, mpDrain))
-    return ABIL_GRIM_INCANT
+    return dmg
 end)
 
 -----------------------------------
