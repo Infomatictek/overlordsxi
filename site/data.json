@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T13:40:14.441919+00:00",
+  "generatedAt": "2026-11-16T14:04:47.384557+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "5f5bc52",
+  "headCommit": "a2b8396",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -1010,8 +1010,8 @@
           "highlights": [
             "Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).",
             "Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).",
-            "Conduction (Lv15+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv15/40/65) scaled by Delay/480 on positive Rune Edge.",
-            "Magic Spell: Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).",
+            "Conduction (Lv10+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv10/40/65) scaled by Delay/480 on positive Rune Edge.",
+            "Magic Spell: Runic Bolt (Lv10, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).",
             "Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.",
             "Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).",
             "Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s)."
@@ -38228,6 +38228,48 @@
   ],
   "commits": [
     {
+      "hash": "a2b83968b2e452b570313d4fc8bf1131c3dcf515",
+      "shortHash": "a2b8396",
+      "author": "Infomatictek",
+      "date": "2026-11-16T14:04:22Z",
+      "subject": "feat(run-specs): lower Runic Bolt and Conduction requirement to Lv 10",
+      "files": [
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 15,
+          "removed": 12
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 4,
+          "removed": 4
+        }
+      ],
+      "totalAdded": 19,
+      "totalRemoved": 16
+    },
+    {
+      "hash": "d5f739cd641b2e04127d0f34be96075af8b20e9b",
+      "shortHash": "d5f739c",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T13:40:14Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 63,
+          "removed": 68
+        },
+        {
+          "path": "site/data.json",
+          "added": 63,
+          "removed": 68
+        }
+      ],
+      "totalAdded": 126,
+      "totalRemoved": 136
+    },
+    {
       "hash": "5f5bc52bd7381a2f0a119eade6eb5bc93f269b97",
       "shortHash": "5f5bc52",
       "author": "Infomatictek",
@@ -39594,58 +39636,6 @@
       ],
       "totalAdded": 1350,
       "totalRemoved": 0
-    },
-    {
-      "hash": "7c1d11b28473b73d5360e3470426cb2df60a54b8",
-      "shortHash": "7c1d11b",
-      "author": "Infomatictek",
-      "date": "2026-11-15T01:16:08Z",
-      "subject": "Add mob DoT combat log attribution for parser tracking",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 6,
-          "removed": 1
-        },
-        {
-          "path": "modules/custom/lua/dot_damage_log.lua",
-          "added": 88,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "patches/0011-commander-status-effects.patch",
-          "added": 1,
-          "removed": 2
-        },
-        {
-          "path": "patches/0012-dot-damage-log.patch",
-          "added": 363,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 459,
-      "totalRemoved": 3
-    },
-    {
-      "hash": "ca88f942e5eff4cdc461ff04613c7a8062a184a3",
-      "shortHash": "ca88f94",
-      "author": "Infomatictek",
-      "date": "2026-11-15T01:01:15Z",
-      "subject": "Balance MNK Sensei staff riposte damage and add combat log messages",
-      "files": [
-        {
-          "path": "modules/custom/lua/mnk_specs.lua",
-          "added": 25,
-          "removed": 7
-        }
-      ],
-      "totalAdded": 25,
-      "totalRemoved": 7
     }
   ]
 }
