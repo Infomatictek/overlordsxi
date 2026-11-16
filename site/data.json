@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T14:04:47.384557+00:00",
+  "generatedAt": "2026-11-16T14:18:14.254165+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "a2b8396",
+  "headCommit": "863f6ce",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38228,6 +38228,58 @@
   ],
   "commits": [
     {
+      "hash": "863f6ce8a04f30693754b9d2e6c4ca3d1d808e33",
+      "shortHash": "863f6ce",
+      "author": "Infomatictek",
+      "date": "2026-11-16T14:18:02Z",
+      "subject": "fix(sql): remove obsolete skill_ranks and weapon_skills SQL queries migrated to YAML",
+      "files": [
+        {
+          "path": "modules/custom/lua/overlords_job_specs.lua",
+          "added": 0,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/lua/overlords_test_gear.lua",
+          "added": 3,
+          "removed": 3
+        },
+        {
+          "path": "modules/custom/sql/blm_necro_spec.sql",
+          "added": 0,
+          "removed": 5
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 1,
+          "removed": 4
+        }
+      ],
+      "totalAdded": 4,
+      "totalRemoved": 15
+    },
+    {
+      "hash": "361b73659be2dd174dd92936a752d40722659986",
+      "shortHash": "361b736",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T14:04:47Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 46,
+          "removed": 56
+        },
+        {
+          "path": "site/data.json",
+          "added": 46,
+          "removed": 56
+        }
+      ],
+      "totalAdded": 92,
+      "totalRemoved": 112
+    },
+    {
       "hash": "a2b83968b2e452b570313d4fc8bf1131c3dcf515",
       "shortHash": "a2b8396",
       "author": "Infomatictek",
@@ -39548,93 +39600,6 @@
         }
       ],
       "totalAdded": 0,
-      "totalRemoved": 0
-    },
-    {
-      "hash": "7f6503861a537dcc17885839d1b0cf9eb9c8132e",
-      "shortHash": "7f65038",
-      "author": "Infomatictek",
-      "date": "2026-11-15T08:57:37Z",
-      "subject": "Fix AddStatusEffectSilent call in 0013-dnc-ranged-dances.patch",
-      "files": [
-        {
-          "path": "patches/0013-dnc-ranged-dances.patch",
-          "added": 1,
-          "removed": 1
-        }
-      ],
-      "totalAdded": 1,
-      "totalRemoved": 1
-    },
-    {
-      "hash": "e937f5788b10efb0e0f577f1e3a0aec80db2636f",
-      "shortHash": "e937f57",
-      "author": "Infomatictek",
-      "date": "2026-11-15T08:53:19Z",
-      "subject": "Add Dancer Bladewheel chakram spec, 12 Throwing WSs, and auto-ranged/ranged-dance patches",
-      "files": [
-        {
-          "path": "modules/custom/lua/dnc_specs.lua",
-          "added": 134,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 21,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_throwing_ws.lua",
-          "added": 230,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_catalog.lua",
-          "added": 195,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_overrides.lua",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_talents.lua",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_ws_trees_throwing.lua",
-          "added": 297,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/dnc_chakram_spec.sql",
-          "added": 47,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 4,
-          "removed": 0
-        },
-        {
-          "path": "patches/0011-throwing-weaponskills.patch",
-          "added": 185,
-          "removed": 0
-        },
-        {
-          "path": "patches/0012-auto-ranged-attack.patch",
-          "added": 40,
-          "removed": 0
-        },
-        {
-          "path": "patches/0013-dnc-ranged-dances.patch",
-          "added": 195,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 1350,
       "totalRemoved": 0
     }
   ]
