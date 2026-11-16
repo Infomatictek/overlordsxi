@@ -1,9 +1,9 @@
 window.OVERLORDS_DATA = {
-  "generatedAt": "2026-11-16T10:42:12.279230+00:00",
+  "generatedAt": "2026-11-16T10:59:26.345420+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "c5c6a22",
+  "headCommit": "2264fb0",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38228,6 +38228,48 @@ window.OVERLORDS_DATA = {
   ],
   "commits": [
     {
+      "hash": "2264fb065c3cf93e45ff63272d2d3876b87f8fa4",
+      "shortHash": "2264fb0",
+      "author": "Infomatictek",
+      "date": "2026-11-16T10:59:17Z",
+      "subject": "Fix Runic Bolt/Sever target flags in run_specs.sql and auto-grant RUN native spells on crystal equip",
+      "files": [
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 26,
+          "removed": 0
+        },
+        {
+          "path": "modules/custom/sql/run_specs.sql",
+          "added": 2,
+          "removed": 2
+        }
+      ],
+      "totalAdded": 28,
+      "totalRemoved": 2
+    },
+    {
+      "hash": "7c69d2dd80dcca8f0cc53cd664a33d7d91ed6b18",
+      "shortHash": "7c69d2d",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T10:42:12Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 66,
+          "removed": 36
+        },
+        {
+          "path": "site/data.json",
+          "added": 66,
+          "removed": 36
+        }
+      ],
+      "totalAdded": 132,
+      "totalRemoved": 72
+    },
+    {
       "hash": "c5c6a22485319ce29f6e014841edafa58a9ad9b8",
       "shortHash": "c5c6a22",
       "author": "Infomatictek",
@@ -39609,63 +39651,6 @@ window.OVERLORDS_DATA = {
       ],
       "totalAdded": 128,
       "totalRemoved": 1
-    },
-    {
-      "hash": "980e1b5ca5b784ac5fc29da9949eb1fd5f7fb877",
-      "shortHash": "980e1b5",
-      "author": "Infomatictek",
-      "date": "2026-11-15T00:40:02Z",
-      "subject": "Add Lv10+ active tactical JAs for WAR Commander",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 13,
-          "removed": 5
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 440,
-          "removed": 8
-        },
-        {
-          "path": "modules/custom/sql/war_commander_abilities.sql",
-          "added": 38,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 1,
-          "removed": 0
-        },
-        {
-          "path": "patches/0011-commander-status-effects.patch",
-          "added": 45,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 537,
-      "totalRemoved": 13
-    },
-    {
-      "hash": "2c72febfe324ec09063a163dd3b6d15a8e018bca",
-      "shortHash": "2c72feb",
-      "author": "Infomatictek",
-      "date": "2026-11-14T22:22:26Z",
-      "subject": "Remove +Enmity passive from WAR Commander crystal",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 1,
-          "removed": 1
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 1,
-          "removed": 2
-        }
-      ],
-      "totalAdded": 2,
-      "totalRemoved": 3
     }
   ]
 };
