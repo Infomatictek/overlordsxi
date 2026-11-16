@@ -1128,6 +1128,9 @@ end
 -----------------------------------
 -- Crystal Definitions (RUN)
 -----------------------------------
+local SPELL_RUNIC_BOLT  = 754
+local SPELL_RUNIC_SEVER = 755
+
 local RUN_NATIVE_SPELLS =
 {
     43, 44, 45, 46,       -- Protect I-IV
@@ -1140,13 +1143,24 @@ local RUN_NATIVE_SPELLS =
     477, 840,             -- Regen IV, Foil
 }
 
-local function ensureRunSpells(player)
+local function ensureRunSpells(player, isSpellblade)
     if player == nil or not player.addSpell or not player.hasSpell then
         return
     end
     for _, spellId in ipairs(RUN_NATIVE_SPELLS) do
         if not player:hasSpell(spellId) then
             player:addSpell(spellId, true, true)
+        end
+    end
+    if isSpellblade then
+        player:addSpell(SPELL_RUNIC_BOLT, true, true)
+        player:addSpell(SPELL_RUNIC_SEVER, true, true)
+    elseif player.delSpell then
+        if player:hasSpell(SPELL_RUNIC_BOLT) then
+            player:delSpell(SPELL_RUNIC_BOLT)
+        end
+        if player:hasSpell(SPELL_RUNIC_SEVER) then
+            player:delSpell(SPELL_RUNIC_SEVER)
         end
     end
 end
@@ -1204,7 +1218,7 @@ if xi.job and xi.job.RUN then
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                 end
-                ensureRunSpells(player)
+                ensureRunSpells(player, false)
                 clearConduction(player, nil)
                 detachRunListeners(player)
             end,
@@ -1226,34 +1240,35 @@ if xi.job and xi.job.RUN then
             extraAbilities = function(_player, lvl)
                 local l   = lvl or 1
                 local out = {}
-                if l >= 15 then
-                    table.insert(out, ABIL_RUNIC_BOLT)
-                end
                 if l >= 20 then
                     table.insert(out, (xi.jobAbility and xi.jobAbility.SWORDPLAY) or 367)
                 end
                 if l >= 40 then
                     table.insert(out, (xi.jobAbility and xi.jobAbility.VALLATION) or 366)
+                    table.insert(out, (xi.jobAbility and xi.jobAbility.PFLUG) or 369)
                 end
-                if l >= 55 then
-                    table.insert(out, ABIL_RUNIC_SEVER)
+                if l >= 50 then
+                    table.insert(out, (xi.jobAbility and xi.jobAbility.VALIANCE) or 371)
                 end
                 if l >= 70 then
                     table.insert(out, (xi.jobAbility and xi.jobAbility.GAMBIT) or 372)
+                    table.insert(out, (xi.jobAbility and xi.jobAbility.RAYKE) or 375)
+                    table.insert(out, (xi.jobAbility and xi.jobAbility.BATTUTA) or 376)
+                    table.insert(out, (xi.jobAbility and xi.jobAbility.LIEMENT) or 373)
                 end
                 return out
             end,
             extraTraits = { TRAIT_RUNIC_BRAND },
-            description = 'Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).',
+            description = 'Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive magic spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).',
             highlights  =
             {
                 'Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).',
                 'Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).',
                 'Conduction (Lv15+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv15/40/65) scaled by Delay/480 on positive Rune Edge.',
-                'Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).',
-                'Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.',
+                'Magic Spell: Runic Bolt (Lv15, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).',
+                'Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.',
                 'Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).',
-                'Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend 3 Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s).',
+                'Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s).',
             },
             mods = function(_player, lvl)
                 return
@@ -1268,7 +1283,7 @@ if xi.job and xi.job.RUN then
                     player:setLocalVar('OX_RUN_SPELLBLADE', 1)
                     player:setLocalVar('OX_RUN_WPN_SIG', getMainSubWeaponSignature(player))
                 end
-                ensureRunSpells(player)
+                ensureRunSpells(player, true)
                 attachRunListeners(player)
             end,
             onRemove = function(player)
@@ -1277,6 +1292,7 @@ if xi.job and xi.job.RUN then
                         player:setLocalVar('OX_RUN_SPELLBLADE', 0)
                         player:setLocalVar('OX_RUN_MP_FRAC', 0)
                     end
+                    ensureRunSpells(player, false)
                     clearConduction(player, nil)
                     delRunCustomEffectSilent(player, EFFECT_EDGEFLARE)
                     delRunCustomEffectSilent(player, EFFECT_RUNIC_ASCENDANCE)
@@ -1497,50 +1513,36 @@ end)
 -----------------------------------
 -- Base RUN Ability Recast & Effect Overrides
 -----------------------------------
--- Swipe (344) & Lunge (368): Disabled on Spellblade (replaced by Runic Bolt & Runic Sever); non-consuming Enmity on Inquisitor
-m:addOverride('xi.actions.abilities.swipe.onAbilityCheck', function(player, target, ability)
-    if player ~= nil and player:isPC() and isRunSpec(player, SPELLBLADE_KEY) then
-        tell(player, '[Spellblade] Use Runic Bolt and Runic Sever to weave elemental spells.')
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-    return super(player, target, ability)
-end)
-
-m:addOverride('xi.actions.abilities.lunge.onAbilityCheck', function(player, target, ability)
-    if player ~= nil and player:isPC() and isRunSpec(player, SPELLBLADE_KEY) then
-        tell(player, '[Spellblade] Use Runic Bolt and Runic Sever to weave elemental spells.')
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-    return super(player, target, ability)
-end)
-
+-- Swipe (344) & Lunge (368): Non-consuming on Spellblade & Inquisitor (+Enmity on Inquisitor, +Edgeflare/Conduction synergy on Spellblade)
 m:addOverride('xi.job_utils.rune_fencer.useSwipeLunge', function(player, target, ability, action)
-    if not isRunSpec(player, INQUISITOR_KEY) then
-        return super(player, target, ability, action)
+    if isRunSpec(player, SPELLBLADE_KEY) then
+        local savedRunes = snapshotRunes(player)
+        local dmg        = super(player, target, ability, action)
+        restoreRunes(player, savedRunes)
+        if dmg and dmg > 0 then
+            local newestRune = (player.getNewestRuneEffect and player:getNewestRuneEffect()) or savedRunes[#savedRunes] or xi.effect.IGNIS
+            local element    = RUNE_ELEMENT_MAP[newestRune] or xi.element.FIRE
+            grantOrRefreshEdgeflare(player, element)
+        end
+        return dmg
+    elseif isRunSpec(player, INQUISITOR_KEY) then
+        local savedRunes = snapshotRunes(player)
+        local dmg        = super(player, target, ability, action)
+        restoreRunes(player, savedRunes)
+        local runeCount = math.max(1, #savedRunes)
+        grantEnmity(target, player, 180 * runeCount, 480 * runeCount)
+        return dmg
     end
 
-    local savedRunes = snapshotRunes(player)
-    local dmg        = super(player, target, ability, action)
-    restoreRunes(player, savedRunes)
-    local runeCount = math.max(1, #savedRunes)
-    grantEnmity(target, player, 180 * runeCount, 480 * runeCount)
-    return dmg
+    return super(player, target, ability, action)
 end)
 
 -- Gambit (372):
--- - Spellblade (Lv.70+, 180s CD): Spend 3 Conduction to make target take 1.10x positive damage from selected element for 20s.
+-- - Spellblade (Lv.70+, 180s CD): Spend up to 3 Conduction to make target take 1.10x positive damage from selected element for 20s (still usable at 0 stacks).
 -- - Inquisitor (60s CD): Non-consuming + bonus Enmity.
 m:addOverride('xi.actions.abilities.gambit.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
         if isRunSpec(player, SPELLBLADE_KEY) then
-            local lvl = player.getMainLvl and player:getMainLvl() or 1
-            if lvl < 70 then
-                return xi.msg.basic.UNABLE_TO_USE_JA, 0
-            end
-            if getConductionStacks(player) < 3 then
-                tell(player, '[Spellblade] Gambit requires 3 Conduction stacks.')
-                return xi.msg.basic.UNABLE_TO_USE_JA, 0
-            end
             if ability ~= nil and ability.setRecast then
                 ability:setRecast(180)
             end
@@ -1559,6 +1561,7 @@ m:addOverride('xi.job_utils.rune_fencer.useGambit', function(player, target, abi
         local highestRune = player.getHighestRuneEffect and player:getHighestRuneEffect() or xi.effect.IGNIS
         local element     = RUNE_ELEMENT_MAP[highestRune] or xi.element.FIRE
         local infoVal     = RUNE_EFFUSION_INFO_MAP[highestRune] or 2
+        local stacks      = math.max(1, getConductionStacks(player))
 
         setConductionStacks(player, 0, true)
 
@@ -1577,7 +1580,7 @@ m:addOverride('xi.job_utils.rune_fencer.useGambit', function(player, target, abi
             target:addStatusEffect(xi.effect.GAMBIT,
             {
                 power    = SPELLBLADE_GAMBIT_POWER,
-                duration = 20,
+                duration = 10 + (stacks * 4),
                 origin   = player,
                 subPower = element,
             })
@@ -1596,12 +1599,10 @@ m:addOverride('xi.job_utils.rune_fencer.useGambit', function(player, target, abi
     return super(player, target, ability, action)
 end)
 
--- Rayke (375): Disabled on Spellblade; 60s non-consuming Enmity on Inquisitor
+-- Rayke (375): 60s non-consuming Enmity on Inquisitor; non-consuming on Spellblade
 m:addOverride('xi.actions.abilities.rayke.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
+        if isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
             ability:setRecast(60)
         end
     end
@@ -1609,12 +1610,14 @@ m:addOverride('xi.actions.abilities.rayke.onAbilityCheck', function(player, targ
 end)
 
 m:addOverride('xi.job_utils.rune_fencer.useRayke', function(player, target, ability, action)
-    if isRunSpec(player, INQUISITOR_KEY) then
+    if isRunSpec(player, INQUISITOR_KEY) or isRunSpec(player, SPELLBLADE_KEY) then
         local savedRunes = snapshotRunes(player)
         local res        = super(player, target, ability, action)
         restoreRunes(player, savedRunes)
-        local runeCount = math.max(1, #savedRunes)
-        grantEnmity(target, player, 220 * runeCount, 550 * runeCount)
+        if isRunSpec(player, INQUISITOR_KEY) then
+            local runeCount = math.max(1, #savedRunes)
+            grantEnmity(target, player, 220 * runeCount, 550 * runeCount)
+        end
         return res
     end
 
@@ -1622,18 +1625,9 @@ m:addOverride('xi.job_utils.rune_fencer.useRayke', function(player, target, abil
 end)
 
 -- Vallation (366) & Valiance (371):
--- - Spellblade Vallation (Lv.40+, 120s CD, Self): Spend 1-3 Conduction for 10% opposing-element DR per stack (max 30%) for 15s.
--- - Spellblade Valiance: Disabled.
+-- - Spellblade Vallation (Lv.40+, 120s CD, Self): Spend 1-3 Conduction (or baseline 1 stack at 0 Conduction) for 10% opposing-element DR per stack (max 30%) for 15s.
 m:addOverride('xi.actions.abilities.vallation.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() and isRunSpec(player, SPELLBLADE_KEY) then
-        local lvl = player.getMainLvl and player:getMainLvl() or 1
-        if lvl < 40 then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        end
-        if getConductionStacks(player) < 1 then
-            tell(player, '[Spellblade] Vallation requires at least 1 Conduction stack.')
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        end
         if ability ~= nil and ability.setRecast then
             ability:setRecast(120)
         end
@@ -1644,9 +1638,7 @@ end)
 
 m:addOverride('xi.actions.abilities.valiance.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif (isRunSpec(player, LIFEBINDER_KEY) or isRunSpec(player, INQUISITOR_KEY)) and ability ~= nil and ability.setRecast then
+        if (isRunSpec(player, LIFEBINDER_KEY) or isRunSpec(player, INQUISITOR_KEY)) and ability ~= nil and ability.setRecast then
             ability:setRecast(60)
         end
     end
@@ -1654,16 +1646,13 @@ m:addOverride('xi.actions.abilities.valiance.onAbilityCheck', function(player, t
 end)
 
 m:addOverride('xi.job_utils.rune_fencer.useVallationValiance', function(player, target, ability, action)
-    if isRunSpec(player, SPELLBLADE_KEY) then
-        -- Self-only on Spellblade
+    if isRunSpec(player, SPELLBLADE_KEY) and ability ~= nil and ability:getID() == ((xi.jobAbility and xi.jobAbility.VALLATION) or 366) then
+        -- Self-only on Spellblade Vallation
         if target ~= nil and player ~= nil and target:getID() ~= player:getID() then
             return xi.effect.VALLATION
         end
 
-        local stacks = getConductionStacks(player)
-        if stacks <= 0 then
-            return xi.effect.VALLATION
-        end
+        local stacks = math.max(1, getConductionStacks(player))
         setConductionStacks(player, 0, true)
 
         local highestRune = player.getHighestRuneEffect and player:getHighestRuneEffect() or xi.effect.IGNIS
@@ -1721,10 +1710,6 @@ end)
 m:addOverride('xi.actions.abilities.swordplay.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
         if isRunSpec(player, SPELLBLADE_KEY) then
-            local lvl = player.getMainLvl and player:getMainLvl() or 1
-            if lvl < 20 then
-                return xi.msg.basic.UNABLE_TO_USE_JA, 0
-            end
             if ability ~= nil and ability.setRecast then
                 ability:setRecast(180)
             end
@@ -1762,12 +1747,9 @@ m:addOverride('xi.job_utils.rune_fencer.useSwordplay', function(player, target, 
 end)
 
 -- Pflug (369), Battuta (376), Liement (373), Embolden (370), One for All (374), Odyllic Subterfuge (378):
--- Disabled on Spellblade to keep defensive identity narrow (Vallation emergency ward only).
 m:addOverride('xi.actions.abilities.pflug.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
+        if isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
             ability:setRecast(90)
         end
     end
@@ -1790,9 +1772,7 @@ end)
 
 m:addOverride('xi.actions.abilities.battuta.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
+        if isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
             ability:setRecast(90)
         end
     end
@@ -1815,9 +1795,7 @@ end)
 
 m:addOverride('xi.actions.abilities.liement.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
+        if isRunSpec(player, INQUISITOR_KEY) and ability ~= nil and ability.setRecast then
             ability:setRecast(60)
         end
     end
@@ -1838,18 +1816,9 @@ m:addOverride('xi.job_utils.rune_fencer.useLiement', function(player, target, ab
     return res
 end)
 
-m:addOverride('xi.actions.abilities.embolden.onAbilityCheck', function(player, target, ability)
-    if player ~= nil and player:isPC() and isRunSpec(player, SPELLBLADE_KEY) then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-    return super(player, target, ability)
-end)
-
 m:addOverride('xi.actions.abilities.one_for_all.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif (isRunSpec(player, LIFEBINDER_KEY) or isRunSpec(player, INQUISITOR_KEY)) and ability ~= nil and ability.setRecast then
+        if (isRunSpec(player, LIFEBINDER_KEY) or isRunSpec(player, INQUISITOR_KEY)) and ability ~= nil and ability.setRecast then
             ability:setRecast(60)
         end
     end
@@ -1917,9 +1886,7 @@ end)
 -----------------------------------
 m:addOverride('xi.actions.abilities.vivacious_pulse.onAbilityCheck', function(player, target, ability)
     if player ~= nil and player:isPC() then
-        if isRunSpec(player, SPELLBLADE_KEY) then
-            return xi.msg.basic.UNABLE_TO_USE_JA, 0
-        elseif isRunSpec(player, LIFEBINDER_KEY) and ability ~= nil and ability.setRecast then
+        if isRunSpec(player, LIFEBINDER_KEY) and ability ~= nil and ability.setRecast then
             ability:setRecast(15)
         end
     end
@@ -2266,7 +2233,7 @@ local function checkRunicSpell(player, target, ability, isSever)
     return 0, 0
 end
 
-local function executeRunicSpell(player, target, _ability, action, isSever)
+local function executeRunicSpell(player, target, _ability, action, isSever, spellObj)
     -- Verify weapon/grip was not swapped during casting
     local prepWpn = player.getLocalVar and player:getLocalVar('OX_RUN_PREP_WPN') or 0
     local curWpn  = getMainSubWeaponSignature(player)
@@ -2285,14 +2252,16 @@ local function executeRunicSpell(player, target, _ability, action, isSever)
     end
 
     local mpCost, _ = calculateConductionAdjustedCostAndCast(player, isSever, stacks)
-    local curMp     = player.getMP and player:getMP() or 0
-    if curMp < mpCost then
-        return 0
-    end
+    if spellObj == nil then
+        local curMp = player.getMP and player:getMP() or 0
+        if curMp < mpCost then
+            return 0
+        end
 
-    -- Spend MP and reserved Conduction (completed resisted spells still spend Conduction)
-    if player.delMP then
-        player:delMP(mpCost)
+        -- Spend MP and reserved Conduction for JA fallback path (magic spells already deduct MP in SpendCost)
+        if player.delMP then
+            player:delMP(mpCost)
+        end
     end
     setConductionStacks(player, math.max(0, getConductionStacks(player) - stacks), true)
 
@@ -2421,6 +2390,9 @@ local function executeRunicSpell(player, target, _ability, action, isSever)
 
     if absorb then
         local healed = target.addHP and target:addHP(finalDamage) or finalDamage
+        if spellObj ~= nil and spellObj.setMsg and xi.msg and xi.msg.basic then
+            spellObj:setMsg(xi.msg.basic.MAGIC_RECOVERS_HP)
+        end
         return healed
     end
 
@@ -2435,18 +2407,30 @@ local function executeRunicSpell(player, target, _ability, action, isSever)
         finalDamage = target:checkDamageCap(finalDamage)
     end
 
-    if finalDamage > 0 and target.takeDamage then
+    if finalDamage > 0 then
         -- Neither spell generates TP or creates a skillchain
-        target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element, { giveTPToVictim = false })
+        if spellObj ~= nil and target.takeSpellDamage then
+            target:takeSpellDamage(player, spellObj, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+        elseif target.takeDamage then
+            target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element, { giveTPToVictim = false })
+        end
     end
     if target.updateEnmityFromDamage then
         target:updateEnmityFromDamage(player, finalDamage)
     end
-    if action ~= nil and action.recordDamage then
-        action:recordDamage(target, xi.attackType.MAGICAL, finalDamage)
-    end
-    if canMBurst and action ~= nil and action.modifier and xi.msg and xi.msg.actionModifier then
-        action:modifier(target:getID(), xi.msg.actionModifier.MAGIC_BURST)
+    if spellObj ~= nil then
+        if canMBurst and spellObj.setMsg and xi.msg and xi.msg.basic then
+            spellObj:setMsg(xi.msg.basic.MAGIC_BURST_BLACK or xi.msg.basic.MAGIC_BURST_DAMAGE or 252)
+        elseif spellObj.setMsg and xi.msg and xi.msg.basic then
+            spellObj:setMsg(xi.msg.basic.MAGIC_DMG or 2)
+        end
+    else
+        if action ~= nil and action.recordDamage then
+            action:recordDamage(target, xi.attackType.MAGICAL, finalDamage)
+        end
+        if canMBurst and action ~= nil and action.modifier and xi.msg and xi.msg.actionModifier then
+            action:modifier(target:getID(), xi.msg.actionModifier.MAGIC_BURST)
+        end
     end
 
     -- Edgeflare (Lv.30+): A positively damaging Bolt or Sever increases Rune Edge damage by 25% for 12s
@@ -2457,12 +2441,125 @@ local function executeRunicSpell(player, target, _ability, action, isSever)
     return finalDamage
 end
 
+-- Element-specific spell animations for Runic Bolt (Tier I nuke visuals) & Runic Sever (Tier III nuke visuals)
+local RUNIC_BOLT_ANIM_MAP =
+{
+    [xi.effect.IGNIS]    = 144, -- Fire
+    [xi.effect.GELUS]    = 149, -- Blizzard
+    [xi.effect.FLABRA]   = 154, -- Aero
+    [xi.effect.TELLUS]   = 159, -- Stone
+    [xi.effect.SULPOR]   = 164, -- Thunder
+    [xi.effect.UNDA]     = 169, -- Water
+    [xi.effect.LUX]      = 29,  -- Banish II
+    [xi.effect.TENEBRAE] = 219, -- Comet / Dark
+}
+
+local RUNIC_SEVER_ANIM_MAP =
+{
+    [xi.effect.IGNIS]    = 146, -- Fire III
+    [xi.effect.GELUS]    = 151, -- Blizzard III
+    [xi.effect.FLABRA]   = 156, -- Aero III
+    [xi.effect.TELLUS]   = 161, -- Stone III
+    [xi.effect.SULPOR]   = 166, -- Thunder III
+    [xi.effect.UNDA]     = 171, -- Water III
+    [xi.effect.LUX]      = 31,  -- Banish IV / Holy
+    [xi.effect.TENEBRAE] = 245, -- Drain / Dark burst
+}
+
+local function checkRunicMagicSpell(caster, target, spell, isSever)
+    if not isRunSpec(caster, SPELLBLADE_KEY) then
+        tell(caster, '[Spellblade] Runic Bolt and Runic Sever require the Spellblade crystal.')
+        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+    end
+
+    local lvl    = caster.getMainLvl and caster:getMainLvl() or 1
+    local minLvl = isSever and 55 or 15
+    if lvl < minLvl then
+        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+    end
+
+    if not isGreatSwordEquipped(caster) then
+        tell(caster, '[Spellblade] Runic spells require a Greatsword equipped.')
+        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+    end
+
+    if target == nil or target:getID() == caster:getID() or (target.isAlive and not target:isAlive()) then
+        return xi.msg.basic.CANNOT_ATTACK_TARGET or 44
+    end
+
+    local runeErr = xi.job_utils.rune_fencer.checkHaveRunes(caster)
+    if runeErr ~= 0 then
+        tell(caster, '[Spellblade] You must harbor at least 1 active Rune to cast Runic spells.')
+        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+    end
+
+    local stacks   = getConductionStacks(caster)
+    local baseMp   = getRunicSpellBaseMp(isSever, lvl)
+    local mpFactor = 1.0 - (0.15 * stacks)
+    local mpCost   = math.max(1, isSever and math.floor(baseMp * mpFactor) or math.floor(baseMp * mpFactor + 0.5))
+    local curMp    = caster.getMP and caster:getMP() or 0
+    if curMp < mpCost then
+        return xi.msg.basic.NOT_ENOUGH_MP or 34
+    end
+
+    local baseCastMs = isSever and 3000 or 2000
+    local prepCastMs = math.max(250, baseCastMs - (stacks * 500))
+    if caster.hasStatusEffect and caster:hasStatusEffect(xi.effect.HASSO) then
+        prepCastMs = math.floor(prepCastMs * 1.5)
+    end
+
+    if caster.setLocalVar then
+        caster:setLocalVar('OX_RUN_PREP_STACKS', stacks)
+        caster:setLocalVar('OX_RUN_PREP_WPN', getMainSubWeaponSignature(caster))
+    end
+
+    if spell ~= nil then
+        if spell.setMPCost then
+            spell:setMPCost(mpCost)
+        end
+        if spell.setCastTime then
+            spell:setCastTime(prepCastMs)
+        end
+        if spell.setAnimation then
+            local runes      = getActiveRunesList(caster)
+            local newestRune = (caster.getNewestRuneEffect and caster:getNewestRuneEffect()) or runes[#runes] or xi.effect.IGNIS
+            local animMap    = isSever and RUNIC_SEVER_ANIM_MAP or RUNIC_BOLT_ANIM_MAP
+            spell:setAnimation(animMap[newestRune] or (isSever and 166 or 144))
+        end
+    end
+
+    return 0
+end
+
+local function bindBlackSpell(name, checkFn, castFn)
+    xi.actions = xi.actions or {}
+    xi.actions.spells = xi.actions.spells or {}
+    xi.actions.spells.black = xi.actions.spells.black or {}
+    xi.actions.spells.black[name] = xi.actions.spells.black[name] or {}
+    xi.actions.spells.black[name].onMagicCastingCheck = checkFn
+    xi.actions.spells.black[name].onSpellCast         = castFn
+    m:addOverride('xi.actions.spells.black.' .. name .. '.onMagicCastingCheck', checkFn)
+    m:addOverride('xi.actions.spells.black.' .. name .. '.onSpellCast', castFn)
+end
+
+bindBlackSpell('runic_bolt', function(caster, target, spell)
+    return checkRunicMagicSpell(caster, target, spell, false)
+end, function(caster, target, spell, action)
+    return executeRunicSpell(caster, target, nil, action, false, spell)
+end)
+
+bindBlackSpell('runic_sever', function(caster, target, spell)
+    return checkRunicMagicSpell(caster, target, spell, true)
+end, function(caster, target, spell, action)
+    return executeRunicSpell(caster, target, nil, action, true, spell)
+end)
+
 -- Bind both runic_bolt (415) and legacy effusion_slash alias
 local function checkRunicBolt(player, target, ability)
     return checkRunicSpell(player, target, ability, false)
 end
 local function useRunicBolt(player, target, ability, action)
-    return executeRunicSpell(player, target, ability, action, false)
+    return executeRunicSpell(player, target, ability, action, false, nil)
 end
 bindAbility('runic_bolt', checkRunicBolt, useRunicBolt)
 bindAbility('effusion_slash', checkRunicBolt, useRunicBolt)
@@ -2472,7 +2569,7 @@ local function checkRunicSever(player, target, ability)
     return checkRunicSpell(player, target, ability, true)
 end
 local function useRunicSever(player, target, ability, action)
-    return executeRunicSpell(player, target, ability, action, true)
+    return executeRunicSpell(player, target, ability, action, true, nil)
 end
 bindAbility('runic_sever', checkRunicSever, useRunicSever)
 bindAbility('overcharge_runes', checkRunicSever, useRunicSever)
@@ -2577,11 +2674,15 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
         if player.setLocalVar then
             player:setLocalVar('OX_RUN_SPELLBLADE', 1)
         end
+        ensureRunSpells(player, true)
         -- Conduction clears on zoning
         clearConduction(player, nil)
         attachRunListeners(player)
     elseif player ~= nil and isRunSpec(player, LIFEBINDER_KEY) then
+        ensureRunSpells(player, false)
         attachRunListeners(player)
+    elseif player ~= nil and isRunSpec(player, INQUISITOR_KEY) then
+        ensureRunSpells(player, false)
     end
 end)
 

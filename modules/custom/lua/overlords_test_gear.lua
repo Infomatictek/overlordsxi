@@ -4037,11 +4037,11 @@ function testGear.equipLoadout(player, opts)
         end
     end
 
-    if opts.capSkills ~= false and player.capAllSkills then
-        player:capAllSkills()
-    end
     if player.recalculateSkillsTable then
         player:recalculateSkillsTable()
+    end
+    if opts.capSkills ~= false and player.capAllSkills then
+        player:capAllSkills()
     end
 
     loadout.addedCount    = addedCount

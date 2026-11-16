@@ -337,6 +337,9 @@ local function syncAbilitiesTable(player)
     if player.recalculateSkillsTable then
         player:recalculateSkillsTable()
     end
+    if player.capAllSkills then
+        player:capAllSkills()
+    end
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
     end

@@ -177,3 +177,7 @@ SET ie.`jobs` = (ie.`jobs` | 8)
 WHERE iw.`skill` = 7
   AND ie.`jobs` <> 128;
 
+-- Give BLM (blm column) B-rank (5) in Scythe (skillid = 7) and enable BLM (byte 4) on Scythe weapon_skills (type = 7)
+UPDATE `skill_ranks` SET `blm` = 5 WHERE `skillid` = 7 AND (`blm` = 0 OR `blm` > 5);
+UPDATE `weapon_skills` SET `jobs` = INSERT(`jobs`, 4, 1, CHAR(1)) WHERE `type` = 7;
+
