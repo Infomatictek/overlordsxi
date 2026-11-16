@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-16T09:18:39.447436+00:00",
+  "generatedAt": "2026-11-16T09:20:06.964041+00:00",
   "repo": "Infomatictek/overlordsxi",
   "launcherRepo": "Infomatictek/overlordsxi-launcher",
   "branch": "main",
-  "headCommit": "ad66d82",
+  "headCommit": "30b862c",
   "stats": {
     "totalJobsWithSpecs": 6,
     "totalCrystalSpecs": 11,
@@ -38212,6 +38212,43 @@
   ],
   "commits": [
     {
+      "hash": "30b862c57ef14b93fec7027e4a7dbad55b217b90",
+      "shortHash": "30b862c",
+      "author": "nappypup",
+      "date": "2026-11-16T03:19:45-06:00",
+      "subject": "Fix scripts/combat/basic/* require paths in run_specs.lua",
+      "files": [
+        {
+          "path": "modules/custom/lua/run_specs.lua",
+          "added": 4,
+          "removed": 3
+        }
+      ],
+      "totalAdded": 4,
+      "totalRemoved": 3
+    },
+    {
+      "hash": "b789095b7c329f5316335d7582672846fda304b9",
+      "shortHash": "b789095",
+      "author": "github-actions[bot]",
+      "date": "2026-11-16T09:18:39Z",
+      "subject": "chore(wiki): auto-update site/data.json from latest server modules [skip ci]",
+      "files": [
+        {
+          "path": "site/data.js",
+          "added": 39,
+          "removed": 189
+        },
+        {
+          "path": "site/data.json",
+          "added": 39,
+          "removed": 189
+        }
+      ],
+      "totalAdded": 78,
+      "totalRemoved": 378
+    },
+    {
       "hash": "ad66d82889eaf27bd8e09283b483295f3f3d35b1",
       "shortHash": "ad66d82",
       "author": "nappypup",
@@ -39683,78 +39720,6 @@
       ],
       "totalAdded": 8,
       "totalRemoved": 5
-    },
-    {
-      "hash": "eeeaee969e7da86b7df7468f002bc10b61983b26",
-      "shortHash": "eeeaee9",
-      "author": "Infomatictek",
-      "date": "2026-11-14T20:44:32Z",
-      "subject": "Rework WAR Gladiator spec into Bloodthirsty Club & Shield Tank",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 1,
-          "removed": 1
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 314,
-          "removed": 45
-        }
-      ],
-      "totalAdded": 315,
-      "totalRemoved": 46
-    },
-    {
-      "hash": "b3b1703add4e352316be9caee051f0910761fdcf",
-      "shortHash": "b3b1703",
-      "author": "Infomatictek",
-      "date": "2026-11-14T20:32:24Z",
-      "subject": "Add Lv10 Job Crystal system, WAR specs (Commander/Berserker/Gladiator), and [OXSPEC] sync protocol",
-      "files": [
-        {
-          "path": "README.md",
-          "added": 45,
-          "removed": 14
-        },
-        {
-          "path": "modules/custom/commands/spec.lua",
-          "added": 262,
-          "removed": 33
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_spec_runtime.lua",
-          "added": 44,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/lua/overlords_job_specs.lua",
-          "added": 607,
-          "removed": 48
-        },
-        {
-          "path": "modules/custom/lua/sch_specs.lua",
-          "added": 18,
-          "removed": 5
-        },
-        {
-          "path": "modules/custom/lua/war_specs.lua",
-          "added": 501,
-          "removed": 0
-        },
-        {
-          "path": "modules/custom/sql/war_specs.sql",
-          "added": 8,
-          "removed": 0
-        },
-        {
-          "path": "modules/init.append.txt",
-          "added": 3,
-          "removed": 0
-        }
-      ],
-      "totalAdded": 1488,
-      "totalRemoved": 100
     }
   ]
 }
