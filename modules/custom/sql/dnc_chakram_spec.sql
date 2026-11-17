@@ -76,4 +76,4 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    (404, 'throwing_stance', 19, 255, 1, 5, 194, 0, 0, 28, 1000, 0, 6, 0.0, 0, 0, 1, 1, 0, 0, NULL);
+    (404, 'throwing_stance', 19, 255, 1, 5, 154, 0, 0, 28, 1000, 0, 6, 0.0, 0, 0, 1, 1, 0, 0, NULL);

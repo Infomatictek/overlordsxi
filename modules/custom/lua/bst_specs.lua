@@ -23,8 +23,8 @@ local bstSpecs        = xi.overlords.bstSpecs
 
 local ALPHA_WARDEN_KEY = 'alphawarden'
 
--- Custom Trait ID (145: Alpha's Soul-Link)
-local TRAIT_ALPHA_SOUL_LINK = 145
+-- Custom Trait ID (166: Alpha's Soul-Link)
+local TRAIT_ALPHA_SOUL_LINK = 166
 
 -- Custom Ability IDs (441-442; recastIds 216-217)
 local ABIL_SOUL_BOND  = 441

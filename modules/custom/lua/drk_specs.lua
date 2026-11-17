@@ -25,8 +25,8 @@ local drkSpecs        = xi.overlords.drkSpecs
 
 local DREADNOUGHT_KEY = 'dreadnought'
 
--- Custom Trait ID (147; Dreadnought's Carapace)
-local TRAIT_DREADNOUGHTS_CARAPACE = 147
+-- Custom Trait ID (167; Dreadnought's Carapace)
+local TRAIT_DREADNOUGHTS_CARAPACE = 167
 
 -- Custom Ability IDs (449-450; recastIds 224-225)
 local ABIL_ABYSSAL_CLEAVE = 449

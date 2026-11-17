@@ -22,8 +22,8 @@ local pldSpecs        = xi.overlords.pldSpecs
 
 local AEGIS_TEMPLAR_KEY = 'aegistemplar'
 
--- Custom Trait ID (143; Aegis Devotion)
-local TRAIT_AEGIS_DEVOTION = 143
+-- Custom Trait ID (165; Aegis Devotion)
+local TRAIT_AEGIS_DEVOTION = 165
 
 -- Custom Ability IDs (439-440; recastIds 177-178)
 local ABIL_AEGIS_CONSECRATION = 439
