@@ -15,6 +15,7 @@ require('modules/custom/lua/overlords_job_specs')
 require('scripts/combat/basic/magic_burst')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
+require('scripts/globals/spells/damage_spell')
 -----------------------------------
 local m = Module:new('overlords_brd_specs')
 
@@ -236,16 +237,16 @@ do
     regSong(sp.FIRE_THRENODY,     'threnody', el.FIRE,    dt.FIRE,      52, 240, 720)
     regSong(sp.ICE_THRENODY,      'threnody', el.ICE,     dt.ICE,       52, 240, 720)
     regSong(sp.WIND_THRENODY,     'threnody', el.WIND,    dt.WIND,      52, 240, 720)
-    regSong(sp.EARTH_THRENODY,    'threnody', el.EARTH,   dt.EARTH,     52, 240, 720)
-    regSong(sp.THUNDER_THRENODY,  'threnody', el.THUNDER, dt.THUNDER,   52, 240, 720)
-    regSong(sp.WATER_THRENODY,    'threnody', el.WATER,   dt.WATER,     52, 240, 720)
-    regSong(sp.LIGHT_THRENODY,    'threnody', el.LIGHT,   dt.LIGHT,     52, 240, 720)
-    regSong(sp.DARK_THRENODY,     'threnody', el.DARK,    dt.DARK,      52, 240, 720)
-    regSong(sp.FIRE_THRENODY_II,  'threnody', el.FIRE,    dt.FIRE,      78, 280, 840)
-    regSong(sp.ICE_THRENODY_II,   'threnody', el.ICE,     dt.ICE,       78, 280, 840)
-    regSong(sp.WIND_THRENODY_II,  'threnody', el.WIND,    dt.WIND,      78, 280, 840)
-    regSong(sp.EARTH_THRENODY_II, 'threnody', el.EARTH,   dt.EARTH,     78, 280, 840)
-    regSong(sp.LTNG_THRENODY_II,  'threnody', el.THUNDER, dt.THUNDER,   78, 280, 840)
+    regSong(sp.EARTH_THRENODY,     'threnody', el.EARTH,   dt.EARTH,     52, 240, 720)
+    regSong(sp.LIGHTNING_THRENODY, 'threnody', el.THUNDER, dt.THUNDER,   52, 240, 720)
+    regSong(sp.WATER_THRENODY,     'threnody', el.WATER,   dt.WATER,     52, 240, 720)
+    regSong(sp.LIGHT_THRENODY,     'threnody', el.LIGHT,   dt.LIGHT,     52, 240, 720)
+    regSong(sp.DARK_THRENODY,      'threnody', el.DARK,    dt.DARK,      52, 240, 720)
+    regSong(sp.FIRE_THRENODY_II,   'threnody', el.FIRE,    dt.FIRE,      78, 280, 840)
+    regSong(sp.ICE_THRENODY_II,    'threnody', el.ICE,     dt.ICE,       78, 280, 840)
+    regSong(sp.WIND_THRENODY_II,   'threnody', el.WIND,    dt.WIND,      78, 280, 840)
+    regSong(sp.EARTH_THRENODY_II,  'threnody', el.EARTH,   dt.EARTH,     78, 280, 840)
+    regSong(sp.LIGHTNING_THRENODY_II, 'threnody', el.THUNDER, dt.THUNDER, 78, 280, 840)
     regSong(sp.WATER_THRENODY_II, 'threnody', el.WATER,   dt.WATER,     78, 280, 840)
     regSong(sp.LIGHT_THRENODY_II, 'threnody', el.LIGHT,   dt.LIGHT,     78, 280, 840)
     regSong(sp.DARK_THRENODY_II,  'threnody', el.DARK,    dt.DARK,      78, 280, 840)
@@ -307,25 +308,46 @@ local function dealMusicianSongDamage(caster, target, element, dmgType, basePowe
     local mdef = 100 + (target:getMod(xi.mod.MDEF) or 0)
     local mabRatio = math.max(0.5, mab / math.max(50, mdef))
 
+    local magicBurstTier = 0
+    if xi.combat and xi.combat.magicBurst and xi.combat.magicBurst.getMagicBurstTier then
+        magicBurstTier = xi.combat.magicBurst.getMagicBurstTier(target, element) or 0
+    end
+    local canMBurst = magicBurstTier > 0
+
     local resist = 1.0
     if xi.combat and xi.combat.magicHitRate and xi.combat.magicHitRate.calculateResistRate then
         resist = xi.combat.magicHitRate.calculateResistRate(caster, target,
         {
-            element   = element,
-            skillType = xi.skill.SINGING,
-            actorStat = xi.mod.CHR,
-            bonusMacc = (caster:getMod(xi.mod.MACC) or 0) + 20,
-        })
+            magicalElement = element,
+            magicBurstTier = canMBurst and magicBurstTier or 0,
+            skillType      = xi.skill.SINGING,
+            spellGroup     = (xi.magic and xi.magic.spellGroup and xi.magic.spellGroup.SONG) or 0,
+            actorStat      = xi.mod.CHR,
+            bonusMacc      = 20,
+        }) or 1.0
+    end
+
+    if resist <= 0 then
+        return 0, false
     end
 
     local mbMult = 1.0
-    if xi.combat and xi.combat.magicBurst and xi.combat.magicBurst.calculateMagicBurst then
-        local burst = xi.combat.magicBurst.calculateMagicBurst(caster, target, element)
-        if type(burst) == 'number' and burst > 1.0 then
-            mbMult = burst
-            if caster:hasStatusEffect(EFFECT_MUS_OVERDRIVE) then
-                mbMult = mbMult * 1.25
+    if canMBurst then
+        if xi.spells and xi.spells.damage and xi.spells.damage.calculateIfMagicBurst then
+            mbMult = xi.spells.damage.calculateIfMagicBurst(caster, target, element, magicBurstTier) or 1.35
+            if xi.spells.damage.calculateIfMagicBurstBonus then
+                mbMult = mbMult * (xi.spells.damage.calculateIfMagicBurstBonus(caster, target, 0, xi.skill.SINGING, element) or 1.0)
             end
+        else
+            mbMult = 1.35
+        end
+
+        if caster:hasStatusEffect(EFFECT_MUS_OVERDRIVE) then
+            mbMult = mbMult * 1.25
+        end
+
+        if caster.triggerRoeEvent and xi.roeTrigger and xi.roeTrigger.MAGIC_BURST then
+            caster:triggerRoeEvent(xi.roeTrigger.MAGIC_BURST)
         end
     end
 
@@ -333,6 +355,9 @@ local function dealMusicianSongDamage(caster, target, element, dmgType, basePowe
     local abilityMult   = isBurstAbility and 1.25 or 1.0
 
     local dmg = math.max(1, math.floor(rawBase * mabRatio * resist * mbMult * overdriveMult * abilityMult))
+    if xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        dmg = xi.customBossServer.scaleDamageByLevelGap(caster, target, dmg)
+    end
     if utils and utils.handleStoneskin then
         dmg = utils.handleStoneskin(target, dmg, xi.attackType.MAGICAL)
     end
@@ -342,7 +367,7 @@ local function dealMusicianSongDamage(caster, target, element, dmgType, basePowe
         target:updateEnmityFromDamage(caster, dmg)
     end
 
-    return dmg, mbMult > 1.0
+    return dmg, canMBurst and mbMult > 1.0
 end
 
 -----------------------------------
@@ -670,7 +695,7 @@ bindAbility('lyrical_overdrive',
         {
             { xi.mod.MATT, 35 },
             { xi.mod.MACC, 25 },
-            { xi.mod.SONG_SPELLCASTING_TIME, -20 },
+            { xi.mod.FASTCAST, 20 },
         })
         return 0
     end
@@ -741,10 +766,8 @@ if xi.job and xi.job.BRD then
                 'Dagger/Sword hits build Cadence; Weapon Skills unleash Sonic follow-up damage + Encore.',
                 'Unlocks Lunge & Flourish (20s) and Troubadour\'s Encore (45s) without overwriting buffs.',
             },
-            applyMods = function(player, lvl)
-                installBrdListeners(player)
-                clearMinstrelAura(player)
-                local mods =
+            mods = function(_player, lvl)
+                return
                 {
                     { xi.mod.DEX, scaleTier(lvl, 5, 10, 16, 22) },
                     { xi.mod.CHR, scaleTier(lvl, 4, 8, 14, 18) },
@@ -753,12 +776,13 @@ if xi.job and xi.job.BRD then
                     { xi.mod.CRITHITRATE, scaleTier(lvl, 3, 5, 8, 10) },
                     { xi.mod.DOUBLE_ATTACK, scaleTier(lvl, 5, 8, 12, 15) },
                     { xi.mod.DUAL_WIELD, scaleTier(lvl, 10, 15, 20, 25) },
-                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, -25, -30, -35, -40) },
+                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, 25, 30, 35, 40) },
+                    { xi.mod.SPELLINTERRUPT, 105 },
                 }
-                for _, pair in ipairs(mods) do
-                    player:addMod(pair[1], pair[2])
-                end
-                return mods
+            end,
+            onApply = function(player)
+                installBrdListeners(player)
+                clearMinstrelAura(player)
             end,
             onRemove = function(player)
                 clearBrdListeners(player)
@@ -783,25 +807,25 @@ if xi.job and xi.job.BRD then
                 'Offensive songs never overwrite your Ballad/Scherzo party buffs.',
                 'Unlocks Grand Finale (20s Resonance burst) and Lyrical Overdrive (45s).',
             },
-            applyMods = function(player, lvl)
-                installBrdListeners(player)
-                clearMinstrelAura(player)
-                local mods =
+            mods = function(_player, lvl)
+                return
                 {
                     { xi.mod.CHR, scaleTier(lvl, 6, 12, 18, 25) },
                     { xi.mod.MATT, scaleTier(lvl, 18, 30, 42, 55) },
                     { xi.mod.MACC, scaleTier(lvl, 15, 25, 35, 45) },
                     { xi.mod.SINGING, scaleTier(lvl, 10, 18, 26, 35) },
-                    { xi.mod.WIND_INSTRUMENT, scaleTier(lvl, 10, 18, 26, 35) },
-                    { xi.mod.STRING_INSTRUMENT, scaleTier(lvl, 10, 18, 26, 35) },
-                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, -35, -45, -50, -55) },
-                    { xi.mod.SONG_RECAST_DELAY, scaleTier(lvl, -2, -2, -3, -4) },
+                    { xi.mod.WIND, scaleTier(lvl, 10, 18, 26, 35) },
+                    { xi.mod.STRING, scaleTier(lvl, 10, 18, 26, 35) },
+                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, 35, 45, 50, 50) },
+                    { xi.mod.FASTCAST, scaleTier(lvl, 0, 0, 0, 10) },
+                    { xi.mod.SONG_RECAST_DELAY, scaleTier(lvl, 2, 2, 3, 4) },
                     { xi.mod.REFRESH, scaleTier(lvl, 1, 2, 3, 4) },
+                    { xi.mod.SPELLINTERRUPT, 105 },
                 }
-                for _, pair in ipairs(mods) do
-                    player:addMod(pair[1], pair[2])
-                end
-                return mods
+            end,
+            onApply = function(player)
+                installBrdListeners(player)
+                clearMinstrelAura(player)
             end,
             onRemove = function(player)
                 clearBrdListeners(player)
@@ -826,9 +850,8 @@ if xi.job and xi.job.BRD then
                 'Passively empowers Minne (PDT), Paeon (Regen), and Scherzo (tank-buster dampening) without re-casting.',
                 'Unlocks Dissonant Chord (15s snap taunt) and Iron Aria (45s mitigation & sonic reflect).',
             },
-            applyMods = function(player, lvl)
-                installBrdListeners(player)
-                local mods =
+            mods = function(_player, lvl)
+                return
                 {
                     { xi.mod.VIT, scaleTier(lvl, 6, 12, 18, 24) },
                     { xi.mod.CHR, scaleTier(lvl, 4, 8, 12, 16) },
@@ -839,13 +862,13 @@ if xi.job and xi.job.BRD then
                     { xi.mod.DMGMAGIC, scaleTier(lvl, -400, -700, -1000, -1200) },
                     { xi.mod.EVA, scaleTier(lvl, 10, 16, 22, 30) },
                     { xi.mod.REGEN, scaleTier(lvl, 2, 4, 6, 8) },
-                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, -30, -35, -45, -50) },
+                    { xi.mod.SONG_SPELLCASTING_TIME, scaleTier(lvl, 30, 35, 45, 50) },
+                    { xi.mod.SPELLINTERRUPT, 105 },
                 }
-                for _, pair in ipairs(mods) do
-                    player:addMod(pair[1], pair[2])
-                end
+            end,
+            onApply = function(player)
+                installBrdListeners(player)
                 syncMinstrelAura(player)
-                return mods
             end,
             onRemove = function(player)
                 clearBrdListeners(player)
