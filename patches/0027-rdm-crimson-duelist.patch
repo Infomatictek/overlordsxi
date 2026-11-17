@@ -2,10 +2,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index d7f1a4b..a1b2c3d 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -348,6 +348,17 @@ void LoadEffectsParameters()
-     EffectsParams[852].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
-     EffectsParams[852].SortKey          = 10000;
-     EffectsParams[852].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -323,0 +323,11 @@ void LoadEffectsParameters()
 +
 +    // OverlordsXI RDM Crimson Duelist Crystal Spec status effects (853-854).
 +    EffectsParams[853].Name             = "crimson_flow";
@@ -17,9 +14,6 @@ index d7f1a4b..a1b2c3d 100644
 +    EffectsParams[854].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[854].SortKey          = 10000;
 +    EffectsParams[854].WearOffMessageId = MsgStd::EffectWearsOff;
- }
- 
- // hacky way to get element from status effect
 diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
 index 1234567..89abcde 100644
 --- a/src/map/utils/battleutils.cpp
