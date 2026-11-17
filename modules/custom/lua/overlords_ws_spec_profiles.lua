@@ -226,6 +226,7 @@ local SPEC_META =
     ronin          = { pfx = 'ron', pref = 'vit', role = 'tank',   tag = 'Mushin',   col2 = 'Seigan',   t1c3 = 'Poise',     rmea = 'Stillness',   col1 = { 'Guard',     'Purify',    'Ward'      } },
     imperialarcher = { pfx = 'imp', pref = 'agi', role = 'dps',    tag = 'Oisoya',   col2 = 'Quiver',   t1c3 = 'Volley',    rmea = 'Elucidate',   col1 = { 'Draw',      'Salvo',     'Starfall'  } },
     warlord        = { pfx = 'wrl', pref = 'str', role = 'dps',    tag = 'Iaijutsu', col2 = 'Onimaru',  t1c3 = 'Rend',      rmea = 'Bloodquench', col1 = { 'Cut',       'Sever',     'Ashura'    } },
+    generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
 local function makeStanceTable(specKey, fields)
@@ -443,7 +444,7 @@ end
 
 local function buildWscEffect(ctx, prefStat)
     local s1 = ctx.stat1 or prefStat or 'str'
-    local s2 = prefStat
+    local s2 = prefStat or ctx.stat2
     if s2 == s1 then
         s2 = ctx.stat2
     end
@@ -2281,6 +2282,7 @@ local T3C3_TITLES =
     ronin          = { 'Riposte',   'Calm',      'Purify',    'Balance'   },
     imperialarcher = { 'Nocking',   'Drawcut',   'Wind-Bolt', 'Elucidate' },
     warlord        = { 'Bloodlust', 'Ravage',    'Quench',    'Cleave'    },
+    generic        = { 'Precision', 'Impact',    'Momentum',  'Edge'      },
 }
 
 local T4C3_TITLES =
@@ -2301,6 +2303,7 @@ local T4C3_TITLES =
     ronin          = { 'Kensei',    'Grandmaster','Zanshin',  'Ronin'     },
     imperialarcher = { 'Bow-Saint', 'Tenzen',    'Kensei-Bow','Starfall'  },
     warlord        = { 'Asura',     'Muramasa',  'Shogun',    'Warfiend'  },
+    generic        = { 'Prowess',   'Zenith',    'Mastery',   'Triumph'   },
 }
 
 local function cleanWord(w)
@@ -2322,9 +2325,22 @@ local function buildCol3Nodes(specKey, ctx)
     local t3Word = cleanWord((T3C3_TITLES[specKey] or T3C3_TITLES.berserker)[v])
     local t4Word = cleanWord((T4C3_TITLES[specKey] or T4C3_TITLES.berserker)[v])
 
-    -- 1. T2C3: Spec Stance / Active Aura Synergy Node
+    -- 1. T2C3: Spec Stance / Active Aura Synergy Node (or Passive Focus for generic)
     local t2
-    if meta.role == 'tank' then
+    if specKey == 'generic' then
+        if ctx.isMag or ctx.isUtil then
+            t2 = mkNode(2, 3, k2, n .. ' Potency', 5,
+                '+5..25% WSD & +8..40 MAB/MACC',
+                function(r) return string.format('+%d%% WSD, +%d MAB/MACC', r * 5, r * 8) end,
+                { wsd = lin(5, 5), matt = lin(8, 5), macc = lin(8, 5) })
+        else
+            local atkLbl = ctx.isRanged and 'R.Atk' or 'Atk'
+            t2 = mkNode(2, 3, k2, n .. ' Might', 5,
+                string.format('+5..25%% WSD, +6..30%% %s & +STP', atkLbl),
+                function(r) return string.format('+%d%% WSD, +%d%% %s, +%d STP', r * 5, r * 6, atkLbl, r * 3) end,
+                { wsd = lin(5, 5), atkPct = lin(6, 5), storeTp = lin(3, 5) })
+        end
+    elseif meta.role == 'tank' then
         local stFields = { wsd = lin(7, 5), enmity = lin(8, 5) }
         local stTbl, stLbl = makeStanceTable(specKey, stFields)
         t2 = mkNode(2, 3, k2, n .. ' ' .. stWord, 5,
@@ -2590,14 +2606,89 @@ function P.buildSpecTree(wsId, archetype, baseNodes, specKey, opts)
     return nodes
 end
 
+local S = xi.skill or {}
+local WAR_OPEN_SKILLS =
+{
+    [S.HAND_TO_HAND or 1]  = true,
+    [S.DAGGER or 2]        = true,
+    [S.SWORD or 3]         = true,
+    [S.GREAT_SWORD or 4]   = true,
+    [S.AXE or 5]           = true,
+    [S.GREAT_AXE or 6]     = true,
+    [S.SCYTHE or 7]        = true,
+    [S.POLEARM or 8]       = true,
+    [S.CLUB or 11]         = true,
+    [S.STAFF or 12]        = true,
+    [S.ARCHERY or 25]      = true,
+    [S.MARKSMANSHIP or 26] = true,
+}
+
+local RUN_OPEN_SKILLS =
+{
+    [S.SWORD or 3]       = true,
+    [S.GREAT_SWORD or 4] = true,
+    [S.AXE or 5]         = true,
+    [S.GREAT_AXE or 6]   = true,
+    [S.CLUB or 11]       = true,
+}
+
+local SCH_OPEN_SKILLS =
+{
+    [S.DAGGER or 2] = true,
+    [S.CLUB or 11]  = true,
+    [S.STAFF or 12] = true,
+}
+
+P.ALLOWED_SKILLS_BY_SPEC =
+{
+    commander      = WAR_OPEN_SKILLS,
+    berserker      = WAR_OPEN_SKILLS,
+    gladiator      = { [S.CLUB or 11] = true },
+    blackbelt      = { [S.HAND_TO_HAND or 1] = true },
+    chiweaver      = { [S.HAND_TO_HAND or 1] = true },
+    sensei         = { [S.STAFF or 12] = true },
+    inquisitor     = RUN_OPEN_SKILLS,
+    spellblade     = { [S.GREAT_SWORD or 4] = true },
+    lifebinder     = RUN_OPEN_SKILLS,
+    medic          = SCH_OPEN_SKILLS,
+    sage           = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true, [S.CLUB or 11] = true, [S.STAFF or 12] = true }, -- SCH + BRD Musician
+    necromancer    = { [S.SCYTHE or 7] = true },
+    bladewheel     = { [S.THROWING or 27] = true, [S.DAGGER or 2] = true, [S.SWORD or 3] = true }, -- DNC Bladewheel + BRD Adventurer
+    ronin          = { [S.GREAT_KATANA or 10] = true },
+    warlord        = { [S.GREAT_KATANA or 10] = true },
+    imperialarcher = { [S.GREAT_KATANA or 10] = true, [S.ARCHERY or 25] = true },
+}
+
+function P.isSpecAllowedForSkill(specKey, skillId)
+    if specKey == 'generic' then
+        return true
+    end
+    local map = P.ALLOWED_SKILLS_BY_SPEC[specKey]
+    if map == nil then
+        return true
+    end
+    return map[skillId] == true
+end
+
+function P.getAllowedSpecsForSkill(skillId)
+    local out = {}
+    for _, sk in ipairs(P.ALL_SPECS) do
+        if P.isSpecAllowedForSkill(sk, skillId) then
+            table.insert(out, sk)
+        end
+    end
+    return out
+end
+
 function P.buildAllSpecTrees(wsId, archetype, baseNodes, opts)
+    local ctx = DNA.get(wsId, archetype)
+    local skillId = (ctx.ws and ctx.ws.skill) or 0
     local specNodes = {}
     for _, sk in ipairs(P.ALL_SPECS) do
-        specNodes[sk] = P.buildSpecTree(wsId, archetype, baseNodes, sk, opts)
+        if skillId == 0 or P.isSpecAllowedForSkill(sk, skillId) then
+            specNodes[sk] = P.buildSpecTree(wsId, archetype, baseNodes, sk, opts)
+        end
     end
-    -- Role aliases for unspecced jobs & backward compatibility
-    specNodes.tank   = specNodes.inquisitor
-    specNodes.healer = specNodes.lifebinder
     return specNodes
 end
 

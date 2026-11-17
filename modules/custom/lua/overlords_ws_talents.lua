@@ -400,24 +400,7 @@ function talents.resolveSpecCategory(player, jobId, specKeyOverride)
     if SPEC_KEY_TO_CATEGORY[sKey] ~= nil then
         return SPEC_KEY_TO_CATEGORY[sKey]
     end
-    if jid == xi.job.PLD or jid == xi.job.RUN then
-        return 'inquisitor'
-    elseif jid == xi.job.WHM or jid == xi.job.BRD or jid == xi.job.GEO then
-        return 'lifebinder'
-    elseif jid == xi.job.SCH then
-        return 'medic'
-    elseif jid == xi.job.BLM then
-        return 'necromancer'
-    elseif jid == xi.job.RDM or jid == xi.job.BLU or jid == xi.job.SMN then
-        return 'spellblade'
-    elseif jid == xi.job.MNK then
-        return 'blackbelt'
-    elseif jid == xi.job.DNC then
-        return 'bladewheel'
-    elseif jid == xi.job.COR then
-        return 'commander'
-    end
-    return 'berserker'
+    return 'generic'
 end
 
 function talents.getSpecToken(player, jobId, specIdOverride)
@@ -1992,35 +1975,33 @@ local function buildGenericTreeForWS(ws)
     return finalizeTree(ws, archetype, nodes)
 end
 
-local SPEC_CATEGORY_FALLBACK =
-{
-    gladiator   = 'tank',
-    sensei      = 'tank',
-    inquisitor  = 'tank',
-    lifebinder  = 'healer',
-    medic       = 'healer',
-    chiweaver   = 'healer',
-    sage        = 'spellblade',
-    necromancer = 'spellblade',
-    blackbelt      = 'berserker',
-    bladewheel     = 'berserker',
-    imperialarcher = 'berserker',
-    warlord        = 'berserker',
-    ronin          = 'tank',
-}
+local _specProfiles = nil
+local function getSpecProfiles()
+    if _specProfiles == nil then
+        local ok, mod = pcall(require, 'modules/custom/lua/overlords_ws_spec_profiles')
+        if ok and type(mod) == 'table' then
+            _specProfiles = mod
+        end
+    end
+    return _specProfiles
+end
 
 local function buildTreeForWS(ws, specCat)
     local custom = CUSTOM_TREES[ws.id]
     if custom ~= nil then
         local srcNodes = custom.nodes
         if custom.specNodes ~= nil then
-            local cat = specCat or 'berserker'
-            local fb = SPEC_CATEGORY_FALLBACK[cat]
-            srcNodes = custom.specNodes[cat]
-                or (fb and custom.specNodes[fb])
-                or custom.specNodes.default
-                or custom.specNodes.berserker
-                or custom.nodes
+            local cat = specCat or 'generic'
+            srcNodes = (cat ~= 'generic') and custom.specNodes[cat] or nil
+            if srcNodes == nil then
+                local P = getSpecProfiles()
+                if P ~= nil and P.buildSpecTree ~= nil then
+                    srcNodes = P.buildSpecTree(ws.id, custom.archetype, custom.nodes, 'generic')
+                end
+            end
+            if srcNodes == nil then
+                return buildGenericTreeForWS(ws)
+            end
         end
         local copied = {}
         for _, n in ipairs(srcNodes or {}) do
@@ -2029,6 +2010,18 @@ local function buildTreeForWS(ws, specCat)
         return finalizeTree(ws, custom.archetype, copied, { useBaseline = custom.useBaseline })
     end
     return buildGenericTreeForWS(ws)
+end
+
+function talents.getAllowedSpecsForWS(wsId)
+    local ws = catalog.byId[wsId]
+    if ws == nil then
+        return {}
+    end
+    local P = getSpecProfiles()
+    if P ~= nil and P.getAllowedSpecsForSkill ~= nil then
+        return P.getAllowedSpecsForSkill(ws.skill)
+    end
+    return {}
 end
 
 function talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
@@ -2040,6 +2033,9 @@ function talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
     local custom = CUSTOM_TREES[wsId]
     if custom ~= nil and custom.specNodes ~= nil then
         local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
+        if specCat ~= 'generic' and custom.specNodes[specCat] == nil then
+            specCat = 'generic'
+        end
         local cacheKey = string.format('%u:%s', wsId, specCat)
         if treeCache[cacheKey] == nil then
             treeCache[cacheKey] = buildTreeForWS(ws, specCat)

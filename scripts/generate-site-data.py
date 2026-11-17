@@ -666,19 +666,23 @@ RANK_LEVEL_TABLES = {
 }
 
 SPEC_CATEGORIES = [
-    {"key": "berserker",   "label": "Berserker (WAR)",   "specs": "WAR Berserker, SAM Warlord, DRK, DRG, THF, NIN, RNG"},
-    {"key": "commander",   "label": "Commander (WAR)",   "specs": "WAR Commander, COR"},
-    {"key": "gladiator",   "label": "Gladiator (WAR)",   "specs": "WAR Gladiator (Club+Shield Leech Tank)"},
-    {"key": "sensei",      "label": "Sensei (MNK)",      "specs": "MNK Sensei, SAM Ronin (Counter/Parry Tank)"},
-    {"key": "blackbelt",   "label": "Black Belt (MNK)",  "specs": "MNK Black Belt (H2H Martial Finisher)"},
-    {"key": "chiweaver",   "label": "Chi Weaver (MNK)",  "specs": "MNK Chi Weaver (0-MP Chi Pulse Healer)"},
-    {"key": "inquisitor",  "label": "Inquisitor (RUN)",  "specs": "RUN Inquisitor, PLD (Runic Parry/Ward Tank)"},
-    {"key": "spellblade",  "label": "Spellblade (RUN)",  "specs": "RUN Spellblade, RDM, BLU, SMN"},
-    {"key": "lifebinder",  "label": "Lifebinder (RUN)",  "specs": "RUN Lifebinder, WHM, BRD, GEO"},
-    {"key": "medic",       "label": "Medic (SCH)",       "specs": "SCH Medic (Call Eos Companion Healer)"},
-    {"key": "sage",        "label": "Sage (SCH)",        "specs": "SCH Sage (Call Titania / Helix Caster)"},
-    {"key": "necromancer", "label": "Necromancer (BLM)", "specs": "BLM Necromancer (Undead Thrall Summoner)"},
-    {"key": "bladewheel",  "label": "Bladewheel (DNC)",  "specs": "DNC Bladewheel, SAM Imperial Archer (Ranged/Agile)"},
+    {"key": "berserker",      "label": "Berserker (WAR)",       "specs": "WAR Berserker"},
+    {"key": "commander",      "label": "Commander (WAR)",       "specs": "WAR Commander"},
+    {"key": "gladiator",      "label": "Gladiator (WAR)",       "specs": "WAR Gladiator (Club+Shield Leech Tank), BRD Minstrel"},
+    {"key": "sensei",         "label": "Sensei (MNK)",          "specs": "MNK Sensei (Staff Counter/Parry Tank)"},
+    {"key": "blackbelt",      "label": "Black Belt (MNK)",      "specs": "MNK Black Belt (H2H Martial Finisher)"},
+    {"key": "chiweaver",      "label": "Chi Weaver (MNK)",      "specs": "MNK Chi Weaver (0-MP Chi Pulse Healer)"},
+    {"key": "inquisitor",     "label": "Inquisitor (RUN)",      "specs": "RUN Inquisitor (Runic Parry/Ward Tank)"},
+    {"key": "spellblade",     "label": "Spellblade (RUN)",      "specs": "RUN Spellblade (Greatsword Conduction DPS)"},
+    {"key": "lifebinder",     "label": "Lifebinder (RUN)",      "specs": "RUN Lifebinder (Runic Healer)"},
+    {"key": "medic",          "label": "Medic (SCH)",           "specs": "SCH Medic (Call Eos Companion Healer)"},
+    {"key": "sage",           "label": "Sage (SCH)",            "specs": "SCH Sage (Call Titania / Helix Caster), BRD Musician"},
+    {"key": "necromancer",    "label": "Necromancer (BLM)",     "specs": "BLM Necromancer (Scythe & Undead Summoner)"},
+    {"key": "bladewheel",     "label": "Bladewheel (DNC)",      "specs": "DNC Bladewheel (Chakram & Dagger), BRD Adventurer"},
+    {"key": "ronin",          "label": "Ronin (SAM)",           "specs": "SAM Ronin (Great Katana Mushin Tank)"},
+    {"key": "imperialarcher", "label": "Imperial Archer (SAM)", "specs": "SAM Imperial Archer (Bow & Great Katana)"},
+    {"key": "warlord",        "label": "Warlord (SAM)",         "specs": "SAM Warlord (Great Katana Iaijutsu DPS)"},
+    {"key": "generic",        "label": "Generic (Unspecced)",   "specs": "Jobs without a Soul Crystal or off-spec weapons"},
 ]
 
 

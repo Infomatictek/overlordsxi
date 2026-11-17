@@ -437,16 +437,7 @@ for _, jid in ipairs(sortedJobIds) do
     })
 end
 
--- Export Weaponskills & 13-Spec Trees directly via talents.getTreeForWS
-local SPEC_CATS =
-{
-    'berserker', 'commander', 'gladiator',
-    'sensei', 'blackbelt', 'chiweaver',
-    'inquisitor', 'spellblade', 'lifebinder',
-    'medic', 'sage',
-    'necromancer', 'bladewheel',
-    'tank', 'healer',
-}
+-- Export Weaponskills & Weapon-Filtered Spec Trees directly via talents.getTreeForWS
 local wsOut = {}
 
 local function serializeTreeNodes(tree, ws)
@@ -483,16 +474,24 @@ for _, wsId in ipairs(catalog.orderedIds or {}) do
     local isThrowing = (ws.skill == xi.skill.THROWING)
     local specTrees = {}
     local sampleTree = nil
+    local allowedSpecs = (talents.getAllowedSpecsForWS and talents.getAllowedSpecsForWS(wsId)) or {}
 
     if isThrowing then
-        local t = talents.getTreeForWS(wsId, nil, nil, 'berserker')
+        local t = talents.getTreeForWS(wsId, nil, nil, 'bladewheel')
         specTrees.bladewheel = serializeTreeNodes(t, ws)
         sampleTree = t
     else
-        for _, sc in ipairs(SPEC_CATS) do
+        for _, sc in ipairs(allowedSpecs) do
             local t = talents.getTreeForWS(wsId, nil, nil, sc)
             specTrees[sc] = serializeTreeNodes(t, ws)
-            if sc == 'berserker' then sampleTree = t end
+            if sampleTree == nil or sc == 'berserker' then
+                sampleTree = t
+            end
+        end
+        local genTree = talents.getTreeForWS(wsId, nil, nil, 'generic')
+        specTrees.generic = serializeTreeNodes(genTree, ws)
+        if sampleTree == nil then
+            sampleTree = genTree
         end
     end
 
@@ -513,7 +512,7 @@ for _, wsId in ipairs(catalog.orderedIds or {}) do
         wsType = tostring(ws.wsType or 'physical'),
         elementName = ws.elementName,
         isCustomThrowing = (ws.id >= 241 and ws.id <= 252) and true or false,
-        isSpecAdaptive = not isThrowing,
+        isSpecAdaptive = (not isThrowing) and (#allowedSpecs > 0),
         archetype = tostring((sampleTree and sampleTree.archetype) or ws.wsType or 'heavy'),
         maxPoints = maxPts,
         orig = {

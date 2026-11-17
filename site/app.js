@@ -840,17 +840,20 @@
     const scText = (orig.skillchain || []).join(' / ') || 'None';
 
     const specTrees = ws.specTrees || {};
-    const isSpecAdaptive = ws.isSpecAdaptive !== false && Object.keys(specTrees).length > 1;
+    const availSpecKeys = Object.keys(specTrees);
+    const isSpecAdaptive = ws.isSpecAdaptive !== false && availSpecKeys.length > 1;
+    const defaultSpecKey = specTrees.berserker ? 'berserker' : (availSpecKeys[0] || 'default');
     const activeSpecKey = isSpecAdaptive
-      ? (specTrees[state.selectedWsSpec] ? state.selectedWsSpec : 'berserker')
-      : Object.keys(specTrees)[0] || 'default';
+      ? (specTrees[state.selectedWsSpec] ? state.selectedWsSpec : defaultSpecKey)
+      : defaultSpecKey;
     const activeNodes = (isSpecAdaptive ? specTrees[activeSpecKey] : specTrees[activeSpecKey] || ws.nodes) || [];
     const specList = (state.data.serverRules?.specCategories || []).map((s) => ({
       key: s.key,
       label: s.label,
       hint: s.specs || s.hint || '',
     }));
-    const effectiveSpecs = specList.length > 0 ? specList : SPEC_VIEW_META;
+    const rawSpecs = specList.length > 0 ? specList : SPEC_VIEW_META;
+    const effectiveSpecs = isSpecAdaptive ? rawSpecs.filter((s) => specTrees[s.key] != null) : rawSpecs;
     const activeSpecInfo = effectiveSpecs.find((s) => s.key === activeSpecKey);
 
     const tg = state.data.serverRules?.tierGates || {};
@@ -917,7 +920,7 @@
       `
           : `
         <div style="margin-top:0.85rem;">
-          <span class="badge badge-purple">Dedicated DNC Bladewheel Chakram Tree</span>
+          <span class="badge badge-purple">${ws.isCustomThrowing ? 'Dedicated DNC Bladewheel Chakram Tree' : 'Generic Fallback Tree (No Crystal Spec for this Weapon)'}</span>
         </div>
       `
       }
