@@ -1,0 +1,87 @@
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index d7f1a4b..a1b2c3d 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -348,6 +348,17 @@ void LoadEffectsParameters()
+     EffectsParams[852].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[852].SortKey          = 10000;
+     EffectsParams[852].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RDM Crimson Duelist Crystal Spec status effects (853-854).
++    EffectsParams[853].Name             = "crimson_flow";
++    EffectsParams[853].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[853].SortKey          = 10000;
++    EffectsParams[853].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[854].Name             = "crimson_fleche";
++    EffectsParams[854].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[854].SortKey          = 10000;
++    EffectsParams[854].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index 1234567..89abcde 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -2156,6 +2156,20 @@ auto isKagemushaSpec(CBattleEntity* PEntity) -> bool
+     return PChar != nullptr && PChar->GetMJob() == xi::Job::NIN && PChar->GetMLevel() >= 10 && PChar->hasTrait(161);
+ }
+ 
++auto isCrimsonDuelistSpec(CBattleEntity* PEntity) -> bool
++{
++    auto* PChar = dynamic_cast<CCharEntity*>(PEntity);
++    return PChar != nullptr && PChar->GetMJob() == xi::Job::RDM && PChar->GetMLevel() >= 10 && PChar->hasTrait(146);
++}
++
++auto isCrimsonFlowSpell(CSpell* PSpell) -> bool
++{
++    return PSpell != nullptr &&
++           (PSpell->getSkillType() == xi::SkillType::EnfeeblingMagic ||
++            PSpell->getID() == SpellID::Stoneskin ||
++            PSpell->getID() == SpellID::Phalanx);
++}
++
+ auto TryInterruptSpell(CBattleEntity* PAttacker, CBattleEntity* PDefender, CSpell* PSpell) -> bool
+ {
+     // Early return: Spell can't be interrupted.
+@@ -5947,6 +5961,10 @@ auto CalculateSpellCastTime(CBattleEntity* PEntity, CMagicState* PState) -> time
+     }
+ 
+     int16 fastCast = std::clamp<int16>(PEntity->getMod(xi::Mod::FASTCAST), -100, 50);
++    if (PEntity->StatusEffectContainer->HasStatusEffect(static_cast<xi::StatusEffect>(853)) && isCrimsonFlowSpell(PSpell))
++    {
++        return 0ms;
++    }
+     if (PSpell->getSkillType() == xi::SkillType::ElementalMagic) // Elemental Celerity reductions
+     {
+         fastCast += PEntity->getMod(xi::Mod::ELEMENTAL_CELERITY);
+@@ -6048,6 +6066,10 @@ auto CalculateSpellCost(CBattleEntity* PEntity, CSpell* PSpell) -> uint16
+     if (xirand::GetRandomNumber(100) < (PEntity->getMod(xi::Mod::NO_SPELL_MP_DEPLETION)))
+     {
+         cost = 0;
++    }
++    if (PEntity->StatusEffectContainer->HasStatusEffect(static_cast<xi::StatusEffect>(853)) && isCrimsonFlowSpell(PSpell))
++    {
++        return 0;
+     }
+     return std::clamp<int16>(cost, 0, 9999);
+ }
+@@ -6101,6 +6123,17 @@ auto CalculateSpellRecastTime(CBattleEntity* PEntity, CSpell* PSpell) -> timer::
+         {
+             base = 22000ms;
+         }
++    }
++    else if (isCrimsonDuelistSpec(PEntity))
++    {
++        if (PSpell->getID() == SpellID::Stoneskin)
++        {
++            base = 15000ms;
++        }
++        else if (PSpell->getID() == SpellID::Phalanx)
++        {
++            base = 30000ms;
++        }
+     }
+     auto recast = base;
+ 
