@@ -24,7 +24,7 @@ index bfac8bb022..af11269240 100644
          "FROM accounts_sessions "
          "LEFT JOIN accounts_parties USING (charid) "
          "LEFT JOIN chars USING (charid) "
-@@ -387,14 +397,40 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -387,14 +397,41 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -68,7 +68,7 @@ index bfac8bb022..af11269240 100644
          "FROM JSON_TABLE(?, '$[*]' COLUMNS (charid INT UNSIGNED PATH '$')) AS ids "
          "JOIN accounts_sessions USING (charid) "
          "LEFT JOIN accounts_parties USING (charid) "
-@@ -403,6 +439,22 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -403,6 +440,23 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -92,7 +92,7 @@ index bfac8bb022..af11269240 100644
          "WHERE charname IS NOT NULL "
          "AND (? = 0 OR mjob = ?) "
          "AND (? = 0 OR (seacom_type & 0xF0) = ?) "
-@@ -435,6 +487,8 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -435,6 +489,8 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
              player.slvl     = rset->get<uint8>("slvl");
              player.race     = rset->get<uint8>("race");
  
@@ -117,7 +117,7 @@ diff --git a/src/search/packets/search_list.cpp b/src/search/packets/search_list
 index 181d1e8003..3222ceb915 100644
 --- a/src/search/packets/search_list.cpp
 +++ b/src/search/packets/search_list.cpp
-@@ -40,8 +40,29 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
+@@ -40,8 +40,30 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
      ref<uint16>(m_data, (0x0E)) = Total; // The total number of character found (may differ from the amount that gets sent)
  }
  
@@ -149,7 +149,7 @@ index 181d1e8003..3222ceb915 100644
  {
      const uint32 size_offset = m_offset / 8;
      if ((sizeof(m_data) - size_offset) < (searchPacketTrailerSize + searchEntryMaxSize))
-@@ -92,7 +113,11 @@ auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
+@@ -92,7 +114,11 @@ auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
      // Retail sends SearchType::LinkshellRank here in SEARCH_ALL replies: three 8 bit ranks then three 32 bit linkshell ids.
  
      m_offset = packBitsLE(m_data, static_cast<uint64>(SearchType::Unknown0E), m_offset, 5);

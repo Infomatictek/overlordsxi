@@ -15,7 +15,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index a918f07..b5f41e8 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -232,6 +232,37 @@ void LoadEffectsParameters()
+@@ -232,6 +232,32 @@ void LoadEffectsParameters()
      EffectsParams[831].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
      EffectsParams[831].SortKey          = 10000;
      EffectsParams[831].WearOffMessageId = MsgStd::EffectWearsOff;
