@@ -31,7 +31,7 @@ index 1234567..89abcde 100644
 +auto isCrimsonDuelistSpec(CBattleEntity* PEntity) -> bool
 +{
 +    auto* PChar = dynamic_cast<CCharEntity*>(PEntity);
-+    return PChar != nullptr && PChar->GetMJob() == xi::Job::RDM && PChar->GetMLevel() >= 10 && PChar->hasTrait(146);
++    return PChar != nullptr && PChar->GetMJob() == xi::Job::RDM && PChar->GetMLevel() >= 10 && PChar->hasTrait(162);
 +}
 +
 +auto isCrimsonFlowSpell(CSpell* PSpell) -> bool

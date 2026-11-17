@@ -24,12 +24,12 @@ xi.overlords.rdmSpecs = xi.overlords.rdmSpecs or {}
 
 local CRIMSON_DUELIST_KEY = 'crimsonduelist'
 
--- Custom Trait ID (146)
-local TRAIT_CRIMSON_RIPOSTE = 146
+-- Custom Trait ID (162; client display ID 1698)
+local TRAIT_CRIMSON_RIPOSTE = 162
 
--- Custom Ability IDs (441-442; recastIds 179-180)
-local ABIL_HEX_VOLLEY     = 441
-local ABIL_CRIMSON_FLECHE = 442
+-- Custom Ability IDs (447-448; client display IDs 959-960, recastIds 179-180)
+local ABIL_HEX_VOLLEY     = 447
+local ABIL_CRIMSON_FLECHE = 448
 
 -- Custom Status Effect IDs (853-854; registered in patch 0026)
 local EFFECT_CRIMSON_FLOW   = 853
