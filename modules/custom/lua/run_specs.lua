@@ -32,12 +32,12 @@ local LIFEBINDER_KEY = 'lifebinder'
 local ABIL_IRON_BATTUTA      = 412
 local ABIL_RUNIC_AEGIS       = 413
 local ABIL_RUNIC_CONVERGENCE = 414
-local ABIL_RUNIC_BOLT        = 415
-local ABIL_RUNIC_SEVER       = 416
+local ABIL_EFFUSION_SLASH    = 415
+local ABIL_OVERCHARGE_RUNES  = 416
 local ABIL_FONT_OF_LIFE      = 417
 local ABIL_SANCTIFIED_WARD   = 418
 
--- Custom Status Effect IDs (821-828, within MAX_EFFECTID = 832)
+-- Custom Status Effect IDs (821-828, 831, within MAX_EFFECTID = 832)
 local EFFECT_IRON_BATTUTA      = 821
 local EFFECT_RUNIC_AEGIS       = 822
 local EFFECT_RUNIC_CONVERGENCE = 823
@@ -46,6 +46,7 @@ local EFFECT_FONT_OF_LIFE      = 825
 local EFFECT_SANCTIFIED_WARD   = 826
 local EFFECT_CONDUCTION        = 827
 local EFFECT_RUNIC_ASCENDANCE  = 828
+local EFFECT_OVERCHARGE_RUNES  = 831
 
 -- Custom Job Trait IDs (150-152 -> menu_ids 1686-1688)
 local TRAIT_INQUISITOR_WARD = 150
@@ -56,10 +57,8 @@ xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.IRON_BATTUTA      = ABIL_IRON_BATTUTA
 xi.jobAbility.RUNIC_AEGIS       = ABIL_RUNIC_AEGIS
 xi.jobAbility.RUNIC_CONVERGENCE = ABIL_RUNIC_CONVERGENCE
-xi.jobAbility.RUNIC_BOLT        = ABIL_RUNIC_BOLT
-xi.jobAbility.RUNIC_SEVER       = ABIL_RUNIC_SEVER
-xi.jobAbility.EFFUSION_SLASH    = ABIL_RUNIC_BOLT
-xi.jobAbility.OVERCHARGE_RUNES  = ABIL_RUNIC_SEVER
+xi.jobAbility.EFFUSION_SLASH    = ABIL_EFFUSION_SLASH
+xi.jobAbility.OVERCHARGE_RUNES  = ABIL_OVERCHARGE_RUNES
 xi.jobAbility.FONT_OF_LIFE      = ABIL_FONT_OF_LIFE
 xi.jobAbility.SANCTIFIED_WARD   = ABIL_SANCTIFIED_WARD
 
@@ -68,7 +67,7 @@ xi.effect.INQUISITOR_BATTUTA    = EFFECT_IRON_BATTUTA
 xi.effect.INQUISITOR_AEGIS      = EFFECT_RUNIC_AEGIS
 xi.effect.INQUISITOR_CONVERGE   = EFFECT_RUNIC_CONVERGENCE
 xi.effect.SPELLBLADE_EDGEFLARE  = EFFECT_EDGEFLARE
-xi.effect.SPELLBLADE_OVERCHARGE = EFFECT_EDGEFLARE
+xi.effect.SPELLBLADE_OVERCHARGE = EFFECT_OVERCHARGE_RUNES
 xi.effect.LIFEBINDER_FONT       = EFFECT_FONT_OF_LIFE
 xi.effect.LIFEBINDER_SANCTUARY  = EFFECT_SANCTIFIED_WARD
 xi.effect.SPELLBLADE_CONDUCTION = EFFECT_CONDUCTION
@@ -79,8 +78,6 @@ xi.actions.abilities = xi.actions.abilities or {}
 xi.actions.abilities.iron_battuta      = xi.actions.abilities.iron_battuta or {}
 xi.actions.abilities.runic_aegis       = xi.actions.abilities.runic_aegis or {}
 xi.actions.abilities.runic_convergence = xi.actions.abilities.runic_convergence or {}
-xi.actions.abilities.runic_bolt        = xi.actions.abilities.runic_bolt or {}
-xi.actions.abilities.runic_sever       = xi.actions.abilities.runic_sever or {}
 xi.actions.abilities.effusion_slash    = xi.actions.abilities.effusion_slash or {}
 xi.actions.abilities.overcharge_runes  = xi.actions.abilities.overcharge_runes or {}
 xi.actions.abilities.font_of_life      = xi.actions.abilities.font_of_life or {}
@@ -480,6 +477,7 @@ local FALLBACK_EFFECT_MAP =
     [EFFECT_SANCTIFIED_WARD]   = 820, -- gladiator_ward
     [EFFECT_CONDUCTION]        = 815, -- commander_breach
     [EFFECT_RUNIC_ASCENDANCE]  = 818, -- commander_regroup
+    [EFFECT_OVERCHARGE_RUNES]  = 817, -- commander_cadence
 }
 
 local pendingRunEffectMods = {}
@@ -651,7 +649,7 @@ local function syncConductionStatusEffect(player, stacks)
         return
     end
 
-    local iconId = (xi.effect and xi.effect.CHAINBOUND) or (xi.effect and xi.effect.INSPIRE) or EFFECT_CONDUCTION
+    local iconId = (xi.effect and xi.effect.CHAINBOUND) or EFFECT_CONDUCTION
     applyTimedEffectWithMods(
         player,
         EFFECT_CONDUCTION,
@@ -744,6 +742,10 @@ local function hasRunicAscendance(player)
     return hasRunCustomEffect(player, EFFECT_RUNIC_ASCENDANCE)
 end
 
+local function hasOverchargeRunes(player)
+    return hasRunCustomEffect(player, EFFECT_OVERCHARGE_RUNES)
+end
+
 -- Check if target has Spellblade Gambit active for the given element (returns 1.10 or 1.0)
 local function getSpellbladeGambitMultiplier(target, element)
     if target == nil or element == nil or not target.getStatusEffect then
@@ -763,41 +765,60 @@ end
 
 -- Apply era accumulative magic resistance ("Nuke Wall") identical to scripts/globals/spells/damage_spell.lua
 local function applyAccumulativeMagicWall(target, spellElement, currentDamage)
-    if target == nil or currentDamage <= 0 or not target.isMob or not target:isMob() then
-        return 1.0
-    end
-
-    if spellElement < xi.element.FIRE or spellElement > xi.element.DARK then
+    local nukeWallId = xi.effect and xi.effect.NUKE_WALL
+    if
+        nukeWallId == nil or
+        target == nil or
+        currentDamage <= 0 or
+        not target.isNM or
+        not target:isNM() or
+        spellElement == nil or
+        spellElement < xi.element.FIRE or
+        spellElement > xi.element.DARK
+    then
         return 1.0
     end
 
     local potency = 0
-    if target:hasStatusEffect(xi.effect.ELEMENTAL_RES_DOWN) then
-        local effect = target:getStatusEffect(xi.effect.ELEMENTAL_RES_DOWN)
-        if effect ~= nil and effect:getSubPower() == spellElement then
-            potency = effect:getPower()
+    local effect  = target.getStatusEffect and target:getStatusEffect(nukeWallId) or nil
+    if effect ~= nil then
+        potency = effect:getPower()
+        if effect.getTimeRemaining and effect:getTimeRemaining() <= 4000 then
+            potency = utils.clamp(potency - 2000, 0, 4000)
         end
-        target:delStatusEffectSilent(xi.effect.ELEMENTAL_RES_DOWN)
+
+        if xi.effect.RAYKE ~= nil and target.hasStatusEffect and target:hasStatusEffect(xi.effect.RAYKE) then
+            local raykeEff = target:getStatusEffect(xi.effect.RAYKE)
+            local raykeSub = raykeEff and raykeEff.getSubPower and raykeEff:getSubPower() or 0
+            for i = 0, 16, 4 do
+                if bit.band(bit.rshift(raykeSub, i), 0xF) == spellElement then
+                    potency = math.floor(potency / 2)
+                    break
+                end
+            end
+        end
+
+        if target.delStatusEffectSilent then
+            target:delStatusEffectSilent(nukeWallId)
+        end
     end
 
-    local factor   = math.max(0, 1 - potency / 10000)
-    local postWall = math.floor(currentDamage * factor)
+    local targetLvl    = math.max(1, target.getMainLvl and target:getMainLvl() or 1)
+    local damageCap    = targetLvl * 21 + 500
+    local finalPotency = utils.clamp(math.floor(4000 * currentDamage / damageCap) + potency, 0, 4000)
 
-    local maxHP        = math.max(1, target:getMaxHP())
-    local damageDealt  = postWall / maxHP
-    local wallIncrease = math.floor(damageDealt * 20000) + 2000
-    potency            = utils.clamp(potency + wallIncrease, 0, 5000)
+    if target.addStatusEffect then
+        target:addStatusEffect(nukeWallId,
+        {
+            power    = finalPotency,
+            duration = 5,
+            origin   = target,
+            icon     = 0,
+            subPower = spellElement,
+        })
+    end
 
-    target:addStatusEffect(xi.effect.ELEMENTAL_RES_DOWN,
-    {
-        power    = potency,
-        duration = 15,
-        origin   = target,
-        icon     = 0,
-        subPower = spellElement,
-    })
-
-    return factor
+    return math.max(0, 1.0 - potency / 10000)
 end
 
 -----------------------------------
@@ -869,7 +890,7 @@ local function evaluateRuneEdgeRound(actor, target, action)
         baseDmg = 1
     end
 
-    -- Edgeflare (+25%) and Runic Ascendance (+50%) add together up to +75%
+    -- Edgeflare (+25%) and Runic Ascendance (+50%) add together up to +75%; Overcharge Runes doubles Runic Brand damage
     local bonusMult = 1.0
     if hasEdgeflare(actor, element) then
         bonusMult = bonusMult + 0.25
@@ -878,6 +899,9 @@ local function evaluateRuneEdgeRound(actor, target, action)
         bonusMult = bonusMult + 0.50
     end
     local damage = math.floor(baseDmg * bonusMult)
+    if hasOverchargeRunes(actor) then
+        damage = damage * 2
+    end
 
     local absorb = false
     if xi.spells and xi.spells.damage and xi.spells.damage.calculateAbsorption then
@@ -1241,7 +1265,7 @@ if xi.job and xi.job.RUN then
                     { xi.mod.ENMITY,                scaleTier(lvl, 15, 25, 40, 50) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 20, 35, 50, 60) },
                     { xi.mod.PARRY,                 scaleTier(lvl, 12, 24, 40, 50) },
-                    { xi.mod.GREAT_SWORD,           scaleTier(lvl, 12, 24, 40, 50) },
+                    { xi.mod.GSWORD,                scaleTier(lvl, 12, 24, 40, 50) },
                     { xi.mod.INQUARTATA,            scaleTier(lvl, 6, 10, 15, 18) },
                     -- Tank damage tradeoff
                     { xi.mod.ATTP,                  -20 },
@@ -1274,6 +1298,10 @@ if xi.job and xi.job.RUN then
             extraAbilities = function(_player, lvl)
                 local l   = lvl or 1
                 local out = {}
+                if l >= 10 then
+                    table.insert(out, ABIL_EFFUSION_SLASH)
+                    table.insert(out, ABIL_OVERCHARGE_RUNES)
+                end
                 if l >= 20 then
                     table.insert(out, (xi.jobAbility and xi.jobAbility.SWORDPLAY) or 367)
                 end
@@ -1293,23 +1321,25 @@ if xi.job and xi.job.RUN then
                 return out
             end,
             extraTraits = { TRAIT_RUNIC_BRAND },
-            description = 'Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge) -> Conduction (up to 3) & delay-adjusted MP -> Prepared offensive magic spell (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).',
+            description = 'Elemental Greatsword spellweaver (Lv10+): Enchanted attacks (Rune Edge), Effusion Slash & Overcharge Runes -> Conduction (up to 3) & MP -> Prepared offensive magic (Runic Bolt / Runic Sever) -> Edgeflare (+25% Rune Edge).',
             highlights  =
             {
-                'Skills & Identity: Greatsword A+, Elemental Magic A, Enhancing Magic B; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65, 8 resist/rune at Lv75).',
-                'Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (not multiplied by DA/TA/OAT/WS/Counter).',
-                'Conduction (Lv10+): Landed normal Greatsword rounds grant 1 Conduction (max 3; 0-dmg hits still count) and restore 1/2/3 MP (Lv10/40/65) scaled by Delay/480 on positive Rune Edge.',
-                'Magic Spell: Runic Bolt (Lv10, 2.0s cast, 8s CD, 8-24 MP, 10y): floor(1.15*Elem + 0.50*INT); each Conduction reduces cast by 0.5s & MP by 15% (0.5s / 13 MP at 3 stacks).',
-                'Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): floor(1.75*Elem + 0.80*INT); each Conduction reduces cast by 0.5s & MP by 15% (1.5s / 22 MP at 3 stacks); Magic Bursts.',
-                'Edgeflare (Lv30+): Positive damage from Runic Bolt or Runic Sever grants +25% Rune Edge damage for 12s (refreshes; changing Rune element removes it).',
-                'Supporting Kit: Swordplay (Lv20: +10 ACC/MACC 60s), Vallation (Lv40: spend Conduction for 10-30% opposing element DR 15s), Gambit (Lv70: spend Conduction for 1.10x target element DMG 20s), Runic Ascendance (2hr: +50% Rune Edge & 2 Conduction/round 30s).',
+                'Skills & Passives: Greatsword A+, Elemental Magic A, Enhancing Magic B, +12/20/28/36 MAB, +8/14/20/28 MACC; one Rune Enchantment fills all unlocked slots (1/2/3 at Lv5/35/65).',
+                'Rune Edge: First landed normal Greatsword hit per round deals floor((0.08*GS + 0.04*Enh + 4*Runes) * Delay/480) elemental damage (2x during Overcharge Runes) and builds Conduction (max 3) + MP.',
+                'Effusion Slash (Lv10, 20s CD, Enemy 4y): Non-consuming Great Sword arcane strike (1.5x-2.8x +20%/Rune) aligned to newest Rune; can Magic Burst (+35% DMG) and grants +100/150/200/250 TP.',
+                'Overcharge Runes (Lv10, 30s CD, Self): 12s overdrive granting +15/22/30/40 MAB, +10/14/18/24% Attack%, +15/20/25/30 MB Bonus, 2x Runic Brand damage, and refreshes active Rune durations.',
+                'Magic Spell: Runic Bolt (Lv10, 2.0s cast, 8s CD, 8-24 MP, 10y): High-potency arcane bolt scaling with Elemental Skill, Weapon DMG, INT, STR, Runes (+5%/Rune), & Conduction (+10% DMG, -0.5s cast, -15% MP/stack).',
+                'Magic Spell: Runic Sever (Lv55, 3.0s cast, 30s CD, 40 MP, 10y): Heavy arcane finisher scaling with Elemental Skill, Weapon DMG, INT, STR, Runes (+8%/Rune), & Conduction (+12% DMG, -0.5s cast, -15% MP/stack); Magic Bursts.',
+                'Edgeflare & Kit: Positive damage from Bolt, Sever, or Effusion Slash grants +25% Rune Edge for 12s (Lv30+); Swordplay (+10 ACC/MACC), Vallation, Gambit (1.10x target element DMG), Runic Ascendance (2hr).',
             },
             mods = function(_player, lvl)
                 return
                 {
-                    { xi.mod.GREAT_SWORD, getGreatswordAPlusBonus(lvl) },
-                    { xi.mod.ELEM,        getARankSkillForLevel(lvl) },
-                    { xi.mod.ENHANCING,   getEnhancingBRankDelta(lvl) },
+                    { xi.mod.GSWORD,  getGreatswordAPlusBonus(lvl) },
+                    { xi.mod.ELEM,    getARankSkillForLevel(lvl) },
+                    { xi.mod.ENHANCE, getEnhancingBRankDelta(lvl) },
+                    { xi.mod.MATT,    scaleTier(lvl, 12, 20, 28, 36) },
+                    { xi.mod.MACC,    scaleTier(lvl, 8, 14, 20, 28) },
                 }
             end,
             onApply = function(player)
@@ -1335,6 +1365,7 @@ if xi.job and xi.job.RUN then
                     ensureRunSpells(player, false)
                     clearConduction(player, nil)
                     delRunCustomEffectSilent(player, EFFECT_EDGEFLARE)
+                    delRunCustomEffectSilent(player, EFFECT_OVERCHARGE_RUNES)
                     delRunCustomEffectSilent(player, EFFECT_RUNIC_ASCENDANCE)
                 end
                 detachRunListeners(player)
@@ -1374,7 +1405,7 @@ if xi.job and xi.job.RUN then
                     { xi.mod.MND,              scaleTier(lvl, 8, 16, 25, 32) },
                     { xi.mod.VIT,              scaleTier(lvl, 8, 16, 25, 32) },
                     { xi.mod.CURE_POTENCY,     scaleTier(lvl, 12, 20, 30, 35) },
-                    { xi.mod.ENHANCING,        scaleTier(lvl, 15, 25, 40, 50) },
+                    { xi.mod.ENHANCE,          scaleTier(lvl, 15, 25, 40, 50) },
                     { xi.mod.DIVINE,           scaleTier(lvl, 15, 25, 40, 50) },
                     { xi.mod.HEALING,          scaleTier(lvl, 15, 25, 40, 50) },
                     { xi.mod.FASTCAST,         scaleTier(lvl, 10, 18, 25, 30) },
@@ -2238,68 +2269,15 @@ local function calculateConductionAdjustedCostAndCast(player, isSever, stacks)
     return math.max(1, prepMp), finalCastMs
 end
 
-local function checkRunicSpell(player, target, ability, isSever)
-    if not isRunSpec(player, SPELLBLADE_KEY) then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-
-    local lvl    = player.getMainLvl and player:getMainLvl() or 1
-    local minLvl = isSever and 55 or 10
-    if lvl < minLvl then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-
-    if not isGreatSwordEquipped(player) then
-        tell(player, '[Spellblade] Runic spells require a Greatsword equipped.')
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-
-    if target == nil or target:getID() == player:getID() or (target.isAlive and not target:isAlive()) then
-        return xi.msg.basic.CANNOT_ATTACK_TARGET, 0
-    end
-
-    if player.hasStatusEffect and (player:hasStatusEffect(xi.effect.SILENCE) or player:hasStatusEffect(xi.effect.MUTE)) then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-
-    local runeErr, runeParam = xi.job_utils.rune_fencer.checkHaveRunes(player)
-    if runeErr ~= 0 then
-        return runeErr, runeParam
-    end
-
-    local stacks            = getConductionStacks(player)
-    local mpCost, castTimeMs = calculateConductionAdjustedCostAndCast(player, isSever, stacks)
-    local curMp             = player.getMP and player:getMP() or 0
-    if curMp < mpCost then
-        tell(player, string.format('[Spellblade] Not enough MP (%d/%d MP needed).', curMp, mpCost))
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-
-    -- Reserve Conduction, weapon signature, and Conduction-adjusted cast time for CAbilityState
-    if player.setLocalVar then
-        player:setLocalVar('OX_RUN_PREP_STACKS', stacks)
-        player:setLocalVar('OX_RUN_PREP_WPN', getMainSubWeaponSignature(player))
-        player:setLocalVar('OX_ABIL_CAST_MS', castTimeMs)
-    end
-
-    -- Apply Hasso recast penalty if Hasso is active
-    if ability ~= nil and ability.setRecast then
-        local baseRecast = isSever and 30 or 8
-        if player.hasStatusEffect and player:hasStatusEffect(xi.effect.HASSO) then
-            baseRecast = math.floor(baseRecast * 1.5)
-        end
-        ability:setRecast(baseRecast)
-    end
-
-    return 0, 0
-end
-
 local function executeRunicSpell(player, target, _ability, action, isSever, spellObj)
     -- Verify weapon/grip was not swapped during casting
     local prepWpn = player.getLocalVar and player:getLocalVar('OX_RUN_PREP_WPN') or 0
     local curWpn  = getMainSubWeaponSignature(player)
     if (prepWpn ~= 0 and prepWpn ~= curWpn) or not isGreatSwordEquipped(player) then
         clearConduction(player, '[Spellblade] Changing weapons during casting invalidates the prepared cast!')
+        if spellObj ~= nil and spellObj.setMsg and xi.msg and xi.msg.basic then
+            spellObj:setMsg(xi.msg.basic.MAGIC_FAIL or 114)
+        end
         return 0
     end
 
@@ -2319,7 +2297,6 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
             return 0
         end
 
-        -- Spend MP and reserved Conduction for JA fallback path (magic spells already deduct MP in SpendCost)
         if player.delMP then
             player:delMP(mpCost)
         end
@@ -2327,6 +2304,7 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     setConductionStacks(player, math.max(0, getConductionStacks(player) - stacks), true)
 
     local runes      = getActiveRunesList(player)
+    local runeCount  = math.max(1, #runes)
     local newestRune = (player.getNewestRuneEffect and player:getNewestRuneEffect()) or runes[#runes] or xi.effect.IGNIS
     local element    = RUNE_ELEMENT_MAP[newestRune] or xi.element.FIRE
     local infoVal    = RUNE_EFFUSION_INFO_MAP[newestRune] or 2
@@ -2347,26 +2325,35 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
         xi.spells.damage.calculateNullification and
         xi.spells.damage.calculateNullification(target, element, false, true, false, false) == 0
     then
+        if spellObj ~= nil and spellObj.setMsg and xi.msg and xi.msg.basic then
+            spellObj:setMsg(xi.msg.basic.MAGIC_RESIST or 85)
+        end
         return 0
     end
 
-    -- Starting damage formulas:
-    -- Runic Bolt  = floor(1.15 * Elemental skill + 0.50 * INT)
-    -- Runic Sever = floor(1.75 * Elemental skill + 0.80 * INT)
-    local elemSkill = player.getSkillLevel and player:getSkillLevel(xi.skill.ELEMENTAL_MAGIC) or getARankSkillForLevel(player:getMainLvl())
+    -- Spellblade hybrid arcane-blade formulas scaling with Elemental Skill, Weapon DMG, INT, STR, Runes, & Conduction:
+    --   Runic Bolt  = floor((1.85 * Elem + 2.00 * WeaponDMG + 0.85 * INT + 0.65 * STR + mDMG) * (1 + 0.10 * Conduction) * (1 + 0.05 * Runes))
+    --   Runic Sever = floor((2.85 * Elem + 3.25 * WeaponDMG + 1.35 * INT + 1.00 * STR + mDMG) * (1 + 0.12 * Conduction) * (1 + 0.08 * Runes))
+    local lvl       = player.getMainLvl and player:getMainLvl() or 10
+    local elemSkill = math.max(getARankSkillForLevel(lvl), player.getSkillLevel and player:getSkillLevel(xi.skill.ELEMENTAL_MAGIC) or 0)
+    local weaponDmg = math.max(10, player.getWeaponDmg and player:getWeaponDmg() or 18)
     local intStat   = player.getStat and player:getStat(xi.mod.INT) or 10
+    local strStat   = player.getStat and player:getStat(xi.mod.STR) or 10
+    local mDmgBonus = player.getMod and player:getMod(xi.mod.MAGIC_DAMAGE) or 0
     local baseDmg
     if isSever then
-        baseDmg = math.floor(1.75 * elemSkill + 0.80 * intStat)
+        baseDmg = math.floor(2.85 * elemSkill + 3.25 * weaponDmg + 1.35 * intStat + 1.00 * strStat) + mDmgBonus
+        baseDmg = math.floor(baseDmg * (1.0 + 0.12 * stacks) * (1.0 + 0.08 * runeCount))
     else
-        baseDmg = math.floor(1.15 * elemSkill + 0.50 * intStat)
+        baseDmg = math.floor(1.85 * elemSkill + 2.00 * weaponDmg + 0.85 * intStat + 0.65 * strStat) + mDmgBonus
+        baseDmg = math.floor(baseDmg * (1.0 + 0.10 * stacks) * (1.0 + 0.05 * runeCount))
     end
 
-    -- dINT adjustment (+1.0 per positive dINT up to +30, -0.5 per negative dINT)
+    -- dINT adjustment (+2.0 per positive dINT up to +60, -0.5 per negative dINT)
     local targetInt = target.getStat and target:getStat(xi.mod.INT) or intStat
     local dInt      = intStat - targetInt
     if dInt > 0 then
-        baseDmg = baseDmg + math.min(30, dInt)
+        baseDmg = baseDmg + math.min(60, dInt * 2)
     elseif dInt < 0 then
         baseDmg = math.max(1, baseDmg + math.floor(dInt * 0.5))
     end
@@ -2382,6 +2369,21 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     end
     local canMBurst = not absorb and magicBurstTier > 0
 
+    local staffBonus    = 1.0
+    local affinityBonus = 1.0
+    local magicCritMult = 1.0
+    if xi.spells and xi.spells.damage then
+        if xi.spells.damage.calculateElementalStaffBonus then
+            staffBonus = xi.spells.damage.calculateElementalStaffBonus(player, element) or 1.0
+        end
+        if xi.spells.damage.calculateElementalAffinityBonus then
+            affinityBonus = xi.spells.damage.calculateElementalAffinityBonus(player, element) or 1.0
+        end
+        if xi.spells.damage.calculateMagicCriticalMultiplier then
+            magicCritMult = xi.spells.damage.calculateMagicCriticalMultiplier(player) or 1.0
+        end
+    end
+
     local resistTier           = 1.0
     local additionalResistTier = 1.0
     if not absorb and xi.combat and xi.combat.magicHitRate and xi.combat.magicHitRate.calculateResistRate then
@@ -2392,7 +2394,7 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
             actorStat      = xi.mod.INT,
             skillType      = xi.skill.ELEMENTAL_MAGIC,
             spellGroup     = xi.magic.spellGroup.BLACK,
-            bonusMacc      = 0,
+            bonusMacc      = isSever and 40 or 25,
         }) or 1.0
     end
     if not absorb and xi.spells and xi.spells.damage and xi.spells.damage.calculateAdditionalResistTier then
@@ -2434,6 +2436,8 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     end
 
     local finalDamage = baseDmg
+    finalDamage = math.floor(finalDamage * staffBonus)
+    finalDamage = math.floor(finalDamage * affinityBonus)
     finalDamage = math.floor(finalDamage * resistTier)
     finalDamage = math.floor(finalDamage * additionalResistTier)
     finalDamage = math.floor(finalDamage * magicBurst)
@@ -2442,6 +2446,7 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     finalDamage = math.floor(finalDamage * magicBonusDiff)
     finalDamage = math.floor(finalDamage * mdtAdjust)
     finalDamage = math.floor(finalDamage * sdtAdjust)
+    finalDamage = math.floor(finalDamage * magicCritMult)
 
     -- Era accumulative magic resistance ("Nuke Wall")
     if not absorb then
@@ -2452,7 +2457,7 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
     if absorb then
         local healed = target.addHP and target:addHP(finalDamage) or finalDamage
         if spellObj ~= nil and spellObj.setMsg and xi.msg and xi.msg.basic then
-            spellObj:setMsg(xi.msg.basic.MAGIC_RECOVERS_HP)
+            spellObj:setMsg(xi.msg.basic.MAGIC_RECOVERS_HP or 7)
         end
         return healed
     end
@@ -2468,16 +2473,22 @@ local function executeRunicSpell(player, target, _ability, action, isSever, spel
         finalDamage = target:checkDamageCap(finalDamage)
     end
 
-    if finalDamage > 0 and target.takeDamage then
-        -- Neither spell generates TP or creates a skillchain
-        target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+    if finalDamage > 0 then
+        if spellObj ~= nil and target.takeSpellDamage then
+            target:takeSpellDamage(player, spellObj, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+        elseif target.takeDamage then
+            target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+        end
+        if target.handleAfflatusMiseryDamage then
+            target:handleAfflatusMiseryDamage(finalDamage)
+        end
     end
     if target.updateEnmityFromDamage then
         target:updateEnmityFromDamage(player, finalDamage)
     end
     if spellObj ~= nil then
         if canMBurst and spellObj.setMsg and xi.msg and xi.msg.basic then
-            spellObj:setMsg(xi.msg.basic.MAGIC_BURST_BLACK or xi.msg.basic.MAGIC_BURST_DAMAGE or 252)
+            spellObj:setMsg(xi.msg.basic.MAGIC_BURST_DAMAGE or 252)
         elseif spellObj.setMsg and xi.msg and xi.msg.basic then
             spellObj:setMsg(xi.msg.basic.MAGIC_DMG or 2)
         end
@@ -2526,18 +2537,18 @@ local RUNIC_SEVER_ANIM_MAP =
 local function checkRunicMagicSpell(caster, target, spell, isSever)
     if not isRunSpec(caster, SPELLBLADE_KEY) then
         tell(caster, '[Spellblade] Runic Bolt and Runic Sever require the Spellblade crystal.')
-        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+        return xi.msg.basic.MAGIC_CANNOT_CAST or 47
     end
 
     local lvl    = caster.getMainLvl and caster:getMainLvl() or 1
     local minLvl = isSever and 55 or 10
     if lvl < minLvl then
-        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+        return xi.msg.basic.MAGIC_CANNOT_CAST or 47
     end
 
     if not isGreatSwordEquipped(caster) then
         tell(caster, '[Spellblade] Runic spells require a Greatsword equipped.')
-        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+        return xi.msg.basic.MAGIC_CANNOT_CAST or 47
     end
 
     if target == nil or target:getID() == caster:getID() or (target.isAlive and not target:isAlive()) then
@@ -2547,7 +2558,7 @@ local function checkRunicMagicSpell(caster, target, spell, isSever)
     local runeErr = xi.job_utils.rune_fencer.checkHaveRunes(caster)
     if runeErr ~= 0 then
         tell(caster, '[Spellblade] You must harbor at least 1 active Rune to cast Runic spells.')
-        return xi.msg.basic.CANNOT_CAST_SPELL or 47
+        return xi.msg.basic.MAGIC_CANNOT_CAST or 47
     end
 
     local stacks   = getConductionStacks(caster)
@@ -2608,25 +2619,248 @@ end, function(caster, target, spell, action)
     return executeRunicSpell(caster, target, nil, action, true, spell)
 end)
 
--- Bind both runic_bolt (415) and legacy effusion_slash alias
-local function checkRunicBolt(player, target, ability)
-    return checkRunicSpell(player, target, ability, false)
-end
-local function useRunicBolt(player, target, ability, action)
-    return executeRunicSpell(player, target, ability, action, false, nil)
-end
-bindAbility('runic_bolt', checkRunicBolt, useRunicBolt)
-bindAbility('effusion_slash', checkRunicBolt, useRunicBolt)
+-----------------------------------
+-- 4) Spellblade: Effusion Slash (415, 20s CD, Enemy 4y)
+-- Non-consuming Great Sword arcane strike (1.5x-2.8x +20%/Rune) aligned to newest Rune.
+-- Can Magic Burst (+35% DMG) and grants +100/150/200/250 TP.
+-----------------------------------
+bindAbility('effusion_slash', function(player, target, _ability)
+    if not isRunSpec(player, SPELLBLADE_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
 
--- Bind both runic_sever (416) and legacy overcharge_runes alias
-local function checkRunicSever(player, target, ability)
-    return checkRunicSpell(player, target, ability, true)
-end
-local function useRunicSever(player, target, ability, action)
-    return executeRunicSpell(player, target, ability, action, true, nil)
-end
-bindAbility('runic_sever', checkRunicSever, useRunicSever)
-bindAbility('overcharge_runes', checkRunicSever, useRunicSever)
+    if not isGreatSwordEquipped(player) then
+        tell(player, '[Spellblade] Effusion Slash requires a Greatsword equipped.')
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if target == nil or target:getID() == player:getID() or (target.isAlive and not target:isAlive()) then
+        return xi.msg.basic.CANNOT_ATTACK_TARGET, 0
+    end
+
+    local runeErr, runeParam = xi.job_utils.rune_fencer.checkHaveRunes(player)
+    if runeErr ~= 0 then
+        return runeErr, runeParam
+    end
+
+    return 0, 0
+end, function(player, target, ability, action)
+    local runes      = getActiveRunesList(player)
+    local runeCount  = math.max(1, #runes)
+    local newestRune = (player.getNewestRuneEffect and player:getNewestRuneEffect()) or runes[#runes] or xi.effect.IGNIS
+    local element    = RUNE_ELEMENT_MAP[newestRune] or xi.element.FIRE
+    local infoVal    = RUNE_EFFUSION_INFO_MAP[newestRune] or 2
+    local targetId   = target:getID()
+
+    if action ~= nil and action.info then
+        action:info(targetId, infoVal)
+    end
+
+    -- Check Utsusemi / Blink shadows (1 hit)
+    if utils and utils.takeShadows then
+        local hitsLanded = utils.takeShadows(target, 1, 1)
+        if hitsLanded == 0 then
+            if ability ~= nil and ability.setMsg and xi.msg and xi.msg.basic then
+                ability:setMsg(xi.msg.basic.SHADOW_ABSORB or 31)
+            end
+            if action ~= nil and action.resolution and xi.action and xi.action.resolution then
+                action:resolution(targetId, xi.action.resolution.MISS)
+            end
+            return 1
+        end
+    end
+
+    if action ~= nil then
+        if action.setAnimation then
+            action:setAnimation(targetId, 10) -- Retail Greatsword Effusion strike
+        end
+        if action.resolution and xi.action and xi.action.resolution then
+            action:resolution(targetId, xi.action.resolution.HIT)
+        end
+    end
+
+    local lvl    = player.getMainLvl and player:getMainLvl() or 10
+    local tpGain = scaleTier(lvl, 100, 150, 200, 250)
+    if player.addTP then
+        player:addTP(tpGain)
+    end
+    addConductionStacks(player, 1)
+
+    -- Nullification check
+    if
+        xi.spells and
+        xi.spells.damage and
+        xi.spells.damage.calculateNullification and
+        xi.spells.damage.calculateNullification(target, element, false, true, false, false) == 0
+    then
+        return 0
+    end
+
+    local tierMult   = scaleTier(lvl, 1.50, 1.90, 2.35, 2.80)
+    local runeMult   = 1.0 + (0.20 * runeCount)
+    local weaponDmg  = math.max(10, player.getWeaponDmg and player:getWeaponDmg() or 18)
+    local gsSkill    = math.max(lvl * 3, player.getSkillLevel and player:getSkillLevel(xi.skill.GREAT_SWORD) or 0)
+    local strStat    = player.getStat and player:getStat(xi.mod.STR) or 10
+    local intStat    = player.getStat and player:getStat(xi.mod.INT) or 10
+    local mDmgBonus  = player.getMod and player:getMod(xi.mod.MAGIC_DAMAGE) or 0
+    local strikeBase = weaponDmg + math.floor(gsSkill * 0.70 + strStat * 0.55 + intStat * 0.55) + mDmgBonus
+    local baseDmg    = math.floor(strikeBase * tierMult * runeMult)
+
+    local absorb = false
+    if xi.spells and xi.spells.damage and xi.spells.damage.calculateAbsorption then
+        absorb = xi.spells.damage.calculateAbsorption(target, element, false, true, false, false) < 0
+    end
+
+    local magicBurstTier = 0
+    if not absorb and xi.combat and xi.combat.magicBurst and xi.combat.magicBurst.getMagicBurstTier then
+        magicBurstTier = xi.combat.magicBurst.getMagicBurstTier(target, element) or 0
+    end
+    local canMBurst = not absorb and magicBurstTier > 0
+
+    local resistTier = 1.0
+    if not absorb and xi.combat and xi.combat.magicHitRate and xi.combat.magicHitRate.calculateResistRate then
+        resistTier = xi.combat.magicHitRate.calculateResistRate(player, target,
+        {
+            magicBurstTier = canMBurst and magicBurstTier or 0,
+            magicalElement = element,
+            actorStat      = xi.mod.INT,
+            skillType      = xi.skill.GREAT_SWORD,
+            spellGroup     = xi.magic.spellGroup.NONE,
+            bonusMacc      = 30,
+        }) or 1.0
+    end
+
+    local magicBurst      = 1.0
+    local magicBurstBonus = 1.0
+    if canMBurst then
+        magicBurst = 1.35
+        if xi.spells and xi.spells.damage then
+            if xi.spells.damage.calculateIfMagicBurst then
+                magicBurst = math.max(1.35, xi.spells.damage.calculateIfMagicBurst(player, target, element, magicBurstTier) or 1.35)
+            end
+            if xi.spells.damage.calculateIfMagicBurstBonus then
+                magicBurstBonus = xi.spells.damage.calculateIfMagicBurstBonus(player, target, 0, xi.skill.ELEMENTAL_MAGIC, element) or 1.0
+            end
+        end
+    end
+
+    local dayAndWeather  = 1.0
+    local magicBonusDiff = 1.0
+    if xi.spells and xi.spells.damage then
+        if xi.spells.damage.calculateDayAndWeather then
+            dayAndWeather = xi.spells.damage.calculateDayAndWeather(player, element, false) or 1.0
+        end
+        if xi.spells.damage.calculateMagicBonusDiff then
+            magicBonusDiff = xi.spells.damage.calculateMagicBonusDiff(player, target, 0, xi.skill.ELEMENTAL_MAGIC, element, 0) or 1.0
+        end
+    end
+
+    local mdtAdjust = 1.0
+    local sdtAdjust = 1.0
+    if not absorb and xi.combat and xi.combat.damage then
+        if xi.combat.damage.calculateDamageAdjustment then
+            mdtAdjust = xi.combat.damage.calculateDamageAdjustment(target, false, true, false, false) or 1.0
+        end
+        if xi.combat.damage.magicalElementSDT then
+            sdtAdjust = xi.combat.damage.magicalElementSDT(target, element) or 1.0
+        end
+    end
+
+    local finalDamage = baseDmg
+    finalDamage = math.floor(finalDamage * resistTier)
+    finalDamage = math.floor(finalDamage * magicBurst)
+    finalDamage = math.floor(finalDamage * magicBurstBonus)
+    finalDamage = math.floor(finalDamage * dayAndWeather)
+    finalDamage = math.floor(finalDamage * magicBonusDiff)
+    finalDamage = math.floor(finalDamage * mdtAdjust)
+    finalDamage = math.floor(finalDamage * sdtAdjust)
+
+    if absorb then
+        local healed = target.addHP and target:addHP(finalDamage) or finalDamage
+        if ability ~= nil and ability.setMsg and xi.msg and xi.msg.basic then
+            ability:setMsg(xi.msg.basic.JA_RECOVERS_HP or 102)
+        end
+        return healed
+    end
+
+    if finalDamage > 0 and xi.customBossServer and xi.customBossServer.scaleDamageByLevelGap then
+        finalDamage = xi.customBossServer.scaleDamageByLevelGap(player, target, finalDamage)
+    end
+
+    finalDamage = utils.clamp(utils.handlePhalanx(target, finalDamage), 0, 99999)
+    finalDamage = utils.clamp(utils.handleOneForAll(target, finalDamage), 0, 99999)
+    finalDamage = utils.handleStoneskin(target, finalDamage, xi.attackType.MAGICAL)
+    if target.checkDamageCap then
+        finalDamage = target:checkDamageCap(finalDamage)
+    end
+
+    if finalDamage > 0 then
+        if target.takeSwipeLungeDamage then
+            target:takeSwipeLungeDamage(player, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+        elseif target.takeDamage then
+            target:takeDamage(finalDamage, player, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + element)
+        end
+        if target.handleAfflatusMiseryDamage then
+            target:handleAfflatusMiseryDamage(finalDamage)
+        end
+    end
+    if target.updateEnmityFromDamage then
+        target:updateEnmityFromDamage(player, finalDamage)
+    end
+
+    if canMBurst and action ~= nil and action.modifier and xi.msg and xi.msg.actionModifier then
+        action:modifier(targetId, xi.msg.actionModifier.MAGIC_BURST)
+    end
+
+    if finalDamage > 0 then
+        grantOrRefreshEdgeflare(player, element)
+    end
+
+    return finalDamage
+end)
+
+-----------------------------------
+-- 5) Spellblade: Overcharge Runes (416, 30s CD, Self)
+-- 12s overdrive: +15/22/30/40 MAB, +10/14/18/24% Attack%, +15/20/25/30 MB Bonus,
+-- 2x Runic Brand damage, and refreshes active Rune durations.
+-----------------------------------
+bindAbility('overcharge_runes', function(player, _target, _ability)
+    if not isRunSpec(player, SPELLBLADE_KEY) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    local runeErr, runeParam = xi.job_utils.rune_fencer.checkHaveRunes(player)
+    if runeErr ~= 0 then
+        return runeErr, runeParam
+    end
+
+    return 0, 0
+end, function(player, _target, _ability)
+    local lvl            = player.getMainLvl and player:getMainLvl() or 10
+    local mabBonus, tier = scaleTier(lvl, 15, 22, 30, 40)
+    local attPct         = scaleTier(lvl, 10, 14, 18, 24)
+    local mbBonus        = scaleTier(lvl, 15, 20, 25, 30)
+    local iconId         = (xi.effect and xi.effect.MAGIC_ATK_BOOST) or EFFECT_OVERCHARGE_RUNES
+
+    refreshActiveRuneDurations(player)
+
+    local _, appliedId = applyTimedEffectWithMods(
+        player,
+        EFFECT_OVERCHARGE_RUNES,
+        mabBonus,
+        12,
+        player,
+        tier,
+        iconId,
+        {
+            { xi.mod.MATT,                       mabBonus },
+            { xi.mod.ATTP,                       attPct },
+            { xi.mod.MAGIC_BURST_BONUS_UNCAPPED, mbBonus },
+        }
+    )
+
+    return appliedId or EFFECT_OVERCHARGE_RUNES
+end)
 
 -----------------------------------
 -- 6) Lifebinder: Font of Life (417, 20s CD, Self/Party 15y)

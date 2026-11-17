@@ -1,0 +1,17 @@
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 4224892..a918f07 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -226,6 +226,12 @@ void LoadEffectsParameters()
+     EffectsParams[830].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
+     EffectsParams[830].SortKey          = 10000;
+     EffectsParams[830].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RUN Spellblade Overcharge Runes status effect (831).
++    EffectsParams[831].Name             = "spellblade_overcharge";
++    EffectsParams[831].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[831].SortKey          = 10000;
++    EffectsParams[831].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect

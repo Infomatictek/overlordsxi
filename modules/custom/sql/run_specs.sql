@@ -26,9 +26,9 @@ INSERT INTO `spell_list`
      `status_effect`, `status_effect_tier`)
 VALUES
     -- Runic Bolt (363): Black Magic (2), Elemental Skill (36), Enemy (4), Lv 10 RUN (byte 22 = 0x0A), 8 MP, 2000ms cast, 8000ms recast, 10y range (100)
-    (363, 'runic_bolt',  0x0000000000000000000000000000000000000000000A, 2, 0, 1, 0, 4, 36,  8, 2000,  8000, 2, 252, 144, 1500, 0, 35, 1.00, 1,  80, 0, 100, 0, NULL, NULL, 0),
+    (363, 'runic_bolt',  0x0000000000000000000000000000000000000000000A, 2, 0, 1, 0, 4, 36,  8, 2000,  8000, 2, 252, 144, 1500, 0, 110, 1.85, 1, 100, 0, 100, 0, NULL, NULL, 0),
     -- Runic Sever (364): Black Magic (2), Elemental Skill (36), Enemy (4), Lv 55 RUN (byte 22 = 0x37), 22 MP, 3000ms cast, 30000ms recast, 10y range (100)
-    (364, 'runic_sever', 0x00000000000000000000000000000000000000000037, 2, 0, 5, 0, 4, 36, 22, 3000, 30000, 2, 252, 165, 1500, 0, 85, 1.50, 1, 120, 0, 100, 0, NULL, NULL, 0);
+    (364, 'runic_sever', 0x00000000000000000000000000000000000000000037, 2, 0, 5, 0, 4, 36, 22, 3000, 30000, 2, 252, 165, 1500, 0, 220, 2.85, 1, 160, 0, 100, 0, NULL, NULL, 0);
 
 -- Custom RUN Spec Job Abilities (412-418)
 DELETE FROM `abilities`
@@ -46,9 +46,10 @@ VALUES
     (413, 'runic_aegis',       22, 255, 1, 15, 199, 100, 0, 301, 2000,    0, 6,  0.0, 0,  0, 120, 360, 0, 0, NULL),
     -- Inquisitor (Tank): Runic Convergence (414, 30s CD, Self, recastId 201)
     (414, 'runic_convergence', 22, 255, 1, 30, 201, 100, 0, 302, 2000,    0, 6,  0.0, 0,  0, 200, 600, 0, 0, NULL),
-    -- Spellblade (DPS) Legacy JA Aliases (415 & 416, hidden unless called by macro)
-    (415, 'runic_bolt',        22, 255,  4,  8, 202, 110, 0,  10, 1500, 2000, 6, 10.0, 0,  0,   1,  80, 0, 0, NULL),
-    (416, 'runic_sever',       22, 255,  4, 30, 203, 110, 0,  20, 1500, 3000, 6, 10.0, 0,  0,   1, 120, 0, 0, NULL),
+    -- Spellblade (DPS): Effusion Slash (415, 20s CD, Enemy 4y, recastId 202)
+    (415, 'effusion_slash',    22, 255, 4, 20, 202, 110, 0,  10, 1500,    0, 6,  4.0, 0,  0,  40, 140, 0, 0, NULL),
+    -- Spellblade (DPS): Overcharge Runes (416, 30s CD, Self, recastId 203)
+    (416, 'overcharge_runes',  22, 255, 1, 30, 203, 100, 0, 302, 2000,    0, 6,  0.0, 0,  0,  60, 180, 0, 0, NULL),
     -- Lifebinder (Healer): Font of Life (417, 20s CD, Self/Party 15y, recastId 204)
     (417, 'font_of_life',      22, 255, 3, 20, 204, 102, 0, 327, 2000,    0, 6, 15.0, 0,  0,   1, 120, 0, 0, NULL),
     -- Lifebinder (Healer): Sanctified Ward (418, 35s CD, Self/Party 12y AoE, recastId 205)
