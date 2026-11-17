@@ -13,8 +13,8 @@ diff --git a/src/map/status_effect.h b/src/map/status_effect.h
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -350,1 +350,82 @@ void LoadEffectsParameters()
-     EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -372,2 +372,83 @@ void LoadEffectsParameters()
+     EffectsParams[854].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    // OverlordsXI Healer Crystal Spec status effects (860-875).
 +    EffectsParams[860].Name             = "solace_ward";
@@ -96,6 +96,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 +    EffectsParams[875].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[875].SortKey          = 10000;
 +    EffectsParams[875].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
  }
  
  // hacky way to get element from status effect
