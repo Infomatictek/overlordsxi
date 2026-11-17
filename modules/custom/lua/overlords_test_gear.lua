@@ -3523,6 +3523,13 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.RNG or 11) then
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'bow', ammo = 'arrow', label = 'Ranger (Dagger & Bow)' }
     elseif jobId == (j.SAM or 12) then
+        if specKey == 'ronin' then
+            return { role = 'tank', weapon = 'gkatana', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'SAM Ronin (Great Katana Mushin Tank)', specEntry = specEntry }
+        elseif specKey == 'imperialarcher' then
+            return { role = 'ranged', weapon = 'gkatana', offhand = 'grip_melee', ranged = 'bow', ammo = 'arrow', label = 'SAM Imperial Archer (Bow & Great Katana)', specEntry = specEntry }
+        elseif specKey == 'warlord' then
+            return { role = 'tp', weapon = 'gkatana', offhand = 'grip_melee', ranged = 'bow', ammo = 'arrow', label = 'SAM Warlord (Great Katana Iaijutsu DPS)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'gkatana', offhand = 'grip_melee', ranged = 'bow', ammo = 'arrow', label = 'Samurai (Great Katana TP)' }
     elseif jobId == (j.NIN or 13) then
         return { role = 'tp', weapon = 'katana', offhand = 'auto', ranged = 'none', ammo = 'shuriken', label = 'Ninja (Katana & Shuriken TP)' }

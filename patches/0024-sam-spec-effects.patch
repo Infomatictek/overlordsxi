@@ -1,0 +1,50 @@
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 9a4c210..e6c9012 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 840 // 768 real + 72 custom
++#define MAX_EFFECTID 848 // 768 real + 80 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index b5f41e8..d7f1a4b 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -258,6 +258,32 @@ void LoadEffectsParameters()
+     EffectsParams[836].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[836].SortKey          = 10000;
+     EffectsParams[836].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI SAM Crystal Spec status effects (837-841).
++    EffectsParams[837].Name             = "ronin_stagger";
++    EffectsParams[837].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[837].SortKey          = 10000;
++    EffectsParams[837].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[838].Name             = "imp_drawn_oisoya";
++    EffectsParams[838].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[838].SortKey          = 10000;
++    EffectsParams[838].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[839].Name             = "imp_cosmic_brand";
++    EffectsParams[839].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[839].SortKey          = 10000;
++    EffectsParams[839].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[840].Name             = "warlord_noto";
++    EffectsParams[840].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[840].SortKey          = 10000;
++    EffectsParams[840].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[841].Name             = "warlord_ashura";
++    EffectsParams[841].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[841].SortKey          = 10000;
++    EffectsParams[841].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect

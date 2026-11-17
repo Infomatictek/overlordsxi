@@ -209,6 +209,7 @@ MOD_LABELS = {
     "COUNTER_DAMAGE": ("Counter Damage", "%", 1),
     "STORETP": ("Store TP", "", 1),
     "DOUBLE_ATTACK": ("Double Attack", "%", 1),
+    "ZANSHIN": ("Zanshin", "%", 1),
     "CRITHITRATE": ("Critical Hit Rate", "%", 1),
     "CRIT_DMG_INCREASE": ("Critical Hit Damage", "%", 1),
     "HASTE_ABILITY": ("Ability Haste", "%", 0.01),
@@ -224,6 +225,7 @@ MOD_LABELS = {
     "CURE_POTENCY_RCVD": ("Cure Potency Received", "%", 1),
     "FASTCAST": ("Fast Cast", "%", 1),
     "SNAPSHOT": ("Snapshot", "%", 1),
+    "RECYCLE": ("Recycle", "%", 1),
     "REFRESH": ("Refresh", "/tick", 1),
     "REGEN": ("Regen", "/tick", 1),
     "REGEN_MULTIPLIER": ("Regen Potency", "%", 1),
@@ -236,6 +238,8 @@ MOD_LABELS = {
     "CLUB": ("Club Skill", "", 1),
     "STAFF": ("Staff Skill", "", 1),
     "GREAT_SWORD": ("Great Sword Skill", "", 1),
+    "GREAT_KATANA": ("Great Katana Skill", "", 1),
+    "ARCHERY": ("Archery Skill", "", 1),
     "SCYTHE": ("Scythe Skill", "", 1),
     "ENHANCING": ("Enhancing Magic Skill", "", 1),
     "DIVINE": ("Divine Magic Skill", "", 1),
@@ -281,6 +285,9 @@ def format_mod_scaling(mod_code: str, expr: str, local_vars: dict[str, str]) -> 
 
     if "lvl * 0.95" in resolved:
         return {"mod": mod_code, "label": label, "value": "+10 -> +71 (Rank A+)", "bracket": "Scales w/ Level"}
+
+    if "getArcheryAPlusBonus" in resolved:
+        return {"mod": mod_code, "label": label, "value": "Raises C+ -> A+ (+66 @ Lv.75)", "bracket": "Scales w/ Level"}
 
     try:
         v = float(resolved)
@@ -333,6 +340,9 @@ CUSTOM_TRAITS = {
     152: {"id": 152, "displayId": 1688, "name": "Sacred Pulse", "job": "RUN", "crystal": "Lifebinder", "desc": "3-Rune Mastery at Lv.10+, 15s CD AoE Vivacious Pulse with Rune boons, Runic Lifetap, and AoE Regen."},
     153: {"id": 153, "displayId": 1689, "name": "Black Belt's Mastery", "job": "MNK", "crystal": "Black Belt", "desc": "Pure Hand-to-Hand oath: amplifies Kick Attacks, Double Attack, Critical Hits, WSD, and refunds +75 TP per H2H weaponskill."},
     154: {"id": 154, "displayId": 1690, "name": "Chi Weaver's Pulse", "job": "MNK", "crystal": "Chi Weaver", "desc": "Empty-handed ranged Light Chi bolts (0-20y) emit a 12y AoE healing pulse around the target mob while mending the Monk at range."},
+    158: {"id": 158, "displayId": 1694, "name": "Ronin's Mushin", "job": "SAM", "crystal": "Ronin", "desc": "Requires Great Katana: unlocks multi-charge Mind's Eye counter-anticipation, Mushin Stagger damage deferral, and Seigan mitigation."},
+    159: {"id": 159, "displayId": 1695, "name": "Oisoya Mastery", "job": "SAM", "crystal": "Imperial Archer", "desc": "Raises Archery to A+ with 100% arrow preservation, 20y Bow auto-attacks, zero point-blank penalty, and Drawn Oisoya <-> Cosmic Brand combos."},
+    160: {"id": 160, "displayId": 1696, "name": "Onimaru's Iaijutsu", "job": "SAM", "crystal": "Warlord", "desc": "Requires Great Katana: empowers 20s Hagakure Sheathe-and-Draw Iaijutsu criticals, stacking Ashura's Edge blood-trance, and Onimaru Blood-Quench Skillchains."},
 }
 
 CUSTOM_ABILITIES_BY_SPEC = {
@@ -391,6 +401,18 @@ CUSTOM_ABILITIES_BY_SPEC = {
         {"id": 383, "name": "Sacred Pulse (Vivacious Pulse)", "cd": "15s", "target": "Party (12y AoE)", "desc": "Unlocked at Lv.10 on a 15s recast: Party AoE heal + per-Rune boons (Lux: +25% heal & Regen; Unda: debuff cleanse; Tenebrae: MP & Refresh; Elemental: 25% Stoneskin)."},
         {"id": 417, "name": "Font of Life", "cd": "20s", "target": "Ally (15y)", "desc": "Restores 22/30/38/48% Max HP, cleanses 2 debuffs, and grants -10/14/18/22% Damage Taken & +10/15/20/25% Cure Potency Received for 12s."},
         {"id": 418, "name": "Sanctified Ward", "cd": "35s", "target": "Party (12y AoE)", "desc": "Instant 10/14/18/22% Party HP heal + 15s Sanctuary (+10/18/28/40 Regen/tick, -8/12/16/20% Damage Taken, and +15/25/35/50 Magic Evasion)."},
+    ],
+    ("SAM", "ronin"): [
+        {"id": 174, "name": "Seigan (Mushin Tank Stance)", "cd": "15s", "target": "Self", "desc": "Unlocked at Lv.10 on a 15s recast (requires Great Katana): -8/10/12/14% Damage Taken, +12/15/18/20% DEF, +25/30/35/40 Enmity, and +12/15/18/20% Counter Rate."},
+        {"id": 62, "name": "Third Eye (Mind's Eye)", "cd": "15s", "target": "Self", "desc": "Anticipates 2 (Lv.50+: 3) melee hits or single-target mob TP moves, countering with a Great Katana slash (+60 TP & heavy Enmity)."},
+        {"id": 168, "name": "Blade Bash (Purify Interrupt)", "cd": "30s", "target": "Enemy (4y)", "desc": "30s recast: Stuns target, inflicts Attack Down (-15%), generates heavy Enmity, and completely purifies Mushin Stagger."},
+    ],
+    ("SAM", "imperialarcher"): [
+        {"id": 438, "name": "Oisoya Shot", "cd": "25s", "target": "Enemy (20y)", "desc": "Requires Bow. Tenzen's signature piercing arrow shot at up to 20y: restores +200/250/300/350 TP, primes Chainbound (if unchained), and grants Drawn Oisoya (+Cosmic Brand if Great Katana equipped)."},
+        {"id": 173, "name": "Hasso (Bow & Blade)", "cd": "30s", "target": "Self", "desc": "Unlocked at Lv.10 (usable with Bow or Great Katana): adds +8/10/13/15% Snapshot, +10/13/15/18% R.Atk%, +15/20/25/30 R.Acc, +4/7/10/12 AGI, and +10% Ability Haste even with Bow equipped."},
+    ],
+    ("SAM", "warlord"): [
+        {"id": 288, "name": "Hagakure (Iaijutsu Noto)", "cd": "20s", "target": "Self", "desc": "Unlocked at Lv.10 on a 20s recast (requires Great Katana): sheathes into Noto stance (15s), turning your next Tachi WS into an Iaijutsu Draw-Slash (+35..100% Crit Rate, +12..32% Crit DMG, +15..30% DEF Ignore, +250..600 TP Bonus, Save TP, and Chainbound)."},
     ],
 }
 
@@ -644,10 +666,10 @@ RANK_LEVEL_TABLES = {
 }
 
 SPEC_CATEGORIES = [
-    {"key": "berserker",   "label": "Berserker (WAR)",   "specs": "WAR Berserker, SAM, DRK, DRG, THF, NIN, RNG"},
+    {"key": "berserker",   "label": "Berserker (WAR)",   "specs": "WAR Berserker, SAM Warlord, DRK, DRG, THF, NIN, RNG"},
     {"key": "commander",   "label": "Commander (WAR)",   "specs": "WAR Commander, COR"},
     {"key": "gladiator",   "label": "Gladiator (WAR)",   "specs": "WAR Gladiator (Club+Shield Leech Tank)"},
-    {"key": "sensei",      "label": "Sensei (MNK)",      "specs": "MNK Sensei (Staff Counter/Parry Tank)"},
+    {"key": "sensei",      "label": "Sensei (MNK)",      "specs": "MNK Sensei, SAM Ronin (Counter/Parry Tank)"},
     {"key": "blackbelt",   "label": "Black Belt (MNK)",  "specs": "MNK Black Belt (H2H Martial Finisher)"},
     {"key": "chiweaver",   "label": "Chi Weaver (MNK)",  "specs": "MNK Chi Weaver (0-MP Chi Pulse Healer)"},
     {"key": "inquisitor",  "label": "Inquisitor (RUN)",  "specs": "RUN Inquisitor, PLD (Runic Parry/Ward Tank)"},
@@ -656,7 +678,7 @@ SPEC_CATEGORIES = [
     {"key": "medic",       "label": "Medic (SCH)",       "specs": "SCH Medic (Call Eos Companion Healer)"},
     {"key": "sage",        "label": "Sage (SCH)",        "specs": "SCH Sage (Call Titania / Helix Caster)"},
     {"key": "necromancer", "label": "Necromancer (BLM)", "specs": "BLM Necromancer (Undead Thrall Summoner)"},
-    {"key": "bladewheel",  "label": "Bladewheel (DNC)",  "specs": "DNC Bladewheel (Chakram Step/Waltz)"},
+    {"key": "bladewheel",  "label": "Bladewheel (DNC)",  "specs": "DNC Bladewheel, SAM Imperial Archer (Ranged/Agile)"},
 ]
 
 
@@ -1782,6 +1804,9 @@ def parse_patches() -> list[dict]:
         "0019-talent-ws-unlocks.patch": "Gates Weaponskill usage until at least 1 Tier-1 Talent Point is invested and adds the `0x1FD` (`OXTL`) binary packet for instant Ashita `/talents` UI syncing.",
         "0020-aoe-healing-affect-pets.patch": "Allows custom party AoE healing abilities (such as RUN Lifebinder's Sanctified Ward) to affect pets and avatars.",
         "0021-mnk-chiweaver-ranged-chi.patch": "Enables unarmed ranged Chi bolt auto-attacks (0–20y), custom effects 829–830, and party/pet AoE reach for MNK Chi Weaver.",
+        "0022-run-overcharge-effect.patch": "Registers RUN Spellblade Overcharge Runes custom effect ID 831 cleanly and raises MAX_EFFECTID to 832.",
+        "0023-brd-spec-effects.patch": "Raises MAX_EFFECTID to 840 and registers BRD spec status effects 832–836.",
+        "0024-sam-spec-effects.patch": "Raises MAX_EFFECTID to 848 and registers SAM spec status effects 837–841 (ronin_stagger, imp_drawn_oisoya, imp_cosmic_brand, warlord_noto, warlord_ashura).",
     }
     desc_map.update({k: v for k, v in extra_descriptions.items() if k not in desc_map})
 

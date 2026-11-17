@@ -1371,6 +1371,47 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
     end
 
+    -- SAM Crystal Spec WS Modifiers (Drawn Oisoya, Cosmic Brand, Warlord Noto Iaijutsu)
+    if xi.overlords and xi.overlords.samSpecs and xi.overlords.samSpecs.consumeWsModifiers then
+        local samMods = xi.overlords.samSpecs.consumeWsModifiers(attacker, target, ws, primaryMsg)
+        if type(samMods) == 'table' then
+            if (samMods.tpBonus or 0) ~= 0 then
+                effectiveTp = math.min(3000, effectiveTp + samMods.tpBonus)
+            end
+            if (samMods.atkPct or 0) ~= 0 then
+                params.atkVaries = addToTriple(params.atkVaries, samMods.atkPct / 100, 1.0)
+            end
+            if (samMods.accAdd or 0) ~= 0 then
+                params.accVaries = addToTriple(params.accVaries, samMods.accAdd, 0)
+                if ws.wsType == 'ranged' then
+                    addTempMod(xi.mod.RACC, samMods.accAdd)
+                end
+            end
+            if (samMods.critAdd or 0) > 0 then
+                params.critVaries = params.critVaries or { 0, 0, 0 }
+                for i = 1, 3 do
+                    params.critVaries[i] = math.min(1.0, (params.critVaries[i] or 0) + samMods.critAdd)
+                end
+            end
+            if (samMods.critDmg or 0) ~= 0 then
+                local cMod = (ws.wsType == 'ranged') and xi.mod.RANGED_CRIT_DMG_INCREASE or xi.mod.CRIT_DMG_INCREASE
+                addTempMod(cMod, samMods.critDmg)
+            end
+            if (samMods.defIgnoreAdd or 0) > 0 then
+                params.ignoredDefense = params.ignoredDefense or { 0, 0, 0 }
+                for i = 1, 3 do
+                    params.ignoredDefense[i] = math.min(0.90, (params.ignoredDefense[i] or 0) + samMods.defIgnoreAdd)
+                end
+            end
+            if (samMods.wsd or 0) ~= 0 then
+                addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, samMods.wsd)
+            end
+            if (samMods.scBonus or 0) ~= 0 then
+                extraCtx.extraScBonus = extraCtx.extraScBonus + samMods.scBonus
+            end
+        end
+    end
+
     applySkillchainVars(attacker, ws, ranks, extraCtx.extraScBonus)
     return params, tempMods, ranks, effectiveTp, extraCtx
 end

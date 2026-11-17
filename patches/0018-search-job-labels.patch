@@ -13,7 +13,7 @@ index bfac8bb022..af11269240 100644
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
 +        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 2, 10, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob IN (1, 2, 10, 12, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
 +        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
 +        "(mjob IN (4, 19) AND ox_spec.value = 1)"
 +        ") THEN ox_spec.value "
@@ -24,7 +24,7 @@ index bfac8bb022..af11269240 100644
          "FROM accounts_sessions "
          "LEFT JOIN accounts_parties USING (charid) "
          "LEFT JOIN chars USING (charid) "
-@@ -387,14 +397,41 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -387,14 +397,42 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -34,6 +34,7 @@ index bfac8bb022..af11269240 100644
 +        "WHEN 2 THEN 'OX_SPEC_MNK' "
 +        "WHEN 4 THEN 'OX_SPEC_BLM' "
 +        "WHEN 10 THEN 'OX_SPEC_BRD' "
++        "WHEN 12 THEN 'OX_SPEC_SAM' "
 +        "WHEN 19 THEN 'OX_SPEC_DNC' "
 +        "WHEN 20 THEN 'OX_SPEC_SCH' "
 +        "WHEN 22 THEN 'OX_SPEC_RUN' "
@@ -57,7 +58,7 @@ index bfac8bb022..af11269240 100644
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
 +        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 2, 10, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
++        "(mjob IN (1, 2, 10, 12, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
 +        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
 +        "(mjob IN (4, 19) AND ox_spec.value = 1)"
 +        ") THEN ox_spec.value "
@@ -68,7 +69,7 @@ index bfac8bb022..af11269240 100644
          "FROM JSON_TABLE(?, '$[*]' COLUMNS (charid INT UNSIGNED PATH '$')) AS ids "
          "JOIN accounts_sessions USING (charid) "
          "LEFT JOIN accounts_parties USING (charid) "
-@@ -403,6 +440,23 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -403,6 +440,24 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -78,6 +79,7 @@ index bfac8bb022..af11269240 100644
 +        "WHEN 2 THEN 'OX_SPEC_MNK' "
 +        "WHEN 4 THEN 'OX_SPEC_BLM' "
 +        "WHEN 10 THEN 'OX_SPEC_BRD' "
++        "WHEN 12 THEN 'OX_SPEC_SAM' "
 +        "WHEN 19 THEN 'OX_SPEC_DNC' "
 +        "WHEN 20 THEN 'OX_SPEC_SCH' "
 +        "WHEN 22 THEN 'OX_SPEC_RUN' "
@@ -117,7 +119,7 @@ diff --git a/src/search/packets/search_list.cpp b/src/search/packets/search_list
 index 181d1e8003..3222ceb915 100644
 --- a/src/search/packets/search_list.cpp
 +++ b/src/search/packets/search_list.cpp
-@@ -40,8 +40,30 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
+@@ -40,8 +40,31 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
      ref<uint16>(m_data, (0x0E)) = Total; // The total number of character found (may differ from the amount that gets sent)
  }
  
@@ -130,6 +132,7 @@ index 181d1e8003..3222ceb915 100644
 +        case 1:  // WAR: Commander (1), Berserker (2), Gladiator (3)
 +        case 2:  // MNK: Sensei (1), Black Belt (2), Chi Weaver (3)
 +        case 10: // BRD: Adventurer (1), Musician (2), Minstrel (3)
++        case 12: // SAM: Ronin (1), Imperial Archer (2), Warlord (3)
 +        case 22: // RUN: Inquisitor (1), Spellblade (2), Lifebinder (3)
 +            return branch >= 1 && branch <= 3;
 +        case 20: // SCH: Medic (1), Sage (2)

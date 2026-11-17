@@ -210,6 +210,12 @@ Players can use:
 - `medic` / **Medic** (*Light Arts / Eos Support*): Addendum: White remains a 2 hour stance, Sublimation charging stores MP twice as fast without HP drain, Cure/Regen spells use Accession-style 10y AoE without consuming Stratagem charges, and **Call Eos** (`231`) is dynamically unlocked at Lv.10+ (hidden otherwise; Eos despawns if removing or suspending the Medic crystal).
 - `sage` / **Sage** (*Dark Arts / Helix Master & Titania*): Addendum: Black remains a 2 hour stance, Ebullience is permanent for black magic, Helix damage is increased by 50%, Helix duration is extended to 2 hours, magic attack bonus is increased by 30, elemental magic gets a 10% target Magic Evasion bypass as bonus accuracy, and **Call Titania** (`289`) is dynamically unlocked at Lv.10+ (summons a Dark Pixie companion that enfeebles, drains/aspirs, and elemental nukes; Titania despawns if removing or suspending the Sage crystal).
 
+### Samurai Crystals (`OX_SPEC_SAM`, Lv10+)
+
+- `ronin` / **Ronin** (*Mushin Seigan & Stagger Tank*): Open weapon choice; requires Great Katana for passives (`+12/16/20/24% Max HP`, `+14/18/22/26% DEF`, `-12/15/18/22% DT`, `+10/18/26/36 MEVA`, `+25/35/45/60 Enmity`, `+15/20/25/30% Enmity Retention`, `+10/16/22/30 Parry`, `-8% Attack%`), unlocks **Seigan** (`15s` CD: `-8/10/12/14% DT`, `+12/15/18/20% DEF`, `+25/30/35/40 Enmity`, `+12/15/18/20% Counter`), **Third Eye** (`15s` CD under Seigan, `2-3` **Mind's Eye** anticipation charges countering melee swings and single-target mob TP moves for `+60 TP` & high Enmity), **Mushin Stagger** (`25-30%` hit deferral into a 9s pool purified by Tachi WSs, **Meditate**, and **Blade Bash**), **Warding Circle** (`120s` CD party `-8% DT` & `+15 MEVA`), and **Meikyo Shisui** (`-20% DT` + instant Mind's Eye).
+- `imperialarcher` / **Imperial Archer** (*Oisoya Bow & Blade Skirmisher*): Tenzen-inspired ranged & melee switch-hitter; raises **Archery to A+** (`+66 @ Lv.75`), grants `100% Recycle` (0 arrows consumed), enables `20y` **Bow** auto-attacks outside melee with zero point-blank Bow penalty, and unlocks **Oisoya Shot** (`432`, `25s` CD, `20y` Enemy: `+200-350 TP`, primes `Chainbound`, grants **Drawn Oisoya**). Tachi WSs grant **Drawn Oisoya** (buffing next Archery WS with `+TP Bonus`, `+R.Atk%`, and `+125 TP` refund); Archery WSs grant **Cosmic Brand** (buffing next Tachi WS with `+18-40% SC DMG` and `+125 TP` refund); closes Skillchains via **Cosmic Elucidation** (`+12-30% SC DMG` & `+100 TP`). **Hasso** works with Bow or Great Katana.
+- `warlord` / **Warlord** (*Iaijutsu & Onimaru Melee DPS*): Requires Great Katana for passives (`+8/13/18/24% Atk%`, `+8/15/24/34 Acc`, `+4/7/10/14% Crit Rate`, `+6/11/16/22% Crit DMG`, `+4/8/12/16% WSD`, `+10/16/22/30% Zanshin`, `+6/10/15/20 Store TP`); unlocks **Hagakure** at Lv.10+ on a **20s CD** (*Noto* Sheathe-and-Draw turning the next Tachi into an Iaijutsu Draw-Slash with `+35-100% Crit Rate`, `+12-32% Crit DMG`, `+15-30% DEF Ignore`, `+250-600 TP Bonus`, `Save TP`, and `Chainbound`); Tachi WSs stack **Ashura's Edge** (`1-3x`: `+Atk%`, `+Ability Haste`, `+Zanshin` & `25%` melee blood-leech); Skillchains trigger **Onimaru Blood-Quench** (`+10-25% SC DMG`, `5-8% Max HP` heal, & `+125 TP`).
+
 ### Rune Fencer Crystals (`OX_SPEC_RUN`, Lv10+)
 
 - `inquisitor` / **Inquisitor** (*Hybrid Stance-Swapping Ward Tank*): Passives (Lv10/30/50/70+) `+8/12/16/22% Max HP`, `+10/18/26/36% DEF`, `-5/8/12/16% DT`, `-6/10/14/18% MDT`, `+15/28/42/60 Parry Skill`, `+6/10/14/18% Parry Rate`, `+18/30/45/65 Enmity`, `-25/40/55/70% Enmity Loss`, `+10/16/22/30 MEVA`; unlocks **3-Rune Mastery** at Lv.10+; **Parry & Runic Riposte** heals `2% Max HP`, restores `1.5% Max MP`, grants `+60 TP` & Enmity, and deals an elemental counter-slash on every Parry; **Swipe / Lunge / Gambit / Rayke** do **not** consume runes and generate heavy bonus Enmity; **Vallation / Valiance** grant party Phalanx & `-10% DT`; **Pflug / Battuta / Liement / One for All** gain extended durations & mitigation; unlocks **Stance: Iron Battuta** (`412`, 10s CD: physical parry/counter stance + transition AoE Enmity flash), **Stance: Runic Aegis** (`413`, 10s CD: magic ward stance + transition 10y party Stoneskin), and **Runic Convergence** (`414`, 45s CD, 15s: runs both stances simultaneously + `15% Max HP` heal & 10y party `-10% DT`).
@@ -221,6 +227,9 @@ Spell and ability modules can branch with:
 ```lua
 xi.overlords.spec.is(player, xi.job.WAR, 'commander')
 xi.overlords.spec.is(player, xi.job.MNK, 'sensei')
+xi.overlords.spec.is(player, xi.job.SAM, 'ronin')
+xi.overlords.spec.is(player, xi.job.SAM, 'imperialarcher')
+xi.overlords.spec.is(player, xi.job.SAM, 'warlord')
 xi.overlords.spec.is(player, xi.job.SCH, 'medic')
 xi.overlords.spec.is(player, xi.job.SCH, 'sage')
 xi.overlords.spec.is(player, xi.job.RUN, 'inquisitor')
@@ -252,9 +261,12 @@ Server responses:
 - **Call Titania**: Ability ID `289` (display `801`), Pet ID `129`, Pool ID `6021` (Dark Pixie `0x07F0`), Spell List ID `600`
 - **WAR Commander Commands**: Ability IDs `396`–`399` (display `908`–`911`, recast IDs `186`–`189`): `Tactical Breach` (`396`), `Formation: Bulwark` (`397`), `Battle Cadence` (`398`), `Rallying Horn` (`399`)
 - **RUN Crystal Abilities**: Ability IDs `412`–`418` (display `924`–`930`, recast IDs `198`, `199`, `201`–`205`): `Stance: Iron Battuta` (`412`), `Stance: Runic Aegis` (`413`), `Runic Convergence` (`414`), `Runic Bolt` (`415`), `Runic Sever` (`416`), `Font of Life` (`417`), `Sanctified Ward` (`418`)
+- **SAM Crystal Abilities**: Ability ID `438` (display `950`, recast ID `215`): `Oisoya Shot` (`438`)
 - **RUN Crystal Traits**: Trait IDs `150`–`152` (display `1686`–`1688`): `Inquisitor's Ward` (`150`), `Rune Edge & Conduction` (`151`), `Sacred Pulse` (`152`)
+- **SAM Crystal Traits**: Trait IDs `158`–`160` (display `1694`–`1696`): `Ronin's Mushin` (`158`), `Oisoya Mastery` (`159`), `Onimaru's Iaijutsu` (`160`)
 - Commander & WAR custom status IDs: `815` (`commander_breach`), `816` (`commander_bulwark`), `817` (`commander_cadence`), `818` (`commander_regroup`), `819` (`berserker_bloodlust`), `820` (`gladiator_bastion`)
 - RUN custom status IDs: `821` (`inquisitor_battuta`), `822` (`inquisitor_aegis`), `823` (`inquisitor_converge`), `824` (`spellblade_edgeflare`), `825` (`lifebinder_font`), `826` (`lifebinder_sanctuary`), `827` (`spellblade_conduction`), `828` (`spellblade_ascendance`)
+- SAM custom status IDs: `837` (`ronin_stagger`), `838` (`imp_drawn_oisoya`), `839` (`imp_cosmic_brand`), `840` (`warlord_noto`), `841` (`warlord_ashura`)
 - Eos Regen status ID: `789`
 - Faerie hidden Refresh/buff carrier status ID: `814`
 - Orphic Egg item ID: `18256`
