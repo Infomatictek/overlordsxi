@@ -22,47 +22,14 @@ index 682027aadb..51a89b0323 100644
      PAI->EventHandler.triggerListener("TAKE_DAMAGE", this, amount, attacker, (uint16)attackType, (uint16)damageType);
  
      // RoE Damage Taken Trigger
-@@ -3371,7 +3411,7 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
- 
-         if (isChar && slot == SLOT_RANGED)
-         {
--            auto attackType = state.IsRapidShot() ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
-+            auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
-             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
-         }
-         actionResult.recordDamage(attack_outcome_t{
-@@ -3400,6 +3440,11 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
- 
-         if (isChar)
-         {
-+            if (actionResult.param > 0)
-+            {
-+                battleutils::HandleRangedSamba(this, PTarget, &actionResult, static_cast<uint16>(GetRangedWeaponDelay(false)), actionResult.param);
-+            }
-+
-             // add additional effects
-             // this should go AFTER damage taken
-             // or else sleep effect won't work
-@@ -3839,6 +3884,11 @@ auto CBattleEntity::OnAttack(CAttackState& state, action_t& action) -> bool
-                 }
- 
-                 const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), attack.GetDamage(), attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
-+                if (attack.IsBlocked() && PTarget != nullptr)
-+                {
-+                    const int32 blockedAmt = std::max<int32>(0, attack.GetDamage() - damage);
-+                    PTarget->PAI->EventHandler.triggerListener("SHIELD_BLOCK", PTarget, this, damage, blockedAmt);
-+                }
-                 if (damage < 0)
-                 {
-                     actionResult.param     = -damage;
 diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
 diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
 --- a/src/map/lua/luautils.cpp
 +++ b/src/map/lua/luautils.cpp
-@@ -6952,5 +6952,35 @@ auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 sw
- 
+@@ -6953,4 +6953,34 @@ auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 sw
      return -2;
  }
+ 
 +auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32
 +{
 +    if (PDefender == nullptr || amount <= 0)
@@ -95,10 +62,9 @@ diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
 +
  }; // namespace luautils
 diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
-diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
 --- a/src/map/lua/luautils.h
 +++ b/src/map/lua/luautils.h
-@@ -591,4 +591,5 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
+@@ -591,3 +591,4 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
  auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32;
 +auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32;
  
