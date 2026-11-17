@@ -54,7 +54,7 @@ index 0000000..1111111 100644
          }
 +        else if (PAbility->getRecastId() == xi::Recast::Sic)
 +        {
-+            if (this->StatusEffectContainer->HasStatusEffect(static_cast<EFFECT>(851))) // OverlordsXI alpha_familiar_bond
++            if (this->StatusEffectContainer->HasStatusEffect(static_cast<xi::StatusEffect>(851))) // OverlordsXI alpha_familiar_bond
 +            {
 +                action.recast  = 0s;
 +                baseChargeTime = 0s;
