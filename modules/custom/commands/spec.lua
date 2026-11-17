@@ -227,6 +227,13 @@ commandObj.onTrigger = function(player, action, value, extra)
         return
     end
 
+    if cmd == 'boost' then
+        if xi.overlords and xi.overlords.mnk and xi.overlords.mnk.sendChiBoostSync then
+            xi.overlords.mnk.sendChiBoostSync(player, true)
+        end
+        return
+    end
+
     if cmd == 'uset' then
         local target = combineArgs(value, extra)
         if target == nil then

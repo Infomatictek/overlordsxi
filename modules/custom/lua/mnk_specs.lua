@@ -425,6 +425,42 @@ local function getChiBoostStacks(player)
     return 0
 end
 
+local function sendChiBoostSync(player, force)
+    if player == nil or (player.isPC and not player:isPC()) or not player.printToPlayer then
+        return
+    end
+
+    local active = isMonkSpec(player, CHIWEAVER_KEY) and 1 or 0
+    local stacks = (active == 1) and getChiBoostStacks(player) or 0
+    local remSec = 0
+
+    if active == 1 and stacks > 0 and player.getStatusEffect and xi.effect and xi.effect.BOOST then
+        local eff = player:getStatusEffect(xi.effect.BOOST)
+        if eff ~= nil and eff.getSubPower and eff:getSubPower() == CHIWEAVER_BOOST_SUBPOWER and eff.getTimeRemaining then
+            remSec = math.max(0, math.ceil((eff:getTimeRemaining() or 0) / 1000))
+        end
+    end
+
+    local prevActive = player.getLocalVar and (player:getLocalVar('OX_CHW_SYNC_ACT') or -1) or -1
+    local prevStacks = player.getLocalVar and (player:getLocalVar('OX_CHW_SYNC_STK') or -1) or -1
+    if not force and prevActive == active and prevStacks == stacks then
+        return
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_CHW_SYNC_ACT', active)
+        player:setLocalVar('OX_CHW_SYNC_STK', stacks)
+    end
+
+    player:printToPlayer(
+        string.format('[OXBST]|%u|%u|%u|%u', active, stacks, CHIWEAVER_MAX_STACKS, remSec),
+        xi.msg.channel.SYSTEM_3,
+        ''
+    )
+end
+
+xi.overlords.mnk.sendChiBoostSync = sendChiBoostSync
+
 local function setChiBoostStacks(player, newStacks, notifyMilestones)
     if player == nil then
         return 0
@@ -444,6 +480,11 @@ local function setChiBoostStacks(player, newStacks, notifyMilestones)
                 if eff ~= nil and eff.getSubPower and eff:getSubPower() == CHIWEAVER_BOOST_SUBPOWER then
                     player:delStatusEffectSilent(xi.effect.BOOST)
                 end
+            end
+            if prev > 0 then
+                sendChiBoostSync(player, true)
+            else
+                sendChiBoostSync(player, false)
             end
             return 0
         end
@@ -467,6 +508,8 @@ local function setChiBoostStacks(player, newStacks, notifyMilestones)
             tellRateLimited(player, string.format('Chi Weaver Boost: %d/%d stacks.', clamped, CHIWEAVER_MAX_STACKS))
         end
     end
+
+    sendChiBoostSync(player, true)
 
     return clamped
 end
@@ -608,11 +651,13 @@ local function computeChiPulseBaseHeal(player, lvl, mndStat, mult)
     return math.max(10, math.floor((12 + (lvl * 1.4) + (mndStat * 1.05) + (h2hSkill * 0.12)) * curePot * (mult or 1.0)))
 end
 
-local function detachChiWeaverListeners(player)
+local function detachChiWeaverListeners(player, keepStacks)
     if player ~= nil and player.removeListener then
         player:removeListener('OX_CHW_WS')
     end
-    setChiBoostStacks(player, 0, false)
+    if not keepStacks then
+        setChiBoostStacks(player, 0, false)
+    end
 end
 
 local function attachChiWeaverListeners(player)
@@ -620,7 +665,8 @@ local function attachChiWeaverListeners(player)
         return
     end
 
-    detachChiWeaverListeners(player)
+    detachChiWeaverListeners(player, true)
+    sendChiBoostSync(player, true)
 
     -- Flowing Chi: Landed bare-handed Hand-to-Hand Weaponskills work up to 20y, preserve & build Boost stacks, and emit a modest 12y healing pulse around the target.
     player:addListener('WEAPONSKILL_USE', 'OX_CHW_WS', function(actor, target, _ws, tp, _action, dmg)
@@ -1709,6 +1755,7 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
                     actor:setLocalVar('OX_CHW_CHI_STACKS', effStacks)
                 end
             end
+            sendChiBoostSync(actor, false)
         end)
         enforceMnkWeaponGate(player)
         if isMonkSpec(player, CHIWEAVER_KEY) and player.setLocalVar then
@@ -1734,6 +1781,15 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
             attachChiWeaverListeners(player)
         else
             detachChiWeaverListeners(player)
+        end
+
+        sendChiBoostSync(player, true)
+        if player.timer then
+            player:timer(1500, function(playerArg)
+                if playerArg ~= nil then
+                    sendChiBoostSync(playerArg, true)
+                end
+            end)
         end
     end
 end)
