@@ -80,6 +80,17 @@ xi.effects.imp_cosmic_brand = xi.effects.imp_cosmic_brand or {}
 xi.effects.warlord_noto     = xi.effects.warlord_noto or {}
 xi.effects.warlord_ashura   = xi.effects.warlord_ashura or {}
 
+-- Fallback onto self-only RUN status slots (registered in patch 0011) if xi_map.exe
+-- has not yet been rebuilt with patch 0024 (MAX_EFFECTID 848).
+local FALLBACK_EFFECT_MAP =
+{
+    [EFFECT_RONIN_STAGGER]    = 821, -- inquisitor_battuta
+    [EFFECT_IMP_DRAWN_OISOYA] = 824, -- spellblade_edgeflare
+    [EFFECT_IMP_COSMIC_BRAND] = 827, -- spellblade_conduction
+    [EFFECT_WARLORD_NOTO]     = 823, -- inquisitor_converge
+    [EFFECT_WARLORD_ASHURA]   = 828, -- spellblade_ascendance
+}
+
 local weaponModStateByChar = {}
 local pendingEffectMods    = {}
 local pendingWardMods      = {}
@@ -88,6 +99,12 @@ local wsConsumeCache       = {}
 -----------------------------------
 -- Scaling & Equipment Helpers
 -----------------------------------
+local function tellSam(player, message)
+    if player ~= nil and player.printToPlayer and xi.msg and xi.msg.channel then
+        player:printToPlayer(message, xi.msg.channel.SYSTEM_3)
+    end
+end
+
 local function scaleTier(lvl, lv10, lv30, lv50, lv70)
     local l = lvl or 1
     if l >= 70 then
@@ -244,17 +261,64 @@ local function pulseNearbyEnmity(player, ce, ve, radius)
     end
 end
 
-local function applyCustomTimedEffect(target, effectId, power, duration, origin, subPower, iconId, modPairs, tickSec)
-    if target == nil or not target.addStatusEffect then
+local function getSamCustomEffect(target, effectId)
+    if target == nil or not target.getStatusEffect then
+        return nil
+    end
+    local eff = target:getStatusEffect(effectId)
+    if eff ~= nil then
+        return eff
+    end
+    local fbId = FALLBACK_EFFECT_MAP[effectId]
+    if fbId ~= nil then
+        return target:getStatusEffect(fbId)
+    end
+    return nil
+end
+
+local function hasSamCustomEffect(target, effectId)
+    return getSamCustomEffect(target, effectId) ~= nil
+end
+
+local function delSamCustomEffectSilent(target, effectId)
+    if target == nil or not target.delStatusEffectSilent then
         return
     end
+    if target.hasStatusEffect and target:hasStatusEffect(effectId) then
+        target:delStatusEffectSilent(effectId)
+    end
+    local fbId = FALLBACK_EFFECT_MAP[effectId]
+    if fbId ~= nil and target.hasStatusEffect and target:hasStatusEffect(fbId) then
+        target:delStatusEffectSilent(fbId)
+    end
+end
 
-    local targetId = target:getID()
-    target:delStatusEffectSilent(effectId)
-    pendingEffectMods[targetId] = pendingEffectMods[targetId] or {}
-    pendingEffectMods[targetId][effectId] = modPairs
+local function consumePendingEffectMods(target, effect)
+    if target == nil or effect == nil or not target.getID then
+        return
+    end
+    local targetId  = target:getID()
+    local pairsList = pendingEffectMods[targetId]
+    if type(pairsList) == 'table' and effect.addMod then
+        for _, pair in ipairs(pairsList) do
+            if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
+                effect:addMod(pair[1], pair[2])
+            end
+        end
+        pendingEffectMods[targetId] = nil
+    end
+end
 
-    target:addStatusEffect(effectId,
+local function applyCustomTimedEffect(target, effectId, power, duration, origin, subPower, iconId, modPairs, tickSec)
+    if target == nil or not target.addStatusEffect then
+        return false, effectId
+    end
+
+    local targetId = target.getID and target:getID() or 0
+    delSamCustomEffectSilent(target, effectId)
+    pendingEffectMods[targetId] = modPairs
+
+    local params =
     {
         power    = power or 1,
         duration = duration or 15,
@@ -262,29 +326,37 @@ local function applyCustomTimedEffect(target, effectId, power, duration, origin,
         subPower = subPower or 0,
         icon     = iconId or effectId,
         tick     = tickSec or 0,
-    })
+    }
 
-    if pendingEffectMods[targetId] ~= nil then
-        pendingEffectMods[targetId][effectId] = nil
+    local actualId = effectId
+    local ok       = target:addStatusEffect(effectId, params)
+    if not ok or (target.hasStatusEffect and not target:hasStatusEffect(effectId)) then
+        local fbId = FALLBACK_EFFECT_MAP[effectId]
+        if fbId ~= nil then
+            pendingEffectMods[targetId] = modPairs
+            if target.hasStatusEffect and target:hasStatusEffect(fbId) then
+                target:delStatusEffectSilent(fbId)
+            end
+            ok       = target:addStatusEffect(fbId, params)
+            actualId = fbId
+        end
     end
-end
 
-local function consumePendingEffectMods(target, effect)
-    if target == nil or effect == nil then
-        return
-    end
-    local byEff = pendingEffectMods[target:getID()]
-    if byEff == nil then
-        return
-    end
-    local pairsList = byEff[effect:getEffectType()]
-    if type(pairsList) == 'table' then
-        for _, pair in ipairs(pairsList) do
-            if pair[1] ~= nil and pair[2] ~= 0 then
-                effect:addMod(pair[1], pair[2])
+    -- Direct fallback if onEffectGain did not fire (e.g. FileWatcher reload or pre-0024 binary)
+    local leftover = pendingEffectMods[targetId]
+    pendingEffectMods[targetId] = nil
+    if ok and type(leftover) == 'table' then
+        local eff = target.getStatusEffect and target:getStatusEffect(actualId) or nil
+        if eff ~= nil and eff.addMod then
+            for _, pair in ipairs(leftover) do
+                if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
+                    eff:addMod(pair[1], pair[2])
+                end
             end
         end
     end
+
+    return ok, actualId
 end
 
 -----------------------------------
@@ -370,28 +442,24 @@ local function updateRoninStaggerEffect(player, newPool)
 
     if pool <= 0 then
         player:setLocalVar('OX_RON_STAGGER_TICKS', 0)
-        if player.hasStatusEffect and player:hasStatusEffect(EFFECT_RONIN_STAGGER) then
-            player:delStatusEffectSilent(EFFECT_RONIN_STAGGER)
-        end
+        delSamCustomEffectSilent(player, EFFECT_RONIN_STAGGER)
         return
     end
 
     player:setLocalVar('OX_RON_STAGGER_TICKS', 3)
     local iconId = (xi.effect and xi.effect.DEFENSE_BOOST) or EFFECT_RONIN_STAGGER
-    if player.hasStatusEffect and player:hasStatusEffect(EFFECT_RONIN_STAGGER) then
-        local eff = player:getStatusEffect(EFFECT_RONIN_STAGGER)
-        if eff ~= nil then
-            if eff.setPower then
-                eff:setPower(pool)
-            end
-            if eff.setDuration then
-                eff:setDuration(9000)
-            end
-            if eff.resetStartTime then
-                eff:resetStartTime()
-            end
-            return
+    local eff    = getSamCustomEffect(player, EFFECT_RONIN_STAGGER)
+    if eff ~= nil then
+        if eff.setPower then
+            eff:setPower(pool)
         end
+        if eff.setDuration then
+            eff:setDuration(9000)
+        end
+        if eff.resetStartTime then
+            eff:resetStartTime()
+        end
+        return
     end
 
     applyCustomTimedEffect(player, EFFECT_RONIN_STAGGER, pool, 9, player, 0, iconId, nil, 3)
@@ -434,32 +502,42 @@ end
 -----------------------------------
 -- Imperial Archer & Warlord Buff Helpers
 -----------------------------------
-local function grantDrawnOisoya(player)
+local function grantDrawnOisoya(player, silent)
     if player == nil then
         return
     end
-    local lvl    = player.getMainLvl and (player:getMainLvl() or 10) or 10
-    local _, t   = scaleTier(lvl, 1, 2, 3, 4)
-    local iconId = (xi.effect and xi.effect.SHARPSHOT) or EFFECT_IMP_DRAWN_OISOYA
-    applyCustomTimedEffect(player, EFFECT_IMP_DRAWN_OISOYA, t, 15, player, 0, iconId,
+    local lvl     = player.getMainLvl and (player:getMainLvl() or 10) or 10
+    local _, t    = scaleTier(lvl, 1, 2, 3, 4)
+    local raccVal = scaleTier(lvl, 15, 25, 35, 45)
+    local ratkVal = scaleTier(lvl, 10, 14, 18, 22)
+    local iconId  = (xi.effect and xi.effect.SHARPSHOT) or EFFECT_IMP_DRAWN_OISOYA
+    local ok      = applyCustomTimedEffect(player, EFFECT_IMP_DRAWN_OISOYA, t, 15, player, 0, iconId,
     {
-        { xi.mod.RACC,  scaleTier(lvl, 15, 25, 35, 45) },
-        { xi.mod.RATTP, scaleTier(lvl, 10, 14, 18, 22) },
+        { xi.mod.RACC,  raccVal },
+        { xi.mod.RATTP, ratkVal },
     })
+    if ok and not silent then
+        tellSam(player, string.format('[Imperial Archer] Drawn Oisoya primed (15s: +%d R.Acc, +%d%% R.Atk) — next Archery WS empowered.', raccVal, ratkVal))
+    end
 end
 
-local function grantCosmicBrand(player)
+local function grantCosmicBrand(player, silent)
     if player == nil then
         return
     end
     local lvl    = player.getMainLvl and (player:getMainLvl() or 10) or 10
     local _, t   = scaleTier(lvl, 1, 2, 3, 4)
-    local iconId = (xi.effect and xi.effect.SENGIKORI) or EFFECT_IMP_COSMIC_BRAND
-    applyCustomTimedEffect(player, EFFECT_IMP_COSMIC_BRAND, t, 15, player, 0, iconId,
+    local accVal = scaleTier(lvl, 15, 25, 35, 45)
+    local atkVal = scaleTier(lvl, 10, 14, 18, 22)
+    local iconId = (xi.effect and (xi.effect.YAEGASUMI or xi.effect.POTENCY or xi.effect.SENGIKORI)) or EFFECT_IMP_COSMIC_BRAND
+    local ok     = applyCustomTimedEffect(player, EFFECT_IMP_COSMIC_BRAND, t, 15, player, 0, iconId,
     {
-        { xi.mod.ACC,  scaleTier(lvl, 15, 25, 35, 45) },
-        { xi.mod.ATTP, scaleTier(lvl, 10, 14, 18, 22) },
+        { xi.mod.ACC,  accVal },
+        { xi.mod.ATTP, atkVal },
     })
+    if ok and not silent then
+        tellSam(player, string.format('[Imperial Archer] Cosmic Brand primed (15s: +%d Acc, +%d%% Atk) — next Tachi WS empowered.', accVal, atkVal))
+    end
 end
 
 local function grantWarlordNoto(player, durationSec)
@@ -469,7 +547,7 @@ local function grantWarlordNoto(player, durationSec)
     local lvl    = player.getMainLvl and (player:getMainLvl() or 10) or 10
     local _, t   = scaleTier(lvl, 1, 2, 3, 4)
     local saveTp = scaleTier(lvl, 200, 250, 300, 350)
-    local iconId = (xi.effect and xi.effect.HAGAKURE) or EFFECT_WARLORD_NOTO
+    local iconId = (xi.effect and (xi.effect.BRAZEN_RUSH or xi.effect.POTENCY or xi.effect.HAGAKURE)) or EFFECT_WARLORD_NOTO
     applyCustomTimedEffect(player, EFFECT_WARLORD_NOTO, t, durationSec or 15, player, saveTp, iconId,
     {
         { xi.mod.SAVETP, saveTp },
@@ -481,11 +559,9 @@ local function addWarlordAshuraStacks(player, addStacks)
         return
     end
     local curStacks = 0
-    if player.hasStatusEffect and player:hasStatusEffect(EFFECT_WARLORD_ASHURA) then
-        local eff = player:getStatusEffect(EFFECT_WARLORD_ASHURA)
-        if eff ~= nil and eff.getPower then
-            curStacks = eff:getPower() or 0
-        end
+    local eff       = getSamCustomEffect(player, EFFECT_WARLORD_ASHURA)
+    if eff ~= nil and eff.getPower then
+        curStacks = eff:getPower() or 0
     end
 
     local stacks   = math.max(1, math.min(3, curStacks + (addStacks or 1)))
@@ -537,44 +613,53 @@ function samSpecs.consumeWsModifiers(attacker, target, ws, primaryMsg)
     local mods      = nil
 
     if specKey == IMPERIAL_ARCHER_KEY then
-        if isArchWs and (hasMeikyo or (attacker.hasStatusEffect and attacker:hasStatusEffect(EFFECT_IMP_DRAWN_OISOYA))) then
+        local hasOisoya = hasSamCustomEffect(attacker, EFFECT_IMP_DRAWN_OISOYA)
+        local hasCosmic = hasSamCustomEffect(attacker, EFFECT_IMP_COSMIC_BRAND)
+        if isArchWs and (hasMeikyo or hasOisoya) then
+            local tpBon  = scaleTier(lvl, 150, 225, 300, 375)
+            local wsdVal = scaleTier(lvl, 8, 11, 14, 18) + (hasSengi and 15 or 0)
             if not hasMeikyo then
-                attacker:delStatusEffectSilent(EFFECT_IMP_DRAWN_OISOYA)
+                delSamCustomEffectSilent(attacker, EFFECT_IMP_DRAWN_OISOYA)
                 if attacker.setLocalVar then
                     attacker:setLocalVar('OX_IMP_REFUND_TP', 125)
                 end
+                tellSam(attacker, string.format('[Imperial Archer] Drawn Oisoya unleashed (+%d TP Bonus, +%d%% WSD).', tpBon, wsdVal))
             end
             mods =
             {
-                tpBonus = scaleTier(lvl, 150, 225, 300, 375),
+                tpBonus = tpBon,
                 atkPct  = scaleTier(lvl, 15, 20, 25, 30),
                 accAdd  = scaleTier(lvl, 20, 30, 40, 50),
-                wsd     = scaleTier(lvl, 8, 11, 14, 18) + (hasSengi and 15 or 0),
+                wsd     = wsdVal,
                 scBonus = (hasMeikyo and 25 or 0) + (hasSengi and 25 or 0),
             }
-        elseif isGkWs and (hasMeikyo or (attacker.hasStatusEffect and attacker:hasStatusEffect(EFFECT_IMP_COSMIC_BRAND))) then
+        elseif isGkWs and (hasMeikyo or hasCosmic) then
+            local tpBon  = scaleTier(lvl, 150, 225, 300, 375)
+            local wsdVal = scaleTier(lvl, 8, 11, 14, 18) + (hasSengi and 15 or 0)
+            local scVal  = scaleTier(lvl, 18, 24, 32, 40) + (hasSengi and 25 or 0)
             if not hasMeikyo then
-                attacker:delStatusEffectSilent(EFFECT_IMP_COSMIC_BRAND)
+                delSamCustomEffectSilent(attacker, EFFECT_IMP_COSMIC_BRAND)
                 if attacker.setLocalVar then
                     attacker:setLocalVar('OX_IMP_REFUND_TP', 125)
                 end
+                tellSam(attacker, string.format('[Imperial Archer] Cosmic Brand unleashed (+%d TP Bonus, +%d%% WSD, +%d%% SC Dmg).', tpBon, wsdVal, scVal))
             end
             mods =
             {
-                tpBonus = scaleTier(lvl, 150, 225, 300, 375),
+                tpBonus = tpBon,
                 atkPct  = scaleTier(lvl, 15, 20, 25, 30),
                 accAdd  = scaleTier(lvl, 20, 30, 40, 50),
-                wsd     = (hasSengi and 15 or 0),
-                scBonus = scaleTier(lvl, 18, 24, 32, 40) + (hasSengi and 25 or 0),
+                wsd     = wsdVal,
+                scBonus = scVal,
             }
         elseif (isArchWs or isGkWs) and hasSengi then
             mods = { wsd = 15, scBonus = 25 }
         end
     elseif specKey == WARLORD_KEY and isGkWs then
-        local hasNoto = attacker.hasStatusEffect and attacker:hasStatusEffect(EFFECT_WARLORD_NOTO)
+        local hasNoto = hasSamCustomEffect(attacker, EFFECT_WARLORD_NOTO)
         if hasMeikyo or hasNoto then
             if hasNoto and not hasMeikyo then
-                attacker:delStatusEffectSilent(EFFECT_WARLORD_NOTO)
+                delSamCustomEffectSilent(attacker, EFFECT_WARLORD_NOTO)
                 attacker:delStatusEffectSilent(xi.effect.HAGAKURE)
                 if attacker.setLocalVar then
                     attacker:setLocalVar('OX_WRL_IAIJUTSU_USED', 1)
@@ -683,7 +768,7 @@ local function attachSamListeners(player)
             target == actor or
             not isSamSpec(actor, WARLORD_KEY) or
             not isGreatKatanaEquipped(actor) or
-            not (actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_WARLORD_ASHURA))
+            not hasSamCustomEffect(actor, EFFECT_WARLORD_ASHURA)
         then
             return
         end
@@ -698,7 +783,7 @@ local function attachSamListeners(player)
     end)
 
     -- Post-Weaponskill Spec Procs across Ronin, Imperial Archer, and Warlord
-    player:addListener('WEAPONSKILL_USE', 'OX_SAM_WS', function(actor, target, skill, tp, _action, dmg)
+    player:addListener('WEAPONSKILL_USE', 'OX_SAM_WS', function(actor, _target, skill, tp, _action, dmg)
         if actor == nil or not actor.isPC or not actor:isPC() or actor:getMainJob() ~= xi.job.SAM then
             return
         end
@@ -720,10 +805,28 @@ local function attachSamListeners(player)
         local wsEntry  = catalog and catalog.byId and catalog.byId[wsId] or nil
         local isGkWs   = (wsEntry ~= nil and wsEntry.skill == xi.skill.GREAT_KATANA) or (wsEntry == nil and wsId >= 144 and wsId <= 159)
         local isArchWs = (wsEntry ~= nil and wsEntry.skill == xi.skill.ARCHERY) or (wsEntry == nil and wsId >= 192 and wsId <= 203)
-        local landed   = (dmg == nil or dmg > 0)
-        local lvl      = actor.getMainLvl and (actor:getMainLvl() or 10) or 10
 
-        if specKey == RONIN_KEY and isGkWs and isGreatKatanaEquipped(actor) and landed then
+        local landed = (dmg == nil or dmg > 0)
+        if actor.getLocalVar and actor.setLocalVar then
+            local lastAt = actor:getLocalVar('OX_LAST_WS_AT') or 0
+            if lastAt > 0 and math.abs(os.time() - lastAt) <= 2 then
+                landed = (actor:getLocalVar('OX_LAST_WS_LANDED') or 0) > 0
+                actor:setLocalVar('OX_LAST_WS_LANDED', 0)
+                actor:setLocalVar('OX_LAST_WS_AT', 0)
+            end
+        end
+
+        if not landed then
+            if actor.setLocalVar then
+                actor:setLocalVar('OX_IMP_REFUND_TP', 0)
+                actor:setLocalVar('OX_WRL_IAIJUTSU_USED', 0)
+            end
+            return
+        end
+
+        local lvl = actor.getMainLvl and (actor:getMainLvl() or 10) or 10
+
+        if specKey == RONIN_KEY and isGkWs and isGreatKatanaEquipped(actor) then
             purifyRoninStagger(actor, 0.50)
             local maxHp   = actor.getMaxHP and (actor:getMaxHP() or 0) or 0
             local healPct = scaleTier(lvl, 0.03, 0.035, 0.04, 0.05)
@@ -731,7 +834,7 @@ local function attachSamListeners(player)
                 actor:addHP(math.max(10, math.floor(maxHp * healPct)))
             end
             pulseNearbyEnmity(actor, 120, 300, 10.0)
-        elseif specKey == IMPERIAL_ARCHER_KEY and landed then
+        elseif specKey == IMPERIAL_ARCHER_KEY then
             local refundTp = actor.getLocalVar and (actor:getLocalVar('OX_IMP_REFUND_TP') or 0) or 0
             if refundTp > 0 then
                 actor:setLocalVar('OX_IMP_REFUND_TP', 0)
@@ -740,12 +843,12 @@ local function attachSamListeners(player)
                 end
             end
 
-            if isGkWs and isGreatKatanaEquipped(actor) and isBowEquipped(actor) then
+            if isGkWs and isGreatKatanaEquipped(actor) then
                 grantDrawnOisoya(actor)
-            elseif isArchWs and isBowEquipped(actor) and isGreatKatanaEquipped(actor) then
+            elseif isArchWs and isBowEquipped(actor) then
                 grantCosmicBrand(actor)
             end
-        elseif specKey == WARLORD_KEY and isGkWs and isGreatKatanaEquipped(actor) and landed then
+        elseif specKey == WARLORD_KEY and isGkWs and isGreatKatanaEquipped(actor) then
             local usedIai = actor.getLocalVar and (actor:getLocalVar('OX_WRL_IAIJUTSU_USED') or 0) or 0
             if usedIai > 0 then
                 actor:setLocalVar('OX_WRL_IAIJUTSU_USED', 0)
@@ -764,24 +867,24 @@ local function attachSamListeners(player)
 end
 
 -----------------------------------
--- Custom Status Effect Lifecycle Handlers (832-836)
+-- Custom Status Effect Lifecycle Handlers (837-841 + pre-0024 fallbacks)
 -----------------------------------
-m:addOverride('xi.effects.ronin_stagger.onEffectGain', function(target, effect)
+local function onRoninStaggerGain(target, effect)
     consumePendingEffectMods(target, effect)
-end)
+end
 
-m:addOverride('xi.effects.ronin_stagger.onEffectTick', function(target, effect)
+local function onRoninStaggerTick(target, effect)
     if target == nil or (target.isAlive and not target:isAlive()) then
         return
     end
     local pool  = getRoninStaggerPool(target)
     local ticks = math.max(1, target.getLocalVar and (target:getLocalVar('OX_RON_STAGGER_TICKS') or 1) or 1)
     if pool <= 0 then
-        target:delStatusEffectSilent(EFFECT_RONIN_STAGGER)
+        delSamCustomEffectSilent(target, EFFECT_RONIN_STAGGER)
         return
     end
 
-    local tickDmg = math.ceil(pool / ticks)
+    local tickDmg  = math.ceil(pool / ticks)
     local nextPool = math.max(0, pool - tickDmg)
     target:setLocalVar('OX_RON_STAGGER_POOL', nextPool)
     target:setLocalVar('OX_RON_STAGGER_TICKS', math.max(0, ticks - 1))
@@ -790,31 +893,79 @@ m:addOverride('xi.effects.ronin_stagger.onEffectTick', function(target, effect)
     end
 
     -- Non-lethal Stagger bleed: smooths tank spike damage without self-KO at 1 HP
-    local curHp = target.getHP and (target:getHP() or 1) or 1
+    local curHp    = target.getHP and (target:getHP() or 1) or 1
     local safeLoss = math.max(0, math.min(tickDmg, curHp - 1))
     if safeLoss > 0 and target.delHP then
         target:delHP(safeLoss)
     end
 
     if nextPool <= 0 then
-        target:delStatusEffectSilent(EFFECT_RONIN_STAGGER)
+        delSamCustomEffectSilent(target, EFFECT_RONIN_STAGGER)
     end
-end)
+end
 
-m:addOverride('xi.effects.ronin_stagger.onEffectLose', function(target, _effect)
+local function onRoninStaggerLose(target, _effect)
     if target ~= nil and target.setLocalVar then
         target:setLocalVar('OX_RON_STAGGER_POOL', 0)
         target:setLocalVar('OX_RON_STAGGER_TICKS', 0)
     end
-end)
+end
+
+xi.effects.ronin_stagger.onEffectGain = onRoninStaggerGain
+xi.effects.ronin_stagger.onEffectTick = onRoninStaggerTick
+xi.effects.ronin_stagger.onEffectLose = onRoninStaggerLose
+m:addOverride('xi.effects.ronin_stagger.onEffectGain', onRoninStaggerGain)
+m:addOverride('xi.effects.ronin_stagger.onEffectTick', onRoninStaggerTick)
+m:addOverride('xi.effects.ronin_stagger.onEffectLose', onRoninStaggerLose)
 
 for _, effName in ipairs({ 'imp_drawn_oisoya', 'imp_cosmic_brand', 'warlord_noto', 'warlord_ashura' }) do
-    m:addOverride('xi.effects.' .. effName .. '.onEffectGain', function(target, effect)
+    local gainFn = function(target, effect)
         consumePendingEffectMods(target, effect)
-    end)
-    m:addOverride('xi.effects.' .. effName .. '.onEffectLose', function(_target, _effect)
+    end
+    local loseFn = function(_target, _effect)
+    end
+    xi.effects[effName] = xi.effects[effName] or {}
+    xi.effects[effName].onEffectGain = gainFn
+    xi.effects[effName].onEffectLose = loseFn
+    m:addOverride('xi.effects.' .. effName .. '.onEffectGain', gainFn)
+    m:addOverride('xi.effects.' .. effName .. '.onEffectLose', loseFn)
+end
+
+for _, fbKey in ipairs({
+    'inquisitor_battuta',
+    'inquisitor_converge',
+    'spellblade_edgeflare',
+    'spellblade_conduction',
+    'spellblade_ascendance',
+}) do
+    xi.effects[fbKey] = xi.effects[fbKey] or {}
+    m:addOverride('xi.effects.' .. fbKey .. '.onEffectGain', function(target, effect)
+        if super then
+            super(target, effect)
+        end
+        if target ~= nil and target.getMainJob and target:getMainJob() == xi.job.SAM then
+            consumePendingEffectMods(target, effect)
+        end
     end)
 end
+
+m:addOverride('xi.effects.inquisitor_battuta.onEffectTick', function(target, effect)
+    if super then
+        super(target, effect)
+    end
+    if isSamSpec(target, RONIN_KEY) then
+        onRoninStaggerTick(target, effect)
+    end
+end)
+
+m:addOverride('xi.effects.inquisitor_battuta.onEffectLose', function(target, effect)
+    if super then
+        super(target, effect)
+    end
+    if target ~= nil and target.getMainJob and target:getMainJob() == xi.job.SAM then
+        onRoninStaggerLose(target, effect)
+    end
+end)
 
 -----------------------------------
 -- Combat Hook Overrides (Anticipation, Ranged Sweet Spot, Skillchains)
@@ -859,8 +1010,7 @@ m:addOverride('xi.combat.ranged.attackDistancePenalty', function(attacker, defen
         isSamSpec(attacker, IMPERIAL_ARCHER_KEY) and
         isBowEquipped(attacker)
     then
-        local hasOisoya = attacker.hasStatusEffect and attacker:hasStatusEffect(EFFECT_IMP_DRAWN_OISOYA)
-        if hasOisoya or isGreatKatanaEquipped(attacker) then
+        if hasSamCustomEffect(attacker, EFFECT_IMP_DRAWN_OISOYA) or isGreatKatanaEquipped(attacker) then
             local dist = (defender ~= nil and attacker.checkDistance) and attacker:checkDistance(defender) or 0
             if dist <= 12.0 then
                 return 0
@@ -878,7 +1028,7 @@ m:addOverride('xi.combat.ranged.accuracyDistancePenalty', function(attacker, def
         isSamSpec(attacker, IMPERIAL_ARCHER_KEY) and
         isBowEquipped(attacker)
     then
-        if (attacker.hasStatusEffect and attacker:hasStatusEffect(EFFECT_IMP_DRAWN_OISOYA)) or isGreatKatanaEquipped(attacker) then
+        if hasSamCustomEffect(attacker, EFFECT_IMP_DRAWN_OISOYA) or isGreatKatanaEquipped(attacker) then
             return 0
         end
     end
@@ -1147,13 +1297,10 @@ m:addOverride('xi.job_utils.samurai.useSekkanoki', function(player, target, abil
     if isSamSpec(player, WARLORD_KEY) and isGreatKatanaEquipped(player) then
         addWarlordAshuraStacks(player, 3)
         grantWarlordNoto(player, 20)
-    elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) then
-        if isBowEquipped(player) then
-            grantDrawnOisoya(player)
-        end
-        if isGreatKatanaEquipped(player) then
-            grantCosmicBrand(player)
-        end
+    elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) and (isBowEquipped(player) or isGreatKatanaEquipped(player)) then
+        grantDrawnOisoya(player, true)
+        grantCosmicBrand(player, true)
+        tellSam(player, '[Imperial Archer] Sekkanoki primes Drawn Oisoya & Cosmic Brand (15s).')
     end
     return res
 end)
@@ -1267,13 +1414,10 @@ m:addOverride('xi.job_utils.samurai.useMeikyoShisui', function(player, target, a
             eff:addMod(xi.mod.ENMITY, 50)
         end
         pulseNearbyEnmity(player, 350, 900, 12.0)
-    elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) then
-        if isBowEquipped(player) then
-            grantDrawnOisoya(player)
-        end
-        if isGreatKatanaEquipped(player) then
-            grantCosmicBrand(player)
-        end
+    elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) and (isBowEquipped(player) or isGreatKatanaEquipped(player)) then
+        grantDrawnOisoya(player, true)
+        grantCosmicBrand(player, true)
+        tellSam(player, '[Imperial Archer] Meikyo Shisui primes Drawn Oisoya & Cosmic Brand.')
     elseif isSamSpec(player, WARLORD_KEY) and isGreatKatanaEquipped(player) then
         addWarlordAshuraStacks(player, 3)
         grantWarlordNoto(player, 30)
@@ -1282,80 +1426,91 @@ m:addOverride('xi.job_utils.samurai.useMeikyoShisui', function(player, target, a
 end)
 
 -----------------------------------
--- Custom Imperial Archer JA: Oisoya Shot (432, 25s CD, 20y Enemy)
+-- Custom Imperial Archer JA: Oisoya Shot (438, 25s CD, 20y Enemy)
 -----------------------------------
-m:addOverride('xi.actions.abilities.oisoya_shot.onAbilityCheck', function(player, target, _ability)
-    if not isSamSpec(player, IMPERIAL_ARCHER_KEY) then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-    if not isBowEquipped(player) then
-        return xi.msg.basic.UNABLE_TO_USE_JA, 0
-    end
-    if target == nil or (target.isAlive and not target:isAlive()) then
-        return xi.msg.basic.CANNOT_PERFORM_TARG, 0
-    end
-    return 0, 0
-end)
+local function bindSamAbility(name, checkFn, useFn)
+    xi.actions.abilities[name] = xi.actions.abilities[name] or {}
+    xi.actions.abilities[name].onAbilityCheck = checkFn
+    xi.actions.abilities[name].onUseAbility   = useFn
+    m:addOverride('xi.actions.abilities.' .. name .. '.onAbilityCheck', checkFn)
+    m:addOverride('xi.actions.abilities.' .. name .. '.onUseAbility', useFn)
+end
 
-m:addOverride('xi.actions.abilities.oisoya_shot.onUseAbility', function(player, target, _ability, action)
-    syncSamWeaponMods(player, false)
-
-    local lvl       = player.getMainLvl and (player:getMainLvl() or 10) or 10
-    local agiStat   = player.getStat and (player:getStat(xi.mod.AGI) or 10) or 10
-    local strStat   = player.getStat and (player:getStat(xi.mod.STR) or 10) or 10
-    local archSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.ARCHERY) or 0) or 0
-    local wpnDmg    = (player.getRangedDmg and math.max(10, player:getRangedDmg() or 10)) or (8 + math.floor(lvl * 0.65))
-
-    local baseDmg = wpnDmg + math.floor(agiStat * 0.65 + strStat * 0.45 + archSkill * 0.16)
-    local pdif    = 1.35
-    if xi.combat and xi.combat.physical and xi.combat.physical.calculateRangedPDIF then
-        local ok, calcPdif = pcall(xi.combat.physical.calculateRangedPDIF, player, target, xi.skill.ARCHERY, 1.25, false, false, false, 0.0, false)
-        if ok and type(calcPdif) == 'number' and calcPdif > 0 then
-            pdif = calcPdif
+bindSamAbility('oisoya_shot',
+    function(player, target, _ability)
+        if not isSamSpec(player, IMPERIAL_ARCHER_KEY) then
+            return xi.msg.basic.UNABLE_TO_USE_JA, 0
         end
-    end
-
-    local dmg = math.max(12, math.floor(baseDmg * pdif))
-    if utils and utils.handleStoneskin and xi.attackType then
-        dmg = utils.handleStoneskin(target, dmg, xi.attackType.RANGED)
-    end
-
-    local dealt = dmg
-    if target.takeDamage and xi.attackType and xi.damageType then
-        local res = target:takeDamage(dmg, player, xi.attackType.RANGED, xi.damageType.PIERCING)
-        if type(res) == 'number' then
-            dealt = math.max(0, res)
+        if not isBowEquipped(player) then
+            return xi.msg.basic.UNABLE_TO_USE_JA, 0
         end
-    end
-    if target.updateEnmityFromDamage then
-        target:updateEnmityFromDamage(player, dealt)
-    end
-    if action ~= nil and action.recordDamage and xi.attackType then
-        pcall(function() action:recordDamage(target, xi.attackType.RANGED, dealt) end)
-    end
+        if target == nil or (target.isAlive and not target:isAlive()) then
+            return xi.msg.basic.CANNOT_PERFORM_TARG, 0
+        end
+        return 0, 0
+    end,
+    function(player, target, ability, action)
+        syncSamWeaponMods(player, false)
 
-    -- Prime Chainbound (ranged Konzen-ittai) if target has no active resonance
-    if
-        target.hasStatusEffect and
-        target.addStatusEffect and
-        not target:hasStatusEffect(xi.effect.CHAINBOUND, 0) and
-        not target:hasStatusEffect(xi.effect.SKILLCHAIN, 0)
-    then
-        target:addStatusEffect(xi.effect.CHAINBOUND, { power = 2, duration = 10, origin = player, icon = 0, subPower = 1 })
-    end
+        local lvl       = player.getMainLvl and (player:getMainLvl() or 10) or 10
+        local agiStat   = player.getStat and (player:getStat(xi.mod.AGI) or 10) or 10
+        local strStat   = player.getStat and (player:getStat(xi.mod.STR) or 10) or 10
+        local archSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.ARCHERY) or 0) or 0
+        local wpnDmg    = (player.getRangedDmg and math.max(10, player:getRangedDmg() or 10)) or (8 + math.floor(lvl * 0.65))
 
-    local tpGain = scaleTier(lvl, 200, 250, 300, 350)
-    if player.addTP then
-        player:addTP(tpGain)
-    end
+        local baseDmg = wpnDmg + math.floor(agiStat * 0.65 + strStat * 0.45 + archSkill * 0.16)
+        local pdif    = 1.35
+        if xi.combat and xi.combat.physical and xi.combat.physical.calculateRangedPDIF then
+            local ok, calcPdif = pcall(xi.combat.physical.calculateRangedPDIF, player, target, xi.skill.ARCHERY, 1.25, false, false, false, 0.0, false)
+            if ok and type(calcPdif) == 'number' and calcPdif > 0 then
+                pdif = calcPdif
+            end
+        end
 
-    grantDrawnOisoya(player)
-    if isGreatKatanaEquipped(player) then
-        grantCosmicBrand(player)
-    end
+        local dmg = math.max(12, math.floor(baseDmg * pdif))
+        if utils and utils.handleStoneskin and xi.attackType then
+            dmg = utils.handleStoneskin(target, dmg, xi.attackType.RANGED)
+        end
 
-    return dealt
-end)
+        local dealt = dmg
+        if target.takeDamage and xi.attackType and xi.damageType then
+            local res = target:takeDamage(dmg, player, xi.attackType.RANGED, xi.damageType.PIERCING)
+            if type(res) == 'number' then
+                dealt = math.max(0, res)
+            end
+        end
+        if target.updateEnmityFromDamage then
+            target:updateEnmityFromDamage(player, dealt)
+        end
+        if action ~= nil and action.recordDamage and xi.attackType then
+            pcall(function() action:recordDamage(target, xi.attackType.RANGED, dealt) end)
+        end
+        if ability ~= nil and ability.setMsg and xi.msg and xi.msg.basic and xi.msg.basic.JA_DAMAGE then
+            ability:setMsg(xi.msg.basic.JA_DAMAGE)
+        end
+
+        -- Prime Chainbound (ranged Konzen-ittai) if target has no active resonance
+        if
+            target.hasStatusEffect and
+            target.addStatusEffect and
+            not target:hasStatusEffect(xi.effect.CHAINBOUND, 0) and
+            not target:hasStatusEffect(xi.effect.SKILLCHAIN, 0)
+        then
+            target:addStatusEffect(xi.effect.CHAINBOUND, { power = 2, duration = 10, origin = player, icon = 0, subPower = 1 })
+        end
+
+        local tpGain = scaleTier(lvl, 200, 250, 300, 350)
+        if player.addTP then
+            player:addTP(tpGain)
+        end
+
+        grantDrawnOisoya(player, true)
+        grantCosmicBrand(player, true)
+        tellSam(player, string.format('[Imperial Archer] Oisoya Shot primes Drawn Oisoya & Cosmic Brand (+%d TP).', tpGain))
+
+        return dealt
+    end
+)
 
 -----------------------------------
 -- Crystal Definitions (SAM = 12)
@@ -1444,8 +1599,8 @@ if xi.job and xi.job.SAM then
             {
                 'Open weapon choice; equipping a Bow grants A+ Archery skill, 100% Recycle (0 arrows used), +R.Acc/R.Atk/Snapshot.',
                 'Auto-attacks with Bow + Arrow up to 20y outside melee range and suffers zero point-blank Bow penalty.',
-                'Oisoya Shot (25s CD, 20y): ranged piercing arrow that restores +200-350 TP, primes Chainbound, and grants Drawn Oisoya.',
-                'Tachi WS -> Drawn Oisoya (+TP Bonus, +R.Atk%, +125 TP refund on next Archery WS); Archery WS -> Cosmic Brand (+SC Dmg on next Tachi).',
+                'Oisoya Shot (25s CD, 20y): ranged piercing arrow that restores +200-350 TP, primes Chainbound, and grants Drawn Oisoya & Cosmic Brand.',
+                'Tachi WS -> Drawn Oisoya (+TP Bonus, +WSD, +R.Atk%, +125 TP refund on next Archery WS); Archery WS -> Cosmic Brand (+TP Bonus, +WSD, +SC Dmg on next Tachi).',
                 'Hasso works with Bow or Great Katana (+Snapshot, +R.Atk%, +R.Acc, +AGI); Sengikori & Meikyo empower Bow + Blade chains.',
             },
             mods = function(player, lvl)
@@ -1460,16 +1615,16 @@ if xi.job and xi.job.SAM then
                 if hasBow and hasGk then
                     return
                     {
-                        { xi.mod.ARCHERY,  getArcheryAPlusBonus(player, lvl) },
-                        { xi.mod.RECYCLE,  100 },
-                        { xi.mod.RACC,     scaleTier(lvl, 12, 22, 34, 46) },
-                        { xi.mod.RATTP,    scaleTier(lvl, 8, 13, 18, 24) },
-                        { xi.mod.SNAPSHOT, scaleTier(lvl, 6, 10, 15, 20) },
-                        { xi.mod.AGI,      scaleTier(lvl, 4, 7, 11, 15) },
-                        { xi.mod.ACC,      scaleTier(lvl, 8, 15, 24, 32) },
-                        { xi.mod.ATTP,     scaleTier(lvl, 6, 10, 14, 18) },
-                        { xi.mod.STR,      scaleTier(lvl, 3, 6, 9, 12) },
-                        { xi.mod.STORETP,  scaleTier(lvl, 9, 14, 21, 28) },
+                        { xi.mod.ARCHERY, getArcheryAPlusBonus(player, lvl) },
+                        { xi.mod.RECYCLE, 100 },
+                        { xi.mod.RACC,    scaleTier(lvl, 12, 22, 34, 46) },
+                        { xi.mod.RATTP,   scaleTier(lvl, 8, 13, 18, 24) },
+                        { snapMod,        scaleTier(lvl, 6, 10, 15, 20) },
+                        { xi.mod.AGI,     scaleTier(lvl, 4, 7, 11, 15) },
+                        { xi.mod.ACC,     scaleTier(lvl, 8, 15, 24, 32) },
+                        { xi.mod.ATTP,    scaleTier(lvl, 6, 10, 14, 18) },
+                        { xi.mod.STR,     scaleTier(lvl, 3, 6, 9, 12) },
+                        { xi.mod.STORETP, scaleTier(lvl, 9, 14, 21, 28) },
                     }
                 end
                 local out = {}
@@ -1496,8 +1651,8 @@ if xi.job and xi.job.SAM then
             end,
             onRemove = function(player)
                 if player ~= nil then
-                    player:delStatusEffectSilent(EFFECT_IMP_DRAWN_OISOYA)
-                    player:delStatusEffectSilent(EFFECT_IMP_COSMIC_BRAND)
+                    delSamCustomEffectSilent(player, EFFECT_IMP_DRAWN_OISOYA)
+                    delSamCustomEffectSilent(player, EFFECT_IMP_COSMIC_BRAND)
                     if player.setLocalVar then
                         player:setLocalVar('OX_IMP_REFUND_TP', 0)
                         player:setLocalVar('OX_AUTO_RANGED', 0)
@@ -1559,8 +1714,8 @@ if xi.job and xi.job.SAM then
             end,
             onRemove = function(player)
                 if player ~= nil then
-                    player:delStatusEffectSilent(EFFECT_WARLORD_NOTO)
-                    player:delStatusEffectSilent(EFFECT_WARLORD_ASHURA)
+                    delSamCustomEffectSilent(player, EFFECT_WARLORD_NOTO)
+                    delSamCustomEffectSilent(player, EFFECT_WARLORD_ASHURA)
                     if player.setLocalVar then
                         player:setLocalVar('OX_WRL_IAIJUTSU_USED', 0)
                     end
