@@ -13,7 +13,8 @@ diff --git a/src/map/status_effect.h b/src/map/status_effect.h
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -361,0 +361,81 @@ void LoadEffectsParameters()
+@@ -350,1 +350,82 @@ void LoadEffectsParameters()
+     EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    // OverlordsXI Healer Crystal Spec status effects (860-875).
 +    EffectsParams[860].Name             = "solace_ward";

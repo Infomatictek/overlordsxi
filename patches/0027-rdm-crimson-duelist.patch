@@ -2,7 +2,8 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index d7f1a4b..a1b2c3d 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -323,0 +323,11 @@ void LoadEffectsParameters()
+@@ -323,1 +323,12 @@ void LoadEffectsParameters()
+     EffectsParams[852].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    // OverlordsXI RDM Crimson Duelist Crystal Spec status effects (853-854).
 +    EffectsParams[853].Name             = "crimson_flow";
