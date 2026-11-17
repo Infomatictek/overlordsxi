@@ -1,0 +1,33 @@
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 856 // 768 real + 88 custom
++#define MAX_EFFECTID 860 // 768 real + 92 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -359,6 +359,17 @@ void LoadEffectsParameters()
+     EffectsParams[854].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[854].SortKey          = 10000;
+     EffectsParams[854].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI DRK Dreadnought Crystal Spec status effects (855-856).
++    EffectsParams[855].Name             = "blood_carapace";
++    EffectsParams[855].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[855].SortKey          = 10000;
++    EffectsParams[855].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[856].Name             = "dread_bastion";
++    EffectsParams[856].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[856].SortKey          = 10000;
++    EffectsParams[856].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
