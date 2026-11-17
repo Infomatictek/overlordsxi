@@ -1,0 +1,205 @@
+diff --git a/src/map/enmity_container.cpp b/src/map/enmity_container.cpp
+index ca6f05204c..c7e186c7c0 100644
+--- a/src/map/enmity_container.cpp
++++ b/src/map/enmity_container.cpp
+@@ -178,6 +178,13 @@ void CEnmityContainer::UpdateEnmity(CBattleEntity* PEntity, int32 CE, int32 VE,
+         return;
+     }
+ 
++    // OverlordsXI BST Alpha Warden: funnel 100% of positive pet enmity directly onto Master.
++    if (PEntity != nullptr && PEntity->objtype == ENTITYTYPE::TYPE_PET && PEntity->PMaster != nullptr &&
++        PEntity->PMaster->GetLocalVar("OX_BST_SOULLINK") != 0 && CE >= 0 && VE >= 0)
++    {
++        PEntity = PEntity->PMaster;
++    }
++
+     // If the entity ignores pets, fetch the master and add base enmity to them.
+     if (IgnorePets(PEntity))
+     {
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+index 0000000..1111111 100644
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -1931,17 +1931,26 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
+             auto chargesUsed = timer::count_seconds(PAbility->getRecastTime()); // charge cost is stored in the recast...
+ 
+             //  Can't assign merits via ability ID for Sic/Ready due to shenanigans
+             if (PAbility->getRecastId() == xi::Recast::Sic) // Sic/Ready recast ID
+             {
+-                recastReduction = std::chrono::seconds(PMeritPoints->GetMeritValue(xi::Merit::SicRecast, this));
++                recastReduction = std::chrono::seconds(PMeritPoints->GetMeritValue(xi::Merit::SicRecast, this)) +
++                                  std::chrono::seconds(this->getMod(xi::Mod::SIC_READY_RECAST));
+             }
+             else if (PAbility->getRecastId() == xi::Recast::Stratagem)
+             {
+                 recastReduction += std::chrono::seconds(this->getMod(xi::Mod::STRATAGEM_RECAST));
+             }
+ 
+-            baseChargeTime = charge->chargeTime - recastReduction;
++            if (PAbility->getRecastId() == xi::Recast::Sic && this->GetLocalVar("OX_BST_SOULLINK") != 0)
++            {
++                baseChargeTime = std::max<timer::duration>(0s, (charge->chargeTime * 65) / 100 - recastReduction);
++            }
++            else
++            {
++                baseChargeTime = std::max<timer::duration>(0s, charge->chargeTime - recastReduction);
++            }
+ 
+             action.recast = baseChargeTime * chargesUsed;
+         }
+@@ -1957,6 +1966,13 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
+                 action.recast  = 0s;
+                 baseChargeTime = 0s;
+             }
+         }
++        else if (PAbility->getRecastId() == xi::Recast::Sic)
++        {
++            if (this->StatusEffectContainer->HasStatusEffect(static_cast<EFFECT>(851))) // OverlordsXI alpha_familiar_bond
++            {
++                action.recast  = 0s;
++                baseChargeTime = 0s;
++            }
++        }
+         else if (PAbility->getRecastId() == xi::Recast::BloodPactRage || PAbility->getRecastId() == xi::Recast::BloodPactWard)
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index 0000000..1111111 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -13417,6 +13417,18 @@ void CLuaBaseEntity::resetRecast(uint8 rType, uint16 recastID)
+         PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
+         PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+     }
+ }
++
++void CLuaBaseEntity::restoreAbilityCharge(uint16 recastID, const sol::object& countObj)
++{
++    if (m_PBaseEntity->objtype == TYPE_PC)
++    {
++        auto*       PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++        const uint8 count = countObj.is<uint8>() ? countObj.as<uint8>() : 1;
++
++        PChar->PRecastContainer->RestoreCharge(xi::RecastType::Ability, static_cast<xi::Recast>(recastID), count);
++        PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++    }
++}
+ /************************************************************************
+  *  Function: resetRecasts()
+@@ -21349,6 +21361,7 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("hasRecast", CLuaBaseEntity::hasRecast);
+     SOL_REGISTER("resetRecast", CLuaBaseEntity::resetRecast);
+     SOL_REGISTER("resetRecasts", CLuaBaseEntity::resetRecasts);
++    SOL_REGISTER("restoreAbilityCharge", CLuaBaseEntity::restoreAbilityCharge);
+ 
+     SOL_REGISTER("addListener", CLuaBaseEntity::addListener);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+index 0000000..1111111 100644
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -670,6 +670,7 @@ public:
+     auto hasRecast(uint8 rType, uint16 recastID, const sol::object& arg2) -> bool;
+     void resetRecast(uint8 rType, uint16 recastID); // Reset one recast ID
+     void resetRecasts();                            // Reset recasts for the caller
++    void restoreAbilityCharge(uint16 recastID, const sol::object& countObj);
+ 
+     void addListener(const std::string& eventName, const std::string& identifier, const sol::function& func);
+diff --git a/src/map/recast_container.cpp b/src/map/recast_container.cpp
+index f98f7dd1bd..54cd76b3a1 100644
+--- a/src/map/recast_container.cpp
++++ b/src/map/recast_container.cpp
+@@ -84,6 +84,30 @@ void CRecastContainer::Add(xi::RecastType type, xi::Recast id, timer::duration d
+     Load(type, id, duration, chargeTime, maxCharges);
+ }
+ 
++void CRecastContainer::RestoreCharge(xi::RecastType type, xi::Recast id, uint8 count)
++{
++    if (count == 0)
++    {
++        return;
++    }
++
++    if (auto* recast = GetRecast(type, id))
++    {
++        if (recast->chargeTime > 0s && recast->RecastTime > 0s)
++        {
++            const auto reduction = recast->chargeTime * count;
++            if (recast->RecastTime <= reduction)
++            {
++                recast->RecastTime = 0s;
++            }
++            else
++            {
++                recast->RecastTime -= reduction;
++            }
++        }
++    }
++}
++
+ void CRecastContainer::AddLootRecast(LootRecastID id, timer::duration duration)
+ {
+     Add(xi::RecastType::Loot, static_cast<xi::Recast>(id), duration);
+diff --git a/src/map/recast_container.h b/src/map/recast_container.h
+index 24b66452e5..1be3e52441 100644
+--- a/src/map/recast_container.h
++++ b/src/map/recast_container.h
+@@ -61,6 +61,7 @@ public:
+     auto         HasLootRecast(LootRecastID id) -> bool;
+     auto         HasRecast(xi::RecastType type, xi::Recast id, timer::duration recast) -> bool;
+     virtual void Add(xi::RecastType type, xi::Recast id, timer::duration duration, timer::duration chargeTime = 0s, uint8 maxCharges = 0);
++    void         RestoreCharge(xi::RecastType type, xi::Recast id, uint8 count = 1);
+     void         AddLootRecast(LootRecastID id, timer::duration duration);
+     auto         Load(xi::RecastType type, xi::Recast id, timer::duration duration, timer::duration chargeTime = 0s, uint8 maxCharges = 0) -> Recast_t*;
+     virtual void ResetAbilities();
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 0000000..1111111 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 848 // 768 real + 80 custom
++#define MAX_EFFECTID 856 // 768 real + 88 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 0000000..1111111 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -316,6 +316,37 @@ void LoadEffectsParameters()
+     EffectsParams[846].Name             = "kagemusha_bunshin";
+     EffectsParams[846].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[846].SortKey          = 10000;
+     EffectsParams[846].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI BST Alpha Warden Crystal Spec status effects (847-852).
++    EffectsParams[847].Name             = "alpha_pack_instinct";
++    EffectsParams[847].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[847].SortKey          = 10000;
++    EffectsParams[847].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[848].Name             = "alpha_rending_bite";
++    EffectsParams[848].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[848].SortKey          = 10000;
++    EffectsParams[848].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[849].Name             = "alpha_soul_bond";
++    EffectsParams[849].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[849].SortKey          = 10000;
++    EffectsParams[849].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[850].Name             = "alpha_feral_roar";
++    EffectsParams[850].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[850].SortKey          = 10000;
++    EffectsParams[850].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[851].Name             = "alpha_familiar_bond";
++    EffectsParams[851].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[851].SortKey          = 10000;
++    EffectsParams[851].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[852].Name             = "alpha_reward_bond";
++    EffectsParams[852].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[852].SortKey          = 10000;
++    EffectsParams[852].WearOffMessageId = MsgStd::EffectWearsOff;
+ }

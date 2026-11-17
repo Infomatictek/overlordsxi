@@ -15,6 +15,7 @@ custom/lua/blm_specs.lua
 custom/lua/run_specs.lua
 custom/lua/brd_specs.lua
 custom/lua/sam_specs.lua
+custom/lua/bst_specs.lua
 custom/lua/pld_specs.lua
 custom/lua/nin_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
@@ -33,6 +34,7 @@ custom/sql/run_specs.sql
 custom/sql/mnk_chiweaver_abilities.sql
 custom/sql/brd_specs.sql
 custom/sql/sam_specs.sql
+custom/sql/bst_specs.sql
 custom/sql/pld_specs.sql
 custom/sql/nin_specs.sql
 custom/commands/spec.lua
