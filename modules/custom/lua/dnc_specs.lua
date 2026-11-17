@@ -17,12 +17,12 @@ local spec = xi.overlords.spec
 local BLADEWHEEL_KEY = 'bladewheel'
 local MIRAGE_KEY     = 'miragesentinel'
 
--- Custom Trait ID (149; Mirage Rhythm)
-local TRAIT_MIRAGE_RHYTHM = 149
+-- Custom Trait ID (162; Mirage Rhythm)
+local TRAIT_MIRAGE_RHYTHM = 162
 
--- Custom Ability IDs (443-444; recastIds 227-228)
-local ABIL_PIROUETTE_DEFLECT = 443
-local ABIL_DAZZLING_CADENCE  = 444
+-- Custom Ability IDs (449-450; recastIds 227-228)
+local ABIL_PIROUETTE_DEFLECT = 449
+local ABIL_DAZZLING_CADENCE  = 450
 
 -- Native DNC Ability IDs
 local ABIL_TRANCE            = 181
