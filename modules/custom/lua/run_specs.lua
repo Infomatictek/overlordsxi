@@ -1267,8 +1267,6 @@ if xi.job and xi.job.RUN then
                     { xi.mod.PARRY,                 scaleTier(lvl, 12, 24, 40, 50) },
                     { xi.mod.GSWORD,                scaleTier(lvl, 12, 24, 40, 50) },
                     { xi.mod.INQUARTATA,            scaleTier(lvl, 6, 10, 15, 18) },
-                    -- Tank damage tradeoff
-                    { xi.mod.ATTP,                  -20 },
                     { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
             end,

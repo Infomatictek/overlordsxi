@@ -963,7 +963,6 @@ if xi.job and xi.job.MNK then
                     { xi.mod.MATT,         scaleTier(lvl, 8, 15, 24, 34) },
                     { xi.mod.ENMITY,       scaleTier(lvl, -12, -18, -25, -32) },
                     { xi.mod.DMG,          scaleTier(lvl, -300, -500, -800, -1000) },
-                    { xi.mod.ATTP,         -20 },
                 }
             end,
             onApply = function(player)

@@ -253,6 +253,92 @@ local KEY_ALIASES =
     caller         = 'celestial',
 }
 
+spec.TIER_CONFIG =
+{
+    Damage        = { name = 'Damage',        offense = 1.00, physDmgDealt = 0,   magDmgDealt = 0 },
+    HybridSupport = { name = 'HybridSupport', offense = 0.50, physDmgDealt = -25, magDmgDealt = -25 },
+    Support       = { name = 'Support',       offense = 0.35, physDmgDealt = -40, magDmgDealt = -40 },
+    CombatHealer  = { name = 'CombatHealer',  offense = 0.20, physDmgDealt = -50, magDmgDealt = -50 },
+    Healer        = { name = 'Healer',        offense = 0.12, physDmgDealt = -60, magDmgDealt = -60 },
+    Tank          = { name = 'Tank',          offense = 0.12, physDmgDealt = -60, magDmgDealt = -60 },
+}
+
+spec.SPEC_KEY_TIERS =
+{
+    warlord        = 'HybridSupport',
+    musician       = 'HybridSupport',
+    channeler      = 'HybridSupport',
+    templar        = 'CombatHealer',
+    aegistemplar   = 'CombatHealer',
+    magus          = 'CombatHealer',
+    vampire        = 'CombatHealer',
+    animist        = 'CombatHealer',
+    wyvernheart    = 'CombatHealer',
+    miragesentinel = 'Tank',
+}
+
+local CANONICAL_ROLE_BY_KEY = {}
+for _, list in pairs(spec.JOB_SPECS) do
+    for _, c in ipairs(list) do
+        CANONICAL_ROLE_BY_KEY[c.id] = c.role
+    end
+end
+for aliasKey, targetKey in pairs(KEY_ALIASES) do
+    if CANONICAL_ROLE_BY_KEY[aliasKey] == nil and CANONICAL_ROLE_BY_KEY[targetKey] ~= nil then
+        CANONICAL_ROLE_BY_KEY[aliasKey] = CANONICAL_ROLE_BY_KEY[targetKey]
+    end
+end
+
+function spec.getSpecTier(entryOrKey)
+    local key = nil
+    local roleStr = nil
+    if type(entryOrKey) == 'table' then
+        key = normalizeKey(entryOrKey.key)
+        roleStr = entryOrKey.role
+    elseif entryOrKey ~= nil then
+        key = normalizeKey(entryOrKey)
+    end
+
+    if key ~= nil then
+        if spec.SPEC_KEY_TIERS[key] ~= nil then
+            return spec.SPEC_KEY_TIERS[key]
+        end
+        local canonicalRole = CANONICAL_ROLE_BY_KEY[key]
+        if canonicalRole ~= nil and spec.TIER_CONFIG[canonicalRole] ~= nil then
+            return canonicalRole
+        end
+    end
+
+    if type(roleStr) == 'string' then
+        local lower = string.lower(roleStr)
+        if string.find(lower, 'tank', 1, true) then
+            return 'Tank'
+        elseif string.find(lower, 'healer', 1, true) then
+            return 'Healer'
+        elseif string.find(lower, 'support', 1, true) then
+            return 'Support'
+        end
+    end
+
+    return 'Damage'
+end
+
+function spec.getTierConfig(player, jobId)
+    if player == nil then
+        return spec.TIER_CONFIG.Damage
+    end
+    local targetJob = jobId or (player.getMainJob and player:getMainJob() or nil)
+    local active = spec.get(player, targetJob)
+    if active == nil or not spec.isLevelEligible(player, targetJob, active) then
+        return spec.TIER_CONFIG.Damage
+    end
+    return spec.TIER_CONFIG[spec.getSpecTier(active)] or spec.TIER_CONFIG.Damage
+end
+
+function spec.getOffenseScalar(player, jobId)
+    return spec.getTierConfig(player, jobId).offense
+end
+
 local function buildEntry(jobKey, entry)
     local out = {}
     for k, v in pairs(entry or {}) do
@@ -578,27 +664,78 @@ function spec.getExtraTraits(player)
     return getActiveEntryExtraIds(player, 'extraTraits')
 end
 
+local function upsertMod(list, modId, val)
+    if modId == nil or type(val) ~= 'number' then
+        return
+    end
+    for _, item in ipairs(list) do
+        if item.mod == modId then
+            item.val = val
+            return
+        end
+    end
+    if val ~= 0 then
+        table.insert(list, { mod = modId, val = val })
+    end
+end
+
 function spec.evaluateMods(player, entry)
-    if entry == nil or entry.mods == nil then
+    if entry == nil then
         return {}
     end
 
+    local lvl = (player ~= nil and player.getMainLvl) and player:getMainLvl() or 1
     local raw = entry.mods
     if type(raw) == 'function' then
-        local lvl = (player ~= nil and player.getMainLvl) and player:getMainLvl() or 1
         raw = raw(player, lvl)
     end
 
-    if type(raw) ~= 'table' then
-        return {}
-    end
+    local tierName = spec.getSpecTier(entry)
+    local tierCfg  = spec.TIER_CONFIG[tierName] or spec.TIER_CONFIG.Damage
+    local stripNegOffense = (tierName ~= 'Damage') and xi and xi.mod
 
     local out = {}
-    for _, pair in ipairs(raw) do
-        local modId = pair.mod or pair[1]
-        local val = pair.val or pair[2]
-        if modId ~= nil and type(val) == 'number' and val ~= 0 then
-            table.insert(out, { mod = modId, val = val })
+    if type(raw) == 'table' then
+        for _, pair in ipairs(raw) do
+            local modId = pair.mod or pair[1]
+            local val = pair.val or pair[2]
+            if modId ~= nil and type(val) == 'number' and val ~= 0 then
+                local skip = false
+                if stripNegOffense and val < 0 and (
+                    modId == xi.mod.ATTP or
+                    modId == xi.mod.RATTP or
+                    modId == xi.mod.MATT or
+                    modId == xi.mod.MACC
+                ) then
+                    skip = true
+                end
+                if not skip then
+                    table.insert(out, { mod = modId, val = val })
+                end
+            end
+        end
+    end
+
+    if xi and xi.mod then
+        if tierCfg.physDmgDealt ~= 0 and xi.mod.PHYS_DMG_DEALT then
+            upsertMod(out, xi.mod.PHYS_DMG_DEALT, tierCfg.physDmgDealt)
+        end
+        if tierCfg.magDmgDealt ~= 0 and xi.mod.MAG_DMG_DEALT then
+            upsertMod(out, xi.mod.MAG_DMG_DEALT, tierCfg.magDmgDealt)
+        end
+        if tierName == 'Tank' and xi.mod.ENMITY then
+            local tankEnmity = (lvl >= 70 and 120) or (lvl >= 50 and 100) or (lvl >= 30 and 80) or 60
+            local found = false
+            for _, item in ipairs(out) do
+                if item.mod == xi.mod.ENMITY then
+                    item.val = math.max(item.val, tankEnmity)
+                    found = true
+                    break
+                end
+            end
+            if not found then
+                table.insert(out, { mod = xi.mod.ENMITY, val = tankEnmity })
+            end
         end
     end
 

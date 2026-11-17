@@ -669,8 +669,6 @@ if xi.job and xi.job.NIN then
                     { xi.mod.DMG,                   scaleTier(lvl, -600, -900, -1200, -1600) },
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
-                    { xi.mod.ATTP,                  -20 },
-                    { xi.mod.RATTP,                 -20 },
                     { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 

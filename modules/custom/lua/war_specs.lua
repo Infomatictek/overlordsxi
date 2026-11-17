@@ -417,9 +417,6 @@ if xi.job and xi.job.WAR then
                     { xi.mod.SHIELD_DEF_BONUS,     scaleTier(lvl, 2, 4, 6) },
                     { xi.mod.PALISADE_BLOCK_BONUS, scaleTier(lvl, 8, 14, 22) },
                     { xi.mod.SHIELD_MASTERY_TP,    scaleTier(lvl, 15, 25, 40) },
-                    -- Substantially lower damage output tradeoff
-                    { xi.mod.ATTP,                 -25 },
-                    { xi.mod.RATTP,                -25 },
                     { xi.mod.ALL_WSDMG_ALL_HITS,   -20 },
                 }
             end,

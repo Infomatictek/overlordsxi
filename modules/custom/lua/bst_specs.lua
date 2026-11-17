@@ -744,8 +744,6 @@ if xi.job and xi.job.BST then
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.AXE,                   scaleTier(lvl, 15, 25, 35, 50) },
-                    { xi.mod.ATTP,                  -20 },
-                    { xi.mod.RATTP,                 -20 },
                     { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 

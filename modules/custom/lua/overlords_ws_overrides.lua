@@ -318,9 +318,26 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         return params, {}, nil, tp, {}
     end
 
+    local offenseScalar = 1.0
+    if xi.overlords and xi.overlords.spec and xi.overlords.spec.getOffenseScalar then
+        offenseScalar = xi.overlords.spec.getOffenseScalar(attacker, jobId) or 1.0
+    end
+
     local tempMods = {}
     local function addTempMod(modId, amount)
-        if modId ~= nil and amount ~= 0 then
+        if modId == nil or amount == nil or amount == 0 then
+            return
+        end
+        if offenseScalar < 1.0 and (
+            modId == xi.mod.ALL_WSDMG_ALL_HITS or
+            modId == xi.mod.MATT or
+            modId == xi.mod.CRIT_DMG_INCREASE or
+            modId == xi.mod.RANGED_CRIT_DMG_INCREASE
+        ) then
+            local scaled = amount * offenseScalar
+            amount = (scaled >= 0) and math.floor(scaled + 0.5) or math.ceil(scaled - 0.5)
+        end
+        if amount ~= 0 then
             table.insert(tempMods, { mod = modId, amount = amount })
             attacker:addMod(modId, amount)
         end
@@ -1406,6 +1423,29 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
             end
             if (samMods.scBonus or 0) ~= 0 then
                 extraCtx.extraScBonus = extraCtx.extraScBonus + samMods.scBonus
+            end
+        end
+    end
+
+    if offenseScalar < 1.0 then
+        if type(params.ftpMod) == 'table' then
+            for i = 1, 3 do
+                if type(params.ftpMod[i]) == 'number' then
+                    params.ftpMod[i] = 1.0 + (params.ftpMod[i] - 1.0) * offenseScalar
+                end
+            end
+        end
+        local wscKeys = { 'str_wsc', 'dex_wsc', 'vit_wsc', 'agi_wsc', 'int_wsc', 'mnd_wsc', 'chr_wsc' }
+        for _, wk in ipairs(wscKeys) do
+            if type(params[wk]) == 'number' and params[wk] ~= 0 then
+                params[wk] = params[wk] * offenseScalar
+            end
+        end
+        if type(params.atkVaries) == 'table' then
+            for i = 1, 3 do
+                if type(params.atkVaries[i]) == 'number' then
+                    params.atkVaries[i] = 1.0 + (params.atkVaries[i] - 1.0) * offenseScalar
+                end
             end
         end
     end

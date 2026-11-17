@@ -772,8 +772,6 @@ if xi.job and xi.job.PUP then
                     { xi.mod.COUNTER,            scaleTier(lvl, 12, 18, 24, 30) },
                     { xi.mod.OVERLOAD_THRESH,    500 },
                     { xi.mod.PREVENT_OVERLOAD,   1 },
-                    { xi.mod.ATTP,               -20 },
-                    { xi.mod.RATTP,              -20 },
                     { xi.mod.ALL_WSDMG_ALL_HITS, -15 },
                 }
             end,
