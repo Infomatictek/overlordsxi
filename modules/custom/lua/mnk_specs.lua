@@ -782,9 +782,9 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     local hasFormless = player.hasStatusEffect and player:hasStatusEffect(xi.effect.FORMLESS_STRIKES)
     local hasHundred  = player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS)
 
-    local dmgMult = (hasHarmony and 1.40 or 1.0) * (hasFormless and 1.25 or 1.0)
-    local rawDmg  = ((lvl * 1.45) + 8 + (mndStat * 0.65) + (h2hSkill * 0.14)) * mabMult * dmgMult * hitScale
-    local dmg     = math.max(3, math.floor(rawDmg))
+    local dmgMult = (hasHarmony and 1.20 or 1.0) * (hasFormless and 1.15 or 1.0)
+    local rawDmg  = ((lvl * 0.42) + 2 + (mndStat * 0.18) + (h2hSkill * 0.04)) * mabMult * dmgMult * hitScale
+    local dmg     = math.max(2, math.floor(rawDmg))
 
     local dealt = dmg
     if target.takeDamage and xi.attackType and xi.damageType then
@@ -945,9 +945,10 @@ if xi.job and xi.job.MNK then
             {
                 'Empty-Handed Vow: Cannot equip ANY weapon or item in Main or Sub slots (bare fists only).',
                 'Dual-Fist Chi & Boost Stacking (0-20y): Auto-attacks unleash main & off-hand Light Chi bolts (+Kick procs) and ranged H2H Weaponskills work up to 20y. Every landed bolt grants +1 Boost stack (WS +3/+4/+5, max 100, +1 Cure Pot/MACC/MAB per 5 stacks) plus light sustain pulses.',
+                'Healer Offense Tradeoff: -20% Attack% & -58% Weaponskill DMG; Light Chi bolts deal light healer chip damage in exchange for party sustain.',
                 'Passives (Lv10/30/50/70+): +8/12/16/20% Max HP, +8/16/26/38 Regen, +8/16/26/36 MND, +5/10/16/24 VIT, +12/20/28/35% Cure Potency, +8/15/24/35 H2H, +10/20/32/45 MACC, +8/15/24/34 MAB, -12/18/25/32 Enmity, -3/5/8/10% DT.',
                 'Custom JAs (Lv10+): Resonant Chi (20s CD, 20y Light burst + 1.75x target AoE heal & Cleanse), Tranquil Lotus (30s CD, 12y Party/Pet heal + 15s Regen, +Cure Rcvd, & Enmity-), Inner Harmony (45s CD, 18s +Cure Potency, +MAB/MACC, +Ability Haste, +Regen, & +40% Chi Bolt/Pulse power).',
-                'Healer MNK JAs: Chi Blast (5s CD, 0 damage, consumes all 0-100 Boost stacks for a massive 20y party AoE heal + up to 3 debuff cleanses), Boost (+5 Boost stacks, +50 TP & light engaged pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
+                'Healer MNK JAs: Chi Blast (5s CD, 0 damage, consumes all 0-100 Boost stacks for a massive 20y party AoE heal + up to 3 debuff cleanses), Boost (+5 Boost stacks, +50 TP & light engaged pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+15% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
             },
             mods = function(_player, lvl)
                 return
@@ -962,6 +963,7 @@ if xi.job and xi.job.MNK then
                     { xi.mod.MATT,         scaleTier(lvl, 8, 15, 24, 34) },
                     { xi.mod.ENMITY,       scaleTier(lvl, -12, -18, -25, -32) },
                     { xi.mod.DMG,          scaleTier(lvl, -300, -500, -800, -1000) },
+                    { xi.mod.ATTP,         -20 },
                 }
             end,
             onApply = function(player)
@@ -974,6 +976,23 @@ if xi.job and xi.job.MNK then
         },
     })
 end
+
+-----------------------------------
+-- Chi Weaver Healer Weaponskill Damage Tradeoff
+-----------------------------------
+m:addOverride('xi.weaponskills.takeWeaponskillDamage', function(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+    if
+        attacker ~= nil and
+        isMonkSpec(attacker, CHIWEAVER_KEY) and
+        type(wsResults) == 'table' and
+        type(wsResults.finalDmg) == 'number' and
+        wsResults.finalDmg > 0
+    then
+        wsResults.finalDmg = math.max(1, math.floor(wsResults.finalDmg * 0.42))
+    end
+
+    return super(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+end)
 
 -----------------------------------
 -- Early & Rapid Iron Counterstance / Perfect Counter (Sensei)
@@ -1617,9 +1636,9 @@ end, function(player, target, _ability)
     local mabMult  = math.max(0.5, (100.0 + mab) / (100.0 + tgtMdef))
 
     local hasHarmony = player.hasStatusEffect and player:hasStatusEffect(EFFECT_INNER_HARMONY)
-    local dmgMult    = hasHarmony and 1.40 or 1.0
-    local rawDmg     = ((lvl * 2.45) + 24 + (mndStat * 1.45) + (h2hSkill * 0.22)) * mabMult * dmgMult
-    local dmg        = math.max(12, math.floor(rawDmg))
+    local dmgMult    = hasHarmony and 1.20 or 1.0
+    local rawDmg     = ((lvl * 1.15) + 10 + (mndStat * 0.55) + (h2hSkill * 0.08)) * mabMult * dmgMult
+    local dmg        = math.max(8, math.floor(rawDmg))
 
     local dealt = dmg
     if target.takeDamage and xi.attackType and xi.damageType then
