@@ -1802,13 +1802,15 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
             detachChiWeaverListeners(player)
         end
 
-        sendChiBoostSync(player, true)
-        if player.timer then
-            player:timer(1500, function(playerArg)
-                if playerArg ~= nil then
-                    sendChiBoostSync(playerArg, true)
-                end
-            end)
+        if player:getMainJob() == xi.job.MNK then
+            sendChiBoostSync(player, true)
+            if player.timer then
+                player:timer(1500, function(playerArg)
+                    if playerArg ~= nil and playerArg:getMainJob() == xi.job.MNK then
+                        sendChiBoostSync(playerArg, true)
+                    end
+                end)
+            end
         end
     end
 end)
