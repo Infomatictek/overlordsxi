@@ -106,7 +106,154 @@ function spec.getJobName(jobId)
     return spec.getJobKey(jobId)
 end
 
-local function buildEntry(entry)
+-- Canonical OverlordsXI 22-job Soul Crystal Specialization catalog (branch IDs 1..3 per job).
+spec.JOB_SPECS =
+{
+    WAR =
+    {
+        { id = 'commander', name = 'Commander', abr = 'CDR', role = 'Support' },
+        { id = 'berserker', name = 'Berserker', abr = 'BRZ', role = 'Damage' },
+        { id = 'spartan',   name = 'Spartan',   abr = 'SPT', role = 'Tank' },
+    },
+    MNK =
+    {
+        { id = 'sensei',    name = 'Sensei',     abr = 'SEN', role = 'Tank' },
+        { id = 'chiweaver', name = 'Chi Weaver', abr = 'CWV', role = 'Healer' },
+        { id = 'blackbelt', name = 'Black Belt', abr = 'BLK', role = 'Damage' },
+    },
+    WHM =
+    {
+        { id = 'bishop',   name = 'Bishop',   abr = 'BSH', role = 'Healer' },
+        { id = 'zealot',   name = 'Zealot',   abr = 'ZEL', role = 'Damage' },
+        { id = 'valkyrie', name = 'Valkyrie', abr = 'VLK', role = 'Support' },
+    },
+    BLM =
+    {
+        { id = 'astromancer', name = 'Astromancer', abr = 'AST', role = 'Damage' },
+        { id = 'channeler',   name = 'Channeler',   abr = 'CHN', role = 'Support' },
+        { id = 'necromancer', name = 'Necromancer', abr = 'NEC', role = 'Tank' },
+    },
+    RDM =
+    {
+        { id = 'crimsonduelist', name = 'Crimson Duelist', abr = 'DLS', role = 'Tank' },
+        { id = 'royaltactician', name = 'Royal Tactician', abr = 'RYT', role = 'Support' },
+        { id = 'scarletweaver',  name = 'Scarlet Weaver',  abr = 'SCW', role = 'Damage' },
+    },
+    THF =
+    {
+        { id = 'trickster', name = 'Trickster', abr = 'TRK', role = 'Support' },
+        { id = 'bandit',    name = 'Bandit',    abr = 'BND', role = 'Damage' },
+        { id = 'phantom',   name = 'Phantom',   abr = 'PHN', role = 'Tank' },
+    },
+    PLD =
+    {
+        { id = 'templar',     name = 'Templar',     abr = 'TMP', role = 'Healer' },
+        { id = 'defender',    name = 'Defender',    abr = 'DFN', role = 'Tank' },
+        { id = 'oathbreaker', name = 'Oathbreaker', abr = 'OTB', role = 'Damage' },
+    },
+    DRK =
+    {
+        { id = 'reaper',      name = 'Reaper',      abr = 'RPR', role = 'Damage' },
+        { id = 'dreadnought', name = 'Dreadnought', abr = 'DRN', role = 'Tank' },
+        { id = 'scourge',     name = 'Scourge',     abr = 'SCR', role = 'Support' },
+    },
+    BRD =
+    {
+        { id = 'adventurer', name = 'Adventurer', abr = 'ADV', role = 'Damage' },
+        { id = 'musician',   name = 'Musician',   abr = 'MUS', role = 'Support' },
+        { id = 'minstrel',   name = 'Minstrel',   abr = 'MIN', role = 'Tank' },
+    },
+    RNG =
+    {
+        { id = 'sniper',       name = 'Sniper',        abr = 'SNP', role = 'Damage' },
+        { id = 'huntsman',     name = 'Huntsman',      abr = 'HNT', role = 'Tank' },
+        { id = 'arcanearcher', name = 'Arcane Archer', abr = 'ACA', role = 'Support' },
+    },
+    SAM =
+    {
+        { id = 'ronin',          name = 'Ronin',           abr = 'RON', role = 'Tank' },
+        { id = 'imperialarcher', name = 'Imperial Archer', abr = 'IMP', role = 'Support' },
+        { id = 'warlord',        name = 'Warlord',         abr = 'WRL', role = 'Damage' },
+    },
+    NIN =
+    {
+        { id = 'kurogane',   name = 'Kurogane',   abr = 'KRG', role = 'Damage' },
+        { id = 'kagemusha',  name = 'Kagemusha',  abr = 'KGM', role = 'Tank' },
+        { id = 'nightblade', name = 'Nightblade', abr = 'NGB', role = 'Support' },
+    },
+    DRG =
+    {
+        { id = 'lancer',      name = 'Lancer',      abr = 'LNC', role = 'Damage' },
+        { id = 'skyborn',     name = 'Skyborn',     abr = 'SKY', role = 'Tank' },
+        { id = 'wyvernheart', name = 'Wyvernheart', abr = 'WYV', role = 'Healer' },
+    },
+    BLU =
+    {
+        { id = 'warmage',      name = 'Warmage',       abr = 'WMG', role = 'Damage' },
+        { id = 'magus',        name = 'Magus',         abr = 'MAG', role = 'Healer' },
+        { id = 'azurebastion', name = 'Azure Bastion', abr = 'AZB', role = 'Tank' },
+    },
+    COR =
+    {
+        { id = 'flintlock', name = 'Flintlock', abr = 'FLT', role = 'Damage' },
+        { id = 'gambler',   name = 'Gambler',   abr = 'GMB', role = 'Support' },
+        { id = 'buccaneer', name = 'Buccaneer', abr = 'BUC', role = 'Tank' },
+    },
+    DNC =
+    {
+        { id = 'freelancer', name = 'Freelancer', abr = 'FRL', role = 'Support' },
+        { id = 'vampire',    name = 'Vampire',    abr = 'VMP', role = 'Healer' },
+        { id = 'bladewheel', name = 'Bladewheel', abr = 'BLW', role = 'Damage' },
+    },
+    SCH =
+    {
+        { id = 'medic',     name = 'Medic',     abr = 'MDC', role = 'Healer' },
+        { id = 'sage',      name = 'Sage',      abr = 'SAG', role = 'Damage' },
+        { id = 'archivist', name = 'Archivist', abr = 'ARC', role = 'Support' },
+    },
+    BST =
+    {
+        { id = 'untamed',      name = 'Untamed',      abr = 'UNT', role = 'Damage' },
+        { id = 'soulbeast',    name = 'Soulbeast',    abr = 'SLB', role = 'Tank' },
+        { id = 'beastspeaker', name = 'Beastspeaker', abr = 'BSP', role = 'Support' },
+    },
+    SMN =
+    {
+        { id = 'primalist', name = 'Primalist', abr = 'PRM', role = 'Damage' },
+        { id = 'celestial', name = 'Celestial', abr = 'CEL', role = 'Healer' },
+        { id = 'herald',    name = 'Herald',    abr = 'HLD', role = 'Support' },
+    },
+    PUP =
+    {
+        { id = 'marionettist', name = 'Marionettist', abr = 'MRN', role = 'Tank' },
+        { id = 'pugilist',     name = 'Pugilist',     abr = 'PGL', role = 'Damage' },
+        { id = 'animist',      name = 'Animist',      abr = 'ANM', role = 'Healer' },
+    },
+    RUN =
+    {
+        { id = 'spellblade', name = 'Spellblade', abr = 'SPB', role = 'Damage' },
+        { id = 'lifebinder', name = 'Lifebinder', abr = 'LFB', role = 'Healer' },
+        { id = 'inquisitor', name = 'Inquisitor', abr = 'INQ', role = 'Tank' },
+    },
+    GEO =
+    {
+        { id = 'diviner',     name = 'Diviner',     abr = 'DIV', role = 'Support' },
+        { id = 'verdant',     name = 'Verdant',     abr = 'VRD', role = 'Healer' },
+        { id = 'terramancer', name = 'Terramancer', abr = 'TRM', role = 'Damage' },
+    },
+}
+
+local KEY_ALIASES =
+{
+    gladiator      = 'spartan',
+    aegistemplar   = 'templar',
+    alphawarden    = 'soulbeast',
+    vanguard       = 'marionettist',
+    miragesentinel = 'vampire',
+    caller         = 'celestial',
+}
+
+local function buildEntry(jobKey, entry)
     local out = {}
     for k, v in pairs(entry or {}) do
         out[k] = v
@@ -120,6 +267,20 @@ local function buildEntry(entry)
     out.reqLevel    = tonumber(out.reqLevel) or spec.DEFAULT_REQ_LEVEL
     out.description = out.description or ''
     out.highlights  = out.highlights or {}
+
+    local canonicalList = jobKey and spec.JOB_SPECS[jobKey] or nil
+    if canonicalList and out.key then
+        local targetKey = KEY_ALIASES[out.key] or out.key
+        for branchIdx, c in ipairs(canonicalList) do
+            if c.id == targetKey then
+                out.id            = branchIdx
+                out.abr           = c.abr
+                out.canonicalKey  = c.id
+                out.canonicalName = c.name
+                break
+            end
+        end
+    end
     return out
 end
 
@@ -128,8 +289,14 @@ local function indexEntry(job, jobId, entry)
     if entry.key ~= nil then
         job.byKey[entry.key] = entry
     end
+    if entry.canonicalKey ~= nil then
+        job.byKey[entry.canonicalKey] = entry
+    end
     if entry.name ~= nil then
         job.byName[normalizeKey(entry.name)] = entry
+    end
+    if entry.canonicalName ~= nil then
+        job.byName[normalizeKey(entry.canonicalName)] = entry
     end
     if entry.itemId ~= nil and entry.itemId > 0 then
         job.byItemId[entry.itemId] = entry
@@ -163,10 +330,11 @@ function spec.registerJob(jobId, jobKey, specs)
     end
 
     for _, rawEntry in ipairs(specs or {}) do
-        local entry = buildEntry(rawEntry)
+        local entry = buildEntry(normalizedJobKey, rawEntry)
         indexEntry(job, jobId, entry)
         table.insert(job.ordered, entry)
     end
+    table.sort(job.ordered, function(a, b) return a.id < b.id end)
 
     spec.jobs[jobId] = job
     spec.jobKeys[jobId] = normalizedJobKey
@@ -182,7 +350,7 @@ function spec.registerCrystal(jobId, rawEntry)
     end
 
     local job = spec.jobs[jobId]
-    local entry = buildEntry(rawEntry)
+    local entry = buildEntry(job.key, rawEntry)
     local replaced = false
     for idx, existing in ipairs(job.ordered) do
         if existing.id == entry.id or (entry.key ~= nil and existing.key == entry.key) then
@@ -198,6 +366,7 @@ function spec.registerCrystal(jobId, rawEntry)
     if not replaced then
         table.insert(job.ordered, entry)
     end
+    table.sort(job.ordered, function(a, b) return a.id < b.id end)
     indexEntry(job, jobId, entry)
     return entry
 end

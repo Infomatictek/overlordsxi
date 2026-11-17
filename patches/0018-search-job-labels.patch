@@ -2,7 +2,7 @@ diff --git a/src/search/data_loader.cpp b/src/search/data_loader.cpp
 index bfac8bb022..af11269240 100644
 --- a/src/search/data_loader.cpp
 +++ b/src/search/data_loader.cpp
-@@ -377,9 +377,19 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -377,9 +377,15 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
      ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
  
      constexpr auto everyone = db::Query(
@@ -12,11 +12,8 @@ index bfac8bb022..af11269240 100644
 -        "linkshellid1, linkshellid2 "
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
-+        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 2, 10, 12, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
-+        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
-+        "(mjob IN (4, 19) AND ox_spec.value = 1)"
-+        ") THEN ox_spec.value "
++        "WHEN mlvl >= 10 AND mjob BETWEEN 1 AND 22 AND ox_spec.value BETWEEN 1 AND 3 "
++        "THEN ox_spec.value "
 +        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
 +        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
 +        "THEN crystal_active.value "
@@ -24,7 +21,7 @@ index bfac8bb022..af11269240 100644
          "FROM accounts_sessions "
          "LEFT JOIN accounts_parties USING (charid) "
          "LEFT JOIN chars USING (charid) "
-@@ -387,14 +397,42 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -387,14 +393,56 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -32,11 +29,25 @@ index bfac8bb022..af11269240 100644
 +        "AND ox_spec.varname = CASE mjob "
 +        "WHEN 1 THEN 'OX_SPEC_WAR' "
 +        "WHEN 2 THEN 'OX_SPEC_MNK' "
++        "WHEN 3 THEN 'OX_SPEC_WHM' "
 +        "WHEN 4 THEN 'OX_SPEC_BLM' "
++        "WHEN 5 THEN 'OX_SPEC_RDM' "
++        "WHEN 6 THEN 'OX_SPEC_THF' "
++        "WHEN 7 THEN 'OX_SPEC_PLD' "
++        "WHEN 8 THEN 'OX_SPEC_DRK' "
++        "WHEN 9 THEN 'OX_SPEC_BST' "
 +        "WHEN 10 THEN 'OX_SPEC_BRD' "
++        "WHEN 11 THEN 'OX_SPEC_RNG' "
 +        "WHEN 12 THEN 'OX_SPEC_SAM' "
++        "WHEN 13 THEN 'OX_SPEC_NIN' "
++        "WHEN 14 THEN 'OX_SPEC_DRG' "
++        "WHEN 15 THEN 'OX_SPEC_SMN' "
++        "WHEN 16 THEN 'OX_SPEC_BLU' "
++        "WHEN 17 THEN 'OX_SPEC_COR' "
++        "WHEN 18 THEN 'OX_SPEC_PUP' "
 +        "WHEN 19 THEN 'OX_SPEC_DNC' "
 +        "WHEN 20 THEN 'OX_SPEC_SCH' "
++        "WHEN 21 THEN 'OX_SPEC_GEO' "
 +        "WHEN 22 THEN 'OX_SPEC_RUN' "
 +        "ELSE '' END "
 +        "AND (ox_spec.expiry = 0 OR ox_spec.expiry > UNIX_TIMESTAMP()) "
@@ -57,11 +68,8 @@ index bfac8bb022..af11269240 100644
 -        "linkshellid1, linkshellid2 "
 +        "linkshellid1, linkshellid2, "
 +        "CASE "
-+        "WHEN mlvl >= 10 AND ("
-+        "(mjob IN (1, 2, 10, 12, 22) AND ox_spec.value BETWEEN 1 AND 3) OR "
-+        "(mjob = 20 AND ox_spec.value BETWEEN 1 AND 2) OR "
-+        "(mjob IN (4, 19) AND ox_spec.value = 1)"
-+        ") THEN ox_spec.value "
++        "WHEN mlvl >= 10 AND mjob BETWEEN 1 AND 22 AND ox_spec.value BETWEEN 1 AND 3 "
++        "THEN ox_spec.value "
 +        "WHEN mjob = 1 AND crystal_active.value BETWEEN 1 AND 3 "
 +        "AND (crystal_owned.value & (1 << crystal_active.value)) <> 0 "
 +        "THEN crystal_active.value "
@@ -69,7 +77,7 @@ index bfac8bb022..af11269240 100644
          "FROM JSON_TABLE(?, '$[*]' COLUMNS (charid INT UNSIGNED PATH '$')) AS ids "
          "JOIN accounts_sessions USING (charid) "
          "LEFT JOIN accounts_parties USING (charid) "
-@@ -403,6 +440,24 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -403,6 +451,38 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
@@ -77,11 +85,25 @@ index bfac8bb022..af11269240 100644
 +        "AND ox_spec.varname = CASE mjob "
 +        "WHEN 1 THEN 'OX_SPEC_WAR' "
 +        "WHEN 2 THEN 'OX_SPEC_MNK' "
++        "WHEN 3 THEN 'OX_SPEC_WHM' "
 +        "WHEN 4 THEN 'OX_SPEC_BLM' "
++        "WHEN 5 THEN 'OX_SPEC_RDM' "
++        "WHEN 6 THEN 'OX_SPEC_THF' "
++        "WHEN 7 THEN 'OX_SPEC_PLD' "
++        "WHEN 8 THEN 'OX_SPEC_DRK' "
++        "WHEN 9 THEN 'OX_SPEC_BST' "
 +        "WHEN 10 THEN 'OX_SPEC_BRD' "
++        "WHEN 11 THEN 'OX_SPEC_RNG' "
 +        "WHEN 12 THEN 'OX_SPEC_SAM' "
++        "WHEN 13 THEN 'OX_SPEC_NIN' "
++        "WHEN 14 THEN 'OX_SPEC_DRG' "
++        "WHEN 15 THEN 'OX_SPEC_SMN' "
++        "WHEN 16 THEN 'OX_SPEC_BLU' "
++        "WHEN 17 THEN 'OX_SPEC_COR' "
++        "WHEN 18 THEN 'OX_SPEC_PUP' "
 +        "WHEN 19 THEN 'OX_SPEC_DNC' "
 +        "WHEN 20 THEN 'OX_SPEC_SCH' "
++        "WHEN 21 THEN 'OX_SPEC_GEO' "
 +        "WHEN 22 THEN 'OX_SPEC_RUN' "
 +        "ELSE '' END "
 +        "AND (ox_spec.expiry = 0 OR ox_spec.expiry > UNIX_TIMESTAMP()) "
@@ -94,7 +116,7 @@ index bfac8bb022..af11269240 100644
          "WHERE charname IS NOT NULL "
          "AND (? = 0 OR mjob = ?) "
          "AND (? = 0 OR (seacom_type & 0xF0) = ?) "
-@@ -435,6 +489,8 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -435,6 +515,8 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
              player.slvl     = rset->get<uint8>("slvl");
              player.race     = rset->get<uint8>("race");
  
@@ -119,7 +141,7 @@ diff --git a/src/search/packets/search_list.cpp b/src/search/packets/search_list
 index 181d1e8003..3222ceb915 100644
 --- a/src/search/packets/search_list.cpp
 +++ b/src/search/packets/search_list.cpp
-@@ -40,8 +40,31 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
+@@ -40,8 +40,16 @@ CSearchListPacket::CSearchListPacket(const uint32 Total)
      ref<uint16>(m_data, (0x0E)) = Total; // The total number of character found (may differ from the amount that gets sent)
  }
  
@@ -127,22 +149,7 @@ index 181d1e8003..3222ceb915 100644
 +{
 +constexpr auto isValidCrystalBranch(uint8 mjob, uint8 branch) -> bool
 +{
-+    switch (mjob)
-+    {
-+        case 1:  // WAR: Commander (1), Berserker (2), Gladiator (3)
-+        case 2:  // MNK: Sensei (1), Black Belt (2), Chi Weaver (3)
-+        case 10: // BRD: Adventurer (1), Musician (2), Minstrel (3)
-+        case 12: // SAM: Ronin (1), Imperial Archer (2), Warlord (3)
-+        case 22: // RUN: Inquisitor (1), Spellblade (2), Lifebinder (3)
-+            return branch >= 1 && branch <= 3;
-+        case 20: // SCH: Medic (1), Sage (2)
-+            return branch >= 1 && branch <= 2;
-+        case 4:  // BLM: Necromancer (1)
-+        case 19: // DNC: Bladewheel (1)
-+            return branch == 1;
-+        default:
-+            return false;
-+    }
++    return mjob >= 1 && mjob <= 22 && branch >= 1 && branch <= 3;
 +}
 +} // namespace
 +
@@ -152,7 +159,7 @@ index 181d1e8003..3222ceb915 100644
  {
      const uint32 size_offset = m_offset / 8;
      if ((sizeof(m_data) - size_offset) < (searchPacketTrailerSize + searchEntryMaxSize))
-@@ -92,7 +114,11 @@ auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
+@@ -92,7 +100,11 @@ auto CSearchListPacket::AddPlayer(const SearchEntity& player) -> bool
      // Retail sends SearchType::LinkshellRank here in SEARCH_ALL replies: three 8 bit ranks then three 32 bit linkshell ids.
  
      m_offset = packBitsLE(m_data, static_cast<uint64>(SearchType::Unknown0E), m_offset, 5);
