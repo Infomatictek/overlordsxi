@@ -28,9 +28,11 @@ local EFFECT_TRANQUIL_LOTUS = 829
 local EFFECT_INNER_HARMONY  = 830
 
 -- Custom Job Trait IDs (143, 153, 154)
-local TRAIT_SENSEI_FLOW       = 143
-local TRAIT_BLACKBELT_MASTERY = 153
-local TRAIT_CHIWEAVER_PULSE   = 154
+local TRAIT_SENSEI_FLOW        = 143
+local TRAIT_BLACKBELT_MASTERY  = 153
+local TRAIT_CHIWEAVER_PULSE    = 154
+local CHIWEAVER_MAX_STACKS     = 100
+local CHIWEAVER_BOOST_SUBPOWER = 2
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.RESONANT_CHI   = ABIL_RESONANT_CHI
@@ -305,10 +307,10 @@ local function cleanseDebuffs(entity, maxCount)
     return removed
 end
 
-local function getAlliedRecipientsNearCenter(caster, centerEntity, radius)
+local function getAlliedRecipientsNearCenter(caster, centerEntity, radius, secondaryCenter)
     local out  = {}
     local seen = {}
-    if caster == nil or centerEntity == nil then
+    if caster == nil or (centerEntity == nil and secondaryCenter == nil) then
         return out
     end
 
@@ -322,7 +324,13 @@ local function getAlliedRecipientsNearCenter(caster, centerEntity, radius)
         if id == nil or seen[id] then
             return
         end
-        if ent.checkDistance and centerEntity.checkDistance and centerEntity:checkDistance(ent) <= maxDist then
+        local inRange = false
+        if centerEntity ~= nil and centerEntity.checkDistance and centerEntity:checkDistance(ent) <= maxDist then
+            inRange = true
+        elseif secondaryCenter ~= nil and secondaryCenter.checkDistance and secondaryCenter:checkDistance(ent) <= maxDist then
+            inRange = true
+        end
+        if inRange then
             seen[id] = true
             table.insert(out, ent)
         end
@@ -356,12 +364,12 @@ local function getAlliedRecipientsNearCenter(caster, centerEntity, radius)
     return out
 end
 
-local function pulseHealAroundCenter(caster, centerEntity, baseHeal, radius, cleanseCount)
-    if caster == nil or centerEntity == nil or baseHeal <= 0 then
+local function pulseHealAroundCenter(caster, centerEntity, baseHeal, radius, cleanseCount, secondaryCenter)
+    if caster == nil or (centerEntity == nil and secondaryCenter == nil) or baseHeal <= 0 then
         return 0, 0
     end
 
-    local recipients = getAlliedRecipientsNearCenter(caster, centerEntity, radius or 12.0)
+    local recipients = getAlliedRecipientsNearCenter(caster, centerEntity, radius or 12.0, secondaryCenter)
     local totalHealed = 0
     local countHealed = 0
 
@@ -399,6 +407,76 @@ local function pulseHealAroundCenter(caster, centerEntity, baseHeal, radius, cle
     end
 
     return totalHealed, countHealed
+end
+
+-----------------------------------
+-- Chi Weaver Boost Stack Helpers (1..100 on xi.effect.BOOST)
+-----------------------------------
+local function getChiBoostStacks(player)
+    if player == nil or not player.getStatusEffect or not xi.effect or not xi.effect.BOOST then
+        return 0
+    end
+
+    local eff = player:getStatusEffect(xi.effect.BOOST)
+    if eff ~= nil and eff.getSubPower and eff:getSubPower() == CHIWEAVER_BOOST_SUBPOWER then
+        return utils.clamp(math.floor(eff:getPower() or 0), 0, CHIWEAVER_MAX_STACKS)
+    end
+
+    return 0
+end
+
+local function setChiBoostStacks(player, newStacks, notifyMilestones)
+    if player == nil then
+        return 0
+    end
+
+    local prev    = getChiBoostStacks(player)
+    local clamped = utils.clamp(math.floor(newStacks or 0), 0, CHIWEAVER_MAX_STACKS)
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_CHW_CHI_STACKS', clamped)
+    end
+
+    if xi.effect and xi.effect.BOOST then
+        if clamped <= 0 then
+            if player.getStatusEffect and player.delStatusEffectSilent then
+                local eff = player:getStatusEffect(xi.effect.BOOST)
+                if eff ~= nil and eff.getSubPower and eff:getSubPower() == CHIWEAVER_BOOST_SUBPOWER then
+                    player:delStatusEffectSilent(xi.effect.BOOST)
+                end
+            end
+            return 0
+        end
+
+        if player.delStatusEffectSilent and player.addStatusEffect then
+            player:delStatusEffectSilent(xi.effect.BOOST)
+            player:addStatusEffect(xi.effect.BOOST,
+            {
+                power    = clamped,
+                duration = 180,
+                origin   = player,
+                subPower = CHIWEAVER_BOOST_SUBPOWER,
+            })
+        end
+    end
+
+    if notifyMilestones and clamped > prev then
+        if clamped == CHIWEAVER_MAX_STACKS and prev < CHIWEAVER_MAX_STACKS then
+            tellRateLimited(player, string.format('Chi Weaver Boost: %d/%d (MAX) - Chi Blast ready!', clamped, CHIWEAVER_MAX_STACKS))
+        elseif math.floor(prev / 25) < math.floor(clamped / 25) then
+            tellRateLimited(player, string.format('Chi Weaver Boost: %d/%d stacks.', clamped, CHIWEAVER_MAX_STACKS))
+        end
+    end
+
+    return clamped
+end
+
+local function addChiBoostStacks(player, delta, notifyMilestones)
+    if player == nil then
+        return 0
+    end
+    local cur = getChiBoostStacks(player)
+    return setChiBoostStacks(player, cur + (delta or 1), notifyMilestones)
 end
 
 -----------------------------------
@@ -524,10 +602,17 @@ local function attachBlackBeltListeners(player)
     end)
 end
 
+local function computeChiPulseBaseHeal(player, lvl, mndStat, mult)
+    local curePot  = 1.0 + (math.max(0, (player.getMod and player:getMod(xi.mod.CURE_POTENCY)) or 0) / 100.0)
+    local h2hSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.HAND_TO_HAND) or 0) or 0
+    return math.max(10, math.floor((12 + (lvl * 1.4) + (mndStat * 1.05) + (h2hSkill * 0.12)) * curePot * (mult or 1.0)))
+end
+
 local function detachChiWeaverListeners(player)
     if player ~= nil and player.removeListener then
         player:removeListener('OX_CHW_WS')
     end
+    setChiBoostStacks(player, 0, false)
 end
 
 local function attachChiWeaverListeners(player)
@@ -537,24 +622,35 @@ local function attachChiWeaverListeners(player)
 
     detachChiWeaverListeners(player)
 
-    -- Flowing Chi: Landed bare-handed Hand-to-Hand Weaponskills work up to 20y and emit a TP-scaled 12y healing pulse around the target.
+    -- Flowing Chi: Landed bare-handed Hand-to-Hand Weaponskills work up to 20y, preserve & build Boost stacks, and emit a modest 12y healing pulse around the target.
     player:addListener('WEAPONSKILL_USE', 'OX_CHW_WS', function(actor, target, _ws, tp, _action, dmg)
+        if actor == nil or not isMonkSpec(actor, CHIWEAVER_KEY) then
+            return
+        end
+
+        -- Core LandSandBoat calculateRawWSDmg deletes xi.effect.BOOST during WS execution; restore Chi Weaver's stacked Boost buff.
+        local savedStacks = actor.getLocalVar and (actor:getLocalVar('OX_CHW_CHI_STACKS') or 0) or 0
+        if savedStacks > 0 and getChiBoostStacks(actor) == 0 then
+            setChiBoostStacks(actor, savedStacks, false)
+        end
+
         if
-            actor == nil or
             target == nil or
             target == actor or
             (dmg ~= nil and dmg <= 0) or
-            not isMonkSpec(actor, CHIWEAVER_KEY) or
             not isCompletelyUnarmed(actor)
         then
             return
         end
 
+        local tpVal      = math.max(1000, tonumber(tp) or 1000)
+        local wsStacks   = (tpVal >= 2000 and 5) or (tpVal >= 1500 and 4) or 3
+        addChiBoostStacks(actor, wsStacks, true)
+
         local lvl        = actor.getMainLvl and (actor:getMainLvl() or 10) or 10
         local mndStat    = actor.getStat and (actor:getStat(xi.mod.MND) or 10) or 10
         local hasHarmony = actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_INNER_HARMONY)
-        local tpVal      = math.max(1000, tonumber(tp) or 1000)
-        local pulseMult  = (1.15 + ((tpVal - 1000) / 2000.0) * 0.60) * (hasHarmony and 1.40 or 1.0)
+        local pulseMult  = (0.40 + ((tpVal - 1000) / 2000.0) * 0.25) * (hasHarmony and 1.40 or 1.0)
         local baseHeal   = computeChiPulseBaseHeal(actor, lvl, mndStat, pulseMult)
         local cleanse    = (tpVal >= 2000) and 1 or 0
         pulseHealAroundCenter(actor, target, baseHeal, 12.0, cleanse)
@@ -567,7 +663,7 @@ local function attachChiWeaverListeners(player)
             actor.addHP and
             actor:getHP() < actor:getMaxHP()
         then
-            actor:addHP(math.max(8, math.floor(baseHeal * 0.45)))
+            actor:addHP(math.max(4, math.floor(baseHeal * 0.35)))
         end
     end)
 end
@@ -575,12 +671,6 @@ end
 -----------------------------------
 -- Chi Weaver Ranged Chi Auto-Attack Entry Point (C++ Patch 0021)
 -----------------------------------
-local function computeChiPulseBaseHeal(player, lvl, mndStat, mult)
-    local curePot  = 1.0 + (math.max(0, (player.getMod and player:getMod(xi.mod.CURE_POTENCY)) or 0) / 100.0)
-    local h2hSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.HAND_TO_HAND) or 0) or 0
-    return math.max(10, math.floor((12 + (lvl * 1.4) + (mndStat * 1.05) + (h2hSkill * 0.12)) * curePot * (mult or 1.0)))
-end
-
 function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     if
         player == nil or
@@ -638,9 +728,7 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     local tgtMdef  = target.getMod and (target:getMod(xi.mod.MDEF) or 0) or 0
     local mabMult  = math.max(0.5, (100.0 + mab) / (100.0 + tgtMdef))
 
-    -- Boost empowers every fist of the round; C++ ExecuteChiRangedAttack clears OX_CHW_BOOST_NEXT after the loop.
-    local boostActive = player.getLocalVar and (player:getLocalVar('OX_CHW_BOOST_NEXT') == 1) or false
-    if boostActive and not isMultiRound and player.setLocalVar then
+    if player.setLocalVar then
         player:setLocalVar('OX_CHW_BOOST_NEXT', 0)
     end
 
@@ -648,7 +736,7 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     local hasFormless = player.hasStatusEffect and player:hasStatusEffect(xi.effect.FORMLESS_STRIKES)
     local hasHundred  = player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS)
 
-    local dmgMult = (boostActive and 1.50 or 1.0) * (hasHarmony and 1.40 or 1.0) * (hasFormless and 1.25 or 1.0)
+    local dmgMult = (hasHarmony and 1.40 or 1.0) * (hasFormless and 1.25 or 1.0)
     local rawDmg  = ((lvl * 1.45) + 8 + (mndStat * 0.65) + (h2hSkill * 0.14)) * mabMult * dmgMult * hitScale
     local dmg     = math.max(3, math.floor(rawDmg))
 
@@ -678,16 +766,17 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
         target:updateEnmityFromDamage(player, math.max(1, math.floor(dealt * 0.35)))
     end
 
-    -- Healing Pulse centered around the target mob (12y radius): heals party, Trusts, and pets!
-    local pulseMult = (boostActive and 1.50 or 1.0)
+    -- Stack +1 Boost stack per landed fist (up to 100) and emit a gentle 12y Chi pulse heal.
+    addChiBoostStacks(player, 1, true)
+
+    local pulseMult = 0.18
         * (hasHarmony and 1.40 or 1.0)
         * (hasFormless and 1.20 or 1.0)
         * (hasHundred and 1.25 or 1.0)
-        * hitScale
-    local baseHeal = math.max(6, computeChiPulseBaseHeal(player, lvl, mndStat, pulseMult))
+    local baseHeal = math.max(4, computeChiPulseBaseHeal(player, lvl, mndStat, pulseMult))
     pulseHealAroundCenter(player, target, baseHeal, 12.0, 0)
 
-    -- If firing from outside the 12y target pulse (12-20y), also channel a modest Chi mend to the Monk.
+    -- If firing from outside the 12y target pulse (12-20y), also channel a light Chi mend to the Monk.
     if
         player.checkDistance and
         player:checkDistance(target) > 12.0 and
@@ -696,7 +785,7 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
         player.addHP and
         player:getHP() < player:getMaxHP()
     then
-        player:addHP(math.max(4, math.floor(baseHeal * 0.45)))
+        player:addHP(math.max(3, math.floor(baseHeal * 0.35)))
     end
 
     return math.max(0, math.floor(dealt))
@@ -805,14 +894,14 @@ if xi.job and xi.job.MNK then
             chiRanged      = { minLevel = 10, maxRange = 20 },
             extraAbilities = { ABIL_RESONANT_CHI, ABIL_TRANQUIL_LOTUS, ABIL_INNER_HARMONY },
             extraTraits    = { TRAIT_CHIWEAVER_PULSE },
-            description    = 'Bare-handed Chi channeler (Lv10+): cannot equip weapons in Main or Sub slots, firing dual 20y Light Chi bolts from both fists and ranged Hand-to-Hand Weaponskills whose impacts emit a 12y AoE healing pulse around the target mob.',
+            description    = 'Bare-handed Chi channeler (Lv10+): cannot equip weapons in Main or Sub slots, firing dual 20y Light Chi bolts and ranged H2H Weaponskills that stack Boost up to 100 for massive 5s-CD Chi Blast 20y party heals.',
             highlights     =
             {
                 'Empty-Handed Vow: Cannot equip ANY weapon or item in Main or Sub slots (bare fists only).',
-                'Dual-Fist Chi & Ranged H2H WS (0-20y): Auto-attacks unleash both main & off-hand Light Chi bolts (plus Kick procs) and bare-handed Hand-to-Hand Weaponskills fire up to 20 yalms; every landed bolt or WS emits a 12y healing pulse around the mob (and mends the Monk beyond 12y).',
+                'Dual-Fist Chi & Boost Stacking (0-20y): Auto-attacks unleash main & off-hand Light Chi bolts (+Kick procs) and ranged H2H Weaponskills work up to 20y. Every landed bolt grants +1 Boost stack (WS +3/+4/+5, max 100, +1 Cure Pot/MACC/MAB per 5 stacks) plus light sustain pulses.',
                 'Passives (Lv10/30/50/70+): +8/12/16/20% Max HP, +8/16/26/38 Regen, +8/16/26/36 MND, +5/10/16/24 VIT, +12/20/28/35% Cure Potency, +8/15/24/35 H2H, +10/20/32/45 MACC, +8/15/24/34 MAB, -12/18/25/32 Enmity, -3/5/8/10% DT.',
                 'Custom JAs (Lv10+): Resonant Chi (20s CD, 20y Light burst + 1.75x target AoE heal & Cleanse), Tranquil Lotus (30s CD, 12y Party/Pet heal + 15s Regen, +Cure Rcvd, & Enmity-), Inner Harmony (45s CD, 18s +Cure Potency, +MAB/MACC, +Ability Haste, +Regen, & +40% Chi Bolt/Pulse power).',
-                'Healer MNK JAs: Boost (+50 TP, instant target pulse & +50% next Chi Bolt/Pulse round), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Chi Blast (+30% DMG + 65% target AoE heal), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
+                'Healer MNK JAs: Chi Blast (5s CD, 0 damage, consumes all 0-100 Boost stacks for a massive 20y party AoE heal + up to 3 debuff cleanses), Boost (+5 Boost stacks, +50 TP & light engaged pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
             },
             mods = function(_player, lvl)
                 return
@@ -1053,7 +1142,55 @@ m:addOverride('xi.effects.focus.onEffectGain', function(target, effect)
     end
 end)
 
+m:addOverride('xi.effects.boost.onEffectGain', function(target, effect)
+    if effect ~= nil and effect.getSubPower and effect:getSubPower() == CHIWEAVER_BOOST_SUBPOWER then
+        local stacks  = utils.clamp(math.floor(effect:getPower() or 0), 0, CHIWEAVER_MAX_STACKS)
+        local perFive = math.floor(stacks / 5)
+        if perFive > 0 then
+            effect:addMod(xi.mod.CURE_POTENCY, perFive)
+            effect:addMod(xi.mod.MACC, perFive)
+            effect:addMod(xi.mod.MATT, perFive)
+        end
+        return
+    end
+
+    super(target, effect)
+end)
+
 m:addOverride('xi.job_utils.monk.useBoost', function(player, target, ability)
+    if isMonkSpec(player, CHIWEAVER_KEY) then
+        local newStacks = addChiBoostStacks(player, 5, true)
+        if player.addTP then
+            player:addTP(50)
+        end
+
+        local engagedTarget = player.getTarget and player:getTarget() or nil
+        if
+            engagedTarget ~= nil and
+            engagedTarget.isAlive and
+            engagedTarget:isAlive() and
+            engagedTarget.isMob and
+            engagedTarget:isMob() and
+            player.checkDistance and
+            player:checkDistance(engagedTarget) <= 22.0
+        then
+            local lvl      = player.getMainLvl and (player:getMainLvl() or 10) or 10
+            local mndStat  = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
+            local baseHeal = computeChiPulseBaseHeal(player, lvl, mndStat, 0.40)
+            pulseHealAroundCenter(player, engagedTarget, baseHeal, 12.0, 0)
+        end
+
+        if player.printToPlayer then
+            player:printToPlayer(
+                string.format('Boost (+5): %d/%d Chi Weaver stacks.', newStacks, CHIWEAVER_MAX_STACKS),
+                xi.msg.channel.SYSTEM_3,
+                ''
+            )
+        end
+
+        return xi.effect.BOOST
+    end
+
     super(player, target, ability)
 
     if isMonkSpec(player, SENSEI_KEY) and isStaffEquipped(player) then
@@ -1075,33 +1212,56 @@ m:addOverride('xi.job_utils.monk.useBoost', function(player, target, ability)
             boostEff:addMod(xi.mod.CRITHITRATE, 8)
             boostEff:addMod(xi.mod.ALL_WSDMG_ALL_HITS, 15)
         end
-    elseif isMonkSpec(player, CHIWEAVER_KEY) then
-        if player.addTP then
-            player:addTP(50)
-        end
-        if player.setLocalVar then
-            player:setLocalVar('OX_CHW_BOOST_NEXT', 1)
-        end
-
-        local engagedTarget = player.getTarget and player:getTarget() or nil
-        if
-            engagedTarget ~= nil and
-            engagedTarget.isAlive and
-            engagedTarget:isAlive() and
-            engagedTarget.isMob and
-            engagedTarget:isMob() and
-            player.checkDistance and
-            player:checkDistance(engagedTarget) <= 22.0
-        then
-            local lvl = player.getMainLvl and (player:getMainLvl() or 10) or 10
-            local mndStat = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
-            local baseHeal = computeChiPulseBaseHeal(player, lvl, mndStat, 1.0)
-            pulseHealAroundCenter(player, engagedTarget, baseHeal, 12.0, 0)
-        end
     end
 end)
 
+m:addOverride('xi.actions.abilities.chi_blast.onAbilityCheck', function(player, target, ability)
+    local rc, p = super(player, target, ability)
+
+    if player ~= nil and player:isPC() and isMonkSpec(player, CHIWEAVER_KEY) then
+        if ability ~= nil and ability.setRecast then
+            ability:setRecast(5)
+        end
+    end
+
+    return rc, p
+end)
+
 m:addOverride('xi.job_utils.monk.useChiBlast', function(player, target, ability)
+    if isMonkSpec(player, CHIWEAVER_KEY) then
+        if player.setLocalVar then
+            player:setLocalVar('OX_CHIBLAST_PCT', 0)
+        end
+
+        local stacks     = getChiBoostStacks(player)
+        local lvl        = player.getMainLvl and (player:getMainLvl() or 10) or 10
+        local mndStat    = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
+        local hasHarmony = player.hasStatusEffect and player:hasStatusEffect(EFFECT_INNER_HARMONY)
+        local stackMult  = (0.50 + (stacks * 0.045) + ((stacks * stacks) / 10000.0) * 1.55)
+            * (hasHarmony and 1.25 or 1.0)
+        local baseHeal   = computeChiPulseBaseHeal(player, lvl, mndStat, stackMult)
+        local cleanse    = (stacks >= 80 and 3) or (stacks >= 50 and 2) or (stacks >= 25 and 1) or 0
+
+        setChiBoostStacks(player, 0, false)
+
+        local center = target or player
+        local _totalHealed, countHealed = pulseHealAroundCenter(player, center, baseHeal, 20.0, cleanse, player)
+
+        if ability ~= nil and ability.setMsg and xi.msg and xi.msg.basic then
+            ability:setMsg(xi.msg.basic.USES_JA or 100)
+        end
+
+        if stacks > 0 and player.printToPlayer then
+            player:printToPlayer(
+                string.format('Chi Blast consumes %d Boost stacks (%d allies healed within 20y)!', stacks, countHealed),
+                xi.msg.channel.SYSTEM_3,
+                ''
+            )
+        end
+
+        return 0
+    end
+
     local dmg = super(player, target, ability)
 
     if isMonkSpec(player, SENSEI_KEY) and target ~= nil and target ~= player then
@@ -1121,18 +1281,6 @@ m:addOverride('xi.job_utils.monk.useChiBlast', function(player, target, ability)
         if player.addTP then
             player:addTP(100)
         end
-    elseif isMonkSpec(player, CHIWEAVER_KEY) and target ~= nil and target ~= player then
-        local totalDmg = tonumber(dmg) or 0
-        if totalDmg > 0 and target.isAlive and target:isAlive() then
-            local lvl     = player.getMainLvl and (player:getMainLvl() or 10) or 10
-            local mndStat = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
-            local bonus   = math.max(4, math.floor(totalDmg * 0.30 + mndStat * 0.8 + lvl * 0.5))
-            target:takeDamage(bonus, player, xi.attackType.MAGICAL, xi.damageType.LIGHT)
-            totalDmg = totalDmg + bonus
-        end
-        local baseHeal = math.max(20, math.floor(math.max(totalDmg, 30) * 0.65))
-        pulseHealAroundCenter(player, target, baseHeal, 12.0, 0)
-        dmg = totalDmg
     end
 
     return dmg
@@ -1552,8 +1700,23 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
         player:removeListener('OX_MNK_WEAPON_GATE')
         player:addListener('TICK', 'OX_MNK_WEAPON_GATE', function(actor)
             enforceMnkWeaponGate(actor)
+            if isMonkSpec(actor, CHIWEAVER_KEY) and actor.getLocalVar and actor.setLocalVar then
+                local effStacks = getChiBoostStacks(actor)
+                local varStacks = actor:getLocalVar('OX_CHW_CHI_STACKS') or 0
+                if effStacks == 0 and varStacks > 0 then
+                    actor:setLocalVar('OX_CHW_CHI_STACKS', 0)
+                elseif effStacks > 0 and varStacks ~= effStacks then
+                    actor:setLocalVar('OX_CHW_CHI_STACKS', effStacks)
+                end
+            end
         end)
         enforceMnkWeaponGate(player)
+        if isMonkSpec(player, CHIWEAVER_KEY) and player.setLocalVar then
+            local effStacks = getChiBoostStacks(player)
+            if effStacks > 0 then
+                player:setLocalVar('OX_CHW_CHI_STACKS', effStacks)
+            end
+        end
 
         if isMonkSpec(player, SENSEI_KEY) then
             attachSenseiListeners(player)
