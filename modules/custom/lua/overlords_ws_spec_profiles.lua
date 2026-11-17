@@ -33,6 +33,8 @@ P.ALL_SPECS =
     'ronin',
     'imperialarcher',
     'warlord',
+    'aegistemplar',
+    'kagemusha',
 }
 
 local STAT_UP =
@@ -119,6 +121,9 @@ local EFF_IMP_DRAWN_OISOYA = 838
 local EFF_IMP_COSMIC_BRAND = 839
 local EFF_WARLORD_NOTO     = 840
 local EFF_WARLORD_ASHURA   = 841
+local EFF_AEGIS_ZEAL         = 842
+local EFF_AEGIS_CONSECRATION = 843
+local EFF_HOLY_RETRIBUTION   = 844
 
 local STANCE_DEFS =
 {
@@ -206,6 +211,16 @@ local STANCE_DEFS =
         jobSpec = 'warlord',
         effects = { xi.effect.HASSO, xi.effect.HAGAKURE, xi.effect.SENGIKORI, xi.effect.SEKKANOKI, xi.effect.MEIKYO_SHISUI, EFF_WARLORD_NOTO, EFF_WARLORD_ASHURA },
     },
+    aegistemplar = {
+        label   = 'Aegis/Zeal',
+        jobSpec = 'aegistemplar',
+        effects = { xi.effect.SENTINEL, xi.effect.RAMPART, xi.effect.MAJESTY, xi.effect.PALISADE, EFF_AEGIS_ZEAL, EFF_AEGIS_CONSECRATION, EFF_HOLY_RETRIBUTION },
+    },
+    kagemusha = {
+        label   = 'Yonin/Shadow',
+        jobSpec = 'kagemusha',
+        effects = { xi.effect.YONIN, xi.effect.FUTAE, xi.effect.COPY_IMAGE, xi.effect.ISSEKIGAN, 846 },
+    },
 }
 
 local SPEC_META =
@@ -226,6 +241,8 @@ local SPEC_META =
     ronin          = { pfx = 'ron', pref = 'vit', role = 'tank',   tag = 'Mushin',   col2 = 'Seigan',   t1c3 = 'Poise',     rmea = 'Stillness',   col1 = { 'Guard',     'Purify',    'Ward'      } },
     imperialarcher = { pfx = 'imp', pref = 'agi', role = 'dps',    tag = 'Oisoya',   col2 = 'Quiver',   t1c3 = 'Volley',    rmea = 'Elucidate',   col1 = { 'Draw',      'Salvo',     'Starfall'  } },
     warlord        = { pfx = 'wrl', pref = 'str', role = 'dps',    tag = 'Iaijutsu', col2 = 'Onimaru',  t1c3 = 'Rend',      rmea = 'Bloodquench', col1 = { 'Cut',       'Sever',     'Ashura'    } },
+    aegistemplar   = { pfx = 'aeg', pref = 'vit', role = 'tank',   tag = 'Bastion',  col2 = 'Aegis',    t1c3 = 'Zeal',      rmea = 'Sanctum',     col1 = { 'Bulwark',   'Intercept', 'Judgment'  } },
+    kagemusha      = { pfx = 'kag', pref = 'agi', role = 'tank',   tag = 'Phantom',  col2 = 'Decoy',    t1c3 = 'Smokescreen', rmea = 'Substitution', col1 = { 'Shadow',   'Veil',      'Shroud'    } },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
@@ -277,11 +294,11 @@ local function buildT1C1(specKey, ctx)
                 return mkFtpNode(name, c, ' & +1..6% HP/+Enm',
                     function(r) return string.format(', +%d%% HP/+%d Enm', r, r * 6) end,
                     { selfMaxHpHealPct = lin(1, 6), enmity = lin(6, 6) })
-            elseif specKey == 'sensei' or specKey == 'ronin' then
+            elseif specKey == 'sensei' or specKey == 'ronin' or specKey == 'kagemusha' then
                 return mkFtpNode(name, c, ' & +5..30 Enm/+SB',
                     function(r) return string.format(', +%d Enm/+%d SB', r * 5, r * 3) end,
                     { enmity = lin(5, 6), subtleBlow = lin(3, 6) })
-            elseif specKey == 'inquisitor' then
+            elseif specKey == 'inquisitor' or specKey == 'aegistemplar' then
                 return mkFtpNode(name, c, ' & +7..42 Enmity',
                     function(r) return string.format(', +%d Enm', r * 7) end,
                     { enmity = lin(7, 6) })
@@ -308,12 +325,12 @@ local function buildT1C1(specKey, ctx)
                 '+12..72% Potency & Self +1..6% Max HP',
                 function(r) return string.format('+%d%% Potency, Self +%d%% HP', r * 12, r) end,
                 { potencyPct = lin(12, 6), selfMaxHpHealPct = lin(1, 6), enmity = lin(5, 6) })
-        elseif specKey == 'sensei' or specKey == 'ronin' then
+        elseif specKey == 'sensei' or specKey == 'ronin' or specKey == 'kagemusha' then
             return mkNode(1, 1, 'ftp', name, 6,
                 '+12..72% Potency, +5..30 Enm & +3..18 SB',
                 function(r) return string.format('+%d%% Pot, +%d Enm/+%d SB', r * 12, r * 5, r * 3) end,
                 { potencyPct = lin(12, 6), enmity = lin(5, 6), subtleBlow = lin(3, 6) })
-        elseif specKey == 'inquisitor' then
+        elseif specKey == 'inquisitor' or specKey == 'aegistemplar' then
             return mkNode(1, 1, 'ftp', name, 6,
                 '+12..72% Potency & +7..42 Enmity',
                 function(r) return string.format('+%d%% Potency, +%d Enmity', r * 12, r * 7) end,
@@ -416,7 +433,7 @@ local function buildT1C1(specKey, ctx)
         return mkFtpNode(name, c, ' & +6..36 Acc/+STP',
             function(r) return string.format(', +%d Acc/+%d STP', r * 6, r * 5) end,
             { acc = lin(6, 6), storeTp = lin(5, 6) })
-    elseif specKey == 'ronin' then
+    elseif specKey == 'ronin' or specKey == 'aegistemplar' or specKey == 'kagemusha' then
         return mkFtpNode(name, c, ' & +6..36 Enm/+HP',
             function(r) return string.format(', +%d Enm/+%d%% HP', r * 6, math.ceil(r / 2)) end,
             { enmity = lin(6, 6), selfMaxHpHealPct = { 1, 1, 2, 2, 3, 3 } })
@@ -587,7 +604,7 @@ local function buildT1C2(specKey, ctx)
             function(r) return string.format('%s, +%d%% R.Atk/+%d%% Snap', fmtWscShort(u1, u2, r), ratk[r], snap[r]) end,
             { wsc = wsc, postBuff = { effect = xi.effect.POTENCY, duration = 15, mods = {{ mod = xi.mod.RATTP, val = ratk }, { mod = xi.mod.SNAPSHOT, val = snap }} } })
 
-    elseif specKey == 'ronin' then
+    elseif specKey == 'ronin' or specKey == 'aegistemplar' or specKey == 'kagemusha' then
         local pry = lin(2, 7)
         local ctr = lin(2, 7)
         return mkNode(1, 2, key, name, 7,
@@ -630,12 +647,12 @@ local function buildT1C3(specKey, ctx)
                 string.format('1->%d Hits, +5..35 Enm & +HP', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d%% HP', hSeq[r], r * 5, math.ceil(r / 2)) end,
                 { hits = hSeq, enmity = lin(5, 7), selfMaxHpHealPct = { 1, 1, 2, 2, 3, 3, 4 } })
-        elseif specKey == 'sensei' or specKey == 'ronin' then
+        elseif specKey == 'sensei' or specKey == 'ronin' or specKey == 'kagemusha' then
             return mkNode(1, 3, key, name, 7,
                 string.format('1->%d Hits, +4..28 Enm & +SB', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d SB', hSeq[r], r * 4, r * 3) end,
                 { hits = hSeq, enmity = lin(4, 7), subtleBlow = lin(3, 7) })
-        elseif specKey == 'inquisitor' then
+        elseif specKey == 'inquisitor' or specKey == 'aegistemplar' then
             return mkNode(1, 3, key, name, 7,
                 string.format('1->%d Hits, +6..42 Enm & +MACC', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d MACC', hSeq[r], r * 6, r * 4) end,
@@ -2037,7 +2054,7 @@ local function buildCol2Nodes(specKey, ctx)
             end
         end
 
-    elseif specKey == 'ronin' then
+    elseif specKey == 'ronin' or specKey == 'aegistemplar' or specKey == 'kagemusha' then
         if v == 1 then
             t2 = mkNode(2, 2, k2, m .. ' Stagger', 5,
                 'Stoneskin 80..400 & +7..35 Enmity',
@@ -2262,6 +2279,8 @@ local STANCE_TITLES =
     ronin          = { 'Seigan-St',  'Mushin-St', 'Third-Eye', 'Warding'   },
     imperialarcher = { 'Oisoya-St',  'Hasso-St',  'Sengikori', 'Cosmic-St' },
     warlord        = { 'Noto-St',    'Ashura-St', 'Hagakure',  'Iai-Edge'  },
+    aegistemplar   = { 'Sentinel-St','Consecrate','Rampart-St','Invincible'},
+    kagemusha      = { 'Yonin-St',   'Bunshin-St','Smoke-St',  'Shadow-St' },
 }
 
 local T3C3_TITLES =
@@ -2282,6 +2301,8 @@ local T3C3_TITLES =
     ronin          = { 'Riposte',   'Calm',      'Purify',    'Balance'   },
     imperialarcher = { 'Nocking',   'Drawcut',   'Wind-Bolt', 'Elucidate' },
     warlord        = { 'Bloodlust', 'Ravage',    'Quench',    'Cleave'    },
+    aegistemplar   = { 'Intercept', 'Zeal',      'Absolve',   'Sanctify'  },
+    kagemusha      = { 'Decoy',     'Smoke',     'Shroud',    'Mirage'    },
     generic        = { 'Precision', 'Impact',    'Momentum',  'Edge'      },
 }
 
@@ -2303,6 +2324,8 @@ local T4C3_TITLES =
     ronin          = { 'Kensei',    'Grandmaster','Zanshin',  'Ronin'     },
     imperialarcher = { 'Bow-Saint', 'Tenzen',    'Kensei-Bow','Starfall'  },
     warlord        = { 'Asura',     'Muramasa',  'Shogun',    'Warfiend'  },
+    aegistemplar   = { 'Templar',   'Bastion',   'Archon',    'Seraphim'  },
+    kagemusha      = { 'Kagemusha', 'Shinobi',   'Phantom',   'Eclipse'   },
     generic        = { 'Prowess',   'Zenith',    'Mastery',   'Triumph'   },
 }
 
@@ -2482,6 +2505,8 @@ local NO_SPIKE_SPECS =
     sensei     = true,
     inquisitor = true,
     ronin      = true,
+    aegistemplar = true,
+    kagemusha  = true,
     chiweaver  = true,
     lifebinder = true,
     medic      = true,
@@ -2657,6 +2682,8 @@ P.ALLOWED_SKILLS_BY_SPEC =
     ronin          = { [S.GREAT_KATANA or 10] = true },
     warlord        = { [S.GREAT_KATANA or 10] = true },
     imperialarcher = { [S.GREAT_KATANA or 10] = true, [S.ARCHERY or 25] = true },
+    aegistemplar   = { [S.CLUB or 11] = true },
+    kagemusha      = { [S.KATANA or 9] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)
