@@ -1,14 +1,14 @@
 -----------------------------------
--- OverlordsXI 14-Spec Bespoke Weaponskill Tree Synthesis Engine
+-- OverlordsXI 16-Spec Bespoke Weaponskill Tree Synthesis Engine
 -- Generates 12 unique, combat-backed non-SC talent nodes (3 cols x 4 tiers)
--- for every (WS, Spec) pair across all 14 concrete specs:
+-- for every (WS, Spec) pair across all 16 concrete specs:
 --   WAR: commander, berserker, gladiator
 --   MNK: sensei, blackbelt, chiweaver (strictly 0 MP / 0 Refresh)
 --   RUN: inquisitor, spellblade, lifebinder
 --   SCH: medic, sage
 --   BLM: necromancer
 --   DNC: bladewheel
---   SAM: imperialarcher
+--   SAM: ronin, imperialarcher, warlord
 -----------------------------------
 local talents = xi.overlords and xi.overlords.wsTalents
 local DNA     = require('modules/custom/lua/overlords_ws_dna')
@@ -30,7 +30,9 @@ P.ALL_SPECS =
     'sage',
     'necromancer',
     'bladewheel',
+    'ronin',
     'imperialarcher',
+    'warlord',
 }
 
 local STAT_UP =
@@ -112,8 +114,11 @@ local EFF_SPB_COND    = 827
 local EFF_SPB_ASCEND  = 828
 local EFF_CHW_LOTUS        = 829
 local EFF_CHW_HARMONY      = 830
+local EFF_RONIN_STAGGER    = 837
 local EFF_IMP_DRAWN_OISOYA = 838
 local EFF_IMP_COSMIC_BRAND = 839
+local EFF_WARLORD_NOTO     = 840
+local EFF_WARLORD_ASHURA   = 841
 
 local STANCE_DEFS =
 {
@@ -191,24 +196,36 @@ local STANCE_DEFS =
         jobSpec = 'imperialarcher',
         effects = { xi.effect.HASSO, xi.effect.SENGIKORI, xi.effect.MEIKYO_SHISUI, xi.effect.SHARPSHOT, xi.effect.VELOCITY_SHOT, EFF_IMP_DRAWN_OISOYA, EFF_IMP_COSMIC_BRAND },
     },
+    ronin = {
+        label   = 'Seigan/Mushin',
+        jobSpec = 'ronin',
+        effects = { xi.effect.SEIGAN, xi.effect.THIRD_EYE, xi.effect.WARDING_CIRCLE, xi.effect.MEIKYO_SHISUI, EFF_RONIN_STAGGER },
+    },
+    warlord = {
+        label   = 'Noto/Ashura',
+        jobSpec = 'warlord',
+        effects = { xi.effect.HASSO, xi.effect.HAGAKURE, xi.effect.SENGIKORI, xi.effect.SEKKANOKI, xi.effect.MEIKYO_SHISUI, EFF_WARLORD_NOTO, EFF_WARLORD_ASHURA },
+    },
 }
 
 local SPEC_META =
 {
-    commander      = { pfx = 'cmd', pref = 'str', role = 'dps',    tag = 'Banner',   col2 = 'Rally',    t1c3 = 'Tactic',    rmea = 'Signet',    col1 = { 'Order',     'Salvo',     'Decree'    } },
-    berserker      = { pfx = 'zrk', pref = 'str', role = 'dps',    tag = 'Fury',     col2 = 'Carnage',  t1c3 = 'Ruin',      rmea = 'Roar',      col1 = { 'Wrath',     'Bloodbath', 'Butchery'  } },
-    gladiator      = { pfx = 'gld', pref = 'vit', role = 'tank',   tag = 'Pit',      col2 = 'Crimson',  t1c3 = 'Challenge', rmea = 'Crest',     col1 = { 'Brace',     'Pitwall',   'Arena'     } },
-    sensei         = { pfx = 'sen', pref = 'vit', role = 'tank',   tag = 'Kata',     col2 = 'Riposte',  t1c3 = 'Form',      rmea = 'Kamae',     col1 = { 'Stance',    'Kataform',  'Dojomaster'} },
-    blackbelt      = { pfx = 'bbt', pref = 'dex', role = 'dps',    tag = 'Fist',     col2 = 'Meridian', t1c3 = 'Tempo',     rmea = 'Oath',      col1 = { 'Strike',    'Combo',     'Finisher'  } },
-    chiweaver      = { pfx = 'chw', pref = 'mnd', role = 'healer', tag = 'Chi',      col2 = 'Lotus',    t1c3 = 'Chakra',    rmea = 'Mantra',    col1 = { 'Flow',      'Calm',      'Mandala'   }, noMp = true },
-    inquisitor     = { pfx = 'inq', pref = 'vit', role = 'tank',   tag = 'Verdict',  col2 = 'Inquest',  t1c3 = 'Edict',     rmea = 'Seal',      col1 = { 'Warding',   'Indict',    'Tribunal'  } },
-    spellblade     = { pfx = 'spb', pref = 'int', role = 'dps',    tag = 'Rune',     col2 = 'Sigil',    t1c3 = 'Glyph',     rmea = 'Brand',     col1 = { 'Etching',   'Runesurge', 'Arcflash'  } },
-    lifebinder     = { pfx = 'lfb', pref = 'mnd', role = 'healer', tag = 'Pulse',    col2 = 'Sanctum',  t1c3 = 'Grace',     rmea = 'Relicvow',  col1 = { 'Bloom',     'Solace',    'Chalice'   } },
-    medic          = { pfx = 'med', pref = 'mnd', role = 'healer', tag = 'Triage',   col2 = 'Eos',      t1c3 = 'Remedy',    rmea = 'Caduceus',  col1 = { 'Aid',       'Panacea',   'Miracle'   }, pet = true },
-    sage           = { pfx = 'sag', pref = 'int', role = 'mage',   tag = 'Theorem',  col2 = 'Titania',  t1c3 = 'Axiom',     rmea = 'Codex',     col1 = { 'Formula',   'Proof',     'Cathedra'  }, pet = true },
-    necromancer    = { pfx = 'nec', pref = 'int', role = 'mage',   tag = 'Grave',    col2 = 'Ossuary',  t1c3 = 'Curse',     rmea = 'Reliquary', col1 = { 'Hex',       'Blight',    'Sepulcher' }, pet = true },
-    bladewheel     = { pfx = 'blw', pref = 'dex', role = 'dps',    tag = 'Waltz',    col2 = 'Chakram',  t1c3 = 'Step',      rmea = 'Ovation',   col1 = { 'Twirl',     'Spin',      'Crescendo' } },
-    imperialarcher = { pfx = 'imp', pref = 'agi', role = 'dps',    tag = 'Oisoya',   col2 = 'Quiver',   t1c3 = 'Volley',    rmea = 'Elucidate', col1 = { 'Draw',      'Salvo',     'Starfall'  } },
+    commander      = { pfx = 'cmd', pref = 'str', role = 'dps',    tag = 'Banner',   col2 = 'Rally',    t1c3 = 'Tactic',    rmea = 'Signet',      col1 = { 'Order',     'Salvo',     'Decree'    } },
+    berserker      = { pfx = 'zrk', pref = 'str', role = 'dps',    tag = 'Fury',     col2 = 'Carnage',  t1c3 = 'Ruin',      rmea = 'Roar',        col1 = { 'Wrath',     'Bloodbath', 'Butchery'  } },
+    gladiator      = { pfx = 'gld', pref = 'vit', role = 'tank',   tag = 'Pit',      col2 = 'Crimson',  t1c3 = 'Challenge', rmea = 'Crest',       col1 = { 'Brace',     'Pitwall',   'Arena'     } },
+    sensei         = { pfx = 'sen', pref = 'vit', role = 'tank',   tag = 'Kata',     col2 = 'Riposte',  t1c3 = 'Form',      rmea = 'Kamae',       col1 = { 'Stance',    'Kataform',  'Dojomaster'} },
+    blackbelt      = { pfx = 'bbt', pref = 'dex', role = 'dps',    tag = 'Fist',     col2 = 'Meridian', t1c3 = 'Tempo',     rmea = 'Oath',        col1 = { 'Strike',    'Combo',     'Finisher'  } },
+    chiweaver      = { pfx = 'chw', pref = 'mnd', role = 'healer', tag = 'Chi',      col2 = 'Lotus',    t1c3 = 'Chakra',    rmea = 'Mantra',      col1 = { 'Flow',      'Calm',      'Mandala'   }, noMp = true },
+    inquisitor     = { pfx = 'inq', pref = 'vit', role = 'tank',   tag = 'Verdict',  col2 = 'Inquest',  t1c3 = 'Edict',     rmea = 'Seal',        col1 = { 'Warding',   'Indict',    'Tribunal'  } },
+    spellblade     = { pfx = 'spb', pref = 'int', role = 'dps',    tag = 'Rune',     col2 = 'Sigil',    t1c3 = 'Glyph',     rmea = 'Brand',       col1 = { 'Etching',   'Runesurge', 'Arcflash'  } },
+    lifebinder     = { pfx = 'lfb', pref = 'mnd', role = 'healer', tag = 'Pulse',    col2 = 'Sanctum',  t1c3 = 'Grace',     rmea = 'Relicvow',    col1 = { 'Bloom',     'Solace',    'Chalice'   } },
+    medic          = { pfx = 'med', pref = 'mnd', role = 'healer', tag = 'Triage',   col2 = 'Eos',      t1c3 = 'Remedy',    rmea = 'Caduceus',    col1 = { 'Aid',       'Panacea',   'Miracle'   }, pet = true },
+    sage           = { pfx = 'sag', pref = 'int', role = 'mage',   tag = 'Theorem',  col2 = 'Titania',  t1c3 = 'Axiom',     rmea = 'Codex',       col1 = { 'Formula',   'Proof',     'Cathedra'  }, pet = true },
+    necromancer    = { pfx = 'nec', pref = 'int', role = 'mage',   tag = 'Grave',    col2 = 'Ossuary',  t1c3 = 'Curse',     rmea = 'Reliquary',   col1 = { 'Hex',       'Blight',    'Sepulcher' }, pet = true },
+    bladewheel     = { pfx = 'blw', pref = 'dex', role = 'dps',    tag = 'Waltz',    col2 = 'Chakram',  t1c3 = 'Step',      rmea = 'Ovation',     col1 = { 'Twirl',     'Spin',      'Crescendo' } },
+    ronin          = { pfx = 'ron', pref = 'vit', role = 'tank',   tag = 'Mushin',   col2 = 'Seigan',   t1c3 = 'Poise',     rmea = 'Stillness',   col1 = { 'Guard',     'Purify',    'Ward'      } },
+    imperialarcher = { pfx = 'imp', pref = 'agi', role = 'dps',    tag = 'Oisoya',   col2 = 'Quiver',   t1c3 = 'Volley',    rmea = 'Elucidate',   col1 = { 'Draw',      'Salvo',     'Starfall'  } },
+    warlord        = { pfx = 'wrl', pref = 'str', role = 'dps',    tag = 'Iaijutsu', col2 = 'Onimaru',  t1c3 = 'Rend',      rmea = 'Bloodquench', col1 = { 'Cut',       'Sever',     'Ashura'    } },
 }
 
 local function makeStanceTable(specKey, fields)
@@ -259,7 +276,7 @@ local function buildT1C1(specKey, ctx)
                 return mkFtpNode(name, c, ' & +1..6% HP/+Enm',
                     function(r) return string.format(', +%d%% HP/+%d Enm', r, r * 6) end,
                     { selfMaxHpHealPct = lin(1, 6), enmity = lin(6, 6) })
-            elseif specKey == 'sensei' then
+            elseif specKey == 'sensei' or specKey == 'ronin' then
                 return mkFtpNode(name, c, ' & +5..30 Enm/+SB',
                     function(r) return string.format(', +%d Enm/+%d SB', r * 5, r * 3) end,
                     { enmity = lin(5, 6), subtleBlow = lin(3, 6) })
@@ -290,7 +307,7 @@ local function buildT1C1(specKey, ctx)
                 '+12..72% Potency & Self +1..6% Max HP',
                 function(r) return string.format('+%d%% Potency, Self +%d%% HP', r * 12, r) end,
                 { potencyPct = lin(12, 6), selfMaxHpHealPct = lin(1, 6), enmity = lin(5, 6) })
-        elseif specKey == 'sensei' then
+        elseif specKey == 'sensei' or specKey == 'ronin' then
             return mkNode(1, 1, 'ftp', name, 6,
                 '+12..72% Potency, +5..30 Enm & +3..18 SB',
                 function(r) return string.format('+%d%% Pot, +%d Enm/+%d SB', r * 12, r * 5, r * 3) end,
@@ -398,6 +415,19 @@ local function buildT1C1(specKey, ctx)
         return mkFtpNode(name, c, ' & +6..36 Acc/+STP',
             function(r) return string.format(', +%d Acc/+%d STP', r * 6, r * 5) end,
             { acc = lin(6, 6), storeTp = lin(5, 6) })
+    elseif specKey == 'ronin' then
+        return mkFtpNode(name, c, ' & +6..36 Enm/+HP',
+            function(r) return string.format(', +%d Enm/+%d%% HP', r * 6, math.ceil(r / 2)) end,
+            { enmity = lin(6, 6), selfMaxHpHealPct = { 1, 1, 2, 2, 3, 3 } })
+    elseif specKey == 'warlord' then
+        if ctx.isMag then
+            return mkFtpNode(name, c, ' & +6..36 MAB/+WSD',
+                function(r) return string.format(', +%d MAB/+%d%% WSD', r * 6, r * 2) end,
+                { matt = lin(6, 6), wsd = lin(2, 6) })
+        end
+        return mkFtpNode(name, c, ' & +4..24% Atk/+CrDmg',
+            function(r) return string.format(', +%d%% Atk/+%d%% CrDmg', r * 4, r * 3) end,
+            { atkPct = lin(4, 6), critDmg = lin(3, 6) })
     end
 
     -- berserker
@@ -555,6 +585,22 @@ local function buildT1C2(specKey, ctx)
             string.format('%s & +4..28%% R.Atk/+Snap (15s)', wz),
             function(r) return string.format('%s, +%d%% R.Atk/+%d%% Snap', fmtWscShort(u1, u2, r), ratk[r], snap[r]) end,
             { wsc = wsc, postBuff = { effect = xi.effect.POTENCY, duration = 15, mods = {{ mod = xi.mod.RATTP, val = ratk }, { mod = xi.mod.SNAPSHOT, val = snap }} } })
+
+    elseif specKey == 'ronin' then
+        local pry = lin(2, 7)
+        local ctr = lin(2, 7)
+        return mkNode(1, 2, key, name, 7,
+            string.format('%s & +2..14%% Parry/Counter (15s)', wz),
+            function(r) return string.format('%s, +%d%% Pry/Ctr', fmtWscShort(u1, u2, r), pry[r]) end,
+            { wsc = wsc, postBuff = { effect = xi.effect.SUBTLE_BLOW_PLUS, duration = 15, mods = {{ mod = xi.mod.PARRY, val = pry }, { mod = xi.mod.COUNTER, val = ctr }} } })
+
+    elseif specKey == 'warlord' then
+        local zan = lin(4, 7)
+        local crt = lin(2, 7)
+        return mkNode(1, 2, key, name, 7,
+            string.format('%s & +4..28 Zan/+2..14%% Crit (15s)', wz),
+            function(r) return string.format('%s, +%d Zan/+%d%% Crit', fmtWscShort(u1, u2, r), zan[r], crt[r]) end,
+            { wsc = wsc, postBuff = { effect = xi.effect.POTENCY, duration = 15, mods = {{ mod = xi.mod.ZANSHIN, val = zan }, { mod = xi.mod.CRITHITRATE, val = crt }} } })
     end
 
     -- berserker (used on Club/Staff full builds)
@@ -583,7 +629,7 @@ local function buildT1C3(specKey, ctx)
                 string.format('1->%d Hits, +5..35 Enm & +HP', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d%% HP', hSeq[r], r * 5, math.ceil(r / 2)) end,
                 { hits = hSeq, enmity = lin(5, 7), selfMaxHpHealPct = { 1, 1, 2, 2, 3, 3, 4 } })
-        elseif specKey == 'sensei' then
+        elseif specKey == 'sensei' or specKey == 'ronin' then
             return mkNode(1, 3, key, name, 7,
                 string.format('1->%d Hits, +4..28 Enm & +SB', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d SB', hSeq[r], r * 4, r * 3) end,
@@ -1983,11 +2029,156 @@ local function buildCol2Nodes(specKey, ctx)
                         { mod = xi.mod.ZANSHIN, val = lin(5, 5) },
                         { mod = xi.mod.RATTP, val = lin(6, 5) },
                     } } })
-                t4 = mkNode(4, 2, k4, m .. ' Starfall', 5,
+                t4 = mkNode(4, 2, k4, m .. ' Eclipse', 5,
                     '+0.18..0.90 fTP & +6..30% WSD',
                     function(r) return string.format('+%.2f fTP, +%d%% WSD', r * 0.18, r * 6) end,
                     { ftpAdd = lin(0.18, 5), wsd = lin(6, 5) })
             end
+        end
+
+    elseif specKey == 'ronin' then
+        if v == 1 then
+            t2 = mkNode(2, 2, k2, m .. ' Stagger', 5,
+                'Stoneskin 80..400 & +7..35 Enmity',
+                function(r) return string.format('Stoneskin %d, +%d Enmity', r * 80, r * 7) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(80, 5), duration = 45, tier = 3 }}, enmity = lin(7, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Stillwater', 5,
+                'Self Heal 3..15% Max HP & +5..25 Subtle Blow',
+                function(r) return string.format('Self +%d%% MaxHP, +%d SB', r * 3, r * 5) end,
+                { selfMaxHpHealPct = lin(3, 5), subtleBlow = lin(5, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Bastion', 5,
+                'Phalanx 12..28 (35s) & +6..30% WSD',
+                function(r) return string.format('Phalanx %d, +%d%% WSD', 8 + r * 4, r * 6) end,
+                { statusBuffs = {{ effect = xi.effect.PHALANX, power = { 12, 16, 20, 24, 28 }, duration = 35 }}, wsd = lin(6, 5) })
+        elseif v == 2 then
+            t2 = mkNode(2, 2, k2, m .. ' Counter', 5,
+                'Post-WS +3..15% Counter & +4..20% DEF (18s)',
+                function(r) return string.format('+%d%% Counter, +%d%% DEF (18s)', r * 3, r * 4) end,
+                { postBuff = { effect = xi.effect.SUBTLE_BLOW_PLUS, duration = 18, mods = {
+                    { mod = xi.mod.COUNTER, val = lin(3, 5) },
+                    { mod = xi.mod.DEFP, val = lin(4, 5) },
+                } } })
+            t3 = mkNode(3, 2, k3, n .. ' Hamanoha', 5,
+                'Target -4..20% Atk & -8..40 Acc (45s)',
+                function(r) return string.format('Foe -%d%% Atk, -%d Acc', r * 4, r * 8) end,
+                { targetDebuffs = {
+                    { effect = xi.effect.ATTACK_DOWN, power = lin(4, 5), duration = 45 },
+                    { effect = xi.effect.ACCURACY_DOWN, power = lin(8, 5), duration = 45 },
+                } })
+            t4 = mkNode(4, 2, k4, m .. ' Purity', 5,
+                'Cleanse 1 Debuff, +6..30% WSD & +8..40 Enmity',
+                function(r) return string.format('Cleanse 1, +%d%% WSD, +%d Enm', r * 6, r * 8) end,
+                { cleanseSelf = { 1, 1, 1, 1, 1 }, wsd = lin(6, 5), enmity = lin(8, 5) })
+        elseif v == 3 then
+            t2 = mkNode(2, 2, k2, m .. ' Unsheathe', 5,
+                'Dispels 1..2 Foe Buffs & +7..35 Enmity',
+                function(r) return string.format('Dispel %d Buff(s), +%d Enm', r >= 4 and 2 or 1, r * 7) end,
+                { dispel = { 1, 1, 1, 2, 2 }, enmity = lin(7, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Bind', 5,
+                'Target -4..20% M.Atk & Slow 9..25% (45s)',
+                function(r) return string.format('Foe -%d%% M.Atk, Slow %d%%', r * 4, 5 + r * 4) end,
+                { targetDebuffs = {
+                    { effect = xi.effect.MAGIC_ATK_DOWN, power = lin(4, 5), duration = 45 },
+                    { effect = xi.effect.SLOW, power = { 900, 1300, 1700, 2100, 2500 }, duration = 45 },
+                } })
+            t4 = mkNode(4, 2, k4, m .. ' Clarity', 5,
+                'Stoneskin 100..500, +6..30% WSD & +6..30% SC',
+                function(r) return string.format('Skin %d, +%d%% WSD/+%d%% SC', r * 100, r * 6, r * 6) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(100, 5), duration = 60, tier = 3 }}, wsd = lin(6, 5), scBonus = lin(6, 5) })
+        else
+            t2 = mkNode(2, 2, k2, m .. ' Mindseye', 5,
+                'Post-WS +3..15% Parry & -2..-10% DT (18s)',
+                function(r) return string.format('+%d%% Parry, -%d%% DT (18s)', r * 3, r * 2) end,
+                { postBuff = { effect = xi.effect.SUBTLE_BLOW_PLUS, duration = 18, mods = {
+                    { mod = xi.mod.PARRY, val = lin(3, 5) },
+                    { mod = xi.mod.DMG, val = lin(-200, 5) },
+                } } })
+            t3 = mkNode(3, 2, k3, n .. ' Quell', 5,
+                'Drains 75..375 Foe TP & +7..35 Enmity',
+                function(r) return string.format('Drain %d TP, +%d Enmity', r * 75, r * 7) end,
+                { tpDrain = lin(75, 5), enmity = lin(7, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Circle', 5,
+                'Party Protect/Shell, +6..30% WSD & +8..40 Enm',
+                function(r) return string.format('Pty Prot/Shell, +%d%% WSD/+%d Enm', r * 6, r * 8) end,
+                { partyBuffs = {
+                    { effect = xi.effect.PROTECT, power = lin(20, 5), duration = 60 },
+                    { effect = xi.effect.SHELL, power = lin(5, 5), duration = 60 },
+                }, wsd = lin(6, 5), enmity = lin(8, 5) })
+        end
+
+    elseif specKey == 'warlord' then
+        if v == 1 then
+            t2 = ctx.isPhys
+                and mkNode(2, 2, k2, m .. ' Noto', 5,
+                    'Ignores 6..30% DEF & Foe -4..20% DEF (45s)',
+                    function(r) return string.format('-%d%% DEF Ign, Foe -%d%% DEF', r * 6, r * 4) end,
+                    { defIgnore = lin(0.06, 5), targetDebuffs = {{ effect = xi.effect.DEFENSE_DOWN, power = lin(4, 5), duration = 45 }} })
+                or mkNode(2, 2, k2, m .. ' Noto', 5,
+                    '+8..40 MAB & Foe -4..20% MDEF (45s)',
+                    function(r) return string.format('+%d MAB, Foe -%d%% MDEF', r * 8, r * 4) end,
+                    { matt = lin(8, 5), targetDebuffs = {{ effect = xi.effect.MAGIC_DEF_DOWN, power = lin(4, 5), duration = 45 }} })
+            t3 = ctx.isPhys
+                and mkNode(3, 2, k3, n .. ' Drawcut', 5,
+                    '+4..20% Crit Rate & +7..35% Crit Dmg',
+                    function(r) return string.format('+%d%% Crit, +%d%% Crit Dmg', r * 4, r * 7) end,
+                    { crit = lin(4, 5), critDmg = lin(7, 5) })
+                or mkNode(3, 2, k3, n .. ' Drawcut', 5,
+                    '+8..40 MAB & +8..40 MACC',
+                    function(r) return string.format('+%d MAB, +%d MACC', r * 8, r * 8) end,
+                    { matt = lin(8, 5), macc = lin(8, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Hagakure', 5,
+                '+55..275 TP Bonus & +7..35% WSD',
+                function(r) return string.format('+%d TP Bonus, +%d%% WSD', r * 55, r * 7) end,
+                { tpBonus = lin(55, 5), wsd = lin(7, 5) })
+        elseif v == 2 then
+            t2 = mkNode(2, 2, k2, m .. ' Draincut', 5,
+                'Drains 5..25% HP & +5..25% WSD',
+                function(r) return string.format('%d%% HP Drain, +%d%% WSD', r * 5, r * 5) end,
+                { hpDrain = lin(5, 5), wsd = lin(5, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Demonblade', 5,
+                'Post-WS +4..20% DA & +4..20 Zanshin (15s)',
+                function(r) return string.format('+%d%% DA, +%d Zanshin (15s)', r * 4, r * 4) end,
+                { postBuff = { effect = xi.effect.POTENCY, duration = 15, mods = {
+                    { mod = xi.mod.DOUBLE_ATTACK, val = lin(4, 5) },
+                    { mod = xi.mod.ZANSHIN, val = lin(4, 5) },
+                } } })
+            t4 = ctx.isPhys
+                and mkNode(4, 2, k4, m .. ' Execution', 5,
+                    'Vs <=35% HP Foe: +9..45% WSD & +7..35% CrDmg',
+                    function(r) return string.format('Execute +%d%% WSD, +%d%% CrDmg', r * 9, r * 7) end,
+                    { executeWsdLowHp = lin(9, 5), critDmg = lin(7, 5) })
+                or mkNode(4, 2, k4, m .. ' Execution', 5,
+                    'Vs <=35% HP Foe: +9..45% WSD & +6..30% SC',
+                    function(r) return string.format('Execute +%d%% WSD, +%d%% SC', r * 9, r * 6) end,
+                    { executeWsdLowHp = lin(9, 5), scBonus = lin(6, 5) })
+        elseif v == 3 then
+            t2 = mkNode(2, 2, k2, m .. ' Trance', 5,
+                'Post-WS +3..15% JA Haste & +5..25 STP (18s)',
+                function(r) return string.format('+%d%% JA Haste, +%d STP (18s)', r * 3, r * 5) end,
+                { storeTp = lin(5, 5), postBuff = { effect = xi.effect.POTENCY, duration = 18, mods = {
+                    { mod = xi.mod.HASTE_ABILITY, val = lin(300, 5) },
+                } } })
+            t3 = mkNode(3, 2, k3, n .. ' Sheathe', 5,
+                'Next WS +7..35% WSD & +60..300 TP Bonus',
+                function(r) return string.format('NextWS +%d%% WSD, +%d TP', r * 7, r * 60) end,
+                { nextWs = { wsd = lin(7, 5), tp = lin(60, 5), dur = 15 } })
+            t4 = mkNode(4, 2, k4, m .. ' Kensei', 5,
+                '+7..35% Skillchain Dmg & +6..30% WSD',
+                function(r) return string.format('+%d%% SC Dmg, +%d%% WSD', r * 7, r * 6) end,
+                { scBonus = lin(7, 5), wsd = lin(6, 5) })
+        else
+            t2 = mkNode(2, 2, k2, m .. ' Rending', 5,
+                'Target Crit Eva -2..10% & +5..25% WSD',
+                function(r) return string.format('Foe -%d%% CritEva, +%d%% WSD', r * 2, r * 5) end,
+                { wsd = lin(5, 5), targetDebuffs = {{ effect = xi.effect.CRIT_HIT_EVASION_DOWN, power = lin(2, 5), duration = 45 }} })
+            t3 = mkNode(3, 2, k3, n .. ' Flare', 5,
+                string.format('%s Follow-Up (6..30%%) & +5..25%% WSD', elLb),
+                function(r) return string.format('%s +%d%% Hit, +%d%% WSD', elLb, r * 6, r * 5) end,
+                { elemFollow = { ele = ele, pct = lin(6, 5) }, wsd = lin(5, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Overlord', 5,
+                '+0.20..1.00 fTP & +6..30% WSD',
+                function(r) return string.format('+%.2f fTP, +%d%% WSD', r * 0.20, r * 6) end,
+                { ftpAdd = lin(0.20, 5), wsd = lin(6, 5) })
         end
 
     else -- berserker (used on Club/Staff full builds)
@@ -2067,7 +2258,9 @@ local STANCE_TITLES =
     sage        = { 'Black-Arts', 'Ebullient', 'Fae-Pact',  'Grimoire'  },
     necromancer    = { 'Dark-Pact',  'Grim-Bond', 'Ossuary-St','Dullahan'  },
     bladewheel     = { 'Chakram-St', 'Saber',     'Fan-Dance', 'Cabriole'  },
+    ronin          = { 'Seigan-St',  'Mushin-St', 'Third-Eye', 'Warding'   },
     imperialarcher = { 'Oisoya-St',  'Hasso-St',  'Sengikori', 'Cosmic-St' },
+    warlord        = { 'Noto-St',    'Ashura-St', 'Hagakure',  'Iai-Edge'  },
 }
 
 local T3C3_TITLES =
@@ -2085,7 +2278,9 @@ local T3C3_TITLES =
     sage           = { 'Scholar',   'Thesis',    'Lemma',     'Syllogism' },
     necromancer    = { 'Miasma',    'Reaping',   'Shroud',    'Dirge'     },
     bladewheel     = { 'Pirouette', 'Rhythm',    'Choreo',    'Encore'    },
+    ronin          = { 'Riposte',   'Calm',      'Purify',    'Balance'   },
     imperialarcher = { 'Nocking',   'Drawcut',   'Wind-Bolt', 'Elucidate' },
+    warlord        = { 'Bloodlust', 'Ravage',    'Quench',    'Cleave'    },
 }
 
 local T4C3_TITLES =
@@ -2103,7 +2298,9 @@ local T4C3_TITLES =
     sage           = { 'Archsage',  'Oracle',    'Grandfae',  'Logos'     },
     necromancer    = { 'Archlich',  'Overlord',  'Harbinger', 'Abaddon'   },
     bladewheel     = { 'Virtuoso',  'Prima',     'Maestro',   'Finale'    },
+    ronin          = { 'Kensei',    'Grandmaster','Zanshin',  'Ronin'     },
     imperialarcher = { 'Bow-Saint', 'Tenzen',    'Kensei-Bow','Starfall'  },
+    warlord        = { 'Asura',     'Muramasa',  'Shogun',    'Warfiend'  },
 }
 
 local function cleanWord(w)
@@ -2268,6 +2465,7 @@ local NO_SPIKE_SPECS =
     gladiator  = true,
     sensei     = true,
     inquisitor = true,
+    ronin      = true,
     chiweaver  = true,
     lifebinder = true,
     medic      = true,
