@@ -28,9 +28,9 @@ local KAGEMUSHA_KEY = 'kagemusha'
 -- Custom Trait ID (161)
 local TRAIT_KAGEMUSHA_PHANTOM = 161
 
--- Custom Ability IDs (441-442; recastIds 216-217)
-local ABIL_KAGE_BUNSHIN = 441
-local ABIL_SMOKE_LOTUS  = 442
+-- Custom Ability IDs (443-444; recastIds 218-219)
+local ABIL_KAGE_BUNSHIN = 443
+local ABIL_SMOKE_LOTUS  = 444
 
 -- Native NIN Ability IDs
 local ABIL_MIJIN_GAKURE = 28
@@ -511,7 +511,7 @@ m:addOverride('xi.spells.enfeebling.useEnfeeblingSpell', function(caster, target
 end)
 
 -----------------------------------
--- Custom Active Job Abilities (441-442)
+-- Custom Active Job Abilities (443-444)
 -----------------------------------
 local DEBUFFS_TO_CLEANSE =
 {
