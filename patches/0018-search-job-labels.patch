@@ -2,7 +2,7 @@ diff --git a/src/search/data_loader.cpp b/src/search/data_loader.cpp
 index bfac8bb022..af11269240 100644
 --- a/src/search/data_loader.cpp
 +++ b/src/search/data_loader.cpp
-@@ -377,9 +377,15 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -377,9 +377,16 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
      ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
  
      constexpr auto everyone = db::Query(
@@ -21,7 +21,7 @@ index bfac8bb022..af11269240 100644
          "FROM accounts_sessions "
          "LEFT JOIN accounts_parties USING (charid) "
          "LEFT JOIN chars USING (charid) "
-@@ -387,14 +393,56 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
+@@ -387,14 +394,53 @@ auto CDataLoader::GetPlayersList(SearchRequest sr, int* count) const -> std::vec
          "LEFT JOIN char_stats USING (charid) "
          "LEFT JOIN char_profile USING(charid) "
          "LEFT JOIN char_flags USING(charid) "
