@@ -20,9 +20,9 @@ xi.overlords.bluSpecs = xi.overlords.bluSpecs or {}
 
 local AZURE_BASTION_KEY = 'azurebastion'
 
--- Dual Wield Trait ID (18) & Custom Trait ID (150; Azure Carapace)
+-- Dual Wield Trait ID (18) & Custom Trait ID (162; Azure Carapace)
 local TRAIT_DUAL_WIELD     = (xi.trait and xi.trait.DUAL_WIELD) or 18
-local TRAIT_AZURE_CARAPACE = 150
+local TRAIT_AZURE_CARAPACE = 162
 
 -- Custom Ability IDs (445-446; recastIds 220-221)
 local ABIL_BEHEMOTH_ROAR = 445
