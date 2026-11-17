@@ -1,7 +1,7 @@
 diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
 --- a/src/map/entities/battle_entity.cpp
 +++ b/src/map/entities/battle_entity.cpp
-@@ -1083,8 +1083,7 @@ auto CBattleEntity::takeDamage(int32 amount, CBattleEntity* attacker /* = nullpt
+@@ -1083,7 +1083,6 @@ auto CBattleEntity::takeDamage(int32 amount, CBattleEntity* attacker /* = nullpt
      this->BattleHistory.lastHitTaken_atkType = attackType;
  
      if (amount > 0 && !isSkillchainDamage &&
@@ -41,7 +41,7 @@ diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
 diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
 --- a/src/map/lua/luautils.h
 +++ b/src/map/lua/luautils.h
-@@ -591,6 +591,7 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
+@@ -591,4 +591,5 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
  auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32;
  auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32;
 +void OnUtsusemiShadowBroken(CBattleEntity* PDefender, CBattleEntity* PAttacker, uint16 shadowsBroken);
@@ -50,10 +50,10 @@ diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -306,6 +306,17 @@ void LoadEffectsParameters()
-     EffectsParams[844].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
-     EffectsParams[844].SortKey          = 10000;
-     EffectsParams[844].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -332,6 +332,17 @@ void LoadEffectsParameters()
+     EffectsParams[856].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[856].SortKey          = 10000;
+     EffectsParams[856].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    // OverlordsXI NIN Kagemusha Crystal Spec status effects (845-846).
 +    EffectsParams[845].Name             = "kagemusha_shadow_smoke";
@@ -96,7 +96,7 @@ diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
 +    }
  
      // Early return: Manafont prevents interruptions.
-@@ -3413,6 +3425,8 @@ auto IsAbsorbByShadow(CBattleEntity* PDefender, CBattleEntity* PAttacker) -> boo
+@@ -3413,7 +3425,9 @@ auto IsAbsorbByShadow(CBattleEntity* PDefender, CBattleEntity* PAttacker) -> boo
              if (auto* PMob = dynamic_cast<CMobEntity*>(PAttacker))
              {
                  PMob->PEnmityContainer->UpdateEnmity(PDefender, -25, 0);
@@ -106,7 +106,7 @@ diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
          }
  
          if (Shadow == 0)
-@@ -3919,6 +3933,11 @@ auto HasNinjaTool(CBattleEntity* PEntity, CSpell* PSpell, bool ConsumeTool) -> b
+@@ -3919,5 +3933,10 @@ auto HasNinjaTool(CBattleEntity* PEntity, CSpell* PSpell, bool ConsumeTool) -> b
  
      if (auto* PChar = dynamic_cast<CCharEntity*>(PEntity))
      {
@@ -155,7 +155,7 @@ diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
      auto recast = base;
  
      const auto recastReductionCap                 = settings::get<float>("map.SPELL_RECAST_REDUCTION_CAP");
-@@ -6254,6 +6295,17 @@ auto CalculateSpellRecastTime(CBattleEntity* PEntity, CSpell* PSpell) -> timer::
+@@ -6254,6 +6295,18 @@ auto CalculateSpellRecastTime(CBattleEntity* PEntity, CSpell* PSpell) -> timer::
          }
      }
  
