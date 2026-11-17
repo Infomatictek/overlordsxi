@@ -65,7 +65,7 @@ diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
 index 0000000..1111111 100644
 --- a/src/map/lua/lua_base_entity.cpp
 +++ b/src/map/lua/lua_base_entity.cpp
-@@ -13417,6 +13417,18 @@ void CLuaBaseEntity::resetRecast(uint8 rType, uint16 recastID)
+@@ -13417,7 +13417,19 @@ void CLuaBaseEntity::resetRecast(uint8 rType, uint16 recastID)
          PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
          PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
      }
@@ -82,6 +82,7 @@ index 0000000..1111111 100644
 +        PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
 +    }
 +}
+ 
  /************************************************************************
   *  Function: resetRecasts()
 @@ -21349,5 +21361,6 @@ void CLuaBaseEntity::Register()
@@ -166,11 +167,11 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index 0000000..1111111 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -316,5 +316,36 @@ void LoadEffectsParameters()
-     EffectsParams[846].Name             = "kagemusha_bunshin";
-     EffectsParams[846].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
-     EffectsParams[846].SortKey          = 10000;
-     EffectsParams[846].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -289,5 +289,36 @@ void LoadEffectsParameters()
+     EffectsParams[841].Name             = "warlord_ashura";
+     EffectsParams[841].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[841].SortKey          = 10000;
+     EffectsParams[841].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    // OverlordsXI BST Alpha Warden Crystal Spec status effects (847-852).
 +    EffectsParams[847].Name             = "alpha_pack_instinct";
