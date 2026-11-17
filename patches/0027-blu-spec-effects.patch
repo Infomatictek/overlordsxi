@@ -13,10 +13,7 @@ diff --git a/src/map/status_effect.h b/src/map/status_effect.h
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -370,6 +370,22 @@ void LoadEffectsParameters()
-     EffectsParams[856].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
-     EffectsParams[856].SortKey          = 10000;
-     EffectsParams[856].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -334,0 +334,16 @@ void LoadEffectsParameters()
 +
 +    // OverlordsXI BLU Azure Bastion Crystal Spec status effects (857-859).
 +    EffectsParams[857].Name             = "chitin_carapace";
@@ -33,6 +30,3 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 +    EffectsParams[859].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
 +    EffectsParams[859].SortKey          = 10000;
 +    EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
- }
- 
- // hacky way to get element from status effect
