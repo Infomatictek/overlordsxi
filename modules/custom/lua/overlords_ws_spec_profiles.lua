@@ -35,6 +35,14 @@ P.ALL_SPECS =
     'warlord',
     'aegistemplar',
     'kagemusha',
+    'bishop',
+    'templar',
+    'magus',
+    'vampire',
+    'celestial',
+    'animist',
+    'verdant',
+    'wyvernheart',
 }
 
 local STAT_UP =
@@ -221,6 +229,50 @@ local STANCE_DEFS =
         jobSpec = 'kagemusha',
         effects = { xi.effect.YONIN, xi.effect.FUTAE, xi.effect.COPY_IMAGE, xi.effect.ISSEKIGAN, 846 },
     },
+    bishop = {
+        label   = 'Solace/Veil',
+        jobSpec = 'bishop',
+        effects = { xi.effect.AFFLATUS_SOLACE, xi.effect.DIVINE_SEAL, 860, 861, 862 },
+    },
+    templar = {
+        label   = 'Majesty/Aegis',
+        jobSpec = 'templar',
+        effects = { xi.effect.MAJESTY, xi.effect.DIVINE_SEAL, 863, 864 },
+    },
+    magus = {
+        label   = 'Diffusion/Conduit',
+        jobSpec = 'magus',
+        effects = { xi.effect.DIFFUSION, xi.effect.AZURE_LORE, 865, 866 },
+    },
+    vampire = {
+        label   = 'Samba/Trance',
+        jobSpec = 'vampire',
+        effects = { xi.effect.DRAIN_SAMBA, xi.effect.TRANCE, xi.effect.CONTRADANCE, 867, 868 },
+    },
+    celestial = {
+        label    = 'Astral/Sanctuary',
+        jobSpec  = 'celestial',
+        petAlive = true,
+        effects  = { xi.effect.ASTRAL_FLOW, xi.effect.AVATARS_FAVOR, 869, 870 },
+    },
+    animist = {
+        label    = 'Repair/Aegis',
+        jobSpec  = 'animist',
+        petAlive = true,
+        effects  = { xi.effect.OVERDRIVE, 871 },
+    },
+    verdant = {
+        label    = 'Luopan/Canopy',
+        jobSpec  = 'verdant',
+        petAlive = true,
+        effects  = { xi.effect.BOLSTER, 872, 873 },
+    },
+    wyvernheart = {
+        label    = 'Breath/Wyrm',
+        jobSpec  = 'wyvernheart',
+        petAlive = true,
+        effects  = { xi.effect.SPIRIT_SURGE, xi.effect.FLY_HIGH, 874, 875 },
+    },
 }
 
 local SPEC_META =
@@ -243,6 +295,14 @@ local SPEC_META =
     warlord        = { pfx = 'wrl', pref = 'str', role = 'dps',    tag = 'Iaijutsu', col2 = 'Onimaru',  t1c3 = 'Rend',      rmea = 'Bloodquench', col1 = { 'Cut',       'Sever',     'Ashura'    } },
     aegistemplar   = { pfx = 'aeg', pref = 'vit', role = 'tank',   tag = 'Bastion',  col2 = 'Aegis',    t1c3 = 'Zeal',      rmea = 'Sanctum',     col1 = { 'Bulwark',   'Intercept', 'Judgment'  } },
     kagemusha      = { pfx = 'kag', pref = 'agi', role = 'tank',   tag = 'Phantom',  col2 = 'Decoy',    t1c3 = 'Smokescreen', rmea = 'Substitution', col1 = { 'Shadow',   'Veil',      'Shroud'    } },
+    bishop         = { pfx = 'bsh', pref = 'mnd', role = 'healer', tag = 'Solace',   col2 = 'Veil',     t1c3 = 'Grace',       rmea = 'Benediction',  col1 = { 'Ward',     'Sanctum',   'Mercy'     } },
+    templar        = { pfx = 'tmp', pref = 'mnd', role = 'healer', tag = 'Majesty',  col2 = 'Beacon',   t1c3 = 'Radiance',    rmea = 'Crusade',      col1 = { 'Light',    'Chivalry',  'Bastion'   } },
+    magus          = { pfx = 'mag', pref = 'mnd', role = 'healer', tag = 'Catalyst', col2 = 'Osmosis',  t1c3 = 'Azure',       rmea = 'Diffusion',    col1 = { 'Siphon',   'Surge',     'Conduit'   } },
+    vampire        = { pfx = 'vmp', pref = 'chr', role = 'healer', tag = 'Crimson',  col2 = 'Samba',    t1c3 = 'Waltz',       rmea = 'Nocturne',     col1 = { 'Drain',    'Blossom',   'Feast'     } },
+    celestial      = { pfx = 'cel', pref = 'mnd', role = 'healer', tag = 'Astral',   col2 = 'Starlight',t1c3 = 'Ward',        rmea = 'Convergence',  col1 = { 'Avatar',   'Ruby',      'Siphon'    }, pet = true },
+    animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true },
+    verdant        = { pfx = 'vrd', pref = 'mnd', role = 'healer', tag = 'Sylvan',   col2 = 'Luopan',   t1c3 = 'Bloom',       rmea = 'Canopy',       col1 = { 'Barkskin', 'Renewal',   'Grove'     }, pet = true },
+    wyvernheart    = { pfx = 'wyv', pref = 'mnd', role = 'healer', tag = 'Wyrm',     col2 = 'Breath',   t1c3 = 'Scale',       rmea = 'Wyrmblood',    col1 = { 'Link',     'Jump',      'Sanctuary' }, pet = true },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
@@ -2281,6 +2341,14 @@ local STANCE_TITLES =
     warlord        = { 'Noto-St',    'Ashura-St', 'Hagakure',  'Iai-Edge'  },
     aegistemplar   = { 'Sentinel-St','Consecrate','Rampart-St','Invincible'},
     kagemusha      = { 'Yonin-St',   'Bunshin-St','Smoke-St',  'Shadow-St' },
+    bishop         = { 'Solace-St',  'Veil-St',   'Grace-St',  'Mercy-St'  },
+    templar        = { 'Majesty-St', 'Beacon-St', 'Aegis-St',  'Light-St'  },
+    magus          = { 'Diffus-St',  'Osmotic-St','Azure-St',  'Lore-St'   },
+    vampire        = { 'Samba-St',   'Trance-St', 'Waltz-St',  'Crimson-St'},
+    celestial      = { 'Astral-St',  'Avatar-St', 'Ward-St',   'Star-St'   },
+    animist        = { 'Repair-St',  'Aether-St', 'Clock-St',  'Auto-St'   },
+    verdant        = { 'Luopan-St',  'Bolster-St','Canopy-St', 'Sylvan-St' },
+    wyvernheart    = { 'Breath-St',  'Wyrm-St',   'Scale-St',  'Spirit-St' },
 }
 
 local T3C3_TITLES =
@@ -2303,6 +2371,14 @@ local T3C3_TITLES =
     warlord        = { 'Bloodlust', 'Ravage',    'Quench',    'Cleave'    },
     aegistemplar   = { 'Intercept', 'Zeal',      'Absolve',   'Sanctify'  },
     kagemusha      = { 'Decoy',     'Smoke',     'Shroud',    'Mirage'    },
+    bishop         = { 'Solace',    'Veil',      'Grace',     'Pulse'     },
+    templar        = { 'Majesty',   'Beacon',    'Radiance',  'Aegis'     },
+    magus          = { 'Catalyst',  'Diffusion', 'Osmosis',   'Surge'     },
+    vampire        = { 'Crimson',   'Flourish',  'Waltz',     'Feast'     },
+    celestial      = { 'Astral',    'Ruby',      'Siphon',    'Starlight' },
+    animist        = { 'Aether',    'Overhaul',  'Clockwork', 'Fiber'     },
+    verdant        = { 'Sylvan',    'Bloom',     'Renewal',   'Canopy'    },
+    wyvernheart    = { 'Wyrmblood', 'Breath',    'Scale',     'Sanctuary' },
     generic        = { 'Precision', 'Impact',    'Momentum',  'Edge'      },
 }
 
@@ -2326,6 +2402,14 @@ local T4C3_TITLES =
     warlord        = { 'Asura',     'Muramasa',  'Shogun',    'Warfiend'  },
     aegistemplar   = { 'Templar',   'Bastion',   'Archon',    'Seraphim'  },
     kagemusha      = { 'Kagemusha', 'Shinobi',   'Phantom',   'Eclipse'   },
+    bishop         = { 'Bishop',    'Seraph',    'Hierarch',  'Benedict'  },
+    templar        = { 'Templar',   'Crusader',  'Paladin',   'Sanctum'   },
+    magus          = { 'Magus',     'Alchemist', 'Azure',     'Conduit'   },
+    vampire        = { 'Vampire',   'Nocturne',  'Crimson',   'Bloodmoon' },
+    celestial      = { 'Celestial', 'Astral',    'Archon',    'Elysian'   },
+    animist        = { 'Animist',   'Artificer', 'Clockwork', 'Sovereign' },
+    verdant        = { 'Verdant',   'Dryad',     'Sylvan',    'Worldtree' },
+    wyvernheart    = { 'Wyvern',    'Dragoon',   'Crimson',   'Skywarden' },
     generic        = { 'Prowess',   'Zenith',    'Mastery',   'Triumph'   },
 }
 
@@ -2507,11 +2591,19 @@ local NO_SPIKE_SPECS =
     ronin      = true,
     aegistemplar = true,
     kagemusha  = true,
-    chiweaver  = true,
-    lifebinder = true,
-    medic      = true,
-    tank       = true,
-    healer     = true,
+    chiweaver    = true,
+    lifebinder   = true,
+    medic        = true,
+    bishop       = true,
+    templar      = true,
+    magus        = true,
+    vampire      = true,
+    celestial    = true,
+    animist      = true,
+    verdant      = true,
+    wyvernheart  = true,
+    tank         = true,
+    healer       = true,
 }
 
 local PET_SPECS =
@@ -2520,6 +2612,10 @@ local PET_SPECS =
     sage        = true,
     necromancer = true,
     berserker   = true, -- BST Axe pet hooks
+    celestial   = true,
+    animist     = true,
+    verdant     = true,
+    wyvernheart = true,
 }
 
 local function sanitizeSpecNode(node, specKey, ctx)
@@ -2684,6 +2780,14 @@ P.ALLOWED_SKILLS_BY_SPEC =
     imperialarcher = { [S.GREAT_KATANA or 10] = true, [S.ARCHERY or 25] = true },
     aegistemplar   = { [S.CLUB or 11] = true },
     kagemusha      = { [S.KATANA or 9] = true },
+    bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
+    templar        = { [S.CLUB or 11] = true },
+    magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
+    vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
+    celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },
+    animist        = { [S.HAND_TO_HAND or 1] = true, [S.CLUB or 11] = true },
+    verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
+    wyvernheart    = { [S.POLEARM or 8] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)

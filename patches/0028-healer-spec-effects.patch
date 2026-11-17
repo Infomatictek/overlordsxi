@@ -1,0 +1,103 @@
+diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 864 // 768 real + 96 custom
++#define MAX_EFFECTID 880 // 768 real + 112 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -387,6 +387,87 @@ void LoadEffectsParameters()
+     EffectsParams[859].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[859].SortKey          = 10000;
+     EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI Healer Crystal Spec status effects (860-875).
++    EffectsParams[860].Name             = "solace_ward";
++    EffectsParams[860].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[860].SortKey          = 10000;
++    EffectsParams[860].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[861].Name             = "sacred_grace";
++    EffectsParams[861].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[861].SortKey          = 10000;
++    EffectsParams[861].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[862].Name             = "divine_veil";
++    EffectsParams[862].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[862].SortKey          = 10000;
++    EffectsParams[862].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[863].Name             = "lights_grace";
++    EffectsParams[863].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[863].SortKey          = 10000;
++    EffectsParams[863].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[864].Name             = "crusaders_aegis";
++    EffectsParams[864].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[864].SortKey          = 10000;
++    EffectsParams[864].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[865].Name             = "azure_catalyst";
++    EffectsParams[865].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[865].SortKey          = 10000;
++    EffectsParams[865].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[866].Name             = "osmotic_conduit";
++    EffectsParams[866].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[866].SortKey          = 10000;
++    EffectsParams[866].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[867].Name             = "crimson_veil";
++    EffectsParams[867].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[867].SortKey          = 10000;
++    EffectsParams[867].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[868].Name             = "sanguine_waltz";
++    EffectsParams[868].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[868].SortKey          = 10000;
++    EffectsParams[868].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[869].Name             = "celestial_sanctuary";
++    EffectsParams[869].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[869].SortKey          = 10000;
++    EffectsParams[869].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[870].Name             = "celestial_convergence";
++    EffectsParams[870].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[870].SortKey          = 10000;
++    EffectsParams[870].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[871].Name             = "clockwork_aegis";
++    EffectsParams[871].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[871].SortKey          = 10000;
++    EffectsParams[871].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[872].Name             = "barkskin";
++    EffectsParams[872].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[872].SortKey          = 10000;
++    EffectsParams[872].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[873].Name             = "canopy_of_the_ancients";
++    EffectsParams[873].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[873].SortKey          = 10000;
++    EffectsParams[873].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[874].Name             = "dragonscale";
++    EffectsParams[874].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[874].SortKey          = 10000;
++    EffectsParams[874].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[875].Name             = "dragonscale_sanctuary";
++    EffectsParams[875].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[875].SortKey          = 10000;
++    EffectsParams[875].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect

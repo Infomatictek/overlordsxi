@@ -52,3 +52,20 @@ custom/sql/rdm_specs.sql
 
 custom/lua/drk_specs.lua
 custom/sql/drk_specs.sql
+custom/lua/overlords_healer_helpers.lua
+custom/lua/whm_specs.lua
+custom/lua/pld_healer_specs.lua
+custom/lua/blu_healer_specs.lua
+custom/lua/dnc_healer_specs.lua
+custom/lua/smn_specs.lua
+custom/lua/pup_healer_specs.lua
+custom/lua/geo_specs.lua
+custom/lua/drg_specs.lua
+custom/sql/whm_specs.sql
+custom/sql/pld_healer_specs.sql
+custom/sql/blu_healer_specs.sql
+custom/sql/dnc_healer_specs.sql
+custom/sql/smn_specs.sql
+custom/sql/pup_healer_specs.sql
+custom/sql/geo_specs.sql
+custom/sql/drg_specs.sql
