@@ -22,9 +22,9 @@ local VANGUARD_KEY = 'vanguard'
 -- Custom Trait ID (148; Vanguard's Core)
 local TRAIT_VANGUARDS_CORE = 148
 
--- Custom Ability IDs (445-446; recastIds 168-169)
-local ABIL_AEGIS_PROTOCOL = 445
-local ABIL_GYRO_SLAM      = 446
+-- Custom Ability IDs (451-452; recastIds 168-169)
+local ABIL_AEGIS_PROTOCOL = 451
+local ABIL_GYRO_SLAM      = 452
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.AEGIS_PROTOCOL = ABIL_AEGIS_PROTOCOL
