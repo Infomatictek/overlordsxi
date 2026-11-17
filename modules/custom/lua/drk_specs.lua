@@ -28,9 +28,9 @@ local DREADNOUGHT_KEY = 'dreadnought'
 -- Custom Trait ID (147; Dreadnought's Carapace)
 local TRAIT_DREADNOUGHTS_CARAPACE = 147
 
--- Custom Ability IDs (443-444; recastIds 218-219)
-local ABIL_ABYSSAL_CLEAVE = 443
-local ABIL_DREAD_BASTION  = 444
+-- Custom Ability IDs (449-450; recastIds 224-225)
+local ABIL_ABYSSAL_CLEAVE = 449
+local ABIL_DREAD_BASTION  = 450
 
 -- Native Spell IDs
 local SPELL_DRAIN_II     = (xi.magic and xi.magic.spell and xi.magic.spell.DRAIN_II)     or 246
