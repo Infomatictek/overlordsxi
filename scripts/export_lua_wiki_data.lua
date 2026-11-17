@@ -437,8 +437,16 @@ for _, jid in ipairs(sortedJobIds) do
     })
 end
 
--- Export Weaponskills & 5-Spec Trees directly via talents.getTreeForWS
-local SPEC_CATS = { 'berserker', 'tank', 'spellblade', 'healer', 'commander' }
+-- Export Weaponskills & 13-Spec Trees directly via talents.getTreeForWS
+local SPEC_CATS =
+{
+    'berserker', 'commander', 'gladiator',
+    'sensei', 'blackbelt', 'chiweaver',
+    'inquisitor', 'spellblade', 'lifebinder',
+    'medic', 'sage',
+    'necromancer', 'bladewheel',
+    'tank', 'healer',
+}
 local wsOut = {}
 
 local function serializeTreeNodes(tree, ws)

@@ -199,7 +199,7 @@ regB(242, 'magic',
 
     -- Tier 4
     N('c1_t4', 'Sanctuary Waltz', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Grants Party Refresh (3..9 MP/tick, 30s) and +4..12% Self Max HP Heal',
+        'Party Refresh (3..9 MP/t, 30s) & +4..12% Self HP Heal',
         function(r) return string.format('Party Refresh %d MP/t, +%d%% Self Heal', r * 3, r * 4) end,
         {
             partyBuffs       = { { effect = xi.effect.REFRESH, power = { 3, 6, 9 }, duration = 30 } },
@@ -240,7 +240,7 @@ regB(243, 'multihit',
         function(r) return string.format('+%d R.Acc, +%d Store TP', r * 5, r * 4) end,
         { racc = { 5, 10, 15, 20, 25, 30 }, storeTp = { 4, 8, 12, 16, 20, 24 } }),
     N('c2_t1', 'Ricochet Transfer', 1, 2, 7, nil,
-        'R1: fTP Transfers to ALL Hits! +0.35..2.80 fTP, +4..28% DEX WSC',
+        'R1: fTP ALL Hits! +0.35..2.80 fTP, +4..28% DEX WSC',
         function(r)
             local f = ({ 0.35, 0.70, 1.10, 1.50, 1.90, 2.35, 2.80 })[r]
             return string.format('fTP ALL Hits, +%.2f fTP, +%d%% DEX WSC', f, r * 4)
@@ -311,7 +311,7 @@ regB(243, 'multihit',
         function(r) return string.format('+%d Party TP, Next WS +%d%% WSD', r * 60, r * 8) end,
         { partyTp = { 60, 120, 180 }, nextWs = { wsd = { 8, 16, 24 }, dur = 15 } }),
     N('c2_t4', 'Infinite Ricochet', 4, 2, 4, { key = 'c2_t3', rank = 2 },
-        '+0.60..2.40 fTP (All Hits), +1 Bonus Hit at R2 & R4, +6..24% WSD',
+        '+0.60..2.40 fTP (All Hits), +1..2 Bonus Hits, +6..24% WSD',
         function(r)
             local hAdd = r >= 4 and 2 or (r >= 2 and 1 or 0)
             return string.format('+%.2f fTP, +%d Hit(s), +%d%% WSD', r * 0.60, hAdd, r * 6)
@@ -399,13 +399,13 @@ regB(244, 'magic',
         end,
         { ftpAdd = { 0.65, 1.30, 2.00, 2.75, 3.50 }, tpBonus = { 50, 100, 150, 200, 250 } }),
     N('c3_t3', 'Abyssal Wake', 3, 3, 5, { key = 'c3_t2', rank = 2 },
-        'Deals +7..35% Dark elemental follow-up damage and dispels at R5',
+        '+7..35% Dark elemental follow-up dmg & dispels 1 at R5',
         function(r) return string.format('+%d%% Dark Follow-up%s', r * 7, r >= 5 and ', Dispel 1 Buff' or '') end,
         { elemFollow = { ele = xi.element.DARK, pct = { 7, 14, 21, 28, 35 } }, dispel = { 0, 0, 0, 0, 1 } }),
 
     -- Tier 4
     N('c1_t4', 'Immortal Samba', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Drains +5..15% HP, +6..18% MP, and grants Party Regen (4..12 HP/t)',
+        'Drains +5..15% HP, +6..18% MP & Party Regen (4..12/t)',
         function(r) return string.format('+%d%% HP/+%d%% MP Drain, Party Regen %d', r * 5, r * 6, r * 4) end,
         {
             hpDrain    = { 5, 10, 15 },
@@ -495,7 +495,7 @@ regB(245, 'heavy',
 
     -- Tier 3
     N('c1_t3', 'Shatter Enchantment', 3, 1, 5, { key = 'c1_t2', rank = 2 },
-        'Dispels 1 buff (2 at R5) and inflicts -6..30% Attack Down (45s)',
+        'Dispels 1..2 buffs & inflicts -6..30% Attack Down (45s)',
         function(r) return string.format('Dispel %d Buff(s), -%d%% ATK Down', r >= 5 and 2 or 1, r * 6) end,
         {
             dispel        = { 1, 1, 1, 1, 2 },
@@ -573,7 +573,7 @@ regB(246, 'crit',
 
     -- Tier 2
     N('c1_t2', 'Bewildering Plume', 2, 1, 5, { key = 'c1_t1', rank = 2 },
-        'Inflicts -10..50 Evasion Down (45s) and grants +4..20% Haste (30s)',
+        'Inflicts -10..50 Evasion Down (45s) & +4..20% Haste (30s)',
         function(r) return string.format('-%d EVA Down (45s), +%d%% Haste (30s)', r * 10, r * 4) end,
         {
             targetDebuffs = { { effect = xi.effect.EVASION_DOWN, power = { 10, 20, 30, 40, 50 }, duration = 45 } },
@@ -812,7 +812,7 @@ regB(248, 'heavy',
 
     -- Tier 4
     N('c1_t4', 'Encore Curtain', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Next WS within 15s gains +12..36% WSD and +120..360 TP refund',
+        'Next WS within 15s: +12..36% WSD & +120..360 TP refund',
         function(r) return string.format('Next WS: +%d%% WSD, +%d TP Refund', r * 12, r * 120) end,
         { nextWs = { wsd = { 12, 24, 36 }, tp = { 120, 240, 360 }, dur = 15 } }),
     N('c2_t4', 'Supreme Finale', 4, 2, 4, { key = 'c2_t3', rank = 2 },
@@ -847,7 +847,7 @@ regB(249, 'multihit',
         function(r) return string.format('+%d R.Acc, +%d Store TP', r * 5, r * 4) end,
         { racc = { 5, 10, 15, 20, 25, 30 }, storeTp = { 4, 8, 12, 16, 20, 24 } }),
     N('c2_t1', 'Tarantella Transfer', 1, 2, 7, nil,
-        'R1: fTP Transfers to ALL Hits! +0.35..2.80 fTP, +4..28% DEX WSC',
+        'R1: fTP ALL Hits! +0.35..2.80 fTP, +4..28% DEX WSC',
         function(r)
             local f = ({ 0.35, 0.70, 1.10, 1.50, 1.90, 2.35, 2.80 })[r]
             return string.format('fTP ALL Hits, +%.2f fTP, +%d%% DEX WSC', f, r * 4)
@@ -1046,7 +1046,7 @@ regB(251, 'multihit',
         function(r) return string.format('+%d R.Acc, +%d Store TP', r * 6, r * 5) end,
         { racc = { 6, 12, 18, 24, 30, 36 }, storeTp = { 5, 10, 15, 20, 25, 30 } }),
     N('c2_t1', 'Fandango Transfer', 1, 2, 7, nil,
-        'R1: fTP Transfers to ALL Hits! +0.40..3.10 fTP, +4..28% DEX WSC',
+        'R1: fTP ALL Hits! +0.40..3.10 fTP, +4..28% DEX WSC',
         function(r)
             local f = ({ 0.40, 0.80, 1.25, 1.70, 2.15, 2.60, 3.10 })[r]
             return string.format('fTP ALL Hits, +%.2f fTP, +%d%% DEX WSC', f, r * 4)
@@ -1076,7 +1076,7 @@ regB(251, 'multihit',
             },
         }),
     N('c2_t2', 'Celestial Volley', 2, 2, 5, { key = 'c2_t1', rank = 2 },
-        '+0.40..2.00 fTP, +5..25% CHR WSC, +1 Hit at R3 & +2 Hits at R5',
+        '+0.40..2.00 fTP, +5..25% CHR WSC, +1..2 Bonus Hits',
         function(r)
             local hAdd = r >= 5 and 2 or (r >= 3 and 1 or 0)
             return string.format('+%.2f fTP, +%d%% CHR WSC%s', r * 0.40, r * 5, hAdd > 0 and string.format(', +%d Hit(s)', hAdd) or '')
@@ -1111,7 +1111,7 @@ regB(251, 'multihit',
         function(r) return string.format('+%d TP Refund, Party Heal %d%% Max HP', r * 100, r * 3) end,
         { nextWs = { tp = { 100, 200, 300 }, dur = 15 }, partyHealPct = { 3, 6, 9 } }),
     N('c2_t4', 'Aurora Crown', 4, 2, 4, { key = 'c2_t3', rank = 2 },
-        '+0.75..3.00 fTP (All Hits), +1 Bonus Hit at R2 & R4, +7..28% WSD',
+        '+0.75..3.00 fTP (All Hits), +1..2 Bonus Hits, +7..28% WSD',
         function(r)
             local hAdd = r >= 4 and 2 or (r >= 2 and 1 or 0)
             return string.format('+%.2f fTP, +%d Hit(s), +%d%% WSD', r * 0.75, hAdd, r * 7)
@@ -1161,7 +1161,7 @@ regB(252, 'magic',
 
     -- Tier 2
     N('c1_t2', 'Chorus of Light', 2, 1, 5, { key = 'c1_t1', rank = 2 },
-        'Grants Party Regen (4..20 HP/tick) and Refresh (2..10 MP/tick) for 30s',
+        'Party Regen (4..20/t) & Refresh (2..10 MP/t) for 30s',
         function(r) return string.format('Party Regen %d, Refresh %d (30s)', r * 4, r * 2) end,
         {
             partyBuffs = {
@@ -1203,7 +1203,7 @@ regB(252, 'magic',
 
     -- Tier 4
     N('c1_t4', 'Eternal Ovations', 4, 1, 3, { key = 'c1_t3', rank = 2 },
-        'Heals party for +4..12% Max HP and grants Next WS +12..36% WSD',
+        'Party Heal +4..12% Max HP & Next WS +12..36% WSD',
         function(r) return string.format('+%d%% Party Heal, Next WS +%d%% WSD', r * 4, r * 12) end,
         { partyHealPct = { 4, 8, 12 }, nextWs = { wsd = { 12, 24, 36 }, dur = 15 } }),
     N('c2_t4', 'Apotheosis of Dance', 4, 2, 4, { key = 'c2_t3', rank = 2 },

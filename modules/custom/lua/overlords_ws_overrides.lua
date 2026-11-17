@@ -130,6 +130,9 @@ local function isStanceActive(attacker, stance)
     if stance.jobSpec ~= nil and isJobSpecActive(attacker, stance.jobSpec) then
         return true
     end
+    if type(stance.localVar) == 'string' and attacker.getLocalVar and attacker:getLocalVar(stance.localVar) > 0 then
+        return true
+    end
     if stance.petAlive then
         local pet = attacker.getPet and attacker:getPet() or nil
         if pet ~= nil and pet:isAlive() then
@@ -392,6 +395,17 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     end
 
     if wsID <= 15 then
+        local lRanks = {}
+        if tree and tree.byKey then
+            for k, rVal in pairs(ranks) do
+                local n = tree.byKey[k]
+                if n ~= nil and n.effect == nil then
+                    lRanks[k] = rVal
+                end
+            end
+        end
+        do
+        local ranks = lRanks
         -- H2H (#1 - #15) Stat WSC / Shared Curves
         for _, stat in ipairs(talents.STAT_ORDER) do
             local r = ranks['wsc_' .. stat] or 0
@@ -1130,6 +1144,7 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
 
         end
+        end
     end
 
     -----------------------------------
@@ -1141,6 +1156,24 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         local function applyStatEffects(tbl, rank)
             if tbl.wsd then
                 local v = pickRankVal(tbl.wsd, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, v)
+                end
+            end
+            if tbl.openerWsdHighHp and target ~= nil and target.getHPP and target:getHPP() >= (tbl.highHpThreshold or 70) then
+                local v = pickRankVal(tbl.openerWsdHighHp, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, v)
+                end
+            end
+            if tbl.executeWsdLowHp and target ~= nil and target.getHPP and target:getHPP() <= (tbl.lowHpThreshold or 35) then
+                local v = pickRankVal(tbl.executeWsdLowHp, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, v)
+                end
+            end
+            if tbl.lowSelfHpWsd and attacker.getHPP and attacker:getHPP() <= (tbl.selfLowHpThreshold or 60) then
+                local v = pickRankVal(tbl.lowSelfHpWsd, rank)
                 if v and v ~= 0 then
                     addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, v)
                 end
@@ -1219,6 +1252,30 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
                     params.ftpMod = addToTriple(params.ftpMod, v, 1.0)
                 end
             end
+            if tbl.subtleBlow then
+                local v = pickRankVal(tbl.subtleBlow, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.SUBTLE_BLOW, v)
+                end
+            end
+            if tbl.enmity then
+                local v = pickRankVal(tbl.enmity, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.ENMITY, v)
+                end
+            end
+            if tbl.storeTp then
+                local v = pickRankVal(tbl.storeTp, rank)
+                if v and v ~= 0 then
+                    addTempMod(xi.mod.STORETP, v)
+                end
+            end
+            if tbl.scBonus then
+                local v = pickRankVal(tbl.scBonus, rank)
+                if v and v ~= 0 then
+                    extraCtx.extraScBonus = extraCtx.extraScBonus + v
+                end
+            end
         end
 
         for _, node in ipairs(tree and tree.nodes or {}) do
@@ -1254,34 +1311,6 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
 
                 applyStatEffects(eff, r)
 
-                if eff.subtleBlow then
-                    local v = pickRankVal(eff.subtleBlow, r)
-                    if v and v ~= 0 then
-                        addTempMod(xi.mod.SUBTLE_BLOW, v)
-                    end
-                end
-
-                if eff.enmity then
-                    local v = pickRankVal(eff.enmity, r)
-                    if v and v ~= 0 then
-                        addTempMod(xi.mod.ENMITY, v)
-                    end
-                end
-
-                if eff.storeTp then
-                    local v = pickRankVal(eff.storeTp, r)
-                    if v and v ~= 0 then
-                        addTempMod(xi.mod.STORETP, v)
-                    end
-                end
-
-                if eff.scBonus then
-                    local v = pickRankVal(eff.scBonus, r)
-                    if v and v ~= 0 then
-                        extraCtx.extraScBonus = extraCtx.extraScBonus + v
-                    end
-                end
-
                 if eff.nativeDebuff then
                     if type(eff.nativeDebuff) == 'table' then
                         nativeDebuffRank = nativeDebuffRank + (pickRankVal(eff.nativeDebuff, r) or 0)
@@ -1290,13 +1319,32 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
                     end
                 end
 
-                if eff.packWsdPerMob or eff.packBonusHitAt then
+                if
+                    eff.packWsdPerMob or
+                    eff.packBonusHitAt or
+                    eff.packEnmityPerMob or
+                    eff.packSubtleBlowPerMob or
+                    eff.packPartyTpPerMob or
+                    eff.packSelfHealPerMob
+                then
                     local packExtras = countPackExtras(attacker, target, primaryMsg, eff.packCenter)
                     extraCtx.packExtras = math.max(extraCtx.packExtras or 0, packExtras)
                     if eff.packWsdPerMob then
                         local perMob = pickRankVal(eff.packWsdPerMob, r)
                         if perMob and perMob > 0 and packExtras > 0 then
                             addTempMod(xi.mod.ALL_WSDMG_ALL_HITS, perMob * packExtras)
+                        end
+                    end
+                    if eff.packEnmityPerMob then
+                        local perMob = pickRankVal(eff.packEnmityPerMob, r)
+                        if perMob and perMob ~= 0 and packExtras > 0 then
+                            addTempMod(xi.mod.ENMITY, perMob * packExtras)
+                        end
+                    end
+                    if eff.packSubtleBlowPerMob then
+                        local perMob = pickRankVal(eff.packSubtleBlowPerMob, r)
+                        if perMob and perMob > 0 and packExtras > 0 then
+                            addTempMod(xi.mod.SUBTLE_BLOW, perMob * packExtras)
                         end
                     end
                     if eff.packBonusHitAt and r >= eff.packBonusHitAt and packExtras >= 1 then
@@ -1357,7 +1405,22 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     local baseDmg  = totalDmg
     local isPrimaryTarget = (primaryMsg ~= false)
 
+    local jobId = attacker.getMainJob and attacker:getMainJob() or nil
+    local tree  = talents.getTreeForWS(wsID, attacker, jobId)
+    local ws    = catalog.byId[wsID]
+
     if wsID <= 15 then
+        local lRanks = {}
+        if tree and tree.byKey then
+            for k, rVal in pairs(ranks) do
+                local n = tree.byKey[k]
+                if n ~= nil and n.effect == nil then
+                    lRanks[k] = rVal
+                end
+            end
+        end
+        do
+        local ranks = lRanks
         -----------------------------------
         -- Utility Self-Buffs / Debuffs / Chi Blast Setup (#1 - #4)
         -----------------------------------
@@ -1538,15 +1601,12 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
                 totalDmg = totalDmg + dealFollowUpElementalHit(attacker, target, totalDmg * ranks.ss_wind * 0.06, xi.damageType.WIND)
             end
         end
+        end
     end
 
     -----------------------------------
     -- Declarative Bespoke Post-WS Effects (#1 - #235)
     -----------------------------------
-    local jobId = attacker.getMainJob and attacker:getMainJob() or nil
-    local tree  = talents.getTreeForWS(wsID, attacker, jobId)
-    local ws    = catalog.byId[wsID]
-
     local nextWsAccum = { wsd = 0, tp = 0, acc = 0, macc = 0, dur = 0 }
     local modsByEffect = {}
     local storeTpBuffVal = 0
@@ -1562,10 +1622,16 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
     local selfMaxHpHealPct = 0
     local partyHealPct = 0
     local eosHealPct = 0
+    local petTpTotal = 0
     local mpToHpPct = 0
     local partyTpTotal = 0
     local partyBuffsByEffect = {}
     local conductionAddTotal = 0
+    local chiBlastPct = 0
+    local chiBlastCdTrim = 0
+    local cleanseSelfCount = 0
+    local cleansePartyCount = 0
+    local packExtras = (extraCtx and extraCtx.packExtras) or 0
 
     for _, node in ipairs(tree and tree.nodes or {}) do
         local r = ranks[node.key] or 0
@@ -1684,11 +1750,17 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if eff.selfMaxHpHealPct then
                 selfMaxHpHealPct = selfMaxHpHealPct + (pickRankVal(eff.selfMaxHpHealPct, r) or 0)
             end
+            if eff.packSelfHealPerMob and packExtras > 0 then
+                selfMaxHpHealPct = selfMaxHpHealPct + (pickRankVal(eff.packSelfHealPerMob, r) or 0) * packExtras
+            end
             if eff.partyHealPct then
                 partyHealPct = partyHealPct + (pickRankVal(eff.partyHealPct, r) or 0)
             end
             if eff.eosHeal then
-                eosHealPct = math.min(100, eosHealPct + (pickRankVal(eff.eosHeal, r) or 0))
+                eosHealPct = math.min(50, eosHealPct + (pickRankVal(eff.eosHeal, r) or 0))
+            end
+            if eff.petTp then
+                petTpTotal = petTpTotal + (pickRankVal(eff.petTp, r) or 0)
             end
             if eff.mpToHpPct then
                 mpToHpPct = mpToHpPct + (pickRankVal(eff.mpToHpPct, r) or 0)
@@ -1696,8 +1768,25 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             if eff.partyTp then
                 partyTpTotal = partyTpTotal + (pickRankVal(eff.partyTp, r) or 0)
             end
+            if eff.packPartyTpPerMob and packExtras > 0 then
+                partyTpTotal = partyTpTotal + (pickRankVal(eff.packPartyTpPerMob, r) or 0) * packExtras
+            end
             if eff.conductionAdd then
                 conductionAddTotal = conductionAddTotal + (pickRankVal(eff.conductionAdd, r) or 0)
+            end
+            if type(eff.chiBlast) == 'table' then
+                if eff.chiBlast.pct then
+                    chiBlastPct = chiBlastPct + (pickRankVal(eff.chiBlast.pct, r) or 0)
+                end
+                if eff.chiBlast.cdTrim then
+                    chiBlastCdTrim = chiBlastCdTrim + (pickRankVal(eff.chiBlast.cdTrim, r) or 0)
+                end
+            end
+            if eff.cleanseSelf then
+                cleanseSelfCount = cleanseSelfCount + (pickRankVal(eff.cleanseSelf, r) or 0)
+            end
+            if eff.cleanseParty then
+                cleansePartyCount = cleansePartyCount + (pickRankVal(eff.cleanseParty, r) or 0)
             end
             if type(eff.partyBuffs) == 'table' then
                 for _, pb in ipairs(eff.partyBuffs) do
@@ -1717,7 +1806,17 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
         end
     end
 
+    selfMaxHpHealPct = math.min(24, selfMaxHpHealPct)
+    partyHealPct     = math.min(16, partyHealPct)
+
     if isPrimaryTarget then
+        if chiBlastPct > 0 then
+            attacker:setLocalVar('OX_CHIBLAST_PCT', math.min(120, chiBlastPct))
+        end
+        if chiBlastCdTrim > 0 then
+            attacker:setLocalVar('OX_CHIBLAST_CD_TRIM', math.min(45, chiBlastCdTrim))
+        end
+
         if nextWsAccum.wsd > 0 or nextWsAccum.tp > 0 or nextWsAccum.acc > 0 or nextWsAccum.macc > 0 then
             if nextWsAccum.wsd > 0 then
                 attacker:setLocalVar('OX_NEXT_WS_WSD', nextWsAccum.wsd)
@@ -1758,6 +1857,40 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
                 opts.tier = 3
             end
             attacker:addStatusEffect(effId, opts)
+        end
+
+        if cleanseSelfCount > 0 and attacker.eraseStatusEffect then
+            for _ = 1, math.min(3, cleanseSelfCount) do
+                attacker:eraseStatusEffect()
+            end
+        end
+
+        if cleansePartyCount > 0 then
+            local party = (attacker.getPartyWithTrusts and attacker:getPartyWithTrusts())
+                or (attacker.getParty and attacker:getParty())
+                or { attacker }
+            local seenCleanse = {}
+            local nErase = math.min(2, cleansePartyCount)
+            for _, member in ipairs(party) do
+                if
+                    member ~= nil and
+                    member.getID and
+                    not seenCleanse[member:getID()] and
+                    member:isAlive() and
+                    member.eraseStatusEffect and
+                    (member == attacker or member:checkDistance(attacker) <= 15)
+                then
+                    seenCleanse[member:getID()] = true
+                    for _ = 1, nErase do
+                        member:eraseStatusEffect()
+                    end
+                end
+            end
+            if attacker.getID and not seenCleanse[attacker:getID()] and attacker.eraseStatusEffect then
+                for _ = 1, nErase do
+                    attacker:eraseStatusEffect()
+                end
+            end
         end
 
         local function emitWsHealLog(entity, amt)
@@ -1843,21 +1976,26 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             end
         end
 
-        if eosHealPct > 0 and attacker.getPet then
+        if (eosHealPct > 0 or petTpTotal > 0) and attacker.getPet then
             local pet = attacker:getPet()
             if pet ~= nil and pet:isAlive() then
-                local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
-                if petHp > 0 and pet.addHP then
-                    local healed = pet:addHP(petHp)
-                    if healed > 0 then
-                        emitWsHealLog(pet, healed)
+                if eosHealPct > 0 then
+                    local petHp = math.floor(pet:getMaxHP() * (eosHealPct / 100))
+                    if petHp > 0 and pet.addHP then
+                        local healed = pet:addHP(petHp)
+                        if healed > 0 then
+                            emitWsHealLog(pet, healed)
+                        end
+                    end
+                    if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
+                        local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
+                        if petMp > 0 then
+                            pet:addMP(petMp)
+                        end
                     end
                 end
-                if pet.getMaxMP and pet.addMP and pet:getMaxMP() > 0 then
-                    local petMp = math.floor(pet:getMaxMP() * (eosHealPct / 100))
-                    if petMp > 0 then
-                        pet:addMP(petMp)
-                    end
+                if petTpTotal > 0 and pet.addTP then
+                    pet:addTP(petTpTotal)
                 end
             end
         end
@@ -2193,6 +2331,9 @@ local function collectUtilityNodeData(player, wsID, tp, consumeNextWs)
                 data.wscMnd = data.wscMnd + (pickRankVal(eff.wsc.mnd, r) or 0)
             end
             if eff.stance and isStanceActive(player, eff.stance) then
+                if eff.stance.potencyPct then
+                    data.potencyPct = data.potencyPct + (pickRankVal(eff.stance.potencyPct, r) or 0)
+                end
                 if eff.stance.wsd then
                     data.potencyPct = data.potencyPct + (pickRankVal(eff.stance.wsd, r) or 0)
                 end
@@ -2204,6 +2345,15 @@ local function collectUtilityNodeData(player, wsID, tp, consumeNextWs)
                 end
                 if eff.stance.macc then
                     data.macc = data.macc + (pickRankVal(eff.stance.macc, r) or 0)
+                end
+                if eff.stance.enmity then
+                    data.enmity = data.enmity + (pickRankVal(eff.stance.enmity, r) or 0)
+                end
+                if eff.stance.subtleBlow then
+                    data.subtleBlow = data.subtleBlow + (pickRankVal(eff.stance.subtleBlow, r) or 0)
+                end
+                if eff.stance.scBonus then
+                    data.scBonus = data.scBonus + (pickRankVal(eff.stance.scBonus, r) or 0)
                 end
             end
         end

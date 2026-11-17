@@ -1607,17 +1607,17 @@ function H.regSpec(wsId, archetype, specNodes, opts)
     })
 end
 
+local specProfiles = nil
+local function getSpecProfiles()
+    if specProfiles == nil then
+        specProfiles = require('modules/custom/lua/overlords_ws_spec_profiles')
+    end
+    return specProfiles
+end
+
 function H.reg(wsId, archetype, nodes)
-    local specNodes =
-    {
-        berserker  = buildBerserkerSpecNodes(wsId, archetype, nodes),
-        blackbelt  = buildBlackBeltSpecNodes(wsId, archetype, nodes),
-        commander  = buildCommanderSpecNodes(wsId, archetype, nodes),
-        tank       = buildTankSpecNodes(wsId, archetype, nodes),
-        spellblade = buildSpellbladeSpecNodes(wsId, archetype, nodes),
-        healer     = buildHealerSpecNodes(wsId, archetype, nodes),
-        chiweaver  = buildChiWeaverSpecNodes(wsId, archetype, nodes),
-    }
+    local P = getSpecProfiles()
+    local specNodes = P.buildAllSpecTrees(wsId, archetype, nodes, { useBaseline = false })
     H.regSpec(wsId, archetype, specNodes, { useBaseline = false })
 end
 
@@ -1625,54 +1625,26 @@ function H.regBaseline(wsId, archetype, nodes)
     local ws = catalog and catalog.byId and catalog.byId[wsId]
     local skill = ws and ws.skill or 0
 
-    -- Throwing (#241-#252) is Dancer Bladewheel's dedicated 3x4 tree
+    -- Throwing (#241-#252) preserves Dancer Bladewheel's dedicated 3x4 tree and synthesizes the other 12 specs
     if skill == xi.skill.THROWING then
         local isNonPhys, wsKind = isMagicOrUtilityWS(wsId, archetype)
         local cleaned = {}
         for _, n in ipairs(nodes or {}) do
             table.insert(cleaned, isNonPhys and sanitizeNodeForNonPhysical(n, wsId, wsKind) or n)
         end
-        talents.registerCustomWS(wsId,
-        {
-            archetype   = archetype,
-            useBaseline = true,
-            nodes       = cleaned,
-        })
+        local P = getSpecProfiles()
+        local specNodes = P.buildAllSpecTrees(wsId, archetype, cleaned, { useBaseline = true, preserveBladewheel = true })
+        H.regSpec(wsId, archetype, specNodes, { useBaseline = true })
         return
     end
 
-    -- Club & Staff: Col 1 is bespoke Tank (Gladiator/Sensei), Col 2 is bespoke Scholar, Col 3 is bespoke WAR/DPS
-    local function roleCol1Base(bespokeCol)
-        local out = {}
-        for _, n in ipairs(nodes or {}) do
-            if n.col == bespokeCol then
-                table.insert(out, rekeyNode(n, n.tier, 1, n.key))
-            end
-        end
-        return out
-    end
-
-    local tankNodes = buildTankSpecNodes(wsId, archetype, roleCol1Base(1))
-    local healNodes = buildHealerSpecNodes(wsId, archetype, roleCol1Base(2))
-    local cwNodes   = buildChiWeaverSpecNodes(wsId, archetype, roleCol1Base(2))
-    local sbNodes   = buildSpellbladeSpecNodes(wsId, archetype, roleCol1Base(2))
-    local cmdNodes  = buildCommanderSpecNodes(wsId, archetype, roleCol1Base(3))
-    local zerkNodes = buildBerserkerSpecNodes(wsId, archetype, nodes)
-    local bbNodes   = buildBlackBeltSpecNodes(wsId, archetype, roleCol1Base(3))
-
-    H.regSpec(wsId, archetype,
-    {
-        tank       = tankNodes,
-        healer     = healNodes,
-        chiweaver  = cwNodes,
-        spellblade = sbNodes,
-        commander  = cmdNodes,
-        berserker  = zerkNodes,
-        blackbelt  = bbNodes,
-    }, { useBaseline = true })
+    -- Club & Staff: Generate 13 distinct 3x4 spec trees tailored to each spec + WS DNA
+    local P = getSpecProfiles()
+    local specNodes = P.buildAllSpecTrees(wsId, archetype, nodes, { useBaseline = false })
+    H.regSpec(wsId, archetype, specNodes, { useBaseline = false })
 end
 
--- Upgrade H2H (#1-#15) trees registered in overlords_ws_talents.lua to full 7-spec 3x4 trees
+-- Upgrade H2H (#1-#15) trees registered in overlords_ws_talents.lua to full 13-spec 3x4 trees
 function H.upgradeExistingCustomRange(minWsId, maxWsId)
     local customMap = talents._customTrees or {}
     for wsId = minWsId, maxWsId do

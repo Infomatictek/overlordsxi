@@ -366,21 +366,21 @@ end
 
 local SPEC_KEY_TO_CATEGORY =
 {
-    tank        = 'tank',
-    inquisitor  = 'tank',
-    gladiator   = 'tank',
-    sensei      = 'tank',
-    spellblade  = 'spellblade',
-    sage        = 'spellblade',
-    necromancer = 'spellblade',
-    healer      = 'healer',
-    lifebinder  = 'healer',
-    medic       = 'healer',
-    chiweaver   = 'chiweaver',
     commander   = 'commander',
     berserker   = 'berserker',
+    gladiator   = 'gladiator',
+    sensei      = 'sensei',
     blackbelt   = 'blackbelt',
-    bladewheel  = 'berserker',
+    chiweaver   = 'chiweaver',
+    inquisitor  = 'inquisitor',
+    spellblade  = 'spellblade',
+    lifebinder  = 'lifebinder',
+    medic       = 'medic',
+    sage        = 'sage',
+    necromancer = 'necromancer',
+    bladewheel  = 'bladewheel',
+    tank        = 'inquisitor',
+    healer      = 'lifebinder',
 }
 
 function talents.resolveSpecCategory(player, jobId, specKeyOverride)
@@ -395,11 +395,19 @@ function talents.resolveSpecCategory(player, jobId, specKeyOverride)
         return SPEC_KEY_TO_CATEGORY[sKey]
     end
     if jid == xi.job.PLD or jid == xi.job.RUN then
-        return 'tank'
+        return 'inquisitor'
     elseif jid == xi.job.WHM or jid == xi.job.BRD or jid == xi.job.GEO then
-        return 'healer'
-    elseif jid == xi.job.BLM or jid == xi.job.RDM or jid == xi.job.SCH or jid == xi.job.BLU or jid == xi.job.SMN then
+        return 'lifebinder'
+    elseif jid == xi.job.SCH then
+        return 'medic'
+    elseif jid == xi.job.BLM then
+        return 'necromancer'
+    elseif jid == xi.job.RDM or jid == xi.job.BLU or jid == xi.job.SMN then
         return 'spellblade'
+    elseif jid == xi.job.MNK then
+        return 'blackbelt'
+    elseif jid == xi.job.DNC then
+        return 'bladewheel'
     elseif jid == xi.job.COR then
         return 'commander'
     end
@@ -1980,8 +1988,16 @@ end
 
 local SPEC_CATEGORY_FALLBACK =
 {
-    blackbelt = 'berserker',
-    chiweaver = 'healer',
+    gladiator   = 'tank',
+    sensei      = 'tank',
+    inquisitor  = 'tank',
+    lifebinder  = 'healer',
+    medic       = 'healer',
+    chiweaver   = 'healer',
+    sage        = 'spellblade',
+    necromancer = 'spellblade',
+    blackbelt   = 'berserker',
+    bladewheel  = 'berserker',
 }
 
 local function buildTreeForWS(ws, specCat)

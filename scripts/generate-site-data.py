@@ -644,11 +644,19 @@ RANK_LEVEL_TABLES = {
 }
 
 SPEC_CATEGORIES = [
-    {"key": "berserker", "label": "Berserker / DPS", "specs": "WAR Berserker, MNK Black Belt, SAM, DRK, DRG, THF, NIN, RNG"},
-    {"key": "tank", "label": "Tank / Vanguard", "specs": "RUN Inquisitor, WAR Gladiator, MNK Sensei, PLD"},
-    {"key": "spellblade", "label": "Spellblade / Arcana", "specs": "RUN Spellblade, SCH Sage, BLM Necromancer, RDM, BLU, SMN"},
-    {"key": "healer", "label": "Healer / Mending", "specs": "MNK Chi Weaver, RUN Lifebinder, SCH Medic, WHM, BRD, GEO"},
-    {"key": "commander", "label": "Commander / Tactical", "specs": "WAR Commander, COR"},
+    {"key": "berserker",   "label": "Berserker (WAR)",   "specs": "WAR Berserker, SAM, DRK, DRG, THF, NIN, RNG"},
+    {"key": "commander",   "label": "Commander (WAR)",   "specs": "WAR Commander, COR"},
+    {"key": "gladiator",   "label": "Gladiator (WAR)",   "specs": "WAR Gladiator (Club+Shield Leech Tank)"},
+    {"key": "sensei",      "label": "Sensei (MNK)",      "specs": "MNK Sensei (Staff Counter/Parry Tank)"},
+    {"key": "blackbelt",   "label": "Black Belt (MNK)",  "specs": "MNK Black Belt (H2H Martial Finisher)"},
+    {"key": "chiweaver",   "label": "Chi Weaver (MNK)",  "specs": "MNK Chi Weaver (0-MP Chi Pulse Healer)"},
+    {"key": "inquisitor",  "label": "Inquisitor (RUN)",  "specs": "RUN Inquisitor, PLD (Runic Parry/Ward Tank)"},
+    {"key": "spellblade",  "label": "Spellblade (RUN)",  "specs": "RUN Spellblade, RDM, BLU, SMN"},
+    {"key": "lifebinder",  "label": "Lifebinder (RUN)",  "specs": "RUN Lifebinder, WHM, BRD, GEO"},
+    {"key": "medic",       "label": "Medic (SCH)",       "specs": "SCH Medic (Call Eos Companion Healer)"},
+    {"key": "sage",        "label": "Sage (SCH)",        "specs": "SCH Sage (Call Titania / Helix Caster)"},
+    {"key": "necromancer", "label": "Necromancer (BLM)", "specs": "BLM Necromancer (Undead Thrall Summoner)"},
+    {"key": "bladewheel",  "label": "Bladewheel (DNC)",  "specs": "DNC Bladewheel (Chakram Step/Waltz)"},
 ]
 
 

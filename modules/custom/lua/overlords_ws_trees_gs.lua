@@ -16,20 +16,9 @@ local HL_EFF   = { xi.effect.VALIANCE, xi.effect.VALLATION, xi.effect.SWORDPLAY,
 local CMD_EFF  = { xi.effect.WARCRY, xi.effect.BERSERK, xi.effect.RESTRAINT, xi.effect.AGGRESSOR, xi.effect.RETALIATION }
 local ZERK_EFF = { xi.effect.BERSERK, xi.effect.BLOOD_RAGE, xi.effect.LAST_RESORT, xi.effect.SOULEATER, xi.effect.RESTRAINT }
 
--- Helper to register a Great Sword WS with bespoke Berserker nodes and tailored 7-spec trees
-local function regGS(wsId, archetype, zerkNodes, customSpecs)
-    customSpecs = customSpecs or {}
-    local specNodes =
-    {
-        berserker  = customSpecs.berserker  or H.buildBerserkerSpecNodes(wsId, archetype, zerkNodes),
-        blackbelt  = customSpecs.blackbelt  or H.buildBlackBeltSpecNodes(wsId, archetype, zerkNodes),
-        tank       = customSpecs.tank       or H.buildTankSpecNodes(wsId, archetype, zerkNodes),
-        spellblade = customSpecs.spellblade or H.buildSpellbladeSpecNodes(wsId, archetype, zerkNodes),
-        healer     = customSpecs.healer     or H.buildHealerSpecNodes(wsId, archetype, zerkNodes),
-        chiweaver  = customSpecs.chiweaver  or H.buildChiWeaverSpecNodes(wsId, archetype, zerkNodes),
-        commander  = customSpecs.commander  or H.buildCommanderSpecNodes(wsId, archetype, zerkNodes),
-    }
-    regSpec(wsId, archetype, specNodes)
+-- Helper to register a Great Sword WS with bespoke Berserker nodes and tailored 13-spec trees
+local function regGS(wsId, archetype, zerkNodes)
+    H.reg(wsId, archetype, zerkNodes)
 end
 
 -- Helper to replace specific (tier, col) entries in a generated 12-node spec list
