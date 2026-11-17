@@ -20,7 +20,7 @@ diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
 index 0000000..1111111 100644
 --- a/src/map/entities/char_entity.cpp
 +++ b/src/map/entities/char_entity.cpp
-@@ -1931,17 +1931,26 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
+@@ -1931,16 +1931,24 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
              auto chargesUsed = timer::count_seconds(PAbility->getRecastTime()); // charge cost is stored in the recast...
  
              //  Can't assign merits via ability ID for Sic/Ready due to shenanigans
@@ -47,7 +47,7 @@ index 0000000..1111111 100644
  
              action.recast = baseChargeTime * chargesUsed;
          }
-@@ -1957,6 +1966,13 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
+@@ -1957,5 +1965,13 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
                  action.recast  = 0s;
                  baseChargeTime = 0s;
              }
@@ -84,7 +84,7 @@ index 0000000..1111111 100644
 +}
  /************************************************************************
   *  Function: resetRecasts()
-@@ -21349,6 +21361,7 @@ void CLuaBaseEntity::Register()
+@@ -21349,5 +21361,6 @@ void CLuaBaseEntity::Register()
      SOL_REGISTER("hasRecast", CLuaBaseEntity::hasRecast);
      SOL_REGISTER("resetRecast", CLuaBaseEntity::resetRecast);
      SOL_REGISTER("resetRecasts", CLuaBaseEntity::resetRecasts);
@@ -95,7 +95,7 @@ diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
 index 0000000..1111111 100644
 --- a/src/map/lua/lua_base_entity.h
 +++ b/src/map/lua/lua_base_entity.h
-@@ -670,6 +670,7 @@ public:
+@@ -670,5 +670,6 @@ public:
      auto hasRecast(uint8 rType, uint16 recastID, const sol::object& arg2) -> bool;
      void resetRecast(uint8 rType, uint16 recastID); // Reset one recast ID
      void resetRecasts();                            // Reset recasts for the caller
@@ -166,7 +166,7 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 index 0000000..1111111 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -316,6 +316,37 @@ void LoadEffectsParameters()
+@@ -316,5 +316,36 @@ void LoadEffectsParameters()
      EffectsParams[846].Name             = "kagemusha_bunshin";
      EffectsParams[846].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
      EffectsParams[846].SortKey          = 10000;
