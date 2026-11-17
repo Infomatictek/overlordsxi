@@ -379,6 +379,9 @@ local SPEC_KEY_TO_CATEGORY =
     sage        = 'sage',
     necromancer = 'necromancer',
     bladewheel  = 'bladewheel',
+    adventurer  = 'bladewheel',
+    musician    = 'sage',
+    minstrel    = 'gladiator',
     tank        = 'inquisitor',
     healer      = 'lifebinder',
 }

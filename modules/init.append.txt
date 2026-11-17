@@ -13,6 +13,7 @@ custom/lua/dot_damage_log.lua
 custom/lua/dnc_specs.lua
 custom/lua/blm_specs.lua
 custom/lua/run_specs.lua
+custom/lua/brd_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/lua/overlords_test_gear.lua
 custom/lua/overlords_regen_potency.lua
@@ -27,6 +28,7 @@ custom/sql/dnc_chakram_spec.sql
 custom/sql/blm_necro_spec.sql
 custom/sql/run_specs.sql
 custom/sql/mnk_chiweaver_abilities.sql
+custom/sql/brd_specs.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua
