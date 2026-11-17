@@ -18,6 +18,7 @@ custom/lua/sam_specs.lua
 custom/lua/bst_specs.lua
 custom/lua/pld_specs.lua
 custom/lua/nin_specs.lua
+custom/lua/blu_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/lua/overlords_test_gear.lua
 custom/lua/overlords_regen_potency.lua
@@ -38,6 +39,7 @@ custom/sql/sam_specs.sql
 custom/sql/bst_specs.sql
 custom/sql/pld_specs.sql
 custom/sql/nin_specs.sql
+custom/sql/blu_specs.sql
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua
@@ -45,3 +47,6 @@ custom/commands/gear.lua
 custom/commands/camp.lua
 custom/lua/rdm_specs.lua
 custom/sql/rdm_specs.sql
+
+custom/lua/drk_specs.lua
+custom/sql/drk_specs.sql
