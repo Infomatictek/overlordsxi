@@ -13,10 +13,7 @@ diff --git a/src/map/status_effect.h b/src/map/status_effect.h
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -387,6 +387,87 @@ void LoadEffectsParameters()
-     EffectsParams[859].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
-     EffectsParams[859].SortKey          = 10000;
-     EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
+@@ -361,0 +361,81 @@ void LoadEffectsParameters()
 +
 +    // OverlordsXI Healer Crystal Spec status effects (860-875).
 +    EffectsParams[860].Name             = "solace_ward";
