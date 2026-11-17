@@ -385,6 +385,7 @@ local SPEC_KEY_TO_CATEGORY =
     ronin          = 'ronin',
     imperialarcher = 'imperialarcher',
     warlord        = 'warlord',
+    aegistemplar   = 'aegistemplar',
     tank           = 'inquisitor',
     healer         = 'lifebinder',
 }

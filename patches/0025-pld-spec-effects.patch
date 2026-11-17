@@ -1,0 +1,913 @@
+﻿diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index 682027aadb..51a89b0323 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -1083,6 +1083,19 @@ auto CBattleEntity::takeDamage(int32 amount, CBattleEntity* attacker /* = nullpt
+     }
+     this->BattleHistory.lastHitTaken_atkType = attackType;
+ 
++    if (amount > 0 && !isSkillchainDamage &&
++        (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Magical) &&
++        (this->objtype == TYPE_PC || this->objtype == TYPE_TRUST || this->objtype == TYPE_PET))
++    {
++        static thread_local bool inPreTakeDamage = false;
++        if (!inPreTakeDamage)
++        {
++            inPreTakeDamage = true;
++            amount          = luautils::OnPreTakeDamage(this, amount, attacker, static_cast<uint16>(attackType), static_cast<uint16>(damageType));
++            inPreTakeDamage = false;
++        }
++    }
++
+     PAI->EventHandler.triggerListener("TAKE_DAMAGE", this, amount, attacker, (uint16)attackType, (uint16)damageType);
+ 
+     // RoE Damage Taken Trigger
+@@ -2412,6 +2425,10 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
+     {
+         flags |= FINDFLAGS_DEAD;
+     }
++    if (PSpell->isHeal() || PSpell->getSpellFamily() == SPELLFAMILY_REGEN || PSpell->getID() == SpellID::White_Wind)
++    {
++        flags |= FINDFLAGS_PET;
++    }
+ 
+     const auto result    = luautils::callGlobal<sol::table>("xi.combat.magicAoE.calculateTypeAndRadius", this, PSpell);
+     SPELLAOE   aoeType   = result.get_or(1, SPELLAOE_NONE);
+@@ -2742,8 +2759,25 @@ void CBattleEntity::OnAbility(CAbilityState& state, action_t& action)
+ 
+         if (PAbility->isAoE())
+         {
++            uint8 abilityFindFlags = FINDFLAGS_NONE;
++            switch (PAbility->getID())
++            {
++                case ABILITY_BENEDICTION:
++                case ABILITY_DIVINE_WALTZ:
++                case ABILITY_DIVINE_WALTZ_II:
++                case 397: // Formation: Bulwark
++                case 398: // Battle Cadence
++                case 399: // Rallying Horn
++                case 418: // Sanctified Ward
++                case 430: // Tranquil Lotus
++                    abilityFindFlags |= FINDFLAGS_PET;
++                    break;
++                default:
++                    break;
++            }
++
+             PAI->TargetFind->reset();
+-            PAI->TargetFind->findWithinArea(this, AOE_RADIUS::ATTACKER, PAbility->getRadius(), FINDFLAGS_NONE, PAbility->getValidTarget());
++            PAI->TargetFind->findWithinArea(this, AOE_RADIUS::ATTACKER, PAbility->getRadius(), abilityFindFlags, PAbility->getValidTarget());
+ 
+             auto prevMsg = MsgBasic::None;
+             for (auto&& PTargetFound : PAI->TargetFind->m_targets)
+@@ -2854,8 +2888,11 @@ void CBattleEntity::OnMobSkillFinished(CMobSkillState& state, action_t& action)
+     float distance  = PSkill->getDistance();
+     uint8 findFlags = 0;
+ 
+-    // Mob buff abilities also hit monster's pets
+-    if (PSkill->getValidTargets() == TARGET_SELF)
++    // Mob buff abilities also hit monster's pets, and player-aligned ally party/self skills also hit party pets
++    if (PSkill->getValidTargets() == TARGET_SELF ||
++        (this->allegiance == xi::Allegiance::Player &&
++         !(PSkill->getValidTargets() & TARGET_ENEMY) &&
++         (PSkill->getValidTargets() & (TARGET_SELF | TARGET_PLAYER_PARTY))))
+     {
+         findFlags |= FINDFLAGS_PET;
+     }
+@@ -3150,9 +3187,12 @@ auto CBattleEntity::CanAttack(CBattleEntity* PTarget, std::unique_ptr<CBasicPack
+ 
+ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ {
+-    TracyZoneScoped;
++    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot());
++}
+ 
+-    auto* PTarget = state.target().resolve<CBattleEntity>();
++void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot)
++{
++    TracyZoneScoped;
+     if (!PTarget)
+     {
+         return;
+@@ -3244,7 +3284,7 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+     for (uint8 i = 1; i <= hitCount; ++i)
+     {
+         // TODO: add Barrage mod racc bonus
+-        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, 0) && !state.IsOutOfRange())
++        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, 0) && !isOutOfRange)
+         {
+             // Absorbed by shadow
+             if (battleutils::IsAbsorbByShadow(PTarget, this))
+@@ -3371,7 +3411,7 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ 
+         if (isChar && slot == SLOT_RANGED)
+         {
+-            auto attackType = state.IsRapidShot() ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
++            auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
+             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
+         }
+         actionResult.recordDamage(attack_outcome_t{
+@@ -3400,6 +3440,11 @@ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ 
+         if (isChar)
+         {
++            if (actionResult.param > 0)
++            {
++                battleutils::HandleRangedSamba(this, PTarget, &actionResult, static_cast<uint16>(GetRangedWeaponDelay(false)), actionResult.param);
++            }
++
+             // add additional effects
+             // this should go AFTER damage taken
+             // or else sleep effect won't work
+@@ -3839,6 +3884,11 @@ auto CBattleEntity::OnAttack(CAttackState& state, action_t& action) -> bool
+                 }
+ 
+                 const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), attack.GetDamage(), attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
++                if (attack.IsBlocked() && PTarget != nullptr)
++                {
++                    const int32 blockedAmt = std::max<int32>(0, attack.GetDamage() - damage);
++                    PTarget->PAI->EventHandler.triggerListener("SHIELD_BLOCK", PTarget, this, damage, blockedAmt);
++                }
+                 if (damage < 0)
+                 {
+                     actionResult.param     = -damage;
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index ea78c772e5..9dcc4ce5bf 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6773,4 +6773,214 @@ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table
+     return table;
+ }
+ 
++auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>
++{
++    std::vector<uint16> abilities;
++    if (PChar == nullptr)
++    {
++        return abilities;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.getExtraAbilities");
++    if (!func.valid())
++    {
++        return abilities;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetExtraSpecAbilities: %s", err.what());
++        return abilities;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.get_type() == sol::type::table)
++    {
++        const sol::table retTbl = retObj.as<sol::table>();
++        for (std::size_t i = 1; i <= retTbl.size(); ++i)
++        {
++            const sol::object entry = retTbl[i];
++            if (entry.valid() && entry.is<uint16>())
++            {
++                abilities.push_back(entry.as<uint16>());
++            }
++        }
++    }
++
++    return abilities;
++}
++
++auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>
++{
++    std::vector<uint16> traitsList;
++    if (PChar == nullptr)
++    {
++        return traitsList;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.getExtraTraits");
++    if (!func.valid())
++    {
++        return traitsList;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetExtraSpecTraits: %s", err.what());
++        return traitsList;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.get_type() == sol::type::table)
++    {
++        const sol::table retTbl = retObj.as<sol::table>();
++        for (std::size_t i = 1; i <= retTbl.size(); ++i)
++        {
++            const sol::object entry = retTbl[i];
++            if (entry.valid() && entry.is<uint16>())
++            {
++                traitsList.push_back(entry.as<uint16>());
++            }
++        }
++    }
++
++    return traitsList;
++}
++
++void OnTraitsTableBuilt(CCharEntity* PChar)
++{
++    if (PChar == nullptr)
++    {
++        return;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.spec.onTraitsRebuild");
++    if (!func.valid())
++    {
++        return;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::OnTraitsTableBuilt: %s", err.what());
++    }
++}
++
++auto CanUseTalentWeaponskill(CCharEntity* PChar, uint16 wsId) -> bool
++{
++    if (PChar == nullptr || wsId == 0)
++    {
++        return false;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.wsTalents.isWSUnlocked");
++    if (!func.valid())
++    {
++        return false;
++    }
++
++    const auto result = func(PChar, wsId);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::CanUseTalentWeaponskill: %s", err.what());
++        return false;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<bool>())
++    {
++        return retObj.as<bool>();
++    }
++
++    return false;
++}
++
++void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1, uint8 arg2)
++{
++    if (PChar == nullptr)
++    {
++        return;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.wsTalents.handleClientPacket");
++    if (!func.valid())
++    {
++        return;
++    }
++
++    const auto result = func(PChar, operation, wsId, arg1, arg2);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::OnTalentPacket: %s", err.what());
++    }
++}
++
++auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32
++{
++    if (PChar == nullptr || PTarget == nullptr)
++    {
++        return -2;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.mnk.executeChiRangedAttack");
++    if (!func.valid())
++    {
++        return -2;
++    }
++
++    const auto result = func(PChar, PTarget, swingIndex);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::ExecuteChiRangedAttack: %s", err.what());
++        return -2;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<int32>())
++    {
++        return retObj.as<int32>();
++    }
++
++    return -2;
++}
++
++auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32
++{
++    if (PDefender == nullptr || amount <= 0)
++    {
++        return amount;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.onPreTakeDamage");
++    if (!func.valid())
++    {
++        return amount;
++    }
++
++    const auto result = func(PDefender, amount, PAttacker, attackType, damageType);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::OnPreTakeDamage: %s", err.what());
++        return amount;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<int32>())
++    {
++        return std::max<int32>(0, retObj.as<int32>());
++    }
++
++    return amount;
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index e4fbd7d9b1..b915adc096 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -584,6 +584,14 @@ auto invokeBattlefieldEvent(uint16 battlefieldId, const std::string& eventName,
+ auto GetSynergyRecipeByID(uint32 id) -> sol::table;
+ auto GetSynergyRecipeByTrade(CLuaTradeContainer luaTradeContainer) -> sol::table;
+ 
++auto GetExtraSpecAbilities(CCharEntity* PChar) -> std::vector<uint16>;
++auto GetExtraSpecTraits(CCharEntity* PChar) -> std::vector<uint16>;
++void OnTraitsTableBuilt(CCharEntity* PChar);
++auto CanUseTalentWeaponskill(CCharEntity* PChar, uint16 wsId) -> bool;
++void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1, uint8 arg2);
++auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32;
++auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32;
++
+ }; // namespace luautils
+ 
+ //
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 51f4872f59..cbdc356adb 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -40,7 +40,9 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ 
+ #include <algorithm>
+ #include <array>
++#include <cctype>
+ #include <cstring>
++#include <vector>
+ 
+ #include "map_constants.h"
+ 
+@@ -62,14 +64,18 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ #include "notoriety_container.h"
+ #include "status_effect_container.h"
+ 
++#include "enums/chat_message_type.h"
+ #include "enums/msg_std.h"
+ #include "map_engine.h"
++#include "packets/s2c/0x017_chat_std.h"
+ #include "packets/s2c/0x029_battle_message.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/itemutils.h"
+ #include "utils/petutils.h"
+ #include "utils/puppetutils.h"
++#include "utils/zoneutils.h"
++#include "zone.h"
+ 
+ namespace effects
+ {
+@@ -128,6 +134,178 @@ void LoadEffectsParameters()
+         auto filename = fmt::format("./scripts/effects/{}.lua", EffectsParams[static_cast<uint16>(id)].Name);
+         luautils::LoadLuaObjectFromFile(filename);
+     }
++
++    // OverlordsXI Eos Companion custom status effect slots (789: stackable Regen, 814: hidden Orphic Refresh).
++    EffectsParams[789].Name             = "regen";
++    EffectsParams[789].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[789].Element          = 7;
++    EffectsParams[789].SortKey          = 700;
++    EffectsParams[789].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[814].Name             = "eos_refresh";
++    EffectsParams[814].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::NoCancel | xi::StatusEffectFlag::HideTimer;
++    EffectsParams[814].Element          = 7;
++    EffectsParams[814].SortKey          = 10000;
++    EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Commander custom tactical status effects (815-818).
++    EffectsParams[815].Name             = "commander_breach";
++    EffectsParams[815].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[815].SortKey          = 10000;
++    EffectsParams[815].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[816].Name             = "commander_bulwark";
++    EffectsParams[816].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[816].SortKey          = 10000;
++    EffectsParams[816].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[817].Name             = "commander_cadence";
++    EffectsParams[817].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[817].SortKey          = 10000;
++    EffectsParams[817].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[818].Name             = "commander_regroup";
++    EffectsParams[818].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[818].SortKey          = 10000;
++    EffectsParams[818].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Berserker custom status effect (819).
++    EffectsParams[819].Name             = "berserker_surge";
++    EffectsParams[819].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[819].SortKey          = 10000;
++    EffectsParams[819].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Gladiator custom status effect (820).
++    EffectsParams[820].Name             = "gladiator_ward";
++    EffectsParams[820].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[820].SortKey          = 10000;
++    EffectsParams[820].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RUN custom status effects (821-828).
++    EffectsParams[821].Name             = "inquisitor_battuta";
++    EffectsParams[821].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[821].SortKey          = 10000;
++    EffectsParams[821].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[822].Name             = "inquisitor_aegis";
++    EffectsParams[822].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[822].SortKey          = 10000;
++    EffectsParams[822].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[823].Name             = "inquisitor_converge";
++    EffectsParams[823].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[823].SortKey          = 10000;
++    EffectsParams[823].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[824].Name             = "spellblade_edgeflare";
++    EffectsParams[824].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[824].SortKey          = 10000;
++    EffectsParams[824].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[825].Name             = "lifebinder_font";
++    EffectsParams[825].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[825].SortKey          = 10000;
++    EffectsParams[825].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[826].Name             = "lifebinder_sanctuary";
++    EffectsParams[826].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[826].SortKey          = 10000;
++    EffectsParams[826].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[827].Name             = "spellblade_conduction";
++    EffectsParams[827].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[827].SortKey          = 10000;
++    EffectsParams[827].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[828].Name             = "spellblade_ascendance";
++    EffectsParams[828].Flag             = xi::StatusEffectFlag::Death;
++    EffectsParams[828].SortKey          = 10000;
++    EffectsParams[828].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI MNK Chi Weaver custom status effects (829-830).
++    EffectsParams[829].Name             = "chiweaver_lotus";
++    EffectsParams[829].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[829].SortKey          = 10000;
++    EffectsParams[829].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[830].Name             = "chiweaver_harmony";
++    EffectsParams[830].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[830].SortKey          = 10000;
++    EffectsParams[830].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RUN Spellblade Overcharge Runes status effect (831).
++    EffectsParams[831].Name             = "spellblade_overcharge";
++    EffectsParams[831].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[831].SortKey          = 10000;
++    EffectsParams[831].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI BRD custom spec status effects (832-836).
++    EffectsParams[832].Name             = "adventurer_cadence";
++    EffectsParams[832].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[832].SortKey          = 10000;
++    EffectsParams[832].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[833].Name             = "adventurer_encore";
++    EffectsParams[833].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[833].SortKey          = 10000;
++    EffectsParams[833].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[834].Name             = "musician_resonance";
++    EffectsParams[834].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[834].SortKey          = 10000;
++    EffectsParams[834].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[835].Name             = "musician_overdrive";
++    EffectsParams[835].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[835].SortKey          = 10000;
++    EffectsParams[835].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[836].Name             = "minstrel_iron_aria";
++    EffectsParams[836].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[836].SortKey          = 10000;
++    EffectsParams[836].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI SAM Crystal Spec status effects (837-841).
++    EffectsParams[837].Name             = "ronin_stagger";
++    EffectsParams[837].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[837].SortKey          = 10000;
++    EffectsParams[837].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[838].Name             = "imp_drawn_oisoya";
++    EffectsParams[838].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[838].SortKey          = 10000;
++    EffectsParams[838].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[839].Name             = "imp_cosmic_brand";
++    EffectsParams[839].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[839].SortKey          = 10000;
++    EffectsParams[839].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[840].Name             = "warlord_noto";
++    EffectsParams[840].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[840].SortKey          = 10000;
++    EffectsParams[840].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[841].Name             = "warlord_ashura";
++    EffectsParams[841].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[841].SortKey          = 10000;
++    EffectsParams[841].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI PLD Crystal Spec status effects (842-844).
++    EffectsParams[842].Name             = "aegis_zeal";
++    EffectsParams[842].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[842].SortKey          = 10000;
++    EffectsParams[842].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[843].Name             = "aegis_consecration";
++    EffectsParams[843].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[843].SortKey          = 10000;
++    EffectsParams[843].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[844].Name             = "holy_retribution";
++    EffectsParams[844].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[844].SortKey          = 10000;
++    EffectsParams[844].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
+@@ -181,6 +359,174 @@ auto statusOrdering(const std::unique_ptr<CStatusEffect>& AStatus, const std::un
+     return AStatus->GetStatusID() < BStatus->GetStatusID();
+ }
+ 
++struct DotAttributionEntry
++{
++    xi::StatusEffect statusId{ xi::StatusEffect::None };
++    uint32           originId{ 0 };
++    int32            regenDown{ 0 };
++};
++
++auto ResolveDotOrigin(CBattleEntity* PTarget, uint32 originId) -> CBattleEntity*
++{
++    if (originId == 0 || PTarget == nullptr)
++    {
++        return nullptr;
++    }
++
++    CBaseEntity* POrigin = nullptr;
++    if (originId < 0x01000000)
++    {
++        if (PTarget->loc.zone != nullptr)
++        {
++            POrigin = PTarget->loc.zone->GetCharByID(originId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetChar(originId);
++        }
++    }
++    else
++    {
++        if (PTarget->PInstance != nullptr)
++        {
++            const uint16 targId = static_cast<uint16>(originId & 0x00000800 ? (originId & 0x7FF) + 0x700 : originId & 0xFFF);
++            POrigin             = PTarget->GetEntity(targId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetEntity(originId);
++        }
++    }
++
++    if (POrigin != nullptr && POrigin->id != originId)
++    {
++        return nullptr;
++    }
++
++    return dynamic_cast<CBattleEntity*>(POrigin);
++}
++
++auto IsPlayerSideDotOrigin(const CBattleEntity* PTarget, const CBattleEntity* POrigin) -> bool
++{
++    if (PTarget == nullptr || POrigin == nullptr || POrigin == PTarget)
++    {
++        return false;
++    }
++
++    if (POrigin->objtype == TYPE_PC || POrigin->objtype == TYPE_TRUST || POrigin->objtype == TYPE_FELLOW)
++    {
++        return true;
++    }
++
++    if (POrigin->objtype == TYPE_PET)
++    {
++        return POrigin->PMaster == nullptr || POrigin->PMaster->objtype == TYPE_PC;
++    }
++
++    return false;
++}
++
++auto GetDisplayEntityName(const CBattleEntity* PEntity) -> std::string
++{
++    if (PEntity == nullptr)
++    {
++        return "";
++    }
++
++    std::string name = !PEntity->packetName.empty() ? PEntity->packetName : PEntity->getName();
++    std::replace(name.begin(), name.end(), '_', ' ');
++    return name;
++}
++
++auto GetDotDisplayName(xi::StatusEffect statusId) -> std::string
++{
++    switch (statusId)
++    {
++        case xi::StatusEffect::Poison:
++            return "Poison";
++        case xi::StatusEffect::Kaustra:
++            return "Kaustra";
++        case xi::StatusEffect::Burn:
++            return "Burn";
++        case xi::StatusEffect::Frost:
++            return "Frost";
++        case xi::StatusEffect::Choke:
++            return "Choke";
++        case xi::StatusEffect::Rasp:
++            return "Rasp";
++        case xi::StatusEffect::Shock:
++            return "Shock";
++        case xi::StatusEffect::Drown:
++            return "Drown";
++        case xi::StatusEffect::Dia:
++            return "Dia";
++        case xi::StatusEffect::Bio:
++            return "Bio";
++        case xi::StatusEffect::Helix:
++            return "Helix";
++        case xi::StatusEffect::Requiem:
++            return "Requiem";
++        default:
++            break;
++    }
++
++    if (static_cast<uint16>(statusId) == 540)
++    {
++        return "Geo-Poison";
++    }
++
++    std::string raw = effects::GetEffectName(static_cast<uint16>(statusId));
++    if (raw.empty())
++    {
++        return "DoT";
++    }
++
++    bool capitalizeNext = true;
++    for (char& ch : raw)
++    {
++        if (ch == '_')
++        {
++            ch             = ' ';
++            capitalizeNext = true;
++        }
++        else if (capitalizeNext)
++        {
++            ch             = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
++            capitalizeNext = false;
++        }
++    }
++
++    return raw;
++}
++
++void EmitDotDamageLog(CBattleEntity* PTarget, CBattleEntity* POrigin, xi::StatusEffect statusId, int32 damage)
++{
++    if (PTarget == nullptr || PTarget->objtype != TYPE_MOB || PTarget->loc.zone == nullptr || damage <= 0)
++    {
++        return;
++    }
++
++    if (!IsPlayerSideDotOrigin(PTarget, POrigin))
++    {
++        return;
++    }
++
++    const std::string casterName = GetDisplayEntityName(POrigin);
++    const std::string targetName = GetDisplayEntityName(PTarget);
++    if (casterName.empty() || targetName.empty())
++    {
++        return;
++    }
++
++    const std::string effectName = GetDotDisplayName(statusId);
++    const char*       pointWord  = damage == 1 ? "point" : "points";
++    const std::string message    = fmt::format("{}'s {} deals {} {} of damage to {}.", casterName, effectName, damage, pointWord, targetName);
++
++    PTarget->loc.zone->PushPacket(PTarget, CHAR_INRANGE, std::make_unique<GP_SERV_COMMAND_CHAT_STD>("", PTarget->getZone(), MESSAGE_SYSTEM_3, message));
++}
++
+ } // namespace
+ 
+ CStatusEffectContainer::CStatusEffectContainer(CBattleEntity* PEntity)
+@@ -1842,6 +2188,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                     if (PEffect && (PEffect->GetEffectFlags() & xi::StatusEffectFlag::AlwaysExpiring) != xi::StatusEffectFlag::None)
+                     {
+                         PEffect->SetStartTime(timer::now());
++                        PEffect->SetOriginID(PEntity->id);
+ 
+                         // Effect updated, probably from Ecliptic Attrition
+                         // Update status effect with new potency.
+@@ -1865,6 +2212,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                                                     4s);                                                      // Duration
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::NoLossMessage);
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::AlwaysExpiring);
++                        PEffect->SetOriginID(PEntity->id);
+                         PTarget->StatusEffectContainer->AddStatusEffect(std::unique_ptr<CStatusEffect>(PEffect), EffectNotice::Silent);
+                     }
+                 }
+@@ -1995,7 +2343,27 @@ void CStatusEffectContainer::TickEffects(timer::time_point tick)
+                     HandleAura(PStatusEffect.get());
+                 }
+                 PStatusEffect->IncrementElapsedTickCount();
+-                luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                if (m_POwner->objtype == TYPE_MOB &&
++                    (PStatusEffect->GetStatusID() == xi::StatusEffect::Helix ||
++                     (PStatusEffect->GetStatusID() == xi::StatusEffect::Bio && PStatusEffect->GetTier() >= 11)))
++                {
++                    const auto   statusId = PStatusEffect->GetStatusID();
++                    const uint32 originId = PStatusEffect->GetOriginID();
++                    const int32  hpBefore = m_POwner->health.hp;
++
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0)
++                    {
++                        EmitDotDamageLog(m_POwner, ResolveDotOrigin(m_POwner, originId), statusId, dealt);
++                    }
++                }
++                else
++                {
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++                }
+             }
+         }
+     }
+@@ -2039,7 +2407,108 @@ void CStatusEffectContainer::TickRegen(timer::time_point tick)
+             monstrosity::ApplyIdleRegen(PChar);
+         }
+ 
+-        if (poison)
++        if (m_POwner->objtype == TYPE_MOB && poison > 0)
++        {
++            std::vector<DotAttributionEntry> dotEntries;
++            for (const auto& PStatusEffect : m_StatusEffectSet)
++            {
++                if (PStatusEffect == nullptr || PStatusEffect->isDeleted())
++                {
++                    continue;
++                }
++
++                int32 effectRegenDown = 0;
++                for (const auto& mod : PStatusEffect->modList())
++                {
++                    if (mod.getModID() == xi::Mod::REGEN_DOWN)
++                    {
++                        effectRegenDown += mod.getModAmount();
++                    }
++                }
++
++                const auto statusId = PStatusEffect->GetStatusID();
++                if (effectRegenDown <= 0 &&
++                    (statusId == xi::StatusEffect::Poison ||
++                     statusId == xi::StatusEffect::Requiem ||
++                     statusId == xi::StatusEffect::Kaustra))
++                {
++                    effectRegenDown = static_cast<int32>(PStatusEffect->GetPower());
++                }
++
++                if (effectRegenDown <= 0)
++                {
++                    continue;
++                }
++
++                CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, PStatusEffect->GetOriginID());
++                if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                {
++                    continue;
++                }
++
++                dotEntries.push_back({ statusId, PStatusEffect->GetOriginID(), effectRegenDown });
++            }
++
++            int32 remainingPoison = static_cast<int32>(poison);
++            bool  dealtAnyDamage  = false;
++
++            for (const auto& entry : dotEntries)
++            {
++                if (remainingPoison <= 0 || m_POwner->isDead() || m_POwner->health.hp == 0)
++                {
++                    break;
++                }
++
++                const int32 tickPortion = std::min(entry.regenDown, remainingPoison);
++                remainingPoison -= tickPortion;
++
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, tickPortion);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++
++                    CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, entry.originId);
++                    if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                    {
++                        POrigin = nullptr;
++                    }
++
++                    const int32 hpBefore = m_POwner->health.hp;
++                    m_POwner->takeDamage(damage, POrigin);
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0 && POrigin != nullptr)
++                    {
++                        EmitDotDamageLog(m_POwner, POrigin, entry.statusId, dealt);
++                    }
++                }
++            }
++
++            if (remainingPoison > 0 && !m_POwner->isDead() && m_POwner->health.hp > 0)
++            {
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, remainingPoison);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++                    m_POwner->takeDamage(damage);
++                }
++            }
++
++            if (dealtAnyDamage)
++            {
++                // If target has nightmare sleep. Don't break sleep from REGEN_DOWN damage
++                // see mobskills/nightmare.lua for full explanation
++                if (
++                    !(
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI) &&
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI)->GetTier() >= 4)) // Tier 4 = Player Avatar Nightmare
++                {
++                    WakeUp();
++                }
++            }
++        }
++        else if (poison)
+         {
+             int16 damage = battleutils::HandleStoneskin(m_POwner, poison);
+ 
