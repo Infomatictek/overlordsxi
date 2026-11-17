@@ -524,16 +524,64 @@ local function attachBlackBeltListeners(player)
     end)
 end
 
+local function detachChiWeaverListeners(player)
+    if player ~= nil and player.removeListener then
+        player:removeListener('OX_CHW_WS')
+    end
+end
+
+local function attachChiWeaverListeners(player)
+    if player == nil or not player.addListener then
+        return
+    end
+
+    detachChiWeaverListeners(player)
+
+    -- Flowing Chi: Landed bare-handed Hand-to-Hand Weaponskills work up to 20y and emit a TP-scaled 12y healing pulse around the target.
+    player:addListener('WEAPONSKILL_USE', 'OX_CHW_WS', function(actor, target, _ws, tp, _action, dmg)
+        if
+            actor == nil or
+            target == nil or
+            target == actor or
+            (dmg ~= nil and dmg <= 0) or
+            not isMonkSpec(actor, CHIWEAVER_KEY) or
+            not isCompletelyUnarmed(actor)
+        then
+            return
+        end
+
+        local lvl        = actor.getMainLvl and (actor:getMainLvl() or 10) or 10
+        local mndStat    = actor.getStat and (actor:getStat(xi.mod.MND) or 10) or 10
+        local hasHarmony = actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_INNER_HARMONY)
+        local tpVal      = math.max(1000, tonumber(tp) or 1000)
+        local pulseMult  = (1.15 + ((tpVal - 1000) / 2000.0) * 0.60) * (hasHarmony and 1.40 or 1.0)
+        local baseHeal   = computeChiPulseBaseHeal(actor, lvl, mndStat, pulseMult)
+        local cleanse    = (tpVal >= 2000) and 1 or 0
+        pulseHealAroundCenter(actor, target, baseHeal, 12.0, cleanse)
+
+        if
+            actor.checkDistance and
+            actor:checkDistance(target) > 12.0 and
+            actor.getHP and
+            actor.getMaxHP and
+            actor.addHP and
+            actor:getHP() < actor:getMaxHP()
+        then
+            actor:addHP(math.max(8, math.floor(baseHeal * 0.45)))
+        end
+    end)
+end
+
 -----------------------------------
 -- Chi Weaver Ranged Chi Auto-Attack Entry Point (C++ Patch 0021)
 -----------------------------------
 local function computeChiPulseBaseHeal(player, lvl, mndStat, mult)
-    local curePot = 1.0 + (math.max(0, (player.getMod and player:getMod(xi.mod.CURE_POTENCY)) or 0) / 100.0)
+    local curePot  = 1.0 + (math.max(0, (player.getMod and player:getMod(xi.mod.CURE_POTENCY)) or 0) / 100.0)
     local h2hSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.HAND_TO_HAND) or 0) or 0
     return math.max(10, math.floor((12 + (lvl * 1.4) + (mndStat * 1.05) + (h2hSkill * 0.12)) * curePot * (mult or 1.0)))
 end
 
-function xi.overlords.mnk.executeChiRangedAttack(player, target)
+function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     if
         player == nil or
         target == nil or
@@ -541,32 +589,38 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         (player.isAlive and not player:isAlive()) or
         (target.isAlive and not target:isAlive())
     then
-        return -1
+        return -2
     end
 
     if not isCompletelyUnarmed(player) then
         enforceMnkWeaponGate(player)
         if not isCompletelyUnarmed(player) then
-            return -1
+            return -2
         end
     end
 
+    local idx = tonumber(swingIndex)
+    local isMultiRound = idx ~= nil
+    local swingNum = idx or 1
+    local hitScale = isMultiRound and 0.55 or 1.0
     local lvl = player.getMainLvl and (player:getMainLvl() or 10) or 10
 
-    -- Compute unarmed Martial Arts + Haste delay for the next ranged Chi bolt.
-    local maMod     = player.getMod and (player:getMod(xi.mod.MARTIAL_ARTS) or 0) or 0
-    local baseDelay = math.max(210, 460 - math.floor(lvl * 1.8) - maMod)
-    local hMagic    = utils.clamp((player:getMod(xi.mod.HASTE_MAGIC) or 0) / 10000.0, -1.0, 0.4375)
-    local hAbil     = utils.clamp((player:getMod(xi.mod.HASTE_ABILITY) or 0) / 10000.0, -0.25, 0.25)
-    local hGear     = math.min((player:getMod(xi.mod.HASTE_GEAR) or 0) / 10000.0, 0.25)
-    local hasteMult = utils.clamp(1.0 - hMagic - hAbil - hGear, 0.20, 2.0)
-    local delayMs   = math.floor((baseDelay * 6.0) * hasteMult)
-    if player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS) then
-        delayMs = math.floor(delayMs * 0.50)
-    end
-    delayMs = utils.clamp(delayMs, 600, 5000)
-    if player.setLocalVar then
-        player:setLocalVar('OX_CHI_NEXT_DELAY_MS', delayMs)
+    -- Compute unarmed Martial Arts + Haste delay once per attack round.
+    if swingNum <= 1 then
+        local maMod     = player.getMod and (player:getMod(xi.mod.MARTIAL_ARTS) or 0) or 0
+        local baseDelay = math.max(210, 460 - math.floor(lvl * 1.8) - maMod)
+        local hMagic    = utils.clamp((player:getMod(xi.mod.HASTE_MAGIC) or 0) / 10000.0, -1.0, 0.4375)
+        local hAbil     = utils.clamp((player:getMod(xi.mod.HASTE_ABILITY) or 0) / 10000.0, -0.25, 0.25)
+        local hGear     = math.min((player:getMod(xi.mod.HASTE_GEAR) or 0) / 10000.0, 0.25)
+        local hasteMult = utils.clamp(1.0 - hMagic - hAbil - hGear, 0.20, 2.0)
+        local delayMs   = math.floor((baseDelay * 6.0) * hasteMult)
+        if player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS) then
+            delayMs = math.floor(delayMs * 0.50)
+        end
+        delayMs = utils.clamp(delayMs, 600, 5000)
+        if player.setLocalVar then
+            player:setLocalVar('OX_CHI_NEXT_DELAY_MS', delayMs)
+        end
     end
 
     -- Accuracy roll using MACC + partial ACC vs target EVA.
@@ -578,14 +632,15 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         return -1
     end
 
-    local mndStat     = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
-    local h2hSkill    = player.getSkillLevel and (player:getSkillLevel(xi.skill.HAND_TO_HAND) or 0) or 0
-    local mab         = player.getMod and (player:getMod(xi.mod.MATT) or 0) or 0
-    local tgtMdef     = target.getMod and (target:getMod(xi.mod.MDEF) or 0) or 0
-    local mabMult     = math.max(0.5, (100.0 + mab) / (100.0 + tgtMdef))
+    local mndStat  = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
+    local h2hSkill = player.getSkillLevel and (player:getSkillLevel(xi.skill.HAND_TO_HAND) or 0) or 0
+    local mab      = player.getMod and (player:getMod(xi.mod.MATT) or 0) or 0
+    local tgtMdef  = target.getMod and (target:getMod(xi.mod.MDEF) or 0) or 0
+    local mabMult  = math.max(0.5, (100.0 + mab) / (100.0 + tgtMdef))
 
+    -- Boost empowers every fist of the round; C++ ExecuteChiRangedAttack clears OX_CHW_BOOST_NEXT after the loop.
     local boostActive = player.getLocalVar and (player:getLocalVar('OX_CHW_BOOST_NEXT') == 1) or false
-    if boostActive and player.setLocalVar then
+    if boostActive and not isMultiRound and player.setLocalVar then
         player:setLocalVar('OX_CHW_BOOST_NEXT', 0)
     end
 
@@ -594,8 +649,8 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
     local hasHundred  = player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS)
 
     local dmgMult = (boostActive and 1.50 or 1.0) * (hasHarmony and 1.40 or 1.0) * (hasFormless and 1.25 or 1.0)
-    local rawDmg  = ((lvl * 1.45) + 8 + (mndStat * 0.65) + (h2hSkill * 0.14)) * mabMult * dmgMult
-    local dmg     = math.max(4, math.floor(rawDmg))
+    local rawDmg  = ((lvl * 1.45) + 8 + (mndStat * 0.65) + (h2hSkill * 0.14)) * mabMult * dmgMult * hitScale
+    local dmg     = math.max(3, math.floor(rawDmg))
 
     local dealt = dmg
     if target.takeDamage and xi.attackType and xi.damageType then
@@ -605,13 +660,19 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         end
     end
 
-    -- Grant TP + subtle enmity per landed bolt.
-    local storeTp = player.getMod and (player:getMod(xi.mod.STORETP) or 0) or 0
+    if player.trySkillUp and target.getMainLvl then
+        player:trySkillUp(xi.skill.HAND_TO_HAND, target:getMainLvl())
+    end
+
+    -- Grant TP + subtle enmity per landed fist.
+    local storeTp  = player.getMod and (player:getMod(xi.mod.STORETP) or 0) or 0
+    local baseTp   = isMultiRound and 40 or 75
+    local mobFeed  = isMultiRound and 20 or 40
     if player.addTP then
-        player:addTP(math.floor(75 * (1.0 + (storeTp / 100.0))))
+        player:addTP(math.floor(baseTp * (1.0 + (storeTp / 100.0))))
     end
     if target.addTP then
-        target:addTP(40)
+        target:addTP(mobFeed)
     end
     if target.updateEnmityFromDamage then
         target:updateEnmityFromDamage(player, math.max(1, math.floor(dealt * 0.35)))
@@ -622,7 +683,8 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         * (hasHarmony and 1.40 or 1.0)
         * (hasFormless and 1.20 or 1.0)
         * (hasHundred and 1.25 or 1.0)
-    local baseHeal = computeChiPulseBaseHeal(player, lvl, mndStat, pulseMult)
+        * hitScale
+    local baseHeal = math.max(6, computeChiPulseBaseHeal(player, lvl, mndStat, pulseMult))
     pulseHealAroundCenter(player, target, baseHeal, 12.0, 0)
 
     -- If firing from outside the 12y target pulse (12-20y), also channel a modest Chi mend to the Monk.
@@ -634,7 +696,7 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target)
         player.addHP and
         player:getHP() < player:getMaxHP()
     then
-        player:addHP(math.max(6, math.floor(baseHeal * 0.45)))
+        player:addHP(math.max(4, math.floor(baseHeal * 0.45)))
     end
 
     return math.max(0, math.floor(dealt))
@@ -743,14 +805,14 @@ if xi.job and xi.job.MNK then
             chiRanged      = { minLevel = 10, maxRange = 20 },
             extraAbilities = { ABIL_RESONANT_CHI, ABIL_TRANQUIL_LOTUS, ABIL_INNER_HARMONY },
             extraTraits    = { TRAIT_CHIWEAVER_PULSE },
-            description    = 'Bare-handed Chi channeler (Lv10+): cannot equip weapons in Main or Sub slots, firing 20y ranged Light Chi bolts whose impacts emit a 12y AoE healing pulse around the target mob.',
+            description    = 'Bare-handed Chi channeler (Lv10+): cannot equip weapons in Main or Sub slots, firing dual 20y Light Chi bolts from both fists and ranged Hand-to-Hand Weaponskills whose impacts emit a 12y AoE healing pulse around the target mob.',
             highlights     =
             {
                 'Empty-Handed Vow: Cannot equip ANY weapon or item in Main or Sub slots (bare fists only).',
-                'Ranged Chi Pulse (0-20y): Auto-attacks project Light Chi bolts up to 20 yalms; every landed bolt emits a 12y healing pulse around the mob healing party members, Trusts, and pets (and mends the Monk beyond 12y).',
+                'Dual-Fist Chi & Ranged H2H WS (0-20y): Auto-attacks unleash both main & off-hand Light Chi bolts (plus Kick procs) and bare-handed Hand-to-Hand Weaponskills fire up to 20 yalms; every landed bolt or WS emits a 12y healing pulse around the mob (and mends the Monk beyond 12y).',
                 'Passives (Lv10/30/50/70+): +8/12/16/20% Max HP, +8/16/26/38 Regen, +8/16/26/36 MND, +5/10/16/24 VIT, +12/20/28/35% Cure Potency, +8/15/24/35 H2H, +10/20/32/45 MACC, +8/15/24/34 MAB, -12/18/25/32 Enmity, -3/5/8/10% DT.',
                 'Custom JAs (Lv10+): Resonant Chi (20s CD, 20y Light burst + 1.75x target AoE heal & Cleanse), Tranquil Lotus (30s CD, 12y Party/Pet heal + 15s Regen, +Cure Rcvd, & Enmity-), Inner Harmony (45s CD, 18s +Cure Potency, +MAB/MACC, +Ability Haste, +Regen, & +40% Chi Bolt/Pulse power).',
-                'Healer MNK JAs: Boost (+50 TP, instant target pulse & +50% next Chi Bolt/Pulse), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Chi Blast (+30% DMG + 65% target AoE heal), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
+                'Healer MNK JAs: Boost (+50 TP, instant target pulse & +50% next Chi Bolt/Pulse round), Focus (+25 MACC, +20 MAB, +15% Cure Pot), Dodge (+30 EVA, -10% DT, -25 Enmity), Chakra (projects 45% AoE heal + self cleanse), Chi Blast (+30% DMG + 65% target AoE heal), Mantra (party Regen + Cure Rcvd%), Formless Strikes (+25% Chi DMG/+20% Pulse), Hundred Fists (2x Chi Bolt speed & +25% Pulse).',
             },
             mods = function(_player, lvl)
                 return
@@ -769,6 +831,10 @@ if xi.job and xi.job.MNK then
             end,
             onApply = function(player)
                 enforceMnkWeaponGate(player)
+                attachChiWeaverListeners(player)
+            end,
+            onRemove = function(player)
+                detachChiWeaverListeners(player)
             end,
         },
     })
@@ -1499,6 +1565,12 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
             attachBlackBeltListeners(player)
         else
             detachBlackBeltListeners(player)
+        end
+
+        if isMonkSpec(player, CHIWEAVER_KEY) then
+            attachChiWeaverListeners(player)
+        else
+            detachChiWeaverListeners(player)
         end
     end
 end)
