@@ -342,7 +342,7 @@ CUSTOM_TRAITS = {
     154: {"id": 154, "displayId": 1690, "name": "Chi Weaver's Pulse", "job": "MNK", "crystal": "Chi Weaver", "desc": "Empty-handed ranged Light Chi bolts (0-20y) emit a 12y AoE healing pulse around the target mob while mending the Monk at range."},
     158: {"id": 158, "displayId": 1694, "name": "Ronin's Mushin", "job": "SAM", "crystal": "Ronin", "desc": "Requires Great Katana: unlocks multi-charge Mind's Eye counter-anticipation, Mushin Stagger damage deferral, and Seigan mitigation."},
     159: {"id": 159, "displayId": 1695, "name": "Oisoya Mastery", "job": "SAM", "crystal": "Imperial Archer", "desc": "Raises Archery to A+ with 100% arrow preservation, 20y Bow auto-attacks, zero point-blank penalty, and Drawn Oisoya <-> Cosmic Brand combos."},
-    160: {"id": 160, "displayId": 1696, "name": "Onimaru's Iaijutsu", "job": "SAM", "crystal": "Warlord", "desc": "Requires Great Katana: empowers 20s Hagakure Sheathe-and-Draw Iaijutsu criticals, stacking Ashura's Edge blood-trance, and Onimaru Blood-Quench Skillchains."},
+    160: {"id": 160, "displayId": 1696, "name": "Onimaru's Command", "job": "SAM", "crystal": "Warlord", "desc": "Requires Great Katana: empowers 20s Hagakure Iaijutsu Sundering Draw-Slashes, party-sharing Ashura's Edge stacks, and Onimaru Blood-Quench party HP/MP/TP Skillchain surges."},
 }
 
 CUSTOM_ABILITIES_BY_SPEC = {
@@ -412,7 +412,8 @@ CUSTOM_ABILITIES_BY_SPEC = {
         {"id": 173, "name": "Hasso (Bow & Blade)", "cd": "30s", "target": "Self", "desc": "Unlocked at Lv.10 (usable with Bow or Great Katana): adds +8/10/13/15% Snapshot, +10/13/15/18% R.Atk%, +15/20/25/30 R.Acc, +4/7/10/12 AGI, and +10% Ability Haste even with Bow equipped."},
     ],
     ("SAM", "warlord"): [
-        {"id": 288, "name": "Hagakure (Iaijutsu Noto)", "cd": "20s", "target": "Self", "desc": "Unlocked at Lv.10 on a 20s recast (requires Great Katana): sheathes into Noto stance (15s), turning your next Tachi WS into an Iaijutsu Draw-Slash (+35..100% Crit Rate, +12..32% Crit DMG, +15..30% DEF Ignore, +250..600 TP Bonus, Save TP, and Chainbound)."},
+        {"id": 288, "name": "Hagakure (Iaijutsu Sundering Noto)", "cd": "20s", "target": "Self / Target Debuff", "desc": "Unlocked at Lv.10 on a 20s recast (requires Great Katana): sheathes into Noto stance (15s), turning your next Tachi WS into an Iaijutsu Draw-Slash (+35..100% Crit Rate, +250..600 TP Bonus, Save TP, Chainbound) that cleaves the enemy's guard for -15% DEF, -10% MDEF, and -25 Evasion for 15s."},
+        {"id": 453, "name": "Onimaru Tithe", "cd": "25s", "target": "Party (15y, 12s)", "desc": "Requires Great Katana. Unleashes the cursed energy of your Ashura's Edge stacks across all party members within 15y: immediately grants +350 TP, +12% Weaponskill Damage, and +15% Lifesteal on melee/ranged hits for 12s, and refreshes Ashura's Edge to 3 stacks."},
     ],
 }
 
@@ -681,7 +682,7 @@ SPEC_CATEGORIES = [
     {"key": "bladewheel",     "label": "Bladewheel (DNC)",      "specs": "DNC Bladewheel (Chakram & Dagger), BRD Adventurer"},
     {"key": "ronin",          "label": "Ronin (SAM)",           "specs": "SAM Ronin (Great Katana Mushin Tank)"},
     {"key": "imperialarcher", "label": "Imperial Archer (SAM)", "specs": "SAM Imperial Archer (Bow & Great Katana)"},
-    {"key": "warlord",        "label": "Warlord (SAM)",         "specs": "SAM Warlord (Great Katana Iaijutsu DPS)"},
+    {"key": "warlord",        "label": "Warlord (SAM)",         "specs": "SAM Warlord (Great Katana Iaijutsu Support)"},
     {"key": "generic",        "label": "Generic (Unspecced)",   "specs": "Jobs without a Soul Crystal or off-spec weapons"},
 ]
 

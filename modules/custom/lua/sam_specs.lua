@@ -3,7 +3,7 @@
 -- Registers the three Samurai (job 12) Soul Crystal specializations:
 --   1. Ronin (RON)           : Mushin Seigan, Mind's Eye & Stagger Tank (Great Katana)
 --   2. Imperial Archer (IMP) : Tenzen's "Oisoya!" Bow & Blade Skirmisher (Bow / Great Katana)
---   3. Warlord (WRL)         : Cursed Onimaru & Iaijutsu Melee DPS (Great Katana)
+--   3. Warlord (WRL)         : Cursed Onimaru & Iaijutsu Tactical Support (Great Katana)
 --
 -- Weapon choice remains open (no forced unequipping), while spec passives,
 -- procs, and ability enhancements dynamically require Great Katana and/or Bow.
@@ -34,8 +34,11 @@ local TRAIT_RONIN_MUSHIN     = 158
 local TRAIT_IMP_OISOYA       = 159
 local TRAIT_WARLORD_IAIJUTSU = 160
 
--- Custom Ability ID (438; client display ID 950, recastId 215)
-local ABIL_OISOYA_SHOT = 438
+-- Custom Ability IDs
+--   438: Oisoya Shot (client display ID 950, recastId 215)
+--   453: Onimaru Tithe (client display ID 965, recastId 151)
+local ABIL_OISOYA_SHOT   = 438
+local ABIL_ONIMARU_TITHE = 453
 
 -- Native SAM Ability IDs
 local ABIL_MEIKYO_SHISUI  = 27
@@ -60,7 +63,8 @@ local EFFECT_WARLORD_NOTO     = 840
 local EFFECT_WARLORD_ASHURA   = 841
 
 xi.jobAbility = xi.jobAbility or {}
-xi.jobAbility.OISOYA_SHOT = ABIL_OISOYA_SHOT
+xi.jobAbility.OISOYA_SHOT   = ABIL_OISOYA_SHOT
+xi.jobAbility.ONIMARU_TITHE = ABIL_ONIMARU_TITHE
 
 xi.effect = xi.effect or {}
 xi.effect.RONIN_STAGGER    = EFFECT_RONIN_STAGGER
@@ -71,7 +75,8 @@ xi.effect.WARLORD_ASHURA   = EFFECT_WARLORD_ASHURA
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
-xi.actions.abilities.oisoya_shot = xi.actions.abilities.oisoya_shot or {}
+xi.actions.abilities.oisoya_shot   = xi.actions.abilities.oisoya_shot or {}
+xi.actions.abilities.onimaru_tithe = xi.actions.abilities.onimaru_tithe or {}
 
 xi.effects = xi.effects or {}
 xi.effects.ronin_stagger    = xi.effects.ronin_stagger or {}
@@ -91,10 +96,150 @@ local FALLBACK_EFFECT_MAP =
     [EFFECT_WARLORD_ASHURA]   = 828, -- spellblade_ascendance
 }
 
-local weaponModStateByChar = {}
-local pendingEffectMods    = {}
-local pendingWardMods      = {}
-local wsConsumeCache       = {}
+local weaponModStateByChar   = {}
+local pendingEffectMods      = {}
+local pendingWardMods        = {}
+local wsConsumeCache         = {}
+local wrlPartyBuffState      = {}
+local wrlTitheLifestealExpiry = {}
+
+local WARLORD_AURA_RADIUS = 15.0
+
+local function getPartyMembersInRange(player, range)
+    local out = {}
+    if player == nil or not player.getPartyWithTrusts then
+        if player ~= nil then
+            table.insert(out, player)
+        end
+        return out
+    end
+
+    local zoneId  = player.getZoneID and player:getZoneID() or 0
+    local members = player:getPartyWithTrusts()
+    if type(members) ~= 'table' or #members == 0 then
+        table.insert(out, player)
+        return out
+    end
+
+    local maxRange = range or WARLORD_AURA_RADIUS
+    for _, member in ipairs(members) do
+        if member ~= nil and (not member.isAlive or member:isAlive()) then
+            local sameZone = (not member.getZoneID) or member:getZoneID() == zoneId
+            if sameZone and (member:getID() == player:getID() or player:checkDistance(member) <= maxRange) then
+                table.insert(out, member)
+            end
+        end
+    end
+    return out
+end
+
+local function clearWrlPartyModSlot(memberId, slotKey)
+    local bySlot = wrlPartyBuffState[memberId]
+    if type(bySlot) ~= 'table' then
+        return
+    end
+    local entry = bySlot[slotKey]
+    if entry ~= nil then
+        local ent = entry.entity
+        if ent ~= nil and ent.delMod then
+            for _, pair in ipairs(entry.mods or {}) do
+                if pair[1] ~= nil and pair[2] ~= 0 then
+                    pcall(function() ent:delMod(pair[1], pair[2]) end)
+                end
+            end
+        end
+        bySlot[slotKey] = nil
+    end
+    if next(bySlot) == nil then
+        wrlPartyBuffState[memberId] = nil
+    end
+end
+
+local function applyWrlPartyModSlot(member, slotKey, modPairs, durationSec, ownerId)
+    if member == nil or not member.getID or not member.addMod then
+        return
+    end
+    local memberId = member:getID()
+    clearWrlPartyModSlot(memberId, slotKey)
+
+    local applied = {}
+    for _, pair in ipairs(modPairs or {}) do
+        if pair[1] ~= nil and type(pair[2]) == 'number' and pair[2] ~= 0 then
+            member:addMod(pair[1], pair[2])
+            table.insert(applied, { pair[1], pair[2] })
+        end
+    end
+
+    wrlPartyBuffState[memberId] = wrlPartyBuffState[memberId] or {}
+    wrlPartyBuffState[memberId][slotKey] =
+    {
+        entity    = member,
+        mods      = applied,
+        expiresAt = (durationSec ~= nil and durationSec > 0) and (os.time() + durationSec) or nil,
+        ownerId   = ownerId,
+    }
+end
+
+local function clearAllWrlOwnerAuras(ownerId, slotFilter)
+    if ownerId == nil then
+        return
+    end
+    for memberId, bySlot in pairs(wrlPartyBuffState) do
+        for slotKey, entry in pairs(bySlot) do
+            if entry.ownerId == ownerId and (slotFilter == nil or slotKey == slotFilter) then
+                clearWrlPartyModSlot(memberId, slotKey)
+            end
+        end
+    end
+end
+
+local function expireWrlTimedPartySlots()
+    local now = os.time()
+    for memberId, bySlot in pairs(wrlPartyBuffState) do
+        for slotKey, entry in pairs(bySlot) do
+            if entry.expiresAt ~= nil and now >= entry.expiresAt then
+                clearWrlPartyModSlot(memberId, slotKey)
+            end
+        end
+    end
+end
+
+local function attachWarlordTitheLifesteal(member, durationSec)
+    if member == nil or not member.getID or not member.addListener then
+        return
+    end
+    local memberId = member:getID()
+    wrlTitheLifestealExpiry[memberId] = os.time() + (durationSec or 12)
+
+    local function onHit(actor, target, action)
+        if actor == nil or target == nil or action == nil then
+            return
+        end
+        local aid = actor.getID and actor:getID() or 0
+        if os.time() > (wrlTitheLifestealExpiry[aid] or 0) then
+            wrlTitheLifestealExpiry[aid] = nil
+            if actor.removeListener then
+                actor:removeListener('OX_WRL_TITHE_ATK')
+                actor:removeListener('OX_WRL_TITHE_RNG')
+            end
+            return
+        end
+        if target.isUndead and target:isUndead() then
+            return
+        end
+        local dmg = action.getParam and (action:getParam(target:getID()) or 0) or 0
+        if dmg > 0 and actor.addHP then
+            actor:addHP(math.max(1, math.floor(dmg * 0.15)))
+        end
+    end
+
+    if member.removeListener then
+        member:removeListener('OX_WRL_TITHE_ATK')
+        member:removeListener('OX_WRL_TITHE_RNG')
+    end
+    member:addListener('ATTACK', 'OX_WRL_TITHE_ATK', onHit)
+    member:addListener('RANGE_STATE_EXIT', 'OX_WRL_TITHE_RNG', onHit)
+end
 
 -----------------------------------
 -- Scaling & Equipment Helpers
@@ -554,6 +699,82 @@ local function grantWarlordNoto(player, durationSec)
     })
 end
 
+local ASHURA_SUBTLE_BY_STACK = { 10, 16, 24 }
+local ASHURA_WSD_BY_STACK    = { 6, 10, 15 }
+local ASHURA_ACC_BY_STACK    = { 8, 14, 20 }
+local ASHURA_REGAIN_BY_STACK = { 8, 12, 16 }
+
+local function syncWarlordPartyAuras(player)
+    expireWrlTimedPartySlots()
+    if player == nil or not player.getID then
+        return
+    end
+
+    local ownerId = player:getID()
+    if not isSamSpec(player, WARLORD_KEY) or not isGreatKatanaEquipped(player) then
+        clearAllWrlOwnerAuras(ownerId, 'ashura')
+        clearAllWrlOwnerAuras(ownerId, 'hasso')
+        return
+    end
+
+    local members = getPartyMembersInRange(player, WARLORD_AURA_RADIUS)
+    local inRange = {}
+    for _, member in ipairs(members) do
+        if member ~= nil and member.getID then
+            inRange[member:getID()] = true
+        end
+    end
+
+    -- 1) Ashura's Edge 15y Party Aura
+    local ashuraEff = getSamCustomEffect(player, EFFECT_WARLORD_ASHURA)
+    local stacks    = (ashuraEff ~= nil and ashuraEff.getPower) and (ashuraEff:getPower() or 0) or 0
+    if stacks >= 1 then
+        stacks = math.min(3, stacks)
+        local auraMods =
+        {
+            { xi.mod.SUBTLE_BLOW,        ASHURA_SUBTLE_BY_STACK[stacks] },
+            { xi.mod.ALL_WSDMG_ALL_HITS, ASHURA_WSD_BY_STACK[stacks] },
+            { xi.mod.ACC,                ASHURA_ACC_BY_STACK[stacks] },
+            { xi.mod.MACC,               ASHURA_ACC_BY_STACK[stacks] },
+            { xi.mod.REGAIN,             ASHURA_REGAIN_BY_STACK[stacks] },
+        }
+        for _, member in ipairs(members) do
+            applyWrlPartyModSlot(member, 'ashura', auraMods, 0, ownerId)
+        end
+        for memberId, bySlot in pairs(wrlPartyBuffState) do
+            if bySlot.ashura ~= nil and bySlot.ashura.ownerId == ownerId and not inRange[memberId] then
+                clearWrlPartyModSlot(memberId, 'ashura')
+            end
+        end
+    else
+        clearAllWrlOwnerAuras(ownerId, 'ashura')
+    end
+
+    -- 2) Hasso 50% STR/Accuracy/Haste share to party members within 15y
+    local hassoEff = player.getStatusEffect and player:getStatusEffect(xi.effect.HASSO) or nil
+    if hassoEff ~= nil then
+        local strShare = math.max(1, math.floor((hassoEff:getPower() or 1) * 0.5))
+        local hassoMods =
+        {
+            { xi.mod.STR,           strShare },
+            { xi.mod.ACC,           5 },
+            { xi.mod.HASTE_ABILITY, 500 },
+        }
+        for _, member in ipairs(members) do
+            if member:getID() ~= ownerId then
+                applyWrlPartyModSlot(member, 'hasso', hassoMods, 0, ownerId)
+            end
+        end
+        for memberId, bySlot in pairs(wrlPartyBuffState) do
+            if bySlot.hasso ~= nil and bySlot.hasso.ownerId == ownerId and (memberId == ownerId or not inRange[memberId]) then
+                clearWrlPartyModSlot(memberId, 'hasso')
+            end
+        end
+    else
+        clearAllWrlOwnerAuras(ownerId, 'hasso')
+    end
+end
+
 local function addWarlordAshuraStacks(player, addStacks)
     if player == nil then
         return
@@ -564,19 +785,12 @@ local function addWarlordAshuraStacks(player, addStacks)
         curStacks = eff:getPower() or 0
     end
 
-    local stacks   = math.max(1, math.min(3, curStacks + (addStacks or 1)))
-    local lvl      = player.getMainLvl and (player:getMainLvl() or 10) or 10
-    local atkPer   = scaleTier(lvl, 4, 5, 6, 7)
-    local hastePer = scaleTier(lvl, 250, 300, 350, 400)
-    local zanPer   = scaleTier(lvl, 6, 8, 10, 12)
-    local iconId   = (xi.effect and xi.effect.WARCRY) or EFFECT_WARLORD_ASHURA
+    local stacks = math.max(1, math.min(3, curStacks + (addStacks or 1)))
+    local lvl    = player.getMainLvl and (player:getMainLvl() or 10) or 10
+    local iconId = (xi.effect and xi.effect.WARCRY) or EFFECT_WARLORD_ASHURA
 
-    applyCustomTimedEffect(player, EFFECT_WARLORD_ASHURA, stacks, 20, player, lvl, iconId,
-    {
-        { xi.mod.ATTP,          atkPer * stacks },
-        { xi.mod.HASTE_ABILITY, hastePer * stacks },
-        { xi.mod.ZANSHIN,       zanPer * stacks },
-    })
+    applyCustomTimedEffect(player, EFFECT_WARLORD_ASHURA, stacks, 20, player, lvl, iconId, {})
+    syncWarlordPartyAuras(player)
 end
 
 -----------------------------------
@@ -676,12 +890,10 @@ function samSpecs.consumeWsModifiers(attacker, target, ws, primaryMsg)
             end
             mods =
             {
-                tpBonus      = scaleTier(lvl, 250, 350, 450, 600),
-                critAdd      = scaleTier(lvl, 0.35, 0.50, 0.70, 1.00),
-                critDmg      = scaleTier(lvl, 12, 18, 25, 32),
-                defIgnoreAdd = scaleTier(lvl, 0.15, 0.20, 0.25, 0.30),
-                wsd          = hasSengi and 15 or 0,
-                scBonus      = hasSengi and 25 or 0,
+                tpBonus = scaleTier(lvl, 250, 350, 450, 600),
+                critAdd = scaleTier(lvl, 0.35, 0.50, 0.70, 1.00),
+                wsd     = hasSengi and 15 or 0,
+                scBonus = hasSengi and 25 or 0,
             }
         elseif hasSengi then
             mods = { wsd = 15, scBonus = 25 }
@@ -719,10 +931,12 @@ local function attachSamListeners(player)
 
     player:addListener('ITEM_EQUIP', 'OX_SAM_EQUIP', function(actor)
         syncSamWeaponMods(actor, false)
+        syncWarlordPartyAuras(actor)
     end)
 
     player:addListener('TICK', 'OX_SAM_TICK', function(actor)
         syncSamWeaponMods(actor, false)
+        syncWarlordPartyAuras(actor)
     end)
 
     -- Ronin: Mushin Poise Stagger deferral on incoming damage
@@ -760,24 +974,27 @@ local function attachSamListeners(player)
         updateRoninStaggerEffect(defender, curPool + deferred)
     end)
 
-    -- Warlord: Cursed Onimaru blood-leech proc while Ashura's Edge is active
+    -- Warlord: At 3 Ashura's Edge stacks, melee swings restore +15 HP and +5 MP to party within 15y
     player:addListener('MELEE_SWING_HIT', 'OX_SAM_MELEE', function(actor, target)
         if
             actor == nil or
             target == nil or
             target == actor or
             not isSamSpec(actor, WARLORD_KEY) or
-            not isGreatKatanaEquipped(actor) or
-            not hasSamCustomEffect(actor, EFFECT_WARLORD_ASHURA)
+            not isGreatKatanaEquipped(actor)
         then
             return
         end
 
-        if math.random(1, 100) <= 25 and not (target.isUndead and target:isUndead()) then
-            local maxHp = actor.getMaxHP and (actor:getMaxHP() or 0) or 0
-            local heal  = math.max(4, math.floor(maxHp * 0.015))
-            if actor.addHP then
-                actor:addHP(heal)
+        local ashuraEff = getSamCustomEffect(actor, EFFECT_WARLORD_ASHURA)
+        if ashuraEff ~= nil and (ashuraEff:getPower() or 0) >= 3 then
+            for _, member in ipairs(getPartyMembersInRange(actor, WARLORD_AURA_RADIUS)) do
+                if member.addHP then
+                    member:addHP(15)
+                end
+                if member.addMP then
+                    member:addMP(5)
+                end
             end
         end
     end)
@@ -849,19 +1066,17 @@ local function attachSamListeners(player)
                 grantCosmicBrand(actor)
             end
         elseif specKey == WARLORD_KEY and isGkWs and isGreatKatanaEquipped(actor) then
-            local usedIai = actor.getLocalVar and (actor:getLocalVar('OX_WRL_IAIJUTSU_USED') or 0) or 0
+            local usedIai   = actor.getLocalVar and (actor:getLocalVar('OX_WRL_IAIJUTSU_USED') or 0) or 0
+            local hasMeikyo = actor.hasStatusEffect and actor:hasStatusEffect(xi.effect.MEIKYO_SHISUI)
             if usedIai > 0 then
                 actor:setLocalVar('OX_WRL_IAIJUTSU_USED', 0)
-                addWarlordAshuraStacks(actor, 2)
-            else
-                addWarlordAshuraStacks(actor, 1)
             end
-
-            local tpSpent = tonumber(tp) or 1000
-            if tpSpent >= 2000 and actor.addHP and actor.getMaxHP then
-                local healPct = scaleTier(lvl, 0.03, 0.04, 0.05, 0.06)
-                actor:addHP(math.max(12, math.floor((actor:getMaxHP() or 0) * healPct)))
+            if (usedIai > 0 or hasMeikyo) and _target ~= nil and _target.addStatusEffect then
+                _target:addStatusEffect(xi.effect.DEFENSE_DOWN,   { power = 15, duration = 15, origin = actor })
+                _target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, { power = 10, duration = 15, origin = actor })
+                _target:addStatusEffect(xi.effect.EVASION_DOWN,   { power = 25, duration = 15, origin = actor })
             end
+            addWarlordAshuraStacks(actor, 1)
         end
     end)
 end
@@ -922,7 +1137,10 @@ for _, effName in ipairs({ 'imp_drawn_oisoya', 'imp_cosmic_brand', 'warlord_noto
     local gainFn = function(target, effect)
         consumePendingEffectMods(target, effect)
     end
-    local loseFn = function(_target, _effect)
+    local loseFn = function(target, _effect)
+        if effName == 'warlord_ashura' and target ~= nil and target.getID then
+            clearAllWrlOwnerAuras(target:getID(), 'ashura')
+        end
     end
     xi.effects[effName] = xi.effects[effName] or {}
     xi.effects[effName].onEffectGain = gainFn
@@ -1050,7 +1268,7 @@ m:addOverride('xi.combat.skillchain.calculateSkillchainDamage', function(actor, 
     if isImp then
         scBonus = scaleTier(lvl, 12, 18, 24, 30)
     elseif isWrl then
-        scBonus = scaleTier(lvl, 10, 15, 20, 25)
+        scBonus = scaleTier(lvl, 20, 25, 30, 35)
     end
 
     if scBonus <= 0 then
@@ -1068,12 +1286,23 @@ m:addOverride('xi.combat.skillchain.calculateSkillchainDamage', function(actor, 
         if isImp and actor.addTP then
             actor:addTP(100)
         elseif isWrl then
-            if actor.addTP then
-                actor:addTP(125)
-            end
-            if actor.addHP and actor.getMaxHP then
-                local healPct = scaleTier(lvl, 0.05, 0.06, 0.07, 0.08)
-                actor:addHP(math.max(15, math.floor((actor:getMaxHP() or 0) * healPct)))
+            local mult = (actor.hasStatusEffect and actor:hasStatusEffect(xi.effect.MEIKYO_SHISUI)) and 2 or 1
+            for _, member in ipairs(getPartyMembersInRange(actor, WARLORD_AURA_RADIUS)) do
+                if member.addHP and member.getMaxHP then
+                    local maxHp = member:getMaxHP() or 0
+                    if maxHp > 0 then
+                        member:addHP(math.max(15, math.floor(maxHp * 0.10 * mult)))
+                    end
+                end
+                if member.addMP and member.getMaxMP then
+                    local maxMp = member:getMaxMP() or 0
+                    if maxMp > 0 then
+                        member:addMP(math.max(5, math.floor(maxMp * 0.08 * mult)))
+                    end
+                end
+                if member.addTP then
+                    member:addTP(250 * mult)
+                end
             end
             addWarlordAshuraStacks(actor, 1)
         end
@@ -1180,8 +1409,14 @@ m:addOverride('xi.effects.hasso.onEffectGain', function(target, effect)
             effect:addMod(xi.mod.HASTE_ABILITY, 1000)
         end
     elseif isSamSpec(target, WARLORD_KEY) and isGreatKatanaEquipped(target) then
-        effect:addMod(xi.mod.CRIT_DMG_INCREASE, scaleTier(lvl, 8, 11, 14, 16))
-        effect:addMod(xi.mod.ZANSHIN,           scaleTier(lvl, 10, 14, 17, 20))
+        syncWarlordPartyAuras(target)
+    end
+end)
+
+m:addOverride('xi.effects.hasso.onEffectLose', function(target, effect)
+    super(target, effect)
+    if target ~= nil and target.getID then
+        clearAllWrlOwnerAuras(target:getID(), 'hasso')
     end
 end)
 
@@ -1214,6 +1449,16 @@ m:addOverride('xi.job_utils.samurai.useMeditate', function(player, target, abili
         pulseNearbyEnmity(player, 150, 380, 10.0)
     elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) and isBowEquipped(player) then
         grantDrawnOisoya(player)
+    elseif isSamSpec(player, WARLORD_KEY) and isGreatKatanaEquipped(player) then
+        if player.addTP then
+            player:addTP(1500)
+        end
+        local ownerId = player.getID and player:getID() or 0
+        for _, member in ipairs(getPartyMembersInRange(player, WARLORD_AURA_RADIUS)) do
+            if member:getID() ~= ownerId and member.addTP then
+                member:addTP(400)
+            end
+        end
     end
     return res
 end)
@@ -1260,7 +1505,8 @@ m:addOverride('xi.actions.abilities.hagakure.onAbilityCheck', function(player, t
             return xi.msg.basic.NEEDS_2H_WEAPON, 0
         end
         if ability ~= nil and ability.setRecast then
-            ability:setRecast(20)
+            local hasMeikyo = player.hasStatusEffect and player:hasStatusEffect(xi.effect.MEIKYO_SHISUI)
+            ability:setRecast(hasMeikyo and 0 or 20)
         end
         return 0, 0
     end
@@ -1295,8 +1541,11 @@ end)
 m:addOverride('xi.job_utils.samurai.useSekkanoki', function(player, target, ability)
     local res = super(player, target, ability)
     if isSamSpec(player, WARLORD_KEY) and isGreatKatanaEquipped(player) then
-        addWarlordAshuraStacks(player, 3)
-        grantWarlordNoto(player, 20)
+        local ownerId = player.getID and player:getID() or 0
+        for _, member in ipairs(getPartyMembersInRange(player, WARLORD_AURA_RADIUS)) do
+            applyWrlPartyModSlot(member, 'sekkanoki', { { xi.mod.CRITHITRATE, 15 } }, 12, ownerId)
+        end
+        tellSam(player, '[Warlord] Sekkanoki grants the party +15% Critical Hit Rate for 12s!')
     elseif isSamSpec(player, IMPERIAL_ARCHER_KEY) and (isBowEquipped(player) or isGreatKatanaEquipped(player)) then
         grantDrawnOisoya(player, true)
         grantCosmicBrand(player, true)
@@ -1420,13 +1669,16 @@ m:addOverride('xi.job_utils.samurai.useMeikyoShisui', function(player, target, a
         tellSam(player, '[Imperial Archer] Meikyo Shisui primes Drawn Oisoya & Cosmic Brand.')
     elseif isSamSpec(player, WARLORD_KEY) and isGreatKatanaEquipped(player) then
         addWarlordAshuraStacks(player, 3)
-        grantWarlordNoto(player, 30)
+        if player.resetRecast and xi.recast and xi.recast.ABILITY then
+            pcall(function() player:resetRecast(xi.recast.ABILITY, 54) end)
+        end
+        tellSam(player, '[Warlord] Meikyo Shisui grants 3x Ashura\'s Edge, 0s Hagakure CD, and 2x Onimaru Blood-Quench!')
     end
     return res
 end)
 
 -----------------------------------
--- Custom Imperial Archer JA: Oisoya Shot (438, 25s CD, 20y Enemy)
+-- Custom Crystal JAs: Oisoya Shot (438) & Onimaru Tithe (453)
 -----------------------------------
 local function bindSamAbility(name, checkFn, useFn)
     xi.actions.abilities[name] = xi.actions.abilities[name] or {}
@@ -1509,6 +1761,41 @@ bindSamAbility('oisoya_shot',
         tellSam(player, string.format('[Imperial Archer] Oisoya Shot primes Drawn Oisoya & Cosmic Brand (+%d TP).', tpGain))
 
         return dealt
+    end
+)
+
+bindSamAbility('onimaru_tithe',
+    function(player, _target, ability)
+        if not isSamSpec(player, WARLORD_KEY) or not isGreatKatanaEquipped(player) then
+            return xi.msg.basic.UNABLE_TO_USE_JA, 0
+        end
+        if ability ~= nil and ability.setRecast then
+            ability:setRecast(25)
+        end
+        return 0, 0
+    end,
+    function(player, target, _ability)
+        if player == nil or not isSamSpec(player, WARLORD_KEY) or not isGreatKatanaEquipped(player) then
+            return 0
+        end
+
+        if target ~= nil and target.getID and player.getID and target:getID() ~= player:getID() then
+            return 0
+        end
+
+        addWarlordAshuraStacks(player, 3)
+
+        local ownerId = player.getID and player:getID() or 0
+        for _, member in ipairs(getPartyMembersInRange(player, WARLORD_AURA_RADIUS)) do
+            if member.addTP then
+                member:addTP(350)
+            end
+            applyWrlPartyModSlot(member, 'tithe', { { xi.mod.ALL_WSDMG_ALL_HITS, 12 } }, 12, ownerId)
+            attachWarlordTitheLifesteal(member, 12)
+        end
+
+        tellSam(player, '[Warlord] Onimaru Tithe surges the party (+350 TP, +12% WSD, +15% Lifesteal for 12s) and refreshes Ashura\'s Edge!')
+        return 0
     end
 )
 
@@ -1666,12 +1953,12 @@ if xi.job and xi.job.SAM then
             id          = 3,
             key         = WARLORD_KEY,
             name        = 'Warlord',
-            role        = 'Iaijutsu & Onimaru Melee DPS',
+            role        = 'Cursed Onimaru & Iaijutsu Tactical Support',
             icon        = 'warlord',
             reqLevel    = 10,
             extraTraits = { TRAIT_WARLORD_IAIJUTSU },
             extraAbilities = function(_player, lvl)
-                local list = { ABIL_HASSO, ABIL_MEDITATE, ABIL_HAGAKURE }
+                local list = { ABIL_HASSO, ABIL_MEDITATE, ABIL_HAGAKURE, ABIL_ONIMARU_TITHE }
                 if lvl >= 30 then
                     table.insert(list, ABIL_SENGIKORI)
                     table.insert(list, ABIL_BLADE_BASH)
@@ -1682,40 +1969,51 @@ if xi.job and xi.job.SAM then
                 end
                 return list
             end,
-            description = 'Cursed Onimaru & Iaijutsu executioner: requires a Great Katana to unlock 20s Hagakure Sheathe-and-Draw critical DEF-ignoring Tachis and stacking Ashura\'s Edge blood-trance.',
+            description = 'Cursed Onimaru & Iaijutsu battlefield support (Lv10+): keeps the aggressive Great Katana & 20s Hagakure Sheathe-and-Draw playstyle while channeling Ashura\'s Edge stacks and Onimaru Blood-Quench Skillchains into party-wide TP/HP/MP surges, enemy armor sundering, and party-wide Subtle Blow.',
             highlights =
             {
-                'Open weapon choice; requires Great Katana for +Atk%, +Crit Rate/Dmg, +WSD, +Zanshin, and +Store TP.',
-                'Hagakure unlocked at Lv.10+ on a 20s CD: turns your next Tachi into an Iaijutsu Draw-Slash (+Crit, +DEF Ignore, +TP Bonus, Chainbound).',
-                'Tachis stack Ashura\'s Edge (up to 3x: +Atk%, +Ability Haste, +Zanshin & melee blood-leech).',
-                'Closing a Skillchain triggers Onimaru Blood-Quench (+10-25% SC Dmg, restores 5-8% Max HP & +125 TP).',
-                'Hasso adds +Crit Dmg & +Zanshin; Sekkanoki & Meikyo Shisui grant instant max Ashura\'s Edge + Iaijutsu Draw-Slashes.',
+                'Open weapon choice; requires Great Katana for +Accuracy, +Store TP, +Zanshin, +Subtle Blow, and Iaijutsu support effects.',
+                'Hagakure (20s CD): sheathes into Noto stance (15s), turning your next Tachi into an Iaijutsu Draw-Slash (+35..100% Crit, +250..600 TP Bonus, Save TP, Chainbound) inflicting Onimaru Sundering (-15% DEF, -10% MDEF, -25 EVA for 15s).',
+                'Ashura\'s Edge (up to 3x, 20s): 15y party aura (+10/16/24% Subtle Blow, +6/10/15% WSD, +8/14/20 Acc/MAcc, +8/12/16 Regain); at 3 stacks melee swings restore +15 HP & +5 MP to party within 15y.',
+                'Onimaru Blood-Quench: closing a Skillchain boosts SC damage by +20-35% and restores 10% Max HP, 8% Max MP, and +250 TP to party within 15y.',
+                'Onimaru Tithe (25s CD, 15y, 12s): grants party +350 TP, +12% WSD, and +15% Lifesteal, and refreshes Ashura\'s Edge to 3 stacks.',
+                'Support Tradeoff & JAs: -20% Atk% & -15% WSD; Hasso shares 50% STR/Acc/Haste (15y); Meditate grants +1,500 TP self / +400 TP party; Sekkanoki grants party +15% Crit (12s); Meikyo Shisui grants 3x Ashura, 0s Hagakure CD, and 2x Blood-Quench.',
             },
             mods = function(player, lvl)
-                local empty  = {}
+                local list =
+                {
+                    { xi.mod.ATTP,               -20 },
+                    { xi.mod.ALL_WSDMG_ALL_HITS, -15 },
+                }
                 local isWiki = (player == nil) or (not player.getEquipID)
                 if not isWiki and not isGreatKatanaEquipped(player) then
-                    return empty
+                    return list
                 end
-                return
-                {
-                    { xi.mod.ATTP,               scaleTier(lvl, 8, 13, 18, 24) },
-                    { xi.mod.ACC,                scaleTier(lvl, 8, 15, 24, 34) },
-                    { xi.mod.CRITHITRATE,        scaleTier(lvl, 4, 7, 10, 14) },
-                    { xi.mod.CRIT_DMG_INCREASE,  scaleTier(lvl, 6, 11, 16, 22) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS, scaleTier(lvl, 4, 8, 12, 16) },
-                    { xi.mod.ZANSHIN,            scaleTier(lvl, 10, 16, 22, 30) },
-                    { xi.mod.STORETP,            scaleTier(lvl, 6, 10, 15, 20) },
-                }
+                table.insert(list, { xi.mod.HPP,          scaleTier(lvl, 12, 16, 20, 25) })
+                table.insert(list, { xi.mod.STR,          scaleTier(lvl, 10, 16, 22, 28) })
+                table.insert(list, { xi.mod.DEX,          scaleTier(lvl, 10, 16, 22, 28) })
+                table.insert(list, { xi.mod.VIT,          scaleTier(lvl, 10, 16, 22, 28) })
+                table.insert(list, { xi.mod.ACC,          scaleTier(lvl, 12, 20, 28, 38) })
+                table.insert(list, { xi.mod.ZANSHIN,      scaleTier(lvl, 12, 18, 24, 32) })
+                table.insert(list, { xi.mod.STORETP,      scaleTier(lvl, 10, 15, 20, 25) })
+                table.insert(list, { xi.mod.SUBTLE_BLOW,  scaleTier(lvl, 15, 22, 30, 38) })
+                table.insert(list, { xi.mod.GREAT_KATANA, scaleTier(lvl, 15, 25, 35, 50) })
+                table.insert(list, { xi.mod.PARRY,        scaleTier(lvl, 10, 14, 18, 22) })
+                table.insert(list, { xi.mod.ENMITY,       scaleTier(lvl, -15, -20, -25, -30) })
+                return list
             end,
             onApply = function(player)
                 attachSamListeners(player)
                 syncSamWeaponMods(player, true)
+                syncWarlordPartyAuras(player)
             end,
             onRemove = function(player)
                 if player ~= nil then
                     delSamCustomEffectSilent(player, EFFECT_WARLORD_NOTO)
                     delSamCustomEffectSilent(player, EFFECT_WARLORD_ASHURA)
+                    if player.getID then
+                        clearAllWrlOwnerAuras(player:getID(), nil)
+                    end
                     if player.setLocalVar then
                         player:setLocalVar('OX_WRL_IAIJUTSU_USED', 0)
                     end

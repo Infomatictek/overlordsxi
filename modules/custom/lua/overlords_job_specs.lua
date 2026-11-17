@@ -173,7 +173,7 @@ spec.JOB_SPECS =
     {
         { id = 'ronin',          name = 'Ronin',           abr = 'RON', role = 'Tank' },
         { id = 'imperialarcher', name = 'Imperial Archer', abr = 'IMP', role = 'Support' },
-        { id = 'warlord',        name = 'Warlord',         abr = 'WRL', role = 'Damage' },
+        { id = 'warlord',        name = 'Warlord',         abr = 'WRL', role = 'Support' },
     },
     NIN =
     {
