@@ -383,7 +383,7 @@ local SPEC_KEY_TO_CATEGORY =
     musician       = 'sage',
     minstrel       = 'gladiator',
     ronin          = 'sensei',
-    imperialarcher = 'bladewheel',
+    imperialarcher = 'imperialarcher',
     warlord        = 'berserker',
     tank           = 'inquisitor',
     healer         = 'lifebinder',
@@ -2002,8 +2002,9 @@ local SPEC_CATEGORY_FALLBACK =
     chiweaver   = 'healer',
     sage        = 'spellblade',
     necromancer = 'spellblade',
-    blackbelt   = 'berserker',
-    bladewheel  = 'berserker',
+    blackbelt      = 'berserker',
+    bladewheel     = 'berserker',
+    imperialarcher = 'berserker',
 }
 
 local function buildTreeForWS(ws, specCat)
