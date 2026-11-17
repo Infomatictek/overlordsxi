@@ -233,6 +233,22 @@ try {
         return $files
     }
 
+    function Get-PatchAddedFiles([string]$PatchPath) {
+        $added = @()
+        $prevIsDevNull = $false
+        foreach ($line in (Get-Content -Path $PatchPath)) {
+            if ($line -match '^---\s+/dev/null\s*$') {
+                $prevIsDevNull = $true
+                continue
+            }
+            if ($prevIsDevNull -and ($line -match '^\+\+\+ b/(.+)$')) {
+                $added += $matches[1].Trim()
+            }
+            $prevIsDevNull = $false
+        }
+        return $added
+    }
+
     function Test-PatchApplied([string]$PatchPath) {
         $prev = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
@@ -284,13 +300,39 @@ try {
     if ($patchNeedsCleanReapply) {
         Write-Host '==> Detected updated OverlordsXI patch; resetting patched server files to clean upstream before re-applying all patches...' -ForegroundColor Yellow
         $allTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        $addedTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($p in $patchFiles) {
             foreach ($tf in (Get-PatchTargetFiles $p.FullName)) {
                 [void]$allTargets.Add($tf)
             }
+            foreach ($af in (Get-PatchAddedFiles $p.FullName)) {
+                [void]$addedTargets.Add($af)
+            }
         }
         if ($allTargets.Count -gt 0) {
-            git checkout -- @($allTargets)
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            $trackedRaw = git ls-files -- @($allTargets)
+            $ErrorActionPreference = $prevEap
+            $trackedList = @($trackedRaw | ForEach-Object { "$_".Trim() } | Where-Object { $_ -ne '' })
+            $trackedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            foreach ($tr in $trackedList) {
+                [void]$trackedSet.Add($tr)
+            }
+            if ($trackedList.Count -gt 0) {
+                git checkout -- @($trackedList)
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to reset tracked server files before re-applying OverlordsXI patches."
+                }
+            }
+            foreach ($tf in $allTargets) {
+                if ((-not $trackedSet.Contains($tf)) -or $addedTargets.Contains($tf)) {
+                    $untrackedFull = Join-Path $ServerDir ($tf -replace '/', '\')
+                    if (Test-Path $untrackedFull) {
+                        Remove-Item -Path $untrackedFull -Force
+                    }
+                }
+            }
         }
     }
 
