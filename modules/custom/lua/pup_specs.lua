@@ -19,8 +19,8 @@ local pupSpecs        = xi.overlords.pupSpecs
 
 local VANGUARD_KEY = 'vanguard'
 
--- Custom Trait ID (148; Vanguard's Core)
-local TRAIT_VANGUARDS_CORE = 148
+-- Custom Trait ID (164; Vanguard's Core)
+local TRAIT_VANGUARDS_CORE = 164
 
 -- Custom Ability IDs (451-452; recastIds 168-169)
 local ABIL_AEGIS_PROTOCOL = 451
