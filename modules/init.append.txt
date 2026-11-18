@@ -79,3 +79,5 @@ custom/sql/cor_specs.sql
 
 custom/lua/overlords_soul_hud.lua
 custom/commands/soulhud.lua
+
+custom/cpp/overlords_soulhud_sync.cpp

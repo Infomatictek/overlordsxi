@@ -64,16 +64,9 @@ function hud.registerProvider(soulKey, collectorFn)
     end
 end
 
-function hud.sync(player, force)
+function hud.buildPacketData(player)
     if player == nil or not player:isPC() then
-        return
-    end
-
-    local cid = player:getID()
-    local now = os.clock()
-    local lastAt = hud.lastSentAtByCharId[cid] or 0
-    if not force and (now - lastAt) < MIN_AUTO_INTERVAL_SEC then
-        return
+        return { jobId = 0, soulKey = '', unlocked = 0, kv = '' }
     end
 
     local jobId = player:getMainJob()
@@ -100,16 +93,16 @@ function hud.sync(player, force)
         end
     end
 
-    local kvStr = table.concat(kvParts, ';')
-    local payload = string.format('%u|%s|%u|%s', jobId, sanitize(soulKey), unlocked, kvStr)
+    return {
+        jobId    = jobId,
+        soulKey  = sanitize(soulKey),
+        unlocked = unlocked,
+        kv       = table.concat(kvParts, ';'),
+    }
+end
 
-    if not force and hud.lastSigByCharId[cid] == payload then
-        return
-    end
-
-    hud.lastSigByCharId[cid] = payload
-    hud.lastSentAtByCharId[cid] = now
-    player:printToPlayer(hud.PROTO_TAG .. payload, xi.msg.channel.SYSTEM_3, '')
+function hud.sync(_player, _force)
+    -- Handled silently via 0x1FC binary packet in overlords_soulhud_sync.cpp
 end
 
 -----------------------------------
