@@ -1,0 +1,292 @@
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index abb04d9cc6..cae2470136 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -11691,6 +11691,99 @@ auto CLuaBaseEntity::getSetBlueSpells() -> sol::table
+     return spellList;
+ }
+ 
++/************************************************************************
++ *  Function: getBlueMagicSlots()
++ *  Purpose : Retrieves all 20 BLU spell slots (0 = empty, >0 = spell ID)
++ *  Example : local slots = player:getBlueMagicSlots()
++ ************************************************************************/
++
++auto CLuaBaseEntity::getBlueMagicSlots() -> sol::table
++{
++    auto slotList = lua.create_table();
++
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        ShowWarning("Invalid entity type calling getBlueMagicSlots (%s).", m_PBaseEntity->getName());
++        return slotList;
++    }
++
++    auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++
++    for (size_t i = 0; i < 20; ++i)
++    {
++        uint8 rawId = PChar->m_SetBlueSpells[i];
++        slotList[i + 1] = rawId != 0 ? static_cast<uint16>(rawId + 0x200) : 0;
++    }
++
++    return slotList;
++}
++
++/************************************************************************
++ *  Function: setBlueMagicSpell()
++ *  Purpose : Sets or clears a Blue Magic spell in slotIndex (0..19)
++ *  Example : player:setBlueMagicSpell(0, xi.magic.spell.POLLEN, true)
++ ************************************************************************/
++
++void CLuaBaseEntity::setBlueMagicSpell(uint8 slotIndex, uint16 spellID, const sol::optional<bool>& sendUpdate)
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        ShowWarning("Invalid entity type calling setBlueMagicSpell (%s).", m_PBaseEntity->getName());
++        return;
++    }
++
++    if (slotIndex >= 20)
++    {
++        ShowWarning("setBlueMagicSpell: slotIndex %u out of range (%s).", slotIndex, m_PBaseEntity->getName());
++        return;
++    }
++
++    auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++
++    if (spellID == 0)
++    {
++        if (PChar->m_SetBlueSpells[slotIndex] != 0)
++        {
++            if (auto* POldSpell = dynamic_cast<CBlueSpell*>(spell::GetSpell(static_cast<SpellID>(PChar->m_SetBlueSpells[slotIndex] + 0x200))))
++            {
++                blueutils::SetBlueSpell(PChar, POldSpell, slotIndex, false);
++            }
++        }
++    }
++    else if (auto* PSpell = dynamic_cast<CBlueSpell*>(spell::GetSpell(static_cast<SpellID>(spellID))))
++    {
++        blueutils::SetBlueSpell(PChar, PSpell, slotIndex, true);
++    }
++
++    if (sendUpdate.value_or(true))
++    {
++        syncBlueMagicSpells();
++    }
++}
++
++/************************************************************************
++ *  Function: syncBlueMagicSpells()
++ *  Purpose : Rebuilds traits/stats and pushes BLU 0x044/status packets
++ ************************************************************************/
++
++void CLuaBaseEntity::syncBlueMagicSpells()
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        ShowWarning("Invalid entity type calling syncBlueMagicSpells (%s).", m_PBaseEntity->getName());
++        return;
++    }
++
++    auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++
++    charutils::BuildingCharTraitsTable(PChar);
++    PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++    charutils::SendExtendedJobPackets(PChar);
++    PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS>(PChar);
++    charutils::CalculateStats(PChar);
++    PChar->UpdateHealth();
++}
++
+ /************************************************************************
+  *  Function: recalculateSkillsTable()
+  *  Purpose : Recalculates skill tables to get new values and calculations
+@@ -11744,9 +11837,53 @@ void CLuaBaseEntity::recalculateAbilitiesTable()
+         charutils::BuildingCharPetAbilityTable(PChar, PPetEntity, PPetEntity->petID());
+     }
+ 
++    PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+     PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
+ }
+ 
++void CLuaBaseEntity::sendTalentPacket(std::string const& payload)
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        return;
++    }
++
++    auto*                 PChar         = static_cast<CCharEntity*>(m_PBaseEntity);
++    constexpr std::size_t HeaderBytes   = 12;
++    constexpr std::size_t MaxPayloadLen = 236;
++    const std::size_t     len           = std::min<std::size_t>(payload.size(), MaxPayloadLen);
++    const std::size_t     totalBytes    = ((HeaderBytes + len + 3) / 4) * 4;
++
++    auto packet = std::make_unique<CBasicPacket>();
++    packet->setType(0x1FD);
++    packet->setSize(totalBytes);
++    packet->ref<uint8>(0x04)  = 'O';
++    packet->ref<uint8>(0x05)  = 'X';
++    packet->ref<uint8>(0x06)  = 'T';
++    packet->ref<uint8>(0x07)  = 'L';
++    packet->ref<uint8>(0x08)  = 1;
++    packet->ref<uint8>(0x09)  = 0;
++    packet->ref<uint16>(0x0A) = static_cast<uint16>(len);
++    for (std::size_t i = 0; i < len; ++i)
++    {
++        packet->ref<uint8>(HeaderBytes + i) = static_cast<uint8>(payload[i]);
++    }
++
++    PChar->pushPacket(std::move(packet));
++}
++
++void CLuaBaseEntity::pushStatus()
++{
++    if (m_PBaseEntity->objtype != TYPE_PC)
++    {
++        return;
++    }
++
++    auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++    PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS>(PChar);
++    PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++}
++
+ /************************************************************************
+  *  Function: getEntitiesInRange()
+  *  Purpose : Returns a Lua table of entities within range of the base entity
+@@ -13375,6 +13512,18 @@ void CLuaBaseEntity::resetRecast(uint8 rType, uint16 recastID)
+     }
+ }
+ 
++void CLuaBaseEntity::restoreAbilityCharge(uint16 recastID, const sol::object& countObj)
++{
++    if (m_PBaseEntity->objtype == TYPE_PC)
++    {
++        auto*       PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++        const uint8 count = countObj.is<uint8>() ? countObj.as<uint8>() : 1;
++
++        PChar->PRecastContainer->RestoreCharge(xi::RecastType::Ability, static_cast<xi::Recast>(recastID), count);
++        PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++    }
++}
++
+ /************************************************************************
+  *  Function: resetRecasts()
+  *  Purpose : Resets all Ability cooldowns to 0 for an Entity
+@@ -13396,6 +13545,58 @@ void CLuaBaseEntity::resetRecasts()
+     }
+ }
+ 
++void CLuaBaseEntity::reduceRecasts(uint32 seconds)
++{
++    if (seconds == 0)
++    {
++        return;
++    }
++
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        PBattleEntity->PRecastContainer->ReduceRecasts(std::chrono::seconds(seconds));
++        if (PBattleEntity->objtype == TYPE_PC)
++        {
++            auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++            PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++            PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++        }
++    }
++}
++
++void CLuaBaseEntity::reduceAbilityRecasts(uint32 seconds)
++{
++    if (seconds == 0)
++    {
++        return;
++    }
++
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        PBattleEntity->PRecastContainer->ReduceAbilityRecasts(std::chrono::seconds(seconds));
++        if (PBattleEntity->objtype == TYPE_PC)
++        {
++            auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++            PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++            PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++        }
++    }
++}
++
++void CLuaBaseEntity::resetStandardAbilities()
++{
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        PBattleEntity->PRecastContainer->ResetStandardAbilities();
++        if (PBattleEntity->objtype == TYPE_PC)
++        {
++            auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++            PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++            PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++        }
++    }
++}
++
+ /************************************************************************
+  *  Function: addListener()
+  *  Purpose : Instructs the Event Handler to monitor for an Event, then
+@@ -21204,9 +21405,14 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("canLearnSpell", CLuaBaseEntity::canLearnSpell);
+     SOL_REGISTER("delSpell", CLuaBaseEntity::delSpell);
+     SOL_REGISTER("getSetBlueSpells", CLuaBaseEntity::getSetBlueSpells);
++    SOL_REGISTER("getBlueMagicSlots", CLuaBaseEntity::getBlueMagicSlots);
++    SOL_REGISTER("setBlueMagicSpell", CLuaBaseEntity::setBlueMagicSpell);
++    SOL_REGISTER("syncBlueMagicSpells", CLuaBaseEntity::syncBlueMagicSpells);
+ 
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
++    SOL_REGISTER("sendTalentPacket", CLuaBaseEntity::sendTalentPacket);
++    SOL_REGISTER("pushStatus", CLuaBaseEntity::pushStatus);
+     SOL_REGISTER("getEntitiesInRange", CLuaBaseEntity::getEntitiesInRange);
+ 
+     // Parties and Alliances
+@@ -21281,6 +21487,10 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("hasRecast", CLuaBaseEntity::hasRecast);
+     SOL_REGISTER("resetRecast", CLuaBaseEntity::resetRecast);
+     SOL_REGISTER("resetRecasts", CLuaBaseEntity::resetRecasts);
++    SOL_REGISTER("restoreAbilityCharge", CLuaBaseEntity::restoreAbilityCharge);
++    SOL_REGISTER("reduceRecasts", CLuaBaseEntity::reduceRecasts);
++    SOL_REGISTER("reduceAbilityRecasts", CLuaBaseEntity::reduceAbilityRecasts);
++    SOL_REGISTER("resetStandardAbilities", CLuaBaseEntity::resetStandardAbilities);
+ 
+     SOL_REGISTER("addListener", CLuaBaseEntity::addListener);
+     SOL_REGISTER("removeListener", CLuaBaseEntity::removeListener);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+index fe27674244..0b20ef332b 100644
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -590,9 +590,14 @@ public:
+     auto canLearnSpell(uint16 spellID) -> uint32;
+     void delSpell(uint16 spellID, const sol::optional<sol::table>& paramTable);
+     auto getSetBlueSpells() -> sol::table;
++    auto getBlueMagicSlots() -> sol::table;
++    void setBlueMagicSpell(uint8 slotIndex, uint16 spellID, const sol::optional<bool>& sendUpdate);
++    void syncBlueMagicSpells();
+ 
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
++    void sendTalentPacket(std::string const& payload);
++    void pushStatus();
+     auto getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table;
+ 
+     // Parties and Alliances
+@@ -668,6 +673,10 @@ public:
+     auto hasRecast(uint8 rType, uint16 recastID, const sol::object& arg2) -> bool;
+     void resetRecast(uint8 rType, uint16 recastID); // Reset one recast ID
+     void resetRecasts();                            // Reset recasts for the caller
++    void restoreAbilityCharge(uint16 recastID, const sol::object& countObj);
++    void reduceRecasts(uint32 seconds);
++    void reduceAbilityRecasts(uint32 seconds);
++    void resetStandardAbilities();
+ 
+     void addListener(const std::string& eventName, const std::string& identifier, const sol::function& func);
+     void removeListener(const std::string& identifier);

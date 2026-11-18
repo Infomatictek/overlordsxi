@@ -1,0 +1,32 @@
+diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+--- a/src/map/packets/c2s/0x11f_crystal_socket.cpp
++++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+@@ -31,13 +31,27 @@
+ #include "packets/c2s/validation.h"
+ #include "packets/s2c/0x1ff_crystal_collection.h"
+ 
++namespace
++{
++constexpr uint32_t TalentMagic = 0x4C54584Fu; // "OXTL"
++}
++
+ auto GP_CLI_COMMAND_CRYSTAL_SOCKET::validate(MapSession* PSession, const CCharEntity* PChar) const -> PacketValidationResult
+ {
+-    return PacketValidator(PChar).mustEqual(magic, crystal::Magic, "Not a Crystal protocol request.");
++    return PacketValidator(PChar).mustEqual(magic == crystal::Magic || magic == TalentMagic, true, "Not a Crystal or Talent protocol request.");
+ }
+ 
+ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* PChar) const
+ {
++    if (magic == TalentMagic)
++    {
++        if (version == 1)
++        {
++            luautils::OnTalentPacket(PChar, operation, requestId, job, branch);
++        }
++        return;
++    }
++
+     auto result = crystal::Result::Invalid;
+     if (crystal::validRequest(magic, version, operation, reserved))
+     {

@@ -32,7 +32,7 @@ local function delaySendMenu(player, menuBuilder)
 end
 
 local function printUsage(player)
-    tell(player, 'Usage: !spec | !spec list | !spec info [crystal] | !spec set <crystal> | !spec remove')
+    tell(player, 'Usage: !spec | !spec list | !spec info [crystal] | !spec set <crystal> | !spec remove | !spec resetspells')
 end
 
 local function formatEntryTag(player, jobId, entry, active)
@@ -308,6 +308,26 @@ commandObj.onTrigger = function(player, action, value, extra)
             tell(player, string.format('Removed %s crystal.', jobName(jobId)))
         else
             tell(player, errMsg or string.format('No crystals are configured for %s yet.', jobName(jobId)))
+        end
+        return
+    end
+
+    if cmd == 'resetspells' or cmd == 'defaultspells' then
+        local active = spec.get(player, jobId)
+        if
+            jobId ~= xi.job.BLU or
+            active == nil or
+            active.key ~= 'magus' or
+            (player:getMainLvl() or 1) < 10
+        then
+            tell(player, '!spec resetspells is only available while BLU Magus (Lv. 10+) is active.')
+            return
+        end
+        if xi.overlords.bluHealerSpecs and xi.overlords.bluHealerSpecs.resetMagusSpells then
+            xi.overlords.bluHealerSpecs.resetMagusSpells(player)
+            tell(player, 'Restored Magus baseline Blue Magic spell loadout.')
+        else
+            tell(player, 'Magus spell sync helper is not loaded.')
         end
         return
     end

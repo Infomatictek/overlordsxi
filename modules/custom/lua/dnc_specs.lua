@@ -6,13 +6,15 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/overlords_shared_slots')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/dancer')
 require('scripts/globals/player')
 -----------------------------------
 local m = Module:new('overlords_dnc_specs')
 
-local spec = xi.overlords.spec
+local spec  = xi.overlords.spec
+local slots = xi.overlords.slots
 
 local BLADEWHEEL_KEY = 'bladewheel'
 local MIRAGE_KEY     = 'miragesentinel'
@@ -35,6 +37,7 @@ local ABIL_QUICKSTEP         = 201
 local ABIL_BOX_STEP          = 202
 local ABIL_STUTTER_STEP      = 203
 local ABIL_ANIMATED_FLOURISH = 204
+local ABIL_BUILDING_FLOURISH = 205
 local ABIL_VIOLENT_FLOURISH  = 207
 local ABIL_FAN_DANCE         = 238
 local ABIL_NO_FOOT_RISE      = 239
@@ -180,7 +183,7 @@ local function grantAegisWaltz(player, movesSpent)
     local moves = math.max(1, math.min(5, math.floor(movesSpent or 1)))
     local maxHp = player.getMaxHP and (player:getMaxHP() or 0) or 0
     if maxHp > 0 then
-        local barrier = math.max(1, math.floor(maxHp * 0.05 * moves))
+        local barrier = math.max(1, math.floor(maxHp * 0.03 * moves))
         local current = player:getLocalVar('OX_DNC_AEGIS_WALTZ')
         local exp     = player:getLocalVar('OX_DNC_AEGIS_WALTZ_EXP')
         if exp < os.time() then
@@ -188,7 +191,7 @@ local function grantAegisWaltz(player, movesSpent)
         end
         local nextBarrier = math.max(current, barrier)
         player:setLocalVar('OX_DNC_AEGIS_WALTZ', nextBarrier)
-        player:setLocalVar('OX_DNC_AEGIS_WALTZ_EXP', os.time() + 30)
+        player:setLocalVar('OX_DNC_AEGIS_WALTZ_EXP', os.time() + 12)
     end
 
     if player.eraseStatusEffect then
@@ -289,7 +292,7 @@ xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, 
         end
     end
 
-    -- Perpetual Fan Dance (-45% Physical & Magical DT, decaying by 5% per hit taken, floor -15%)
+    -- Perpetual Fan Dance (-30% Physical & Magical DT, decaying by 5% per hit taken, floor -10%)
     if
         isMirageDualDaggers(defender) and
         defender:hasStatusEffect(xi.effect.FAN_DANCE) and
@@ -297,9 +300,9 @@ xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, 
     then
         local fanEff = defender:getStatusEffect(xi.effect.FAN_DANCE)
         if fanEff then
-            local fanDt = math.max(15, math.min(45, fanEff:getPower()))
+            local fanDt = math.max(10, math.min(30, fanEff:getPower()))
             amount = math.max(1, math.floor(amount * (100 - fanDt) / 100))
-            fanEff:setPower(math.max(15, fanDt - 5))
+            fanEff:setPower(math.max(10, fanDt - 5))
         end
     end
 
@@ -325,7 +328,10 @@ end
 m:addOverride('xi.combat.physical.calculateParryRate', function(defender, attacker)
     local rate = super(defender, attacker)
     if isMirageDualDaggers(defender) then
-        local bonus = scaleTier(defender:getMainLvl(), 14, 20, 26, 32)
+        local bonus = scaleTier(defender:getMainLvl(), 12, 16, 20, 24)
+        if defender:hasStatusEffect(xi.effect.ISSEKIGAN) then
+            bonus = bonus + 20
+        end
         rate = math.min(95, rate + bonus)
     end
     return rate
@@ -345,12 +351,15 @@ end)
 -- Support ranged Violent Flourish when Bladewheel is active with a Throwing weapon
 m:addOverride('xi.job_utils.dancer.useViolentFlourishAbility', function(player, target, ability, action)
     if isMirageDualDaggers(player) then
-        ability:setRecast(15)
+        ability:setRecast(18)
         local inTrance = player:hasStatusEffect(xi.effect.TRANCE)
         local waltzMoves = inTrance and 5 or 1
         local res = runWithTranceFlourishMoves(player, 1, function()
             return super(player, target, ability, action)
         end)
+        if target ~= nil and target.isAlive and target:isAlive() then
+            target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = player })
+        end
         grantAegisWaltz(player, waltzMoves)
         return res
     end
@@ -439,7 +448,7 @@ m:addOverride('xi.actions.abilities.fan_dance.onAbilityCheck', function(player, 
         if not isDualDaggersEquipped(player) then
             return xi.msg.basic.UNABLE_TO_USE_JA, 0
         end
-        ability:setRecast(20)
+        ability:setRecast(15)
         return 0, 0
     end
     return super(player, target, ability)
@@ -447,38 +456,44 @@ end)
 
 m:addOverride('xi.actions.abilities.fan_dance.onUseAbility', function(player, target, ability)
     if isMirageSentinel(player) then
-        ability:setRecast(20)
+        ability:setRecast(15)
         player:delStatusEffectSilent(xi.effect.FAN_DANCE)
-        player:addStatusEffect(xi.effect.FAN_DANCE, { power = 45, duration = 300, origin = player })
+        player:addStatusEffect(xi.effect.FAN_DANCE, { power = 30, duration = 300, origin = player })
         return xi.effect.FAN_DANCE
     end
     return super(player, target, ability)
 end)
 
 m:addOverride('xi.job_utils.dancer.checkFlourishAbility', function(player, target, ability, combatOnly, minimumCost)
-    if isMirageDualDaggers(player) and player:hasStatusEffect(xi.effect.TRANCE) then
-        if combatOnly and player:getAnimation() ~= 1 then
-            return xi.msg.basic.REQUIRES_COMBAT, 0
+    if isMirageDualDaggers(player) then
+        if ability and ability:getID() == ABIL_ANIMATED_FLOURISH then
+            return 0, 0
         end
-        return 0, 0
+        if player:hasStatusEffect(xi.effect.TRANCE) then
+            if combatOnly and player:getAnimation() ~= 1 then
+                return xi.msg.basic.REQUIRES_COMBAT, 0
+            end
+            return 0, 0
+        end
     end
     return super(player, target, ability, combatOnly, minimumCost)
 end)
 
 m:addOverride('xi.job_utils.dancer.useAnimatedFlourishAbility', function(player, target, ability, action)
     if isMirageDualDaggers(player) then
-        ability:setRecast(10)
+        ability:setRecast(12)
         local inTrance = player:hasStatusEffect(xi.effect.TRANCE)
         local numMoves = getFinishingMoves(player)
-        local spent = inTrance and 5 or (numMoves >= 2 and 2 or 1)
-        runWithTranceFlourishMoves(player, 1, function()
-            super(player, target, ability, action)
-        end)
+        local spent = inTrance and 5 or math.min(5, numMoves)
+        if numMoves >= 1 or inTrance then
+            runWithTranceFlourishMoves(player, math.max(1, spent), function()
+                super(player, target, ability, action)
+            end)
+            grantAegisWaltz(player, math.max(1, spent))
+        end
         if target ~= nil and target.addEnmity then
             target:addEnmity(player, 250, 1500)
         end
-        pulseAoEThreat(player, target, 150, 600, 10)
-        grantAegisWaltz(player, spent)
         return
     end
     return super(player, target, ability, action)
@@ -486,9 +501,10 @@ end)
 
 m:addOverride('xi.job_utils.dancer.useBuildingFlourishAbility', function(player, target, ability)
     if isMirageDualDaggers(player) then
+        ability:setRecast(20)
         local inTrance = player:hasStatusEffect(xi.effect.TRANCE)
         local numMoves = getFinishingMoves(player)
-        local spent = inTrance and 5 or math.min(3, math.max(1, numMoves))
+        local spent = inTrance and 5 or math.min(5, math.max(1, numMoves))
         runWithTranceFlourishMoves(player, 1, function()
             super(player, target, ability)
         end)
@@ -511,36 +527,76 @@ m:addOverride('xi.job_utils.dancer.useWildFlourishAbility', function(player, tar
     return super(player, target, ability, action)
 end)
 
-m:addOverride('xi.job_utils.dancer.useStepAbility', function(player, target, ability, action, stepEffect)
-    local res = super(player, target, ability, action, stepEffect)
-    if isMirageDualDaggers(player) and target ~= nil and DEBUFF_STEP_IDS[ability:getID()] then
-        local stepEff = target:getStatusEffect(stepEffect)
-        if stepEff then
-            local stepLvl = math.max(1, math.min(3, stepEff:getPower()))
-            target:setLocalVar('OX_DNC_STEP_DMG_DOWN', stepLvl * 5)
-            target:setLocalVar('OX_DNC_STEP_DMG_EXP', os.time() + 60)
-            if target.addEnmity then
-                target:addEnmity(player, 150, 750)
-            end
-        end
+m:addOverride('xi.job_utils.dancer.checkStepAbility', function(player, target, ability)
+    if isMirageDualDaggers(player) and ability and DEBUFF_STEP_IDS[ability:getID()] then
+        ability:setRecast(5)
+        return 0, 0
     end
-    return res
+    return super(player, target, ability)
+end)
+
+m:addOverride('xi.job_utils.dancer.useStepAbility', function(player, target, ability, action, stepEffect)
+    if isMirageDualDaggers(player) and target ~= nil and DEBUFF_STEP_IDS[ability:getID()] then
+        ability:setRecast(5)
+        local prevTp = player:getTP()
+        if prevTp < 100 then
+            player:setTP(100)
+        end
+        local res = super(player, target, ability, action, stepEffect)
+        player:setTP(prevTp)
+
+        addFinishingMoves(player, 2)
+        if target.addEnmity then
+            target:addEnmity(player, 180, 900)
+        end
+
+        local stacks = math.min(3, (target:getLocalVar('OX_DNC_CRIPPLE_STACKS') or 0) + 1)
+        if target:getLocalVar('OX_DNC_CRIPPLE_EXP') < os.time() then
+            stacks = 1
+        end
+        target:setLocalVar('OX_DNC_CRIPPLE_STACKS', stacks)
+        target:setLocalVar('OX_DNC_CRIPPLE_EXP', os.time() + 15)
+        slots.applySlot(target, slots.EFF_OX_DEB_CRIPPLE, stacks * 5, 15, player,
+        {
+            { xi.mod.ATTP, -stacks * 5 },
+            { xi.mod.MATT, -stacks * 5 },
+            { xi.mod.ACC,  -stacks * 7 },
+        }, slots.EFF_OX_DEB_CRIPPLE)
+        return res
+    end
+    return super(player, target, ability, action, stepEffect)
+end)
+
+m:addOverride('xi.job_utils.dancer.checkWaltzAbility', function(player, target, ability)
+    if isMirageSentinel(player) and ability and CURING_WALTZ_IDS[ability:getID()] then
+        ability:setRecast(10)
+        if player:getTP() < 200 then
+            return xi.msg.basic.NOT_ENOUGH_TP, 0
+        end
+        return 0, 0
+    end
+    return super(player, target, ability)
 end)
 
 m:addOverride('xi.job_utils.dancer.useWaltzAbility', function(player, target, ability, action)
-    local amtCured = super(player, target, ability, action)
-    if isMirageSentinel(player) and CURING_WALTZ_IDS[ability:getID()] and type(amtCured) == 'number' and amtCured > 0 then
-        local bonus = math.floor(amtCured * 0.30)
-        local missing = math.max(0, target:getMaxHP() - target:getHP())
-        local appliedBonus = math.min(bonus, missing)
-        if appliedBonus > 0 then
-            target:restoreHP(appliedBonus)
-            amtCured = amtCured + appliedBonus
+    if isMirageSentinel(player) and CURING_WALTZ_IDS[ability:getID()] and target ~= nil then
+        ability:setRecast(10)
+        player:delTP(200)
+        local pct = scaleTier(player:getMainLvl(), 14, 17, 20, 24)
+        local maxHp = target:getMaxHP() or 0
+        local heal = math.max(1, math.floor(maxHp * pct / 100))
+        local missing = math.max(0, maxHp - (target:getHP() or 0))
+        local applied = math.min(heal, missing)
+        if applied > 0 then
+            target:restoreHP(applied)
         end
-        player:updateEnmityFromCure(target, bonus)
-        pulseAoEThreat(player, nil, 0, 25, 20)
+        player:updateEnmityFromCure(target, applied)
+        if action and action.messageID then
+            action:messageID(target:getID(), xi.msg.basic.RECOVERS_HP)
+        end
+        return applied
     end
-    return amtCured
+    return super(player, target, ability, action)
 end)
 
 m:addOverride('xi.job_utils.dancer.checkNoFootRiseAbility', function(player, target, ability)
@@ -580,8 +636,7 @@ end)
 m:addOverride('xi.effects.issekigan.onEffectGain', function(target, effect)
     super(target, effect)
     if isMirageSentinel(target) then
-        effect:addMod(xi.mod.EVA_PERCENT, 30)
-        effect:addMod(xi.mod.KNOCKBACK_REDUCTION, 10)
+        effect:addMod(xi.mod.KNOCKBACK_REDUCTION, 100)
     end
 end)
 
@@ -592,16 +647,16 @@ m:addOverride('xi.actions.abilities.pirouette_deflect.onAbilityCheck', function(
     if not isMirageSentinel(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
-    ability:setRecast(20)
+    ability:setRecast(40)
     return 0, 0
 end)
 
 m:addOverride('xi.actions.abilities.pirouette_deflect.onUseAbility', function(player, _target, ability)
-    ability:setRecast(20)
+    ability:setRecast(40)
 
     local fanEff = player:getStatusEffect(xi.effect.FAN_DANCE)
     if fanEff then
-        fanEff:setPower(45)
+        fanEff:setPower(30)
     end
 
     player:delStatusEffectSilent(xi.effect.ISSEKIGAN)
@@ -624,13 +679,13 @@ m:addOverride('xi.actions.abilities.dazzling_cadence.onUseAbility', function(pla
     end
 
     if target.addEnmity then
-        target:addEnmity(player, 300, 1100)
+        target:addEnmity(player, 400, 1400)
     end
 
-    target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 4, origin = player })
-    target:addStatusEffect(xi.effect.BLINDNESS, { power = 30, duration = 12, origin = player })
+    target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = player })
+    target:addStatusEffect(xi.effect.BLINDNESS, { power = 25, duration = 12, origin = player })
     target:addStatusEffect(xi.effect.SLOW, { power = 2000, duration = 12, origin = player })
-    setFinishingMoves(player, 5)
+    addFinishingMoves(player, 3)
 
     ability:setMsg(xi.msg.basic.USES_ABILITY_EFFECT)
     return xi.effect.BLINDNESS
@@ -679,15 +734,15 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
 
         local fanEff = actor:getStatusEffect(xi.effect.FAN_DANCE)
         if fanEff then
-            local curDt = math.max(15, math.min(45, fanEff:getPower()))
-            fanEff:setPower(math.min(45, curDt + 20))
+            local curDt = math.max(10, math.min(30, fanEff:getPower()))
+            fanEff:setPower(math.min(30, curDt + 10))
         end
 
         if target ~= nil and target.addEnmity then
             target:addEnmity(actor, 200, 900)
         end
 
-        addFinishingMoves(actor, 2)
+        addFinishingMoves(actor, 1)
     end)
 
     player:removeListener('OX_DNC_MIRAGE_ATTACKED')
@@ -761,15 +816,19 @@ if xi.job and xi.job.DNC then
             key            = MIRAGE_KEY,
             name           = 'Mirage Sentinel',
             role           = 'Fan-Dance Rhythm & Waltz-Shield Tank',
-            icon           = 'mirage_crystal',
-            extraTraits    = { TRAIT_MIRAGE_RHYTHM },
+            icon           = 'miragesentinel',
+            extraTraits    = { TRAIT_MIRAGE_RHYTHM, xi.trait and xi.trait.DUAL_WIELD or 18 },
             extraAbilities = function(_player, lvl)
                 if (lvl or 1) >= 10 then
                     return
                     {
-                        ABIL_FAN_DANCE,
+                        ABIL_CURING_WALTZ,
+                        ABIL_QUICKSTEP,
+                        ABIL_BOX_STEP,
                         ABIL_ANIMATED_FLOURISH,
+                        ABIL_BUILDING_FLOURISH,
                         ABIL_VIOLENT_FLOURISH,
+                        ABIL_FAN_DANCE,
                         ABIL_PIROUETTE_DEFLECT,
                         ABIL_DAZZLING_CADENCE,
                     }
@@ -782,34 +841,38 @@ if xi.job and xi.job.DNC then
                 player:delStatusEffectSilent(xi.effect.FAN_DANCE)
                 player:delStatusEffectSilent(xi.effect.ISSEKIGAN)
             end,
-            description    = 'Acrobatic frontline dancer tank (Lv10+): requires Dual Daggers to unlock Perpetual Fan Dance (recharged by Dagger WSs and Flourishes), Finishing Move Waltz-Shields, and Step-crippling enfeebles.',
+            description    = 'Acrobatic frontline dancer tank (Lv10+): requires Dual Daggers to unlock Fan Dance Rhythm (recharged by Dagger WSs), Aegis Waltz Stoneskin, and single-target Step/Cadence wards.',
             highlights     =
             {
-                'Passives (Lv10/30/50/70+): +12/16/20/25% Max HP, +8/14/20/26 AGI/DEX/CHR, +12/18/24/30% DEF, -8/11/14/18% DT, +25/35/45/60 Enmity & Retention, +15/20/25/30% Waltz Potency.',
-                'Dual Dagger & Step Mastery: +15/25/35/50 Dagger, +14/20/26/32% Evasion & Parry Rate, +15/20/25/30% Subtle Blow; unlocks Fan Dance & Animated/Violent Flourish @ Lv10+.',
-                'Perpetual Fan Dance: 20s CD, usable with Curing Waltz; -45% Phys/Mag DT (decays 5%/hit, floor -15%), recharged +20% by Dagger WSs (+enmity, +2 FMs).',
-                'Aegis Waltz & Steps: Flourishes grant 5% Max HP barrier/FM (up to 25%) + 1 cleanse; Steps generate heavy enmity & inflict -5% Damage Dealt/lvl (up to -15%).',
-                'Pirouette Deflect (20s CD) & Dazzling Cadence (25s CD): reset Fan Dance + evade/parry counter-strikes; Stun + Blind + Slow + 5 FMs.',
+                'Passives (Lv10/30/50/70+): +12/16/20/25% Max HP, +8/14/20/26 VIT/DEX, +12/18/24/30% DEF, -8/11/14/18% DT, +60/80/100/120 Enmity & +25..60% Retention.',
+                'Dual Dagger Mastery: Dual Wield (-15/20/25/30% delay), +12/16/20/24% Parry Rate, +15/20/25/30 Subtle Blow, +15/25/35/50 Dagger & Parrying.',
+                'Fan Dance Rhythm (15s CD, does not lock Waltzes): -30% Phys/Mag DT (decays 5%/hit, floor -10%); Dagger WSs restore +10% & +1 FM.',
+                'Steps (5s CD, 0 TP): +2 FMs, snap enmity, EFF_OX_DEB_CRIPPLE (-5% ATTP/MATT & -7 ACC/stack, max 3); Flourishes grant 3% Max HP/FM Stoneskin + cleanse.',
+                'Pirouette Deflect (40s CD, Self 8s) & Dazzling Cadence (25s CD, Single-Target 6y): reset Fan Dance, +20% Parry + Knockback Immunity; 2s Stun + Blind + Slow + 3 FMs.',
             },
             mods = function(player, lvl)
                 local stat = scaleTier(lvl, 8, 14, 20, 26)
                 local mods =
                 {
                     { xi.mod.HPP,                   scaleTier(lvl, 12, 16, 20, 25) },
-                    { xi.mod.AGI,                   stat },
+                    { xi.mod.VIT,                   stat },
                     { xi.mod.DEX,                   stat },
-                    { xi.mod.CHR,                   stat },
                     { xi.mod.DEFP,                  scaleTier(lvl, 12, 18, 24, 30) },
                     { xi.mod.DMG,                   scaleTier(lvl, -800, -1100, -1400, -1800) },
-                    { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
+                    { xi.mod.ENMITY,                scaleTier(lvl, 60, 80, 100, 120) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
-                    { xi.mod.WALTZ_POTENCY,         scaleTier(lvl, 15, 20, 25, 30) },
                 }
 
+                if xi.mod.RANGED_DMG_DEALT then
+                    table.insert(mods, { xi.mod.RANGED_DMG_DEALT, -60 })
+                end
+
                 if isDualDaggersEquipped(player) then
-                    table.insert(mods, { xi.mod.DAGGER,      scaleTier(lvl, 15, 25, 35, 50) })
-                    table.insert(mods, { xi.mod.EVA_PERCENT, scaleTier(lvl, 14, 20, 26, 32) })
+                    table.insert(mods, { xi.mod.DUAL_WIELD,  scaleTier(lvl, 15, 20, 25, 30) })
+                    table.insert(mods, { xi.mod.INQUARTATA,  scaleTier(lvl, 12, 16, 20, 24) })
                     table.insert(mods, { xi.mod.SUBTLE_BLOW, scaleTier(lvl, 15, 20, 25, 30) })
+                    table.insert(mods, { xi.mod.DAGGER,      scaleTier(lvl, 15, 25, 35, 50) })
+                    table.insert(mods, { xi.mod.PARRY,       scaleTier(lvl, 15, 25, 35, 50) })
                 end
 
                 return mods

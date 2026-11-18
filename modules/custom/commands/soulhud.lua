@@ -28,4 +28,8 @@ commandObj.onTrigger = function(player, sub)
     end
 end
 
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('soulhud', commandObj)
+end
+
 return commandObj

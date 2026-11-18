@@ -26,7 +26,7 @@ hud.providers = hud.providers or {}
 hud.lastSigByCharId = hud.lastSigByCharId or {}
 hud.lastSentAtByCharId = hud.lastSentAtByCharId or {}
 
-local MIN_AUTO_INTERVAL_SEC = 1.0
+local MIN_AUTO_INTERVAL_SEC = 0.25
 
 local function sanitize(v)
     if type(v) == 'boolean' then
@@ -64,20 +64,9 @@ function hud.registerProvider(soulKey, collectorFn)
     end
 end
 
-function hud.sync(player, force)
+function hud.buildPacketData(player)
     if player == nil or not player:isPC() then
-        return
-    end
-
-    if not force and player.getLocalVar and player:getLocalVar('OX_HUD_SUB') ~= 1 then
-        return
-    end
-
-    local cid = player:getID()
-    local now = os.clock()
-    local lastAt = hud.lastSentAtByCharId[cid] or 0
-    if not force and (now - lastAt) < MIN_AUTO_INTERVAL_SEC then
-        return
+        return { jobId = 0, soulKey = '', unlocked = 0, kv = '' }
     end
 
     local jobId = player:getMainJob()
@@ -104,16 +93,16 @@ function hud.sync(player, force)
         end
     end
 
-    local kvStr = table.concat(kvParts, ';')
-    local payload = string.format('%u|%s|%u|%s', jobId, sanitize(soulKey), unlocked, kvStr)
+    return {
+        jobId    = jobId,
+        soulKey  = sanitize(soulKey),
+        unlocked = unlocked,
+        kv       = table.concat(kvParts, ';'),
+    }
+end
 
-    if not force and hud.lastSigByCharId[cid] == payload then
-        return
-    end
-
-    hud.lastSigByCharId[cid] = payload
-    hud.lastSentAtByCharId[cid] = now
-    player:printToPlayer(hud.PROTO_TAG .. payload, xi.msg.channel.SYSTEM_3, '')
+function hud.sync(_player, _force)
+    -- Handled silently via 0x1FC binary packet in overlords_soulhud_sync.cpp
 end
 
 -----------------------------------
@@ -164,7 +153,7 @@ hud.registerProvider('gambler', function(player)
 end)
 
 -- DNC Mirage Sentinel
-hud.registerProvider('mirage_sentinel', function(player)
+hud.registerProvider('miragesentinel', function(player)
     local fm = 0
     if player:hasStatusEffect(xi.effect.FINISHING_MOVE_1) then
         local fmEff = player:getStatusEffect(xi.effect.FINISHING_MOVE_1)
@@ -207,13 +196,32 @@ hud.registerProvider('mirage_sentinel', function(player)
     }
 end)
 
--- COR Flintlock (reads standard localVars if/when server gameplay is implemented; fails gracefully)
-hud.registerProvider('flintlock', function(player)
-    local markRem = math.max(0, (player:getLocalVar('OX_FLT_MARK_EXP') or 0) - os.time())
+
+-- MNK Chi Weaver: persistent Chi stacks.
+hud.registerProvider('chiweaver', function(player)
+    return { chi_stacks = player:getLocalVar('OX_CHW_CHI_STACKS') or 0 }
+end)
+
+-- SAM Ronin: stored stagger damage, remaining ticks, and Mind's Eye charges.
+hud.registerProvider('ronin', function(player)
     return {
-        powder   = player:getLocalVar('OX_FLT_BLACK_POWDER') or 0,
-        mark_rem = markRem,
+        stagger_pool = player:getLocalVar('OX_RON_STAGGER_POOL') or 0,
+        stagger_ticks = player:getLocalVar('OX_RON_STAGGER_TICKS') or 0,
+        minds_eye = player:getLocalVar('OX_RON_MINDS_EYE_CHARGES') or 0,
     }
+end)
+
+-- NIN Kagemusha: expiring Kawarimi Ash resource.
+hud.registerProvider('kagemusha', function(player)
+    local expires = player:getLocalVar('OX_NIN_ASH_EXP') or 0
+    local stacks = player:getLocalVar('OX_NIN_ASH') or 0
+    if expires <= os.time() then stacks = 0 end
+    return { ash = math.max(0, math.min(4, stacks)), ash_rem = math.max(0, expires - os.time()) }
+end)
+
+-- RUN Spellblade: stored conduction preparation for the next Runic spell.
+hud.registerProvider('spellblade', function(player)
+    return { prep_stacks = player:getLocalVar('OX_RUN_PREP_STACKS') or 0 }
 end)
 
 -----------------------------------
@@ -229,6 +237,15 @@ local function attachHudListeners(player)
             hud.sync(actor, false)
         end
     end
+
+    -- Replacing by listener id is not guaranteed across all server cores;
+    -- remove first so zoning/re-entry cannot stack duplicate callbacks.
+    player:removeListener('OX_SOULHUD_ABILITY')
+    player:removeListener('OX_SOULHUD_EFF_GAIN')
+    player:removeListener('OX_SOULHUD_EFF_LOSE')
+    player:removeListener('OX_SOULHUD_DMG')
+    player:removeListener('OX_SOULHUD_DEATH')
+    player:removeListener('OX_SOULHUD_RAISE')
 
     player:addListener('ABILITY_USE', 'OX_SOULHUD_ABILITY', onDirty)
     player:addListener('EFFECT_GAIN', 'OX_SOULHUD_EFF_GAIN', onDirty)
@@ -246,9 +263,7 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     super(player, firstLogin, zoning)
     if player ~= nil and player:isPC() then
         attachHudListeners(player)
-        if player.getLocalVar and player:getLocalVar('OX_HUD_SUB') == 1 then
-            hud.sync(player, true)
-        end
+        hud.sync(player, true)
     end
 end)
 
@@ -256,7 +271,7 @@ if spec and spec.refreshPlayer then
     local prevRefresh = spec.refreshPlayer
     spec.refreshPlayer = function(player, ...)
         local res = prevRefresh(player, ...)
-        if player ~= nil and player:isPC() and player.getLocalVar and player:getLocalVar('OX_HUD_SUB') == 1 then
+        if player ~= nil and player:isPC() then
             hud.sync(player, true)
         end
         return res

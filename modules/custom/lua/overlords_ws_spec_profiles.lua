@@ -40,9 +40,15 @@ P.ALL_SPECS =
     'magus',
     'vampire',
     'celestial',
+    'pugilist',
+    'vanguard',
     'animist',
     'verdant',
     'wyvernheart',
+    'miragesentinel',
+    'flintlock',
+    'buccaneer',
+    'gambler',
     'huntsman',
 }
 
@@ -256,6 +262,18 @@ local STANCE_DEFS =
         petAlive = true,
         effects  = { xi.effect.ASTRAL_FLOW, xi.effect.AVATARS_FAVOR, 869, 870 },
     },
+    pugilist = {
+        label    = 'Tandem/Limiter',
+        jobSpec  = 'pugilist',
+        petAlive = true,
+        effects  = { xi.effect.FIRE_MANEUVER, xi.effect.THUNDER_MANEUVER, xi.effect.WIND_MANEUVER, xi.effect.OVERDRIVE },
+    },
+    vanguard = {
+        label    = 'Bulwark/Maneuver',
+        jobSpec  = 'vanguard',
+        petAlive = true,
+        effects  = { xi.effect.EARTH_MANEUVER, xi.effect.LIGHT_MANEUVER, xi.effect.WATER_MANEUVER, xi.effect.OVERDRIVE },
+    },
     animist = {
         label    = 'Maneuver/Aegis',
         jobSpec  = 'animist',
@@ -273,6 +291,26 @@ local STANCE_DEFS =
         jobSpec  = 'wyvernheart',
         petAlive = true,
         effects  = { xi.effect.SPIRIT_SURGE, xi.effect.FLY_HIGH, 874, 875 },
+    },
+    miragesentinel = {
+        label    = 'Fan/Pirouette',
+        jobSpec  = 'miragesentinel',
+        effects  = { xi.effect.FAN_DANCE, xi.effect.ISSEKIGAN, xi.effect.TRANCE },
+    },
+    flintlock = {
+        label    = 'Deadeye/Trigger',
+        jobSpec  = 'flintlock',
+        effects  = { xi.effect.CORSAIRS_ROLL, xi.effect.TRIPLE_SHOT },
+    },
+    buccaneer = {
+        label    = 'Galleon/Hull',
+        jobSpec  = 'buccaneer',
+        effects  = { xi.effect.GALLANTS_ROLL },
+    },
+    gambler = {
+        label    = 'Advantage/Roll',
+        jobSpec  = 'gambler',
+        effects  = { 884, xi.effect.CORSAIRS_ROLL, xi.effect.SAMURAI_ROLL, xi.effect.CHAOS_ROLL },
     },
     huntsman = {
         label    = 'Apex Bond',
@@ -307,9 +345,15 @@ local SPEC_META =
     magus          = { pfx = 'mag', pref = 'mnd', role = 'healer', tag = 'Catalyst', col2 = 'Osmosis',  t1c3 = 'Azure',       rmea = 'Diffusion',    col1 = { 'Siphon',   'Surge',     'Conduit'   } },
     vampire        = { pfx = 'vmp', pref = 'chr', role = 'healer', tag = 'Crimson',  col2 = 'Samba',    t1c3 = 'Waltz',       rmea = 'Nocturne',     col1 = { 'Drain',    'Blossom',   'Feast'     } },
     celestial      = { pfx = 'cel', pref = 'mnd', role = 'healer', tag = 'Astral',   col2 = 'Starlight',t1c3 = 'Ward',        rmea = 'Convergence',  col1 = { 'Avatar',   'Ruby',      'Siphon'    }, pet = true },
+    pugilist       = { pfx = 'pgl', pref = 'str', role = 'dps',    tag = 'Tandem',   col2 = 'Barrage',  t1c3 = 'Limiter',     rmea = 'Overdrive',    col1 = { 'Piston',   'Sync',      'Combo'     }, pet = true, noMp = true },
+    vanguard       = { pfx = 'vng', pref = 'vit', role = 'tank',   tag = 'Bulwark',  col2 = 'Alloy',    t1c3 = 'Hydraulic',   rmea = 'Ventriloquy',  col1 = { 'Chassis',  'Plating',   'Guard'     }, pet = true, noMp = true },
     animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true, noMp = true },
     verdant        = { pfx = 'vrd', pref = 'mnd', role = 'healer', tag = 'Sylvan',   col2 = 'Luopan',   t1c3 = 'Bloom',       rmea = 'Canopy',       col1 = { 'Barkskin', 'Renewal',   'Grove'     }, pet = true },
     wyvernheart    = { pfx = 'wyv', pref = 'mnd', role = 'healer', tag = 'Wyrm',     col2 = 'Breath',   t1c3 = 'Scale',       rmea = 'Wyrmblood',    col1 = { 'Link',     'Jump',      'Sanctuary' }, pet = true },
+    miragesentinel = { pfx = 'mrs', pref = 'vit', role = 'tank',   tag = 'Mirage',   col2 = 'Waltz',    t1c3 = 'Cadence',     rmea = 'Pirouette',    col1 = { 'Step',     'Flourish',  'Aegis'     } },
+    flintlock      = { pfx = 'flt', pref = 'agi', role = 'dps',    tag = 'Deadeye',  col2 = 'Powder',   t1c3 = 'Trigger',     rmea = 'Broadside',    col1 = { 'Chamber',  'Salvo',     'Detonate'  } },
+    buccaneer      = { pfx = 'buc', pref = 'vit', role = 'tank',   tag = 'Galleon',  col2 = 'Pistol',   t1c3 = 'Grapeshot',   rmea = 'Ironhull',     col1 = { 'Board',    'Saltward',  'Broadside' } },
+    gambler        = { pfx = 'gmb', pref = 'chr', role = 'support',tag = 'Fortune',  col2 = 'Ante',     t1c3 = 'Deal',        rmea = 'Jackpot',      col1 = { 'Wager',    'DoubleUp',  'Highroll'  } },
     huntsman       = { pfx = 'hnt', pref = 'agi', role = 'support',tag = 'Apex',     col2 = 'Primeval', t1c3 = 'Quiver',      rmea = 'Predator',     col1 = { 'Tusk',     'Talon',     'Pack'      }, pet = true },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
@@ -2470,6 +2514,8 @@ local STANCE_TITLES =
     magus          = { 'Diffus-St',  'Osmotic-St','Azure-St',  'Lore-St'   },
     vampire        = { 'Samba-St',   'Trance-St', 'Waltz-St',  'Crimson-St'},
     celestial      = { 'Astral-St',  'Avatar-St', 'Ward-St',   'Star-St'   },
+    pugilist       = { 'Tandem-St',  'Limiter-St','Barrage-St','Sync-St'   },
+    vanguard       = { 'Bulwark-St', 'Alloy-St',  'Strobe-St', 'Chassis-St'},
     animist        = { 'Repair-St',  'Aether-St', 'Clock-St',  'Auto-St'   },
     verdant        = { 'Luopan-St',  'Bolster-St','Canopy-St', 'Sylvan-St' },
     wyvernheart    = { 'Breath-St',  'Wyrm-St',   'Scale-St',  'Spirit-St' },
@@ -2501,6 +2547,8 @@ local T3C3_TITLES =
     magus          = { 'Catalyst',  'Diffusion', 'Osmosis',   'Surge'     },
     vampire        = { 'Crimson',   'Flourish',  'Waltz',     'Feast'     },
     celestial      = { 'Astral',    'Ruby',      'Siphon',    'Starlight' },
+    pugilist       = { 'Tandem',    'Barrage',   'Limiter',   'Sync'      },
+    vanguard       = { 'Bulwark',   'Hydraulic', 'Alloy',     'Ventriloq' },
     animist        = { 'Aether',    'Overhaul',  'Clockwork', 'Fiber'     },
     verdant        = { 'Sylvan',    'Bloom',     'Renewal',   'Canopy'    },
     wyvernheart    = { 'Wyrmblood', 'Breath',    'Scale',     'Sanctuary' },
@@ -2533,6 +2581,8 @@ local T4C3_TITLES =
     magus          = { 'Magus',     'Alchemist', 'Azure',     'Conduit'   },
     vampire        = { 'Vampire',   'Nocturne',  'Crimson',   'Bloodmoon' },
     celestial      = { 'Celestial', 'Astral',    'Archon',    'Elysian'   },
+    pugilist       = { 'Pugilist',  'Tandem',    'Overdrive', 'Striker'   },
+    vanguard       = { 'Vanguard',  'Bastion',   'Valoredge', 'Sentinel'  },
     animist        = { 'Animist',   'Artificer', 'Clockwork', 'Sovereign' },
     verdant        = { 'Verdant',   'Dryad',     'Sylvan',    'Worldtree' },
     wyvernheart    = { 'Wyvern',    'Dragoon',   'Crimson',   'Skywarden' },
@@ -2728,18 +2778,29 @@ local NO_SPIKE_SPECS =
     magus        = true,
     vampire      = true,
     celestial    = true,
+    vanguard     = true,
     animist      = true,
-    verdant      = true,
-    wyvernheart  = true,
-    huntsman     = true,
-    tank         = true,
-    healer       = true,
+    verdant        = true,
+    wyvernheart    = true,
+    miragesentinel = true,
+    buccaneer      = true,
+    gambler        = true,
+    huntsman       = true,
+    tank           = true,
+    healer         = true,
 }
 
 local SINGLE_TARGET_ONLY_SPECS =
 {
-    necromancer  = true,
-    huntsman     = true,
+    necromancer    = true,
+    huntsman       = true,
+    miragesentinel = true,
+    flintlock      = true,
+    buccaneer      = true,
+    gambler        = true,
+    pugilist       = true,
+    vanguard       = true,
+    animist        = true,
 }
 
 local PET_SPECS =
@@ -2750,6 +2811,8 @@ local PET_SPECS =
     berserker   = true, -- BST Axe pet hooks
     alphawarden = true,
     celestial   = true,
+    pugilist    = true,
+    vanguard    = true,
     animist     = true,
     verdant     = true,
     wyvernheart = true,
@@ -2779,6 +2842,25 @@ local function sanitizeSpecNode(node, specKey, ctx)
     if not PET_SPECS[specKey] then
         eff.eosHeal = nil
         eff.petTp   = nil
+    end
+
+    -- 2b. Enforce 100% single-target rule (replace pack* / scaleWithPack hooks)
+    if SINGLE_TARGET_ONLY_SPECS[specKey] then
+        if eff.packWsdPerMob ~= nil then
+            eff.wsd = eff.wsd or eff.packWsdPerMob
+            eff.packWsdPerMob = nil
+        end
+        if eff.packEnmityPerMob ~= nil then
+            eff.enmity = eff.enmity or eff.packEnmityPerMob
+            eff.packEnmityPerMob = nil
+        end
+        if eff.packPartyTpPerMob ~= nil then
+            eff.partyTp = eff.partyTp or eff.packPartyTpPerMob
+            eff.packPartyTpPerMob = nil
+        end
+        if type(eff.elemFollow) == 'table' then
+            eff.elemFollow.scaleWithPack = nil
+        end
     end
 
     -- 3. Strip physical stats on magic/utility WSs
@@ -2921,13 +3003,19 @@ P.ALLOWED_SKILLS_BY_SPEC =
     kagemusha      = { [S.KATANA or 9] = true },
     bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     templar        = { [S.CLUB or 11] = true },
-    magus          = { [S.SWORD or 3] = true },
+    magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
     vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
     celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },
+    pugilist       = { [S.HAND_TO_HAND or 1] = true },
+    vanguard       = { [S.HAND_TO_HAND or 1] = true },
     animist        = { [S.HAND_TO_HAND or 1] = true },
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
     alphawarden    = { [S.AXE or 5] = true },
+    miragesentinel = { [S.DAGGER or 2] = true },
+    flintlock      = { [S.MARKSMANSHIP or 26] = true },
+    buccaneer      = { [S.SWORD or 3] = true },
+    gambler        = { [S.MARKSMANSHIP or 26] = true, [S.DAGGER or 2] = true },
     huntsman       = { [S.ARCHERY or 25] = true, [S.MARKSMANSHIP or 26] = true },
 }
 

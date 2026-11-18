@@ -960,20 +960,25 @@ def _parse_crystal_entry(entry_str: str, consts: dict, job_key: str, fpath_name:
     passive_mods = []
     mm = re.search(r"\bmods\s*=\s*function", entry_str)
     if mm:
-        tail = entry_str[mm.start() :]
-        end_m = re.search(r"\n\s*(?:onApply|onRemove|extraAbilities|extraTraits|description|highlights)\s*=", tail)
-        fn_slice = tail[: end_m.start()] if end_m else tail
+        fn_slice = entry_str[mm.start() :]
         local_vars = {}
         for lm in re.finditer(r"local\s+(\w+)\s*=\s*([^\r\n]+)", fn_slice):
             local_vars[lm.group(1).strip()] = lm.group(2).strip()
 
-        seen_mods = set()
-        for pm in re.finditer(r"\{\s*xi\.mod\.([A-Z0-9_]+)\s*,\s*([^}]+)\}", fn_slice):
-            mod_name = pm.group(1).strip()
-            mod_val = pm.group(2).strip()
-            if mod_name not in seen_mods:
-                seen_mods.add(mod_name)
-                passive_mods.append(format_mod_scaling(mod_name, mod_val, local_vars))
+        for ret_m in re.finditer(r"return\s*\{", fn_slice):
+            r_start = fn_slice.find("{", ret_m.start())
+            r_end = find_balanced(fn_slice, r_start, "{", "}")
+            if r_end != -1:
+                r_body = fn_slice[r_start + 1 : r_end]
+                for mod_item in split_top_level_args(r_body):
+                    mod_item = mod_item.strip()
+                    if mod_item.startswith("{") and mod_item.endswith("}"):
+                        inner = mod_item[1:-1].strip()
+                        kv = split_top_level_args(inner)
+                        if len(kv) >= 2:
+                            mod_name = kv[0].replace("xi.mod.", "").strip()
+                            mod_val = kv[1].strip()
+                            passive_mods.append(format_mod_scaling(mod_name, mod_val, local_vars))
 
     spec_traits = resolve_spec_traits(extra_traits, job_key, cname, highlights, cdesc, lua_meta)
     spec_abilities = resolve_spec_abilities(extra_abilities, job_key, ckey, cname, highlights, sql_abils, lua_meta)
