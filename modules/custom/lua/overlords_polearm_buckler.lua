@@ -71,7 +71,7 @@ local function virtualBlock(defender)
     return sub == nil
 end
 
-m:addOverride('xi.combat.physical.canBlock', function(defender, attacker, super)
+m:addOverride('xi.combat.physical.canBlock', function(defender, attacker)
     if virtualBlock(defender) then
         return defender:isFacing(attacker) and
             not defender:hasPreventActionEffect(true) and
@@ -81,7 +81,7 @@ m:addOverride('xi.combat.physical.canBlock', function(defender, attacker, super)
     return super(defender, attacker)
 end)
 
-m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attacker, super)
+m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attacker)
     if virtualBlock(defender) then
         return B.VIRTUAL_BLOCK_RATE
     end
@@ -90,7 +90,7 @@ m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attack
     return super(defender, attacker)
 end)
 
-m:addOverride('xi.combat.physical.getDamageReductionForBlock', function(defender, attacker, damage, super)
+m:addOverride('xi.combat.physical.getDamageReductionForBlock', function(defender, attacker, damage)
     if virtualBlock(defender) then
         if damage <= 0 then
             return 0
