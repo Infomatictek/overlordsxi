@@ -438,7 +438,7 @@ CUSTOM_TRAITS = {
     144: {"id": 144, "displayId": 1680, "name": "Medic's Grace", "job": "SCH", "crystal": "Medic", "desc": "Unlocks Call Eos, 2-hour Addendum: White, HP-free 2x Sublimation, and free 10y Accession on Cure/Regen."},
     145: {"id": 145, "displayId": 1681, "name": "Sage's Wisdom", "job": "SCH", "crystal": "Sage", "desc": "Unlocks Call Titania, 2-hour Addendum: Black, permanent Ebullience, and +50% 2-hour Helix spells."},
     146: {"id": 146, "displayId": 1682, "name": "Bladewheel Mastery", "job": "DNC", "crystal": "Bladewheel", "desc": "Enables ranged Chakram auto-attacks, 20y Steps/Flourishes/Sambas, and 12 custom Throwing weaponskills."},
-    147: {"id": 147, "displayId": 1683, "name": "Harbinger's Drain", "job": "BLM", "crystal": "Necromancer", "desc": "Weaponskill damage heals your active Undead summon and fuels Dark magic synergy."},
+    147: {"id": 147, "displayId": 1683, "name": "Harbinger's Drain", "job": "BLM", "crystal": "Necromancer", "desc": "Scythe WSs heal Tank Thralls (Undead Warrior / Dullahan) for 16/18/20/22% Thrall Max HP (clamp-proof) and Caster Thralls for 25-50% of WS damage."},
     148: {"id": 148, "displayId": 1684, "name": "Dark Pact", "job": "BLM", "crystal": "Necromancer", "desc": "While an Undead thrall is active, grants scaling Double Attack, Store TP, and Accuracy."},
     149: {"id": 149, "displayId": 1685, "name": "Grim Conversion", "job": "BLM", "crystal": "Necromancer", "desc": "Converts Magic Accuracy -> Accuracy, MAB -> Attack, Fast Cast -> Haste, and MB Bonus -> WSD."},
     150: {"id": 150, "displayId": 1686, "name": "Inquisitor's Ward", "job": "RUN", "crystal": "Inquisitor", "desc": "3-Rune Mastery at Lv.10+, non-consuming Runes, Runic Riposte on Parry, and dual Tank Stances."},
@@ -449,6 +449,9 @@ CUSTOM_TRAITS = {
     158: {"id": 158, "displayId": 1694, "name": "Ronin's Mushin", "job": "SAM", "crystal": "Ronin", "desc": "Requires Great Katana: unlocks multi-charge Mind's Eye counter-anticipation, Mushin Stagger damage deferral, and Seigan mitigation."},
     159: {"id": 159, "displayId": 1695, "name": "Oisoya Mastery", "job": "SAM", "crystal": "Imperial Archer", "desc": "Raises Archery to A+ with 100% arrow preservation, 20y Bow auto-attacks, zero point-blank penalty, and Drawn Oisoya <-> Cosmic Brand combos."},
     160: {"id": 160, "displayId": 1696, "name": "Onimaru's Command", "job": "SAM", "crystal": "Warlord", "desc": "Requires Great Katana: empowers 20s Hagakure Iaijutsu Sundering Draw-Slashes, party-sharing Ashura's Edge stacks, and Onimaru Blood-Quench party HP/MP/TP Skillchain surges."},
+    181: {"id": 181, "displayId": 1717, "name": "Warden's Ration", "job": "RNG", "crystal": "Huntsman", "desc": "Ranged Weaponskills heal your active beast for 15/18/20/22% Beast Max HP (clamp-proof) and grant +250 Pet TP."},
+    182: {"id": 182, "displayId": 1718, "name": "Primeval Pack", "job": "RNG", "crystal": "Huntsman", "desc": "Grants Lv.10 Crossbow/Bolt QoL, 100% Ammo Recycle, zero ranged distance penalty, +12/16/20/25% HP, +15..50 Archery/Marksmanship, +12..38 RACC, +15..40% Snapshot/Rapid Shot, and +8..22 Store TP while a pet is active."},
+    183: {"id": 183, "displayId": 1719, "name": "Apex Bond", "job": "RNG", "crystal": "Huntsman", "desc": "Modal pet stance: Glacial Tusker (Wild Raaz / Cehuetzi) anchors bosses with Tier 6 -60% DMG Dealt, 100% AoE/Conal immunity, 100% enmity transfer & 80% Cure forwarding; Volcanic Saurian (Stalker Raptor / Gabbrath) projects a 15y Party Pack Aura."},
 }
 
 CUSTOM_ABILITIES_BY_SPEC = {
