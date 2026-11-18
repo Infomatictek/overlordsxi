@@ -203,6 +203,34 @@ hud.registerProvider('miragesentinel', function(player)
     }
 end)
 
+
+-- MNK Chi Weaver: persistent Chi stacks.
+hud.registerProvider('chiweaver', function(player)
+    return { chi_stacks = player:getLocalVar('OX_CHW_CHI_STACKS') or 0 }
+end)
+
+-- SAM Ronin: stored stagger damage, remaining ticks, and Mind's Eye charges.
+hud.registerProvider('ronin', function(player)
+    return {
+        stagger_pool = player:getLocalVar('OX_RON_STAGGER_POOL') or 0,
+        stagger_ticks = player:getLocalVar('OX_RON_STAGGER_TICKS') or 0,
+        minds_eye = player:getLocalVar('OX_RON_MINDS_EYE_CHARGES') or 0,
+    }
+end)
+
+-- NIN Kagemusha: expiring Kawarimi Ash resource.
+hud.registerProvider('kagemusha', function(player)
+    local expires = player:getLocalVar('OX_NIN_ASH_EXP') or 0
+    local stacks = player:getLocalVar('OX_NIN_ASH') or 0
+    if expires <= os.time() then stacks = 0 end
+    return { ash = math.max(0, math.min(4, stacks)), ash_rem = math.max(0, expires - os.time()) }
+end)
+
+-- RUN Spellblade: stored conduction preparation for the next Runic spell.
+hud.registerProvider('spellblade', function(player)
+    return { prep_stacks = player:getLocalVar('OX_RUN_PREP_STACKS') or 0 }
+end)
+
 -----------------------------------
 -- Lifecycle & Event Hooks
 -----------------------------------
