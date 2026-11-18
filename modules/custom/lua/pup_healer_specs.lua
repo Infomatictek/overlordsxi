@@ -63,6 +63,28 @@ local function isBlockedFrame(frame)
     return frame == xi.automaton.frame.VALOREDGE or frame == xi.automaton.frame.SHARPSHOT
 end
 
+local function isBlockedPart(frame, head)
+    return isBlockedFrame(frame) or
+        head == xi.automaton.head.VALOREDGE or
+        head == xi.automaton.head.SHARPSHOT or
+        head == xi.automaton.head.SPIRITREAVER
+end
+
+local function applyAnimistBacklineMode(pet)
+    if pet == nil or not pet.isAutomaton or not pet:isAutomaton() then
+        return
+    end
+    if pet.setMobMod then
+        pet:setMobMod(xi.mobMod.STANDBACK_RANGE, 12)
+    end
+    if pet.getBehavior and pet.setBehavior and xi.behavior and xi.behavior.STANDBACK then
+        pet:setBehavior(bit.bor(pet:getBehavior(), xi.behavior.STANDBACK))
+    end
+    if pet.setAutoAttackEnabled then
+        pet:setAutoAttackEnabled(false)
+    end
+end
+
 local function getAetherCells(player)
     if player == nil or not player.getLocalVar then
         return 0
@@ -187,6 +209,28 @@ local function syncAutomatonHealerMods(player)
 
     if spec.syncPetRoleMods then
         spec.syncPetRoleMods(player, pet)
+    end
+    if xi.overlords.pupSpecs and xi.overlords.pupSpecs.syncSpecPetDamageMods then
+        xi.overlords.pupSpecs.syncSpecPetDamageMods(player, pet)
+    end
+
+    applyAnimistBacklineMode(pet)
+
+    if pet.addListener and pet:getLocalVar('OX_ANM_AI_LISTENER') ~= 1 then
+        pet:setLocalVar('OX_ANM_AI_LISTENER', 1)
+        pet:removeListener('OX_ANM_AUTO_TICK')
+        pet:addListener('AUTOMATON_AI_TICK', 'OX_ANM_AUTO_TICK', function(mobArg, targetArg)
+            if mobArg == nil or not mobArg:isAlive() then
+                return
+            end
+            local master = mobArg:getMaster()
+            if not isAnimist(master) then
+                return
+            end
+            if targetArg ~= nil and mobArg:checkDistance(targetArg) <= 15 then
+                applyAnimistBacklineMode(mobArg)
+            end
+        end)
     end
 
     local lvl = player:getMainLvl() or 1
@@ -381,6 +425,32 @@ local function attachAnimistListeners(player)
             local healed       = (action and action:getParam()) or math.floor(master:getMaxHP() * 0.16)
             local lightStacks  = math.min(3, master:countEffect(xi.effect.LIGHT_MANEUVER))
             local earthStacks  = master:countEffect(xi.effect.EARTH_MANEUVER)
+            local head         = pet.getAutomatonHead and pet:getAutomatonHead() or nil
+
+            -- Soulsoother: convert overheal into up to 15% Max HP Stoneskin
+            if head == xi.automaton.head.SOULSOOTHER and target ~= nil and target.isAlive and target:isAlive() then
+                local spellId = spell.getID and spell:getID() or 0
+                local baseByCureId =
+                {
+                    [1] = 65,
+                    [2] = 145,
+                    [3] = 300,
+                    [4] = 550,
+                    [5] = 850,
+                    [6] = 1200,
+                }
+                local expectedBase = baseByCureId[spellId]
+                if expectedBase ~= nil then
+                    local pot      = math.max(0, (pet.getMod and pet:getMod(xi.mod.CURE_POTENCY) or 0))
+                    local expected = math.floor(expectedBase * (1 + pot / 100))
+                    local overheal = math.max(0, expected - healed)
+                    if overheal > 0 then
+                        local maxSkin = math.max(1, math.floor((target:getMaxHP() or 0) * 0.15))
+                        local skinAmt = math.min(overheal, maxSkin)
+                        H.applyStoneskinBarrier(target, skinAmt, maxSkin, 20, master)
+                    end
+                end
+            end
 
             if lightStacks > 0 and healed > 0 then
                 local splash = math.max(1, math.floor(healed * 0.15 * lightStacks))
@@ -394,6 +464,32 @@ local function attachAnimistListeners(player)
             if earthStacks > 0 and target ~= nil and target.isAlive and target:isAlive() then
                 local cap = math.max(1, math.floor((target:getMaxHP() or 0) * 0.18))
                 H.applyStoneskinBarrier(target, math.min(math.max(1, math.floor(healed * 0.35)), cap), cap, 12, master)
+            end
+        else
+            -- Stormwaker: splash Haste, Phalanx, Protect, and Shell to party members within 12y
+            local head = pet.getAutomatonHead and pet:getAutomatonHead() or nil
+            if head == xi.automaton.head.STORMWAKER then
+                local spellId = spell.getID and spell:getID() or 0
+                local splashEffect = nil
+                if spellId == 57 or spellId == 511 then -- Haste / Haste II
+                    splashEffect = { eff = xi.effect.HASTE, power = (spellId == 511) and 3000 or 1500, dur = 180, tier = 1 }
+                elseif spellId == 106 then -- Phalanx
+                    splashEffect = { eff = xi.effect.PHALANX, power = 35, dur = 180, tier = 1 }
+                elseif spellId >= 43 and spellId <= 47 then -- Protect I..V
+                    local powers = { [43] = 15, [44] = 40, [45] = 75, [46] = 120, [47] = 175 }
+                    splashEffect = { eff = xi.effect.PROTECT, power = powers[spellId] or 75, dur = 1800, tier = 1 }
+                elseif spellId >= 48 and spellId <= 52 then -- Shell I..V
+                    local powers = { [48] = 1055, [49] = 1641, [50] = 2188, [51] = 2617, [52] = 2930 }
+                    splashEffect = { eff = xi.effect.SHELL, power = powers[spellId] or 2188, dur = 1800, tier = 1 }
+                end
+
+                if splashEffect ~= nil then
+                    for _, member in ipairs(getPartyMembersAround(pet, 12, false)) do
+                        if member ~= target then
+                            H.applyCustomTimedEffect(member, splashEffect.eff, splashEffect.power, splashEffect.dur, pet, 0, splashEffect.eff, splashEffect.tier)
+                        end
+                    end
+                end
             end
         end
     end)
@@ -419,6 +515,11 @@ for _, summonName in ipairs({ 'activate', 'deus_ex_automata' }) do
             if player.getPet and player:getPet() ~= nil then
                 return xi.msg.basic.ALREADY_HAS_A_PET, 0
             end
+            local frame = player.getAutomatonFrame and player:getAutomatonFrame() or nil
+            local head  = player.getAutomatonHead and player:getAutomatonHead() or nil
+            if isBlockedPart(frame, head) then
+                return xi.msg.basic.UNABLE_TO_USE_JA, 0
+            end
             return 0, 0
         end
         return super(player, target, ability)
@@ -433,6 +534,72 @@ for _, summonName in ipairs({ 'activate', 'deus_ex_automata' }) do
             syncAutomatonHealerMods(player)
         end
         return res
+    end)
+end
+
+m:addOverride('xi.job_utils.puppetmaster.onAbilityUseDeploy', function(player, target, ability)
+    local res = super(player, target, ability)
+    if isAnimist(player) and player.getPet then
+        applyAnimistBacklineMode(player:getPet())
+    end
+    return res
+end)
+
+-- Suppress all Automaton TP weaponskills & ranged attacks on Animist
+local ANIMIST_BLOCKED_AUTO_ABILITIES =
+{
+    'ranged_attack',
+    'string_clipper',
+    'chimera_ripper',
+    'cannibal_blade',
+    'bone_crusher',
+    'string_shredder',
+    'slapstick',
+    'knockout',
+    'magic_mortar',
+    'arcuballista',
+    'daze',
+    'armor_piercer',
+    'armor_shatterer',
+}
+
+for _, autoAbil in ipairs(ANIMIST_BLOCKED_AUTO_ABILITIES) do
+    m:addOverride(string.format('xi.actions.abilities.pets.automaton.%s.onAutomatonAbilityCheck', autoAbil), function(target, automaton, skill)
+        local master = automaton and automaton.getMaster and automaton:getMaster() or nil
+        if isAnimist(master) then
+            return -1
+        end
+        return super(target, automaton, skill)
+    end)
+end
+
+-- Block offensive Elemental nukes & offensive DoTs on Animist's Automaton
+local ANIMIST_BLOCKED_BLACK_SPELLS =
+{
+    'fire', 'fire_ii', 'fire_iii', 'fire_iv', 'fire_v',
+    'blizzard', 'blizzard_ii', 'blizzard_iii', 'blizzard_iv', 'blizzard_v',
+    'aero', 'aero_ii', 'aero_iii', 'aero_iv', 'aero_v',
+    'stone', 'stone_ii', 'stone_iii', 'stone_iv', 'stone_v',
+    'thunder', 'thunder_ii', 'thunder_iii', 'thunder_iv', 'thunder_v',
+    'water', 'water_ii', 'water_iii', 'water_iv', 'water_v',
+    'bio', 'bio_ii', 'poison', 'poison_ii',
+}
+
+for _, spellName in ipairs(ANIMIST_BLOCKED_BLACK_SPELLS) do
+    m:addOverride(string.format('xi.actions.spells.black.%s.onMagicCastingCheck', spellName), function(caster, target, spell)
+        if caster ~= nil and caster.isAutomaton and caster:isAutomaton() and isAnimist(caster:getMaster()) then
+            return xi.msg.basic.CANNOT_CAST_SPELL
+        end
+        return super(caster, target, spell)
+    end)
+end
+
+for _, spellName in ipairs({ 'dia', 'dia_ii' }) do
+    m:addOverride(string.format('xi.actions.spells.white.%s.onMagicCastingCheck', spellName), function(caster, target, spell)
+        if caster ~= nil and caster.isAutomaton and caster:isAutomaton() and isAnimist(caster:getMaster()) then
+            return xi.msg.basic.CANNOT_CAST_SPELL
+        end
+        return super(caster, target, spell)
     end)
 end
 
@@ -488,16 +655,11 @@ for _, hateName in ipairs({ 'ventriloquy', 'cooldown' }) do
             end
             addAetherCell(player, 1)
             local pet = player:getPet()
-            if player.getNearbyEntities then
-                local nearby = player:getNearbyEntities(20)
-                if type(nearby) == 'table' then
-                    for _, mob in ipairs(nearby) do
-                        if mob ~= nil and mob.isMob and mob:isMob() and mob.lowerEnmity then
-                            mob:lowerEnmity(player, 40)
-                            if pet ~= nil then
-                                mob:lowerEnmity(pet, 40)
-                            end
-                        end
+            for _, mob in ipairs(xi.overlords.getNearbyMobs(player, 20, target)) do
+                if mob.lowerEnmity then
+                    mob:lowerEnmity(player, 40)
+                    if pet ~= nil then
+                        mob:lowerEnmity(pet, 40)
                     end
                 end
             end

@@ -603,20 +603,9 @@ m:addOverride('xi.effects.palisade.onEffectTick', function(target, effect)
         return
     end
 
-    if target.getNearbyEntities then
-        local nearby = target:getNearbyEntities(8)
-        if type(nearby) == 'table' then
-            for _, ent in ipairs(nearby) do
-                if
-                    ent ~= nil and
-                    ent.isMob and ent:isMob() and
-                    ent.isAlive and ent:isAlive() and
-                    ent.isEngaged and ent:isEngaged() and
-                    ent.addEnmity
-                then
-                    ent:addEnmity(target, 250, 900)
-                end
-            end
+    for _, ent in ipairs(xi.overlords.getNearbyMobs(target, 8)) do
+        if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
+            ent:addEnmity(target, 250, 900)
         end
     end
 end)
@@ -655,20 +644,9 @@ m:addOverride('xi.actions.abilities.aegis_protocol.onUseAbility', function(playe
     pet:addStatusEffect(xi.effect.PALISADE, { power = 35, duration = 10, origin = player, tick = 2 })
 
     -- Immediate initial magnetic threat pulse on activation
-    if pet.getNearbyEntities then
-        local nearby = pet:getNearbyEntities(8)
-        if type(nearby) == 'table' then
-            for _, ent in ipairs(nearby) do
-                if
-                    ent ~= nil and
-                    ent.isMob and ent:isMob() and
-                    ent.isAlive and ent:isAlive() and
-                    ent.isEngaged and ent:isEngaged() and
-                    ent.addEnmity
-                then
-                    ent:addEnmity(pet, 250, 900)
-                end
-            end
+    for _, ent in ipairs(xi.overlords.getNearbyMobs(pet, 8)) do
+        if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
+            ent:addEnmity(pet, 250, 900)
         end
     end
 

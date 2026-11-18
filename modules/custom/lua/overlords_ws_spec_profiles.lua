@@ -259,7 +259,7 @@ local STANCE_DEFS =
         label    = 'Maneuver/Aegis',
         jobSpec  = 'animist',
         petAlive = true,
-        effects  = { xi.effect.LIGHT_MANEUVER, xi.effect.WATER_MANEUVER, xi.effect.EARTH_MANEUVER, xi.effect.OVERDRIVE, 871 },
+        effects  = { xi.effect.LIGHT_MANEUVER, xi.effect.WATER_MANEUVER, xi.effect.WIND_MANEUVER, xi.effect.EARTH_MANEUVER, xi.effect.OVERDRIVE, 871 },
     },
     verdant = {
         label    = 'Luopan/Canopy',

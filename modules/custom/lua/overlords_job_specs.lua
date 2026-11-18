@@ -5,6 +5,67 @@ xi = xi or {}
 xi.overlords = xi.overlords or {}
 xi.overlords.spec = xi.overlords.spec or {}
 
+-- Returns nearby alive mobs within `radius` yalms of `entity`, using the engine's
+-- getEntitiesInRange API when a non-mob entity has a mob anchor, and falling back
+-- to zone:getMobs() when no mob anchor is available (or when `entity` is a mob).
+function xi.overlords.getNearbyMobs(entity, radius, preferredMob)
+    local result = {}
+    if entity == nil then
+        return result
+    end
+
+    local maxDist = radius or 10
+    local isMobEntity = entity.isMob and entity:isMob()
+    local mobAnchor = nil
+    if preferredMob ~= nil and preferredMob.isMob and preferredMob:isMob() then
+        mobAnchor = preferredMob
+    elseif not isMobEntity and entity.getTarget then
+        local tgt = entity:getTarget()
+        if tgt ~= nil and tgt.isMob and tgt:isMob() then
+            mobAnchor = tgt
+        end
+    end
+
+    if
+        not isMobEntity and
+        mobAnchor ~= nil and
+        entity.getEntitiesInRange and
+        xi.aoeType and xi.aoeRadius and xi.findFlag and xi.targetType
+    then
+        local nearby = entity:getEntitiesInRange(
+            mobAnchor,
+            xi.aoeType.ROUND,
+            xi.aoeRadius.ATTACKER,
+            maxDist,
+            xi.findFlag.NONE,
+            xi.targetType.ENEMY
+        )
+        if type(nearby) == 'table' then
+            for _, ent in ipairs(nearby) do
+                if ent ~= nil and ent.isMob and ent:isMob() and ent.isAlive and ent:isAlive() then
+                    table.insert(result, ent)
+                end
+            end
+        end
+        return result
+    end
+
+    local zone = entity.getZone and entity:getZone() or nil
+    if zone ~= nil and zone.getMobs then
+        for _, mob in ipairs(zone:getMobs()) do
+            if
+                mob ~= nil and
+                mob.isMob and mob:isMob() and
+                mob.isAlive and mob:isAlive() and
+                mob.checkDistance and mob:checkDistance(entity) <= maxDist
+            then
+                table.insert(result, mob)
+            end
+        end
+    end
+    return result
+end
+
 local spec = xi.overlords.spec
 
 spec.jobs            = spec.jobs or {}
