@@ -89,7 +89,7 @@ INSERT INTO `status_effects` (`id`, `name`, `flags`, `type`, `min_duration`, `ic
     (881, 'ox_deb_expose', 34, 0, 0, 575),
     (882, 'house_debt', 4194336, 0, 0, 576),
     (883, 'card_counting', 4194592, 0, 0, 603),
-    (884, 'house_advantage', 4194592, 0, 0, 626);
+    (884, 'house_advantage', 4194592, 0, 0, 626)
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `flags` = VALUES(`flags`),
