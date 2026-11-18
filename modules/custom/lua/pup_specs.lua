@@ -1194,10 +1194,9 @@ end)
 -- Crystal Definitions (PUP = 18)
 -----------------------------------
 if xi.job and xi.job.PUP then
-    spec.registerJob(xi.job.PUP, 'PUP',
+    spec.registerCrystal(xi.job.PUP,
     {
-        {
-            id          = 1,
+        id          = 1,
             key         = VANGUARD_KEY,
             name        = 'Vanguard',
             abr         = 'VNG',
@@ -1275,9 +1274,10 @@ if xi.job and xi.job.PUP then
                     end
                 end
             end,
-        },
-        {
-            id          = 3,
+        })
+    spec.registerCrystal(xi.job.PUP,
+    {
+        id          = 3,
             key         = PUGILIST_KEY,
             name        = 'Pugilist',
             abr         = 'PGL',
@@ -1342,8 +1342,7 @@ if xi.job and xi.job.PUP then
                     end
                 end
             end,
-        },
-    })
+        })
 end
 
 return m
