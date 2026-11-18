@@ -913,6 +913,9 @@ local function onEntityCombatRegainTick(entity)
     end
 
     if entity.isPC and entity:isPC() then
+        if entity.getLocalVar and entity:getLocalVar('OX_GMB_NO_REGAIN') ~= 0 then
+            return
+        end
         local amt = regainCfg.playerAmount or 20
         if entity:getLocalVar('[CustomBoss]StanceApplied') == 1 then
             amt = amt + (regainCfg.stanceAmount or 15)

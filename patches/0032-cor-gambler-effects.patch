@@ -1,0 +1,201 @@
+diff --git a/src/map/ability.cpp b/src/map/ability.cpp
+--- a/src/map/ability.cpp
++++ b/src/map/ability.cpp
+@@ -516,6 +516,18 @@ auto GetAbilities(xi::Job JobID) -> std::vector<CAbility*>
+ 
+ auto GetCharge(CBattleEntity* PUser, uint16 chargeID) -> Charge_t*
+ {
++    if (
++        chargeID == std::to_underlying(xi::Recast::Quickdraw) &&
++        PUser != nullptr &&
++        PUser->GetMJob() == xi::Job::COR &&
++        PUser->GetMLevel() >= 10 &&
++        PUser->GetLocalVar("OX_COR_GAMBLER") != 0
++    )
++    {
++        static Charge_t gamblerQdCharge{ std::to_underlying(xi::Recast::Quickdraw), xi::Job::COR, 10, 2, 12s, 1410 };
++        return &gamblerQdCharge;
++    }
++
+     Charge_t* charge = nullptr;
+     for (auto& PCharge : PChargesList)
+     {
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -1945,6 +1945,10 @@
+             {
+                 baseChargeTime = std::max<timer::duration>(0s, (charge->chargeTime * 65) / 100 - recastReduction);
+             }
++            else if (PAbility->getRecastId() == xi::Recast::Quickdraw && this->GetLocalVar("OX_COR_GAMBLER") != 0)
++            {
++                baseChargeTime = 12s;
++            }
+             else
+             {
+                 baseChargeTime = std::max<timer::duration>(0s, charge->chargeTime - recastReduction);
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -13471,6 +13471,39 @@ void CLuaBaseEntity::reduceRecasts(uint32 seconds)
+     }
+ }
+ 
++void CLuaBaseEntity::reduceAbilityRecasts(uint32 seconds)
++{
++    if (seconds == 0)
++    {
++        return;
++    }
++
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        PBattleEntity->PRecastContainer->ReduceAbilityRecasts(std::chrono::seconds(seconds));
++        if (PBattleEntity->objtype == TYPE_PC)
++        {
++            auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++            PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++            PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++        }
++    }
++}
++
++void CLuaBaseEntity::resetStandardAbilities()
++{
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        PBattleEntity->PRecastContainer->ResetStandardAbilities();
++        if (PBattleEntity->objtype == TYPE_PC)
++        {
++            auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++            PChar->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(PChar);
++            PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
++        }
++    }
++}
++
+ /************************************************************************
+  *  Function: addListener()
+  *  Purpose : Instructs the Event Handler to monitor for an Event, then
+@@ -21393,6 +21426,8 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("resetRecasts", CLuaBaseEntity::resetRecasts);
+     SOL_REGISTER("restoreAbilityCharge", CLuaBaseEntity::restoreAbilityCharge);
+     SOL_REGISTER("reduceRecasts", CLuaBaseEntity::reduceRecasts);
++    SOL_REGISTER("reduceAbilityRecasts", CLuaBaseEntity::reduceAbilityRecasts);
++    SOL_REGISTER("resetStandardAbilities", CLuaBaseEntity::resetStandardAbilities);
+ 
+     SOL_REGISTER("addListener", CLuaBaseEntity::addListener);
+     SOL_REGISTER("removeListener", CLuaBaseEntity::removeListener);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -672,6 +672,8 @@ public:
+     void resetRecasts();                            // Reset recasts for the caller
+     void restoreAbilityCharge(uint16 recastID, const sol::object& countObj);
+     void reduceRecasts(uint32 seconds);
++    void reduceAbilityRecasts(uint32 seconds);
++    void resetStandardAbilities();
+ 
+     void addListener(const std::string& eventName, const std::string& identifier, const sol::function& func);
+     void removeListener(const std::string& identifier);
+diff --git a/src/map/recast_container.cpp b/src/map/recast_container.cpp
+--- a/src/map/recast_container.cpp
++++ b/src/map/recast_container.cpp
+@@ -378,3 +378,59 @@ void CRecastContainer::ReduceRecasts(timer::duration reduction)
+ 
+     Check();
+ }
++
++void CRecastContainer::ReduceAbilityRecasts(timer::duration reduction)
++{
++    if (reduction <= 0s)
++    {
++        return;
++    }
++
++    RecastList_t* PRecastList = GetRecastList(xi::RecastType::Ability);
++    if (!PRecastList)
++    {
++        return;
++    }
++
++    for (auto&& recast : *PRecastList)
++    {
++        if (recast.RecastTime <= 0s)
++        {
++            continue;
++        }
++        if (recast.ID == xi::Recast::Special || recast.ID == xi::Recast::Special2 || recast.ID == xi::Recast::RandomDeal)
++        {
++            continue;
++        }
++
++        if (recast.RecastTime <= reduction)
++        {
++            recast.RecastTime = 0s;
++        }
++        else
++        {
++            recast.RecastTime -= reduction;
++        }
++    }
++
++    Check();
++}
++
++void CRecastContainer::ResetStandardAbilities()
++{
++    RecastList_t* PRecastList = GetRecastList(xi::RecastType::Ability);
++    if (!PRecastList)
++    {
++        return;
++    }
++
++    for (auto&& recast : *PRecastList)
++    {
++        if (recast.ID != xi::Recast::Special && recast.ID != xi::Recast::Special2 && recast.ID != xi::Recast::RandomDeal)
++        {
++            recast.RecastTime = 0s;
++        }
++    }
++
++    Check();
++}
+diff --git a/src/map/recast_container.h b/src/map/recast_container.h
+--- a/src/map/recast_container.h
++++ b/src/map/recast_container.h
+@@ -63,8 +63,10 @@ public:
+     virtual void Add(xi::RecastType type, xi::Recast id, timer::duration duration, timer::duration chargeTime = 0s, uint8 maxCharges = 0);
+     void         RestoreCharge(xi::RecastType type, xi::Recast id, uint8 count = 1);
+     void         ReduceRecasts(timer::duration reduction);
++    void         ReduceAbilityRecasts(timer::duration reduction);
+     void         AddLootRecast(LootRecastID id, timer::duration duration);
+     auto         Load(xi::RecastType type, xi::Recast id, timer::duration duration, timer::duration chargeTime = 0s, uint8 maxCharges = 0) -> Recast_t*;
+     virtual void ResetAbilities();
++    void         ResetStandardAbilities();
+ 
+     virtual void ChangeJob()
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -482,4 +482,20 @@ void LoadEffectsParameters()
+     EffectsParams[881].Flag             = xi::StatusEffectFlag::Erasable | xi::StatusEffectFlag::Death;
+     EffectsParams[881].SortKey          = 10000;
+     EffectsParams[881].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI COR Gambler Status Effects (882-884).
++    EffectsParams[882].Name             = "house_debt";
++    EffectsParams[882].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[882].SortKey          = 10000;
++    EffectsParams[882].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[883].Name             = "card_counting";
++    EffectsParams[883].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[883].SortKey          = 10000;
++    EffectsParams[883].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[884].Name             = "house_advantage";
++    EffectsParams[884].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[884].SortKey          = 10000;
++    EffectsParams[884].WearOffMessageId = MsgStd::EffectWearsOff;
+ }

@@ -74,3 +74,5 @@ custom/sql/drg_specs.sql
 custom/lua/overlords_polearm_buckler.lua
 custom/commands/buckler.lua
 custom/commands/shield.lua
+custom/lua/cor_specs.lua
+custom/sql/cor_specs.sql
