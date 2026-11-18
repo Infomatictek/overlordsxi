@@ -153,6 +153,62 @@ local function getUndeadPet(player)
     return nil, nil
 end
 
+local function isTankThrallActive(player)
+    local pet, petId = getUndeadPet(player)
+    if pet ~= nil and (not pet.isAlive or pet:isAlive()) and WARRIOR_PETS[petId] then
+        return pet, petId
+    end
+    return nil, nil
+end
+
+local lastScytheWsByChar = {}
+
+local function isScytheWs(actor, skill)
+    if skill ~= nil and skill.getSkillType then
+        return skill:getSkillType() == xi.skill.SCYTHE
+    end
+    if actor ~= nil and actor.getWeaponSkillType then
+        return actor:getWeaponSkillType(xi.slot.MAIN) == xi.skill.SCYTHE
+    end
+    return false
+end
+
+local function transferSingleTargetEnmityToPet(master, target)
+    if not isNecromancer(master) then
+        return
+    end
+    local pet = isTankThrallActive(master)
+    if pet == nil or target == nil or not target.isMob or not target:isMob() or not target:isAlive() then
+        return
+    end
+    if not target.getCE or not target.getVE or not target.setCE or not target.setVE or not target.addEnmity then
+        return
+    end
+    local ce = target:getCE(master) or 0
+    local ve = target:getVE(master) or 0
+    if ce > 0 or ve > 0 then
+        target:setCE(master, 0)
+        target:setVE(master, 0)
+        target:addEnmity(pet, ce, ve)
+    end
+end
+
+local function forwardCureToThrall(master, actualHealed, rawEstimated)
+    if not isNecromancer(master) then
+        return
+    end
+    local pet = isTankThrallActive(master)
+    if pet == nil or not pet:isAlive() then
+        return
+    end
+    local healed   = math.max(0, math.floor(actualHealed or 0))
+    local overheal = math.max(0, math.floor((rawEstimated or healed) - healed))
+    local petHeal  = math.floor(healed * 0.80) + overheal
+    if petHeal > 0 and pet.addHP then
+        pet:addHP(petHeal)
+    end
+end
+
 local function getMasterMabMult(player)
     if player == nil then
         return 1.0
@@ -479,6 +535,8 @@ local function detachNecroListeners(player)
         return
     end
     player:removeListener('OX_NECRO_WS_DRAIN')
+    player:removeListener('OX_NECRO_ENMITY_ATK')
+    player:removeListener('OX_NECRO_ENMITY_MAG')
     player:removeListener('OX_NECRO_PET_CHECK')
     player:removeListener('OX_NECRO_TICK')
     player:removeListener('OX_NECRO_EQUIP_SYNC')
@@ -492,7 +550,7 @@ local function detachNecroListeners(player)
 end
 
 -----------------------------------
--- Harbinger's Drain (WS Damage heals active Undead Pet)
+-- Harbinger's Drain (WS heals active Undead Pet)
 -----------------------------------
 local function attachNecroListeners(player)
     if player == nil or not player:isPC() then
@@ -500,19 +558,45 @@ local function attachNecroListeners(player)
     end
 
     player:removeListener('OX_NECRO_WS_DRAIN')
-    player:addListener('WEAPONSKILL_USE', 'OX_NECRO_WS_DRAIN', function(actor, target, _ws, tp, _action, dmg)
-        if not isNecromancer(actor) or (dmg or 0) <= 0 then
+    player:addListener('WEAPONSKILL_USE', 'OX_NECRO_WS_DRAIN', function(actor, target, ws, tp, _action, dmg)
+        if not isNecromancer(actor) then
             return
         end
-        local pet = getUndeadPet(actor)
+        local pet, petId = getUndeadPet(actor)
         if pet == nil or not pet:isAlive() then
             return
         end
+
+        local charId = actor.getID and actor:getID() or 0
+        local now    = os.clock()
+        if charId > 0 and (now - (lastScytheWsByChar[charId] or 0)) <= 0.1 then
+            return
+        end
+        if charId > 0 then
+            lastScytheWsByChar[charId] = now
+        end
+
         local lvl = actor:getMainLvl()
-        local pct = lvl >= 75 and 0.50 or (lvl >= 50 and 0.35 or 0.25)
-        local heal = math.max(1, math.floor(dmg * pct))
+        if WARRIOR_PETS[petId] and isScytheWs(actor, ws) then
+            -- Clamp-proof Tank Thrall sustain: 16/18/20/22% of Thrall Max HP
+            local pct     = scaleTier(lvl, 0.16, 0.18, 0.20, 0.22)
+            local heal    = math.max(1, math.floor((pet:getMaxHP() or 0) * pct))
+            local drained = pet:addHP(heal)
+            if drained > 0 and actor.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
+                actor:messagePublic(xi.msg.basic.RECOVERS_HP, pet, 0, drained)
+            end
+            tell(actor, string.format("Harbinger's Drain restores %d HP to %s.", drained, pet:getName()))
+            transferSingleTargetEnmityToPet(actor, target)
+            return
+        end
+
+        if (dmg or 0) <= 0 then
+            return
+        end
+        local pct     = lvl >= 75 and 0.50 or (lvl >= 50 and 0.35 or 0.25)
+        local heal    = math.max(1, math.floor(dmg * pct))
         local missing = math.max(0, pet:getMaxHP() - pet:getHP())
-        local actual = math.min(heal, missing)
+        local actual  = math.min(heal, missing)
         if actual > 0 then
             local drained = pet:addHP(actual)
             if drained > 0 and actor.messagePublic and xi.msg and xi.msg.basic and xi.msg.basic.RECOVERS_HP then
@@ -520,6 +604,16 @@ local function attachNecroListeners(player)
             end
             tell(actor, string.format("Harbinger's Drain restores %d HP to %s.", drained, pet:getName()))
         end
+    end)
+
+    player:removeListener('OX_NECRO_ENMITY_ATK')
+    player:addListener('ATTACK', 'OX_NECRO_ENMITY_ATK', function(actor, target)
+        transferSingleTargetEnmityToPet(actor, target)
+    end)
+
+    player:removeListener('OX_NECRO_ENMITY_MAG')
+    player:addListener('MAGIC_USE', 'OX_NECRO_ENMITY_MAG', function(actor, target)
+        transferSingleTargetEnmityToPet(actor, target)
     end)
 
     player:removeListener('OX_NECRO_PET_CHECK')
@@ -530,20 +624,24 @@ local function attachNecroListeners(player)
             return
         end
 
+        spec.refreshPlayer(actor, { skipSync = true })
         syncDarkPactMods(actor)
         syncConversionMods(actor)
 
-        local pet = getUndeadPet(actor)
-        if
-            pet ~= nil and
-            pet:isAlive() and
-            not pet:isEngaged() and
-            not pet:hasStatusEffect(xi.effect.HEALING) and
-            actor:isEngaged()
-        then
-            local masterTarget = actor:getTarget()
-            if masterTarget ~= nil and masterTarget:isAlive() and actor:checkDistance(pet) <= 25 then
-                actor:petAttack(masterTarget)
+        local pet, petId = getUndeadPet(actor)
+        if pet ~= nil and pet:isAlive() then
+            if WARRIOR_PETS[petId] then
+                transferSingleTargetEnmityToPet(actor, actor:getTarget())
+            end
+            if
+                not pet:isEngaged() and
+                not pet:hasStatusEffect(xi.effect.HEALING) and
+                actor:isEngaged()
+            then
+                local masterTarget = actor:getTarget()
+                if masterTarget ~= nil and masterTarget:isAlive() and actor:checkDistance(pet) <= 25 then
+                    actor:petAttack(masterTarget)
+                end
             end
         end
     end)
@@ -671,10 +769,12 @@ end
 
 local function doSummon(player, petId, label)
     xi.pet.spawnPet(player, petId)
+    spec.refreshPlayer(player, { skipSync = true, forceMods = true })
     syncDarkPactMods(player)
     if player:hasPet() then
         local pet = player:getPet()
         applyUndeadPetRoleMods(pet, petId)
+        spec.syncPetRoleMods(player, pet)
         if player.recalculateAbilitiesTable then
             player:recalculateAbilitiesTable()
         end
@@ -725,7 +825,7 @@ end, function(player, target, ability)
 end)
 
 -----------------------------------
--- Corpse Explosion (407): Detonate Undead Pet for Dark AoE Damage
+-- Corpse Explosion (407): Implode Undead Pet onto Single Target for Concentrated Dark Damage
 -----------------------------------
 bindAbility('corpse_explosion', function(player, target, ability)
     if not isNecromancer(player) then
@@ -737,13 +837,22 @@ bindAbility('corpse_explosion', function(player, target, ability)
         tell(player, 'Corpse Explosion requires an active Undead Summon.')
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
+    local mob = pet:getTarget() or player:getTarget()
+    if mob == nil or not mob:isMob() or not mob:isAlive() or mob:getAllegiance() == player:getAllegiance() then
+        tell(player, 'Corpse Explosion requires an engaged enemy target.')
+        return xi.msg.basic.CANNOT_ATTACK_TARGET, 0
+    end
     return 0, 0
-end, function(player, target, ability)
+end, function(player, target, ability, action)
     if target ~= nil and target:getID() ~= player:getID() then
         return 0
     end
     local pet, petId = getUndeadPet(player)
     if pet == nil then
+        return 0
+    end
+    local mob = pet:getTarget() or player:getTarget()
+    if mob == nil or not mob:isMob() or not mob:isAlive() or mob:getAllegiance() == player:getAllegiance() then
         return 0
     end
 
@@ -755,50 +864,35 @@ end, function(player, target, ability)
     local mab      = getMasterMabMult(player)
     local tierMult = (petId == PET_UNDEAD_CORSE or petId == PET_UNDEAD_DULLAHAN) and 1.35 or 1.0
 
-    local baseDmg = math.floor(((lvl * 6.5) + (intStat * 2.2) + (petHp * 0.35)) * hpRatio * mab * tierMult)
+    local baseDmg = math.floor(((lvl * 7.5) + (intStat * 2.5) + (petHp * 0.40)) * hpRatio * mab * tierMult)
     baseDmg = math.max(25, baseDmg)
 
-    local zone = player:getZone()
-    local hits = 0
-
-    if zone ~= nil and zone.getMobs then
-        for _, mob in ipairs(zone:getMobs()) do
-            if
-                mob ~= nil and
-                mob:isMob() and
-                mob:isAlive() and
-                mob:getID() ~= pet:getID() and
-                mob:getMaster() == nil and
-                mob:getAllegiance() ~= player:getAllegiance() and
-                not mob:getUntargetable() and
-                pet:checkDistance(mob) <= 10.0
-            then
-                local scaledBase = scaleLevelGapDmg(player, mob, baseDmg)
-                local dmg = utils.handleStoneskin(mob, scaledBase, xi.attackType.MAGICAL)
-                if mob.updateClaim and not player:hasClaim(mob) then
-                    mob:updateClaim(player)
-                end
-                mob:takeDamage(dmg, player, xi.attackType.MAGICAL, xi.damageType.DARK)
-                if mob.updateEnmityFromDamage then
-                    mob:updateEnmityFromDamage(player, dmg)
-                end
-                if not mob:hasStatusEffect(xi.effect.BIO) then
-                    mob:addStatusEffect(xi.effect.BIO, { power = math.max(2, math.floor(lvl / 8)), tick = 3, duration = 30, origin = player })
-                end
-                hits = hits + 1
-            end
-        end
+    local scaledBase = scaleLevelGapDmg(player, mob, baseDmg)
+    local dmg = utils.handleStoneskin(mob, scaledBase, xi.attackType.MAGICAL)
+    if mob.updateClaim and not player:hasClaim(mob) then
+        mob:updateClaim(player)
+    end
+    mob:takeDamage(dmg, player, xi.attackType.MAGICAL, xi.damageType.DARK)
+    if mob.updateEnmityFromDamage then
+        mob:updateEnmityFromDamage(player, dmg)
+    end
+    if not mob:hasStatusEffect(xi.effect.BIO) then
+        mob:addStatusEffect(xi.effect.BIO, { power = math.max(2, math.floor(lvl / 8)), tick = 3, duration = 30, origin = player })
+    end
+    if action and action.recordDamage then
+        action:recordDamage(mob, xi.attackType.MAGICAL, dmg)
     end
 
-    tell(player, string.format('Corpse Explosion detonates %s for ~%d Dark damage (%d target%s)!',
-        pet:getName(), baseDmg, hits, hits == 1 and '' or 's'))
+    tell(player, string.format('Corpse Explosion implodes %s onto %s for %d Dark damage!',
+        pet:getName(), mob:getName(), dmg))
 
     player:despawnPet()
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
     end
     clearDarkPactMods(player)
-    return baseDmg
+    spec.refreshPlayer(player, { skipSync = true, forceMods = true })
+    return dmg
 end)
 
 -----------------------------------
@@ -884,7 +978,7 @@ end, function(player, target, ability, action)
     return 0
 end)
 
--- 420: Black Cloud (Lv.20+): 10y Dark AoE around pet + Blind + AoE Enmity
+-- 420: Black Cloud (Lv.20+): Single-Target Dark burst + Blind + Enmity
 bindAbility('black_cloud', function(player, target, ability)
     return checkTankPetAbility(player, target, 20, 'Black Cloud', true)
 end, function(player, target, ability, action)
@@ -899,41 +993,19 @@ end, function(player, target, ability, action)
     local isDull  = (petId == PET_UNDEAD_DULLAHAN)
     local mult    = isDull and 1.35 or 1.0
     local baseDmg = math.max(15, math.floor(((lvl * 2.8) + player:getStat(xi.mod.INT)) * mult))
-    local zone    = player:getZone()
-    local hits    = 0
-    local mainDmg = 0
+    local scaled  = scaleLevelGapDmg(pet, target, baseDmg)
+    local dmg     = utils.handleStoneskin(target, scaled, xi.attackType.MAGICAL)
 
-    if zone ~= nil and zone.getMobs then
-        for _, mob in ipairs(zone:getMobs()) do
-            if
-                mob ~= nil and
-                mob:isMob() and
-                mob:isAlive() and
-                mob:getID() ~= pet:getID() and
-                mob:getMaster() == nil and
-                mob:getAllegiance() ~= player:getAllegiance() and
-                not mob:getUntargetable() and
-                pet:checkDistance(mob) <= 10.0
-            then
-                local scaled = scaleLevelGapDmg(pet, mob, baseDmg)
-                local dmg    = utils.handleStoneskin(mob, scaled, xi.attackType.MAGICAL)
-                mob:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
-                addPetEnmity(mob, pet, 900, 2400)
-                mob:addStatusEffect(xi.effect.BLINDNESS, { power = isDull and 35 or 25, duration = 60, origin = pet })
-                if mob:getID() == target:getID() then
-                    mainDmg = dmg
-                end
-                hits = hits + 1
-            end
-        end
-    end
+    target:takeDamage(dmg, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
+    addPetEnmity(target, pet, 900, 2400)
+    target:addStatusEffect(xi.effect.BLINDNESS, { power = isDull and 35 or 25, duration = 60, origin = pet })
 
-    if mainDmg > 0 and action and action.recordDamage then
-        action:recordDamage(target, xi.attackType.MAGICAL, mainDmg)
+    if dmg > 0 and action and action.recordDamage then
+        action:recordDamage(target, xi.attackType.MAGICAL, dmg)
     end
-    tell(player, string.format('%s engulfs %d foe%s in Black Cloud (~%d Dark damage + Blind + AoE Enmity)!',
-        pet:getName(), hits, hits == 1 and '' or 's', baseDmg))
-    return mainDmg
+    tell(player, string.format('%s shrouds %s in Black Cloud for %d Dark damage (Blind + Enmity)!',
+        pet:getName(), target:getName(), dmg))
+    return dmg
 end)
 
 -- 421: Bone Aegis (Lv.35+): Pet Stoneskin barrier + Defense Boost + Spikes
@@ -1230,6 +1302,75 @@ end, function(player, target, ability, action)
 end)
 
 -----------------------------------
+-- Modal Tank Thrall: 100% AoE/Conal Boss Immunity & 80% Cure (+100% Overheal) Forwarding
+-----------------------------------
+local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+
+function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+    if prevOnPreTakeDamage ~= nil then
+        amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
+    end
+
+    local dmg = tonumber(amount) or 0
+    if dmg <= 0 or defender == nil then
+        return dmg
+    end
+
+    if defender.isPet and defender:isPet() then
+        local master = defender.getMaster and defender:getMaster() or nil
+        if isNecromancer(master) and WARRIOR_PETS[defender:getPetID()] then
+            if attacker ~= nil and attacker.isMob and attacker:isMob() then
+                local mobTarget = attacker.getTarget and attacker:getTarget() or nil
+                if
+                    attackType == xi.attackType.BREATH or
+                    attackType == xi.attackType.MAGICAL or
+                    mobTarget ~= defender
+                then
+                    return 0
+                end
+            end
+        end
+    end
+
+    return dmg
+end
+
+local CURE_RAW_ESTIMATE =
+{
+    cure       = 65,
+    cure_ii    = 145,
+    cure_iii   = 300,
+    cure_iv    = 550,
+    cure_v     = 850,
+    cure_vi    = 1200,
+    curaga     = 90,
+    curaga_ii  = 180,
+    curaga_iii = 360,
+    curaga_iv  = 650,
+    curaga_v   = 950,
+}
+
+for spellName, rawBase in pairs(CURE_RAW_ESTIMATE) do
+    m:addOverride(string.format('xi.actions.spells.white.%s.onSpellCast', spellName), function(caster, target, spell)
+        if target ~= nil and isNecromancer(target) and isTankThrallActive(target) ~= nil and target.getHP then
+            local preHp  = target:getHP() or 0
+            local maxHp  = target:getMaxHP() or 0
+            local res    = super(caster, target, spell)
+            local healed = math.max(0, (target:getHP() or 0) - preHp)
+            local pot    = math.max(0, (caster and caster.getMod and caster:getMod(xi.mod.CURE_POTENCY) or 0))
+            local est    = math.floor(rawBase * (1 + pot / 100))
+            if (target:getHP() or 0) >= maxHp then
+                forwardCureToThrall(target, healed, math.max(healed, est))
+            else
+                forwardCureToThrall(target, healed, healed)
+            end
+            return res
+        end
+        return super(caster, target, spell)
+    end)
+end
+
+-----------------------------------
 -- Register BLM Necromancer Crystal
 -----------------------------------
 if xi.job and xi.job.BLM then
@@ -1246,11 +1387,11 @@ if xi.job and xi.job.BLM then
             highlights  =
             {
                 'HP +10%, Scythe Skill raised to A+, and enhanced Occult Acumen.',
-                'Undead Warrior & Dullahan: Frontline Tank summons with Grim Reaping sub-menu (Grave Provoke, Black Cloud, Bone Aegis, Blood Saber, Aegis Schism).',
-                'Undead Mage & Corse: Ranged never-missing Dark casters that stand back from the mob and empower party DPS via Grim Incantations.',
-                'Harbinger\'s Drain: Weaponskill damage heals your active undead summon.',
+                'Undead Warrior & Dullahan (Tank Mode): Tier 6 -60% DMG Dealt (0.12x WS), 100% Thrall AoE/Conal boss immunity, 100% Master-to-Thrall single-target enmity transfer, and 80% Cure (+100% overheal) forwarding.',
+                'Undead Mage & Corse (Caster Mode / No Pet): Tier 2 Hybrid -25% DMG Dealt (0.50x WS) & -20 Enmity; ranged Dark casters that empower party DPS via Grim Incantations.',
+                'Harbinger\'s Drain: Scythe WSs heal Tank Thralls for 16/18/20/22% Max HP (clamp-proof) or Caster Thralls for 25-50% of WS damage.',
                 'Dark Pact: While an undead summon is alive, gain Double Attack, Store TP, and Accuracy.',
-                'Corpse Explosion: Detonate your summon for massive Dark AoE damage.',
+                'Corpse Explosion: Implodes your summon onto your single engaged target for concentrated Dark damage without pulling nearby mobs.',
                 'Grim Conversion: Converts MACC->ACC, MATT->ATT, Fast Cast->Haste, and Magic Burst Bonus->WSD (Elemental Celerity unchanged).',
             },
             extraAbilities = function(player)
@@ -1297,12 +1438,16 @@ if xi.job and xi.job.BLM then
                     or (lvl <= 60 and (153 + (lvl - 50) * 5))
                     or (lvl <= 70 and math.floor(203 + (lvl - 60) * 4.85))
                     or (251 + (lvl - 70) * 5)
-                return
+                local out =
                 {
                     { xi.mod.HPP,           10 },
                     { xi.mod.SCYTHE,        math.max(10, scytheAPlus) },
                     { xi.mod.OCCULT_ACUMEN, scaleTier(lvl, 25, 40, 55, 75) },
                 }
+                if isTankThrallActive(player) == nil then
+                    table.insert(out, { xi.mod.ENMITY, -20 })
+                end
+                return out
             end,
             onApply = function(player)
                 if player ~= nil and player.recalculateSkillsTable then

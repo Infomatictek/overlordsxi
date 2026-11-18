@@ -325,12 +325,12 @@ local KEY_ALIASES =
 
 spec.TIER_CONFIG =
 {
-    Damage        = { name = 'Damage',        offense = 1.00, physDmgDealt = 0,   magDmgDealt = 0 },
-    HybridSupport = { name = 'HybridSupport', offense = 0.50, physDmgDealt = -25, magDmgDealt = -25 },
-    Support       = { name = 'Support',       offense = 0.35, physDmgDealt = -40, magDmgDealt = -40 },
-    CombatHealer  = { name = 'CombatHealer',  offense = 0.20, physDmgDealt = -50, magDmgDealt = -50 },
-    Healer        = { name = 'Healer',        offense = 0.12, physDmgDealt = -60, magDmgDealt = -60 },
-    Tank          = { name = 'Tank',          offense = 0.12, physDmgDealt = -60, magDmgDealt = -60 },
+    Damage        = { name = 'Damage',        offense = 1.00, physDmgDealt = 0,   rangedDmgDealt = 0,   magDmgDealt = 0 },
+    HybridSupport = { name = 'HybridSupport', offense = 0.50, physDmgDealt = -25, rangedDmgDealt = -25, magDmgDealt = -25 },
+    Support       = { name = 'Support',       offense = 0.35, physDmgDealt = -40, rangedDmgDealt = -40, magDmgDealt = -40 },
+    CombatHealer  = { name = 'CombatHealer',  offense = 0.20, physDmgDealt = -50, rangedDmgDealt = -50, magDmgDealt = -50 },
+    Healer        = { name = 'Healer',        offense = 0.12, physDmgDealt = -60, rangedDmgDealt = -60, magDmgDealt = -60 },
+    Tank          = { name = 'Tank',          offense = 0.12, physDmgDealt = -60, rangedDmgDealt = -60, magDmgDealt = -60 },
 }
 
 spec.SPEC_KEY_TIERS =
@@ -347,6 +347,35 @@ spec.SPEC_KEY_TIERS =
     miragesentinel = 'Tank',
 }
 
+spec.MODAL_TIER_RESOLVERS = spec.MODAL_TIER_RESOLVERS or
+{
+    necromancer = function(player)
+        if player ~= nil and player.hasPet and player:hasPet() and player.getPet then
+            local pet = player:getPet()
+            if pet ~= nil and (not pet.isAlive or pet:isAlive()) then
+                local pid = pet.getPetID and pet:getPetID() or 0
+                if pid == 130 or pid == 133 then
+                    return 'Tank'
+                end
+            end
+        end
+        return 'HybridSupport'
+    end,
+    huntsman = function(player)
+        if player ~= nil and player.hasPet and player:hasPet() and player.getPet then
+            local pet = player:getPet()
+            if pet ~= nil and (not pet.isAlive or pet:isAlive()) then
+                local pid  = pet.getPetID and pet:getPetID() or 0
+                local hKey = pet.getLocalVar and pet:getLocalVar('OX_HUNTSMAN_PET_KEY') or 0
+                if pid == 134 or pid == 136 or hKey == 1 or hKey == 3 then
+                    return 'Tank'
+                end
+            end
+        end
+        return 'HybridSupport'
+    end,
+}
+
 local CANONICAL_ROLE_BY_KEY = {}
 for _, list in pairs(spec.JOB_SPECS) do
     for _, c in ipairs(list) do
@@ -359,7 +388,7 @@ for aliasKey, targetKey in pairs(KEY_ALIASES) do
     end
 end
 
-function spec.getSpecTier(entryOrKey)
+function spec.getSpecTier(entryOrKey, player, jobId)
     local key = nil
     local roleStr = nil
     if type(entryOrKey) == 'table' then
@@ -370,6 +399,13 @@ function spec.getSpecTier(entryOrKey)
     end
 
     if key ~= nil then
+        local modalResolver = spec.MODAL_TIER_RESOLVERS and spec.MODAL_TIER_RESOLVERS[key] or nil
+        if type(modalResolver) == 'function' then
+            local resolved = modalResolver(player, jobId)
+            if resolved ~= nil and spec.TIER_CONFIG[resolved] ~= nil then
+                return resolved
+            end
+        end
         if spec.SPEC_KEY_TIERS[key] ~= nil then
             return spec.SPEC_KEY_TIERS[key]
         end
@@ -402,8 +438,10 @@ function spec.getTierConfig(player, jobId)
     if active == nil or not spec.isLevelEligible(player, targetJob, active) then
         return spec.TIER_CONFIG.Damage
     end
-    return spec.TIER_CONFIG[spec.getSpecTier(active)] or spec.TIER_CONFIG.Damage
+    return spec.TIER_CONFIG[spec.getSpecTier(active, player, targetJob)] or spec.TIER_CONFIG.Damage
 end
+
+spec.getRoleBalanceProfile = spec.getTierConfig
 
 function spec.getOffenseScalar(player, jobId)
     return spec.getTierConfig(player, jobId).offense
@@ -789,7 +827,7 @@ function spec.evaluateMods(player, entry)
         raw = raw(player, lvl)
     end
 
-    local tierName = spec.getSpecTier(entry)
+    local tierName = spec.getSpecTier(entry, player, jobId)
     local tierCfg  = spec.TIER_CONFIG[tierName] or spec.TIER_CONFIG.Damage
     local stripNegOffense = (tierName ~= 'Damage') and xi and xi.mod
 
@@ -819,6 +857,10 @@ function spec.evaluateMods(player, entry)
     if xi and xi.mod then
         if tierCfg.physDmgDealt ~= 0 and xi.mod.PHYS_DMG_DEALT then
             upsertMod(out, xi.mod.PHYS_DMG_DEALT, tierCfg.physDmgDealt)
+        end
+        local rangedDealt = tierCfg.rangedDmgDealt or tierCfg.physDmgDealt
+        if rangedDealt ~= 0 and xi.mod.RANGED_DMG_DEALT then
+            upsertMod(out, xi.mod.RANGED_DMG_DEALT, rangedDealt)
         end
         if tierCfg.magDmgDealt ~= 0 and xi.mod.MAG_DMG_DEALT then
             upsertMod(out, xi.mod.MAG_DMG_DEALT, tierCfg.magDmgDealt)
@@ -982,12 +1024,15 @@ function spec.refreshPlayer(player, opts)
     local prev = spec.appliedByCharId[charKey]
     local extraAbilities = active and evalIdList(player, active, 'extraAbilities') or {}
     local extraTraits = active and evalIdList(player, active, 'extraTraits') or {}
+    local tierName = active and spec.getSpecTier(active, player, jobId) or 'Damage'
 
     if
+        not opts.forceMods and
         prev ~= nil and
         prev.jobId == jobId and
         prev.specId == activeId and
         prev.level == lvl and
+        prev.tierName == tierName and
         listsEqual(prev.extraAbilities or {}, extraAbilities) and
         listsEqual(prev.extraTraits or {}, extraTraits)
     then
@@ -1054,6 +1099,7 @@ function spec.refreshPlayer(player, opts)
         jobId          = jobId,
         specId         = active.id,
         level          = lvl,
+        tierName       = tierName,
         mods           = mods,
         extraAbilities = extraAbilities,
         extraTraits    = extraTraits,

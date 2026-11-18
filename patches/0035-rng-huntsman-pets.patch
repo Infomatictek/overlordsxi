@@ -1,0 +1,105 @@
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+index c8a4f2d1..9e1b3a07 100644
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -1077,7 +1077,11 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+         petID != PETID_UNDEAD_WARRIOR &&
+         petID != PETID_UNDEAD_MAGE &&
+         petID != PETID_UNDEAD_CORSE &&
+-        petID != PETID_UNDEAD_DULLAHAN)
++        petID != PETID_UNDEAD_DULLAHAN &&
++        petID != PETID_WILD_RAAZ &&
++        petID != PETID_STALKER_RAPTOR &&
++        petID != PETID_CEHUETZI &&
++        petID != PETID_GABBRATH)
+     {
+         highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
+     }
+@@ -1109,6 +1113,26 @@ void CalculateJugPetStats(CBattleEntity* PMaster, CPetEntity* PPet)
+         PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
+         PPet->SetSLevel(PPet->GetMLevel());
+     }
++    else if (petID == PETID_WILD_RAAZ)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::PLD));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
++    else if (petID == PETID_STALKER_RAPTOR)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
++    else if (petID == PETID_CEHUETZI)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
++    else if (petID == PETID_GABBRATH)
++    {
++        PPet->SetSJob(static_cast<uint8>(xi::Job::THF));
++        PPet->SetSLevel(PPet->GetMLevel());
++    }
+     LoadJugStats(PPet, PPetData); // follow monster calcs (w/o SJ)
+ 
+     luautils::callGlobal<void>("xi.pets.jug.onPetStatCalculate", PMaster, PPet);
+@@ -2062,6 +2086,42 @@ void LoadPet(CBattleEntity* PMaster, uint32 PetID, bool spawningFromZone)
+             PPet->SetSLevel(mainLevel);
+             PPet->setSpawnLevel(mainLevel);
+         }
++        else if (PetID == PETID_WILD_RAAZ && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::PLD));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_STALKER_RAPTOR && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::THF));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_CEHUETZI && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::PLD));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
++        else if (PetID == PETID_GABBRATH && PMaster->objtype == TYPE_PC)
++        {
++            const auto mainLevel = PMaster->GetMLevel();
++            PPet->SetMJob(static_cast<uint8>(xi::Job::WAR));
++            PPet->SetSJob(static_cast<uint8>(xi::Job::THF));
++            PPet->SetMLevel(mainLevel);
++            PPet->SetSLevel(mainLevel);
++            PPet->setSpawnLevel(mainLevel);
++        }
+         else
+         {
+             uint8 spawnLevel = static_cast<CCharEntity*>(PMaster)->petZoningInfo.petLevel;
+diff --git a/src/map/utils/petutils.h b/src/map/utils/petutils.h
+index b1e4a8c3..f4a79d12 100644
+--- a/src/map/utils/petutils.h
++++ b/src/map/utils/petutils.h
+@@ -167,8 +167,12 @@ enum PETID
+     PETID_UNDEAD_MAGE            = 131,
+     PETID_UNDEAD_CORSE           = 132,
+     PETID_UNDEAD_DULLAHAN        = 133,
++    PETID_WILD_RAAZ              = 134,
++    PETID_STALKER_RAPTOR         = 135,
++    PETID_CEHUETZI               = 136,
++    PETID_GABBRATH               = 137,
+ 
+-    MAX_PETID = 134,
++    MAX_PETID = 138,
+ };
+ 
+ namespace petutils

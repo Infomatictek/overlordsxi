@@ -406,6 +406,7 @@ local SPEC_KEY_TO_CATEGORY =
     flintlock      = 'flintlock',
     buccaneer      = 'buccaneer',
     gambler        = 'gambler',
+    huntsman       = 'huntsman',
     tank           = 'inquisitor',
     healer         = 'lifebinder',
 }

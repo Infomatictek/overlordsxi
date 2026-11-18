@@ -49,6 +49,7 @@ P.ALL_SPECS =
     'flintlock',
     'buccaneer',
     'gambler',
+    'huntsman',
 }
 
 local STAT_UP =
@@ -311,6 +312,12 @@ local STANCE_DEFS =
         jobSpec  = 'gambler',
         effects  = { 884, xi.effect.CORSAIRS_ROLL, xi.effect.SAMURAI_ROLL, xi.effect.CHAOS_ROLL },
     },
+    huntsman = {
+        label    = 'Apex Bond',
+        jobSpec  = 'huntsman',
+        petAlive = true,
+        effects  = { xi.effect.SHARPSHOT, xi.effect.BARRAGE, xi.effect.CAMOUFLAGE, xi.effect.UNLIMITED_SHOT },
+    },
 }
 
 local SPEC_META =
@@ -347,6 +354,7 @@ local SPEC_META =
     flintlock      = { pfx = 'flt', pref = 'agi', role = 'dps',    tag = 'Deadeye',  col2 = 'Powder',   t1c3 = 'Trigger',     rmea = 'Broadside',    col1 = { 'Chamber',  'Salvo',     'Detonate'  } },
     buccaneer      = { pfx = 'buc', pref = 'vit', role = 'tank',   tag = 'Galleon',  col2 = 'Pistol',   t1c3 = 'Grapeshot',   rmea = 'Ironhull',     col1 = { 'Board',    'Saltward',  'Broadside' } },
     gambler        = { pfx = 'gmb', pref = 'chr', role = 'support',tag = 'Fortune',  col2 = 'Ante',     t1c3 = 'Deal',        rmea = 'Jackpot',      col1 = { 'Wager',    'DoubleUp',  'Highroll'  } },
+    huntsman       = { pfx = 'hnt', pref = 'agi', role = 'support',tag = 'Apex',     col2 = 'Primeval', t1c3 = 'Quiver',      rmea = 'Predator',     col1 = { 'Tusk',     'Talon',     'Pack'      }, pet = true },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
@@ -2511,6 +2519,7 @@ local STANCE_TITLES =
     animist        = { 'Repair-St',  'Aether-St', 'Clock-St',  'Auto-St'   },
     verdant        = { 'Luopan-St',  'Bolster-St','Canopy-St', 'Sylvan-St' },
     wyvernheart    = { 'Breath-St',  'Wyrm-St',   'Scale-St',  'Spirit-St' },
+    huntsman       = { 'Tusker-St',  'Saurian-St','Apex-St',   'Predator'  },
 }
 
 local T3C3_TITLES =
@@ -2543,6 +2552,7 @@ local T3C3_TITLES =
     animist        = { 'Aether',    'Overhaul',  'Clockwork', 'Fiber'     },
     verdant        = { 'Sylvan',    'Bloom',     'Renewal',   'Canopy'    },
     wyvernheart    = { 'Wyrmblood', 'Breath',    'Scale',     'Sanctuary' },
+    huntsman       = { 'Rimetusk',  'Saurian',   'Primeval',  'Apex-Pack' },
     generic        = { 'Precision', 'Impact',    'Momentum',  'Edge'      },
 }
 
@@ -2576,6 +2586,7 @@ local T4C3_TITLES =
     animist        = { 'Animist',   'Artificer', 'Clockwork', 'Sovereign' },
     verdant        = { 'Verdant',   'Dryad',     'Sylvan',    'Worldtree' },
     wyvernheart    = { 'Wyvern',    'Dragoon',   'Crimson',   'Skywarden' },
+    huntsman       = { 'Cehuetzi',  'Gabbrath',  'Warden',    'Apex-Bond' },
     generic        = { 'Prowess',   'Zenith',    'Mastery',   'Triumph'   },
 }
 
@@ -2774,12 +2785,15 @@ local NO_SPIKE_SPECS =
     miragesentinel = true,
     buccaneer      = true,
     gambler        = true,
+    huntsman       = true,
     tank           = true,
     healer         = true,
 }
 
 local SINGLE_TARGET_ONLY_SPECS =
 {
+    necromancer    = true,
+    huntsman       = true,
     miragesentinel = true,
     flintlock      = true,
     buccaneer      = true,
@@ -2802,6 +2816,7 @@ local PET_SPECS =
     animist     = true,
     verdant     = true,
     wyvernheart = true,
+    huntsman    = true,
 }
 
 local function sanitizeSpecNode(node, specKey, ctx)
@@ -3001,6 +3016,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     flintlock      = { [S.MARKSMANSHIP or 26] = true },
     buccaneer      = { [S.SWORD or 3] = true },
     gambler        = { [S.MARKSMANSHIP or 26] = true, [S.DAGGER or 2] = true },
+    huntsman       = { [S.ARCHERY or 25] = true, [S.MARKSMANSHIP or 26] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)
