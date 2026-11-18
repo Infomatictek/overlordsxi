@@ -219,10 +219,39 @@ local function triggerJackpotCashout(caster, abilityId)
     local anteCount = consumeRollAnte(caster, abilityId)
     -- Jackpot cooldown reduction: 8s base, +2s per additional Ante, max 14s
     local cdr = math.min(14, 8 + 2 * math.max(0, anteCount - 1))
+    if caster.setLocalVar then
+        caster:setLocalVar('OX_GMB_LAST_CDR', cdr)
+    end
     if caster.reduceAbilityRecasts then
         caster:reduceAbilityRecasts(cdr)
     end
     return cdr
+end
+
+xi.overlords = xi.overlords or {}
+xi.overlords.cor = xi.overlords.cor or {}
+function xi.overlords.cor.getGamblerHudState(player)
+    if player == nil or not player.getID then
+        return nil
+    end
+    local cid = player:getID()
+    local activeRollId = player:getLocalVar('corsairActiveRoll') or 0
+    local entry = anteByCharRoll[cid] and anteByCharRoll[cid][activeRollId] or nil
+    if not entry and anteByCharRoll[cid] then
+        for _, v in pairs(anteByCharRoll[cid]) do
+            if v and (v.count or 0) > 0 then
+                entry = v
+                break
+            end
+        end
+    end
+    return {
+        anteCount   = entry and entry.count or 0,
+        anteHp      = entry and entry.hp or 0,
+        anteTp      = entry and entry.tp or 0,
+        rollLockRem = math.max(0, (rollLockUntilById[cid] or player:getLocalVar('OX_GMB_ROLL_LOCK') or 0) - os.time()),
+        lastCdr     = player:getLocalVar('OX_GMB_LAST_CDR') or 0,
+    }
 end
 
 local function forEachPartyMemberInRange(caster, range, fn)

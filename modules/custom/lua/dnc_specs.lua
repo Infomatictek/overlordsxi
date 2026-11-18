@@ -250,6 +250,9 @@ local function triggerPirouetteCounter(defender, attacker)
     end
 
     addFinishingMoves(defender, 1)
+    if defender.setLocalVar and defender.getLocalVar then
+        defender:setLocalVar('OX_DNC_PARRY_FM', (defender:getLocalVar('OX_DNC_PARRY_FM') or 0) + 1)
+    end
 
     if defender:checkDistance(attacker) <= 5.0 and isDualDaggersEquipped(defender) then
         local weaponDamage = math.max(1, defender:getWeaponDmg())
