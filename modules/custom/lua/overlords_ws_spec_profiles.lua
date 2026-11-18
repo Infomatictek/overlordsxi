@@ -256,10 +256,10 @@ local STANCE_DEFS =
         effects  = { xi.effect.ASTRAL_FLOW, xi.effect.AVATARS_FAVOR, 869, 870 },
     },
     animist = {
-        label    = 'Repair/Aegis',
+        label    = 'Maneuver/Aegis',
         jobSpec  = 'animist',
         petAlive = true,
-        effects  = { xi.effect.OVERDRIVE, 871 },
+        effects  = { xi.effect.LIGHT_MANEUVER, xi.effect.WATER_MANEUVER, xi.effect.EARTH_MANEUVER, xi.effect.OVERDRIVE, 871 },
     },
     verdant = {
         label    = 'Luopan/Canopy',
@@ -300,7 +300,7 @@ local SPEC_META =
     magus          = { pfx = 'mag', pref = 'mnd', role = 'healer', tag = 'Catalyst', col2 = 'Osmosis',  t1c3 = 'Azure',       rmea = 'Diffusion',    col1 = { 'Siphon',   'Surge',     'Conduit'   } },
     vampire        = { pfx = 'vmp', pref = 'chr', role = 'healer', tag = 'Crimson',  col2 = 'Samba',    t1c3 = 'Waltz',       rmea = 'Nocturne',     col1 = { 'Drain',    'Blossom',   'Feast'     } },
     celestial      = { pfx = 'cel', pref = 'mnd', role = 'healer', tag = 'Astral',   col2 = 'Starlight',t1c3 = 'Ward',        rmea = 'Convergence',  col1 = { 'Avatar',   'Ruby',      'Siphon'    }, pet = true },
-    animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true },
+    animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true, noMp = true },
     verdant        = { pfx = 'vrd', pref = 'mnd', role = 'healer', tag = 'Sylvan',   col2 = 'Luopan',   t1c3 = 'Bloom',       rmea = 'Canopy',       col1 = { 'Barkskin', 'Renewal',   'Grove'     }, pet = true },
     wyvernheart    = { pfx = 'wyv', pref = 'mnd', role = 'healer', tag = 'Wyrm',     col2 = 'Breath',   t1c3 = 'Scale',       rmea = 'Wyrmblood',    col1 = { 'Link',     'Jump',      'Sanctuary' }, pet = true },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
@@ -1724,6 +1724,64 @@ local function buildCol2Nodes(specKey, ctx)
                 { partyHealPct = { 3, 5, 8, 11, 14 }, wsd = lin(6, 5) })
         end
 
+    elseif specKey == 'animist' then
+        if v == 1 then
+            t2 = mkNode(2, 2, k2, m .. ' Mend', 5,
+                'Party Heal 2..10% HP & Auto Heal 6..30%',
+                function(r) return string.format('Party +%d%% HP, Auto +%d%%', r * 2, r * 6) end,
+                { partyHealPct = lin(2, 5), eosHeal = lin(6, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Mist', 5,
+                'Party Regen 4..20/t (24s) & Cleanse Party',
+                function(r) return string.format('Pty Regen %d/t, Cleanse Pty', r * 4) end,
+                { statusBuffs = {{ effect = xi.effect.REGEN, power = lin(4, 5), duration = 24 }}, cleanseParty = { 1, 1, 1, 2, 2 } })
+            t4 = mkNode(4, 2, k4, m .. ' Overhaul', 5,
+                'Party Heal 3..14% HP, Auto +8..40% & +WSD',
+                function(r) return string.format('Pty +%d%% HP, Auto +%d%%, +%d%% WSD', ({ 3, 5, 8, 11, 14 })[r], r * 8, r * 5) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, eosHeal = lin(8, 5), wsd = lin(5, 5) })
+        elseif v == 2 then
+            t2 = mkNode(2, 2, k2, m .. ' Plating', 5,
+                'Party Stoneskin 80..400 & +5..25 Subtle Blow',
+                function(r) return string.format('Pty Skin %d, +%d SB', r * 80, r * 5) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(80, 5), duration = 30 }}, subtleBlow = lin(5, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Pulse', 5,
+                'Cleanse Party & Self +3..15% Max HP',
+                function(r) return string.format('Cleanse Pty, Self +%d%% HP', r * 3) end,
+                { cleanseParty = { 1, 1, 1, 2, 2 }, selfMaxHpHealPct = lin(3, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Aegis', 5,
+                'Party Heal 3..14% HP & +6..30% SC Dmg',
+                function(r) return string.format('Party +%d%% HP, +%d%% SC Dmg', ({ 3, 5, 8, 11, 14 })[r], r * 6) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, scBonus = lin(6, 5) })
+        elseif v == 3 then
+            t2 = mkNode(2, 2, k2, m .. ' Dampen', 5,
+                'Party Heal 2..10% HP & -4..-20 Enmity',
+                function(r) return string.format('Party +%d%% HP, -%d Enmity', r * 2, r * 4) end,
+                { partyHealPct = lin(2, 5), enmity = lin(-4, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Pacify', 5,
+                'Foe -4..20% Atk/M.Atk & Party +2..10% HP',
+                function(r) return string.format('Foe -%d%% Atk/MAtk, Pty +%d%% HP', r * 4, r * 2) end,
+                { partyHealPct = lin(2, 5), targetDebuffs = {
+                    { effect = xi.effect.ATTACK_DOWN, power = lin(4, 5), duration = 45 },
+                    { effect = xi.effect.MAGIC_ATK_DOWN, power = lin(4, 5), duration = 45 },
+                } })
+            t4 = mkNode(4, 2, k4, m .. ' Conduit', 5,
+                'Party Regen 4..20/t, Cleanse & +6..30% WSD',
+                function(r) return string.format('Pty Regen %d/t, Cleanse, +%d%% WSD', r * 4, r * 6) end,
+                { statusBuffs = {{ effect = xi.effect.REGEN, power = lin(4, 5), duration = 24 }}, cleanseParty = { 1, 1, 1, 2, 2 }, wsd = lin(6, 5) })
+        else
+            t2 = mkNode(2, 2, k2, m .. ' Barrier', 5,
+                'Party Stoneskin 80..400 & Party +2..8% HP',
+                function(r) return string.format('Pty Skin %d, +%d%% HP', r * 80, ({ 2, 3, 5, 6, 8 })[r]) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(80, 5), duration = 30 }}, partyHealPct = { 2, 3, 5, 6, 8 } })
+            t3 = mkNode(3, 2, k3, n .. ' Sync', 5,
+                'Automaton Heal 6..30% & Cleanse Party',
+                function(r) return string.format('Auto +%d%%, Cleanse Pty', r * 6) end,
+                { eosHeal = lin(6, 5), cleanseParty = { 1, 1, 1, 2, 2 } })
+            t4 = mkNode(4, 2, k4, m .. ' Sovereign', 5,
+                'Party Heal 3..14% HP & +6..30% WSD',
+                function(r) return string.format('Party +%d%% HP, +%d%% WSD', ({ 3, 5, 8, 11, 14 })[r], r * 6) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, wsd = lin(6, 5) })
+        end
+
     elseif specKey == 'wyvernheart' then
         if v == 1 then
             t2 = mkNode(2, 2, k2, m .. ' Breath', 5,
@@ -2845,7 +2903,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
     vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
     celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },
-    animist        = { [S.HAND_TO_HAND or 1] = true, [S.CLUB or 11] = true },
+    animist        = { [S.HAND_TO_HAND or 1] = true },
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
 }
