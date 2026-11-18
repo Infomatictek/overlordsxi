@@ -160,7 +160,7 @@ hud.registerProvider('gambler', function(player)
 end)
 
 -- DNC Mirage Sentinel
-hud.registerProvider('mirage_sentinel', function(player)
+hud.registerProvider('miragesentinel', function(player)
     local fm = 0
     if player:hasStatusEffect(xi.effect.FINISHING_MOVE_1) then
         local fmEff = player:getStatusEffect(xi.effect.FINISHING_MOVE_1)
