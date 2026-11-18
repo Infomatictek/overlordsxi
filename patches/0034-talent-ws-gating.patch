@@ -1,0 +1,60 @@
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -371,12 +371,50 @@
+     return false;
+ }
+ 
+ auto CanUseWeaponskill(CCharEntity* PChar, CWeaponSkill* PSkill) -> bool
+ {
+-    return ((PSkill->getSkillLevel() > 0 && PChar->GetSkill(static_cast<xi::SkillType>(PSkill->getType())) >= PSkill->getSkillLevel() &&
+-             (PSkill->getUnlockId() == 0 || charutils::hasLearnedWeaponskill(PChar, PSkill->getUnlockId()))) ||
+-            (PSkill->getSkillLevel() == 0 && (PSkill->getUnlockId() == 0 ||
+-                                              (charutils::hasLearnedWeaponskill(PChar, PSkill->getUnlockId()) && PChar->GetMLevel() >= 75)))) &&
+-           (PSkill->getJob(PChar->GetMJob()) > 0 || (PSkill->getJob(PChar->GetSJob()) > 0 && !PSkill->mainOnly()));
++    if (PChar == nullptr || PSkill == nullptr)
++    {
++        return false;
++    }
++
++    switch (PSkill->getID())
++    {
++        case 62:  // Fimbulvetr (unimplemented)
++        case 78:  // Blitz (unimplemented)
++        case 94:  // Disaster (unimplemented)
++        case 110: // Origin (unimplemented)
++        case 126: // Diarmuid (unimplemented)
++        case 142: // Zesho Meppo (unimplemented)
++        case 158: // Tachi: Suikawari (event)
++        case 159: // Tachi: Mumei (unimplemented)
++        case 204: // Sarv (unimplemented)
++        case 222: // Terminus (unimplemented)
++        case 227: // Knights of Rotund (novelty)
++        case 228: // Final Paradise (novelty)
++        case 229: // Fast Blade II (NPC)
++        case 230: // Dragon Blow (NPC)
++        case 233: // Imperator (unimplemented)
++        case 234: // Dagda (unimplemented)
++        case 238: // Uriel Blade (NPC)
++        case 239: // Glory Slash (NPC)
++        case 240: // Tartarus Torpor (NPC)
++            return false;
++        case 241:
++        case 242:
++        case 243:
++        case 244:
++        case 245:
++        case 246:
++        case 247:
++        case 248:
++        case 249:
++        case 250:
++        case 251:
++        case 252:
++            return PChar->GetLocalVar("OX_THROW_WS") == 1 && luautils::CanUseTalentWeaponskill(PChar, PSkill->getID());
++        default:
++            return luautils::CanUseTalentWeaponskill(PChar, PSkill->getID());
++    }
+ }
+ 
+ /************************************************************************
