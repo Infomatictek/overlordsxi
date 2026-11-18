@@ -1931,15 +1931,29 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     end
 end)
 
+local function capAutomatonSkills(player)
+    if player == nil or player:getMainJob() ~= xi.job.PUP then
+        return
+    end
+
+    -- setSkillLevel expects tenths of a skill point (e.g. 2760 = 276.0).
+    local maxAutoSkill = math.min(276, player:getMainLvl() * 3 + 51) * 10
+    player:setSkillLevel(xi.skill.AUTOMATON_MELEE,  maxAutoSkill)
+    player:setSkillLevel(xi.skill.AUTOMATON_RANGED, maxAutoSkill)
+    player:setSkillLevel(xi.skill.AUTOMATON_MAGIC,  maxAutoSkill)
+end
+
 m:addOverride('xi.player.onPlayerLevelUp', function(player)
     super(player)
     player:capAllSkills()
+    capAutomatonSkills(player)
     xi.customBossServer.applyPlayerCombatPace(player, true)
 end)
 
 m:addOverride('xi.player.onPlayerLevelDown', function(player)
     super(player)
     player:capAllSkills()
+    capAutomatonSkills(player)
     xi.customBossServer.applyPlayerCombatPace(player, true)
 end)
 
