@@ -203,15 +203,6 @@ hud.registerProvider('miragesentinel', function(player)
     }
 end)
 
--- COR Flintlock (reads standard localVars if/when server gameplay is implemented; fails gracefully)
-hud.registerProvider('flintlock', function(player)
-    local markRem = math.max(0, (player:getLocalVar('OX_FLT_MARK_EXP') or 0) - os.time())
-    return {
-        powder   = player:getLocalVar('OX_FLT_BLACK_POWDER') or 0,
-        mark_rem = markRem,
-    }
-end)
-
 -----------------------------------
 -- Lifecycle & Event Hooks
 -----------------------------------
