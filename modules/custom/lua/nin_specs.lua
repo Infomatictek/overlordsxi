@@ -166,12 +166,19 @@ local function consumeKawarimiAsh(player, amount)
     return true
 end
 
-local function syncKagemushaVarsAndSpells(player)
+local function syncKagemushaVarsAndSpells(player, fromMods)
     if player == nil or not player:isPC() then
         return
     end
 
-    if isKagemusha(player) then
+    local active = false
+    if fromMods then
+        active = player:getMainJob() == xi.job.NIN and player:getMainLvl() >= 10
+    else
+        active = isKagemusha(player)
+    end
+
+    if active then
         if player.hasSpell and player.addSpell then
             for _, spellId in ipairs(KAGEMUSHA_SPELLS) do
                 if not player:hasSpell(spellId) then
@@ -800,7 +807,7 @@ if xi.job and xi.job.NIN then
                 local isWiki = (player == nil) or (not player.getEquipID)
                 local l = lvl or (player and player:getMainLvl()) or 1
                 if not isWiki then
-                    syncKagemushaVarsAndSpells(player)
+                    syncKagemushaVarsAndSpells(player, true)
                 end
 
                 local mods =
