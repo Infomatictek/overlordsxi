@@ -703,8 +703,11 @@ m:addOverride('xi.actions.abilities.aegis_consecration.onAbilityCheck', function
     if not isPldSpec(player, AEGIS_TEMPLAR_KEY) then
         return xi.msg.basic.CANNOT_PERFORM, 0
     end
-    if not isClubAndShieldEquipped(player) then
+    if not isShieldEquipped(player) then
         return xi.msg.basic.REQUIRES_SHIELD, 0
+    end
+    if not isClubEquipped(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
     return 0, 0
 end)
@@ -722,8 +725,11 @@ m:addOverride('xi.actions.abilities.judgment_gavel.onAbilityCheck', function(pla
     if not isPldSpec(player, AEGIS_TEMPLAR_KEY) then
         return xi.msg.basic.CANNOT_PERFORM, 0
     end
-    if not isClubAndShieldEquipped(player) then
+    if not isShieldEquipped(player) then
         return xi.msg.basic.REQUIRES_SHIELD, 0
+    end
+    if not isClubEquipped(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
     return 0, 0
 end)
