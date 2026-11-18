@@ -264,6 +264,7 @@ try {
     }
 
     $patchNeedsCleanReapply = $false
+    $unappliedPatches = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
     for ($i = 0; $i -lt $patchFiles.Count; $i++) {
         $patch = $patchFiles[$i]
         if (Test-PatchApplied $patch.FullName) {
@@ -292,16 +293,61 @@ try {
             }
             if (-not $supersededBy) {
                 $patchNeedsCleanReapply = $true
-                break
+                [void]$unappliedPatches.Add($patch)
             }
         }
     }
 
     if ($patchNeedsCleanReapply) {
-        Write-Host '==> Detected updated OverlordsXI patch; resetting patched server files to clean upstream before re-applying all patches...' -ForegroundColor Yellow
+        Write-Host '==> Validating OverlordsXI patch series in a disposable worktree before modifying server files...' -ForegroundColor Yellow
+        $tmpWorktree = Join-Path ([System.IO.Path]::GetTempPath()) ("ox-patch-validate-" + [guid]::NewGuid().ToString('N'))
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        git worktree add --detach $tmpWorktree HEAD 2>&1 | Out-Null
+        $wtAddCode = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
+        if ($wtAddCode -ne 0) {
+            throw 'Failed to create disposable worktree to validate OverlordsXI patches.'
+        }
+
+        try {
+            Push-Location $tmpWorktree
+            try {
+                foreach ($p in $patchFiles) {
+                    $prevEap = $ErrorActionPreference
+                    $ErrorActionPreference = 'Continue'
+                    git apply --check $p.FullName 2>&1 | Out-Null
+                    $wtApplyOk = ($LASTEXITCODE -eq 0)
+                    if ($wtApplyOk) {
+                        git apply $p.FullName 2>&1 | Out-Null
+                    } else {
+                        git apply --check --ignore-space-change $p.FullName 2>&1 | Out-Null
+                        if ($LASTEXITCODE -eq 0) {
+                            git apply --ignore-space-change $p.FullName 2>&1 | Out-Null
+                            $wtApplyOk = ($LASTEXITCODE -eq 0)
+                        }
+                    }
+                    $ErrorActionPreference = $prevEap
+                    if (-not $wtApplyOk) {
+                        throw "Patch validation failed in disposable worktree on $($p.Name); local server files were left untouched."
+                    }
+                }
+            }
+            finally {
+                Pop-Location
+            }
+        }
+        finally {
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            git worktree remove --force $tmpWorktree 2>&1 | Out-Null
+            $ErrorActionPreference = $prevEap
+        }
+
+        Write-Host '==> Patch series validated; resetting only unapplied/conflicting patch targets...' -ForegroundColor Yellow
         $allTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         $addedTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($p in $patchFiles) {
+        foreach ($p in $unappliedPatches) {
             foreach ($tf in (Get-PatchTargetFiles $p.FullName)) {
                 [void]$allTargets.Add($tf)
             }
@@ -764,16 +810,28 @@ try {
         }
     }
 
-    # 8. Optional dbtool migration / custom SQL import (runs automatically if any custom SQL file changed)
-    if ($RunDbTool -or $changedSqlFiles.Count -gt 0) {
+    # 8. Optional dbtool migration / custom SQL import (runs automatically if any custom SQL file changed or a prior import is pending)
+    $pendingSqlMarker = Join-Path $ServerDir '.overlords_pending_sql'
+    if ($changedSqlFiles.Count -gt 0) {
+        $pendingContent = ($changedSqlFiles -join "`n")
+        Set-Content -Path $pendingSqlMarker -Value $pendingContent -Encoding UTF8
+    }
+    $hasPendingSql = Test-Path $pendingSqlMarker
+    if ($RunDbTool -or $hasPendingSql) {
         Write-Host '==> Importing custom SQL modules via tools/dbtool.py...' -ForegroundColor Yellow
         $pyCode = "import sys; sys.path.insert(0, 'tools'); import dbtool; dbtool.fetch_credentials(); dbtool.fetch_configs(); dbtool.connect(); dbtool.fetch_module_files(); [dbtool.import_file(f) for f in dbtool.import_files]"
         python -c $pyCode
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning 'dbtool custom SQL import returned non-zero; ensure MariaDB is running or run with -RunDbTool.'
+            if (-not (Test-Path $pendingSqlMarker)) {
+                Set-Content -Path $pendingSqlMarker -Value 'pending' -Encoding UTF8
+            }
+            Write-Warning 'dbtool custom SQL import returned non-zero; pending SQL import recorded and will retry on next setup run (or run with -RunDbTool).'
             if ($RunDbTool) {
                 throw 'dbtool custom SQL import failed.'
             }
+        }
+        elseif (Test-Path $pendingSqlMarker) {
+            Remove-Item -Path $pendingSqlMarker -Force -ErrorAction SilentlyContinue
         }
     }
 }

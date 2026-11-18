@@ -181,13 +181,10 @@ local function countPackExtras(attacker, target, primaryMsg, packCenter)
 
     local center = (mode == 'target' and target ~= nil) and target or attacker
     local count = 0
-    if center ~= nil and center.getNearbyEntities then
-        local nearby = center:getNearbyEntities(8)
-        if type(nearby) == 'table' then
-            for _, ent in pairs(nearby) do
-                if ent ~= nil and ent:isMob() and ent:isAlive() and ent:checkDistance(center) <= 7.5 then
-                    count = count + 1
-                end
+    if center ~= nil and xi.overlords and xi.overlords.getNearbyMobs then
+        for _, ent in ipairs(xi.overlords.getNearbyMobs(center, 7.5, target)) do
+            if ent:checkDistance(center) <= 7.5 then
+                count = count + 1
             end
         end
     end

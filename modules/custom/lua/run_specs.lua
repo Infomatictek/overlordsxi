@@ -292,7 +292,9 @@ local function pulseNearbyEnmity(player, ce, ve, radius)
 
     local maxDist = radius or 12.0
     local mainTarget = player.getTarget and player:getTarget() or nil
+    local mainTargetId = nil
     if mainTarget ~= nil and mainTarget.isMob and mainTarget:isMob() and mainTarget:isAlive() then
+        mainTargetId = mainTarget:getID()
         grantEnmity(mainTarget, player, ce, ve)
     end
 
@@ -303,6 +305,7 @@ local function pulseNearbyEnmity(player, ce, ve, radius)
                 mob ~= nil and
                 mob:isMob() and
                 mob:isAlive() and
+                mob:getID() ~= mainTargetId and
                 mob:checkDistance(player) <= maxDist and
                 mob:isEngaged()
             then

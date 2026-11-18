@@ -327,23 +327,15 @@ local function detonateHolyNova(player, primaryTarget)
     end
 
     -- Heavy AoE enmity & light splash to nearby engaged mobs within 10y
-    if player.getNearbyEntities then
-        local nearby = player:getNearbyEntities(10)
-        if type(nearby) == 'table' then
-            for _, ent in ipairs(nearby) do
-                if
-                    ent ~= nil and
-                    ent.isMob and ent:isMob() and
-                    ent.isAlive and ent:isAlive() and
-                    ent.isEngaged and ent:isEngaged() and
-                    ent:getID() ~= primaryId
-                then
-                    local aoeDmg = math.max(15, math.floor(dmg * 0.65))
-                    ent:takeDamage(aoeDmg, player, xi.attackType.MAGICAL, xi.damageType.LIGHT)
-                    if ent.addEnmity then
-                        ent:addEnmity(player, 150, 450)
-                    end
-                end
+    for _, ent in ipairs(xi.overlords.getNearbyMobs(player, 10, primaryTarget)) do
+        if
+            ent.isEngaged and ent:isEngaged() and
+            ent:getID() ~= primaryId
+        then
+            local aoeDmg = math.max(15, math.floor(dmg * 0.65))
+            ent:takeDamage(aoeDmg, player, xi.attackType.MAGICAL, xi.damageType.LIGHT)
+            if ent.addEnmity then
+                ent:addEnmity(player, 150, 450)
             end
         end
     end
@@ -405,7 +397,14 @@ local function findInterceptingAegisPaladin(defender)
     return nil
 end
 
+xi.overlords = xi.overlords or {}
+local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+
 function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+    if prevOnPreTakeDamage ~= nil then
+        amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
+    end
+
     if defender == nil or amount == nil or amount <= 0 then
         return amount or 0
     end
@@ -476,20 +475,9 @@ m:addOverride('xi.effects.aegis_consecration.onEffectTick', function(target, _ef
     if target == nil or not isPldSpec(target, AEGIS_TEMPLAR_KEY) then
         return
     end
-    if target.getNearbyEntities then
-        local nearby = target:getNearbyEntities(10)
-        if type(nearby) == 'table' then
-            for _, ent in ipairs(nearby) do
-                if
-                    ent ~= nil and
-                    ent.isMob and ent:isMob() and
-                    ent.isAlive and ent:isAlive() and
-                    ent.isEngaged and ent:isEngaged() and
-                    ent.addEnmity
-                then
-                    ent:addEnmity(target, 1, 200)
-                end
-            end
+    for _, ent in ipairs(xi.overlords.getNearbyMobs(target, 10)) do
+        if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
+            ent:addEnmity(target, 1, 200)
         end
     end
 end)

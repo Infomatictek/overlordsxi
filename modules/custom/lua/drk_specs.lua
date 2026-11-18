@@ -621,20 +621,9 @@ m:addOverride('xi.effects.dread_bastion.onEffectTick', function(target, _effect)
     if target == nil or not isDrkSpec(target, DREADNOUGHT_KEY) then
         return
     end
-    if target.getNearbyEntities then
-        local nearby = target:getNearbyEntities(8)
-        if type(nearby) == 'table' then
-            for _, ent in ipairs(nearby) do
-                if
-                    ent ~= nil and
-                    ent.isMob and ent:isMob() and
-                    ent.isAlive and ent:isAlive() and
-                    ent.isEngaged and ent:isEngaged() and
-                    ent.addEnmity
-                then
-                    ent:addEnmity(target, 0, 260)
-                end
-            end
+    for _, ent in ipairs(xi.overlords.getNearbyMobs(target, 8)) do
+        if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
+            ent:addEnmity(target, 0, 260)
         end
     end
 end)

@@ -411,9 +411,9 @@ m:addOverride('xi.actions.abilities.wyrmblood_pulse.onUseAbility', function(play
         total = total + healed
         H.cleanseDebuffs(member, 2)
     end)
-    if player.resetAbilityRecast then
-        player:resetAbilityRecast(ABIL_JUMP)
-        player:resetAbilityRecast(ABIL_HIGH_JUMP)
+    if player.resetRecast and xi.recast and xi.recast.ABILITY then
+        player:resetRecast(xi.recast.ABILITY, 158) -- Jump
+        player:resetRecast(xi.recast.ABILITY, 159) -- High Jump
     end
     ability:setMsg(xi.msg.basic.JA_RECOVERS_HP)
     return total
