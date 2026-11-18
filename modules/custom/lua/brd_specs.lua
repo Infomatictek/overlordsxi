@@ -41,6 +41,7 @@ local EFFECT_MUS_OVERDRIVE = 835
 local EFFECT_MIN_IRON_ARIA = 836
 
 -- Custom Job Trait IDs (155-157)
+local TRAIT_DUAL_WIELD       = (xi.trait and xi.trait.DUAL_WIELD) or 18
 local TRAIT_ADVENTURER_TEMPO   = 155
 local TRAIT_MUSICIAN_RESONANCE = 156
 local TRAIT_MINSTREL_BULWARK   = 157
@@ -758,7 +759,7 @@ if xi.job and xi.job.BRD then
             role           = 'Melee Damage (Dagger / Sword)',
             icon           = 'crimson_blade',
             extraAbilities = { ABIL_LUNGE_FLOURISH, ABIL_TROUBADOURS_ENCORE },
-            extraTraits    = { TRAIT_ADVENTURER_TEMPO },
+            extraTraits    = { TRAIT_DUAL_WIELD, TRAIT_ADVENTURER_TEMPO },
             description    = 'Wandering troubadour spec: Dual-wield Dagger/Sword DPS with Cadence stacks, Sonic WS follow-ups, and Encore haste.',
             highlights     =
             {
@@ -855,8 +856,8 @@ if xi.job and xi.job.BRD then
                 {
                     { xi.mod.VIT, scaleTier(lvl, 6, 12, 18, 24) },
                     { xi.mod.CHR, scaleTier(lvl, 4, 8, 12, 16) },
-                    { xi.mod.HP, scaleTier(lvl, 60, 120, 180, 240) },
-                    { xi.mod.DEF, scaleTier(lvl, 20, 40, 60, 80) },
+                    { xi.mod.HPP, scaleTier(lvl, 12, 16, 20, 25) },
+                    { xi.mod.DEFP, scaleTier(lvl, 12, 18, 24, 30) },
                     { xi.mod.ENMITY, scaleTier(lvl, 15, 22, 30, 40) },
                     { xi.mod.DMGPHYS, scaleTier(lvl, -600, -1000, -1400, -1800) },
                     { xi.mod.DMGMAGIC, scaleTier(lvl, -400, -700, -1000, -1200) },

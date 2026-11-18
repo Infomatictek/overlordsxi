@@ -631,7 +631,6 @@ if xi.job and xi.job.BLU then
                     { xi.mod.PARRY,                 scaleTier(lvl, 14, 20, 26, 32) },
                     { xi.mod.FASTCAST,              scaleTier(lvl, 20, 30, 40, 50) },
                     { xi.mod.SPELLINTERRUPT,        100 },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
             end,
             onApply = function(player)

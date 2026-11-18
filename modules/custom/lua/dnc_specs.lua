@@ -801,7 +801,6 @@ if xi.job and xi.job.DNC then
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.WALTZ_POTENCY,         scaleTier(lvl, 15, 20, 25, 30) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 
                 if isDualDaggersEquipped(player) then

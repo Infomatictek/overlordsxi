@@ -1,0 +1,747 @@
+﻿diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 481e8df4c1..58bf392865 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 814 // 768 real + 46 custom
++#define MAX_EFFECTID 896 // 768 real + 128 custom
+ 
+ /************************************************************************
+  *                                                                       *
+diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
+index 51f4872f59..5ef2353df2 100644
+--- a/src/map/status_effect_container.cpp
++++ b/src/map/status_effect_container.cpp
+@@ -40,7 +40,9 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ 
+ #include <algorithm>
+ #include <array>
++#include <cctype>
+ #include <cstring>
++#include <vector>
+ 
+ #include "map_constants.h"
+ 
+@@ -62,14 +64,18 @@ When a status effect is gained twice on a player. It can do one or more of the f
+ #include "notoriety_container.h"
+ #include "status_effect_container.h"
+ 
++#include "enums/chat_message_type.h"
+ #include "enums/msg_std.h"
+ #include "map_engine.h"
++#include "packets/s2c/0x017_chat_std.h"
+ #include "packets/s2c/0x029_battle_message.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/itemutils.h"
+ #include "utils/petutils.h"
+ #include "utils/puppetutils.h"
++#include "utils/zoneutils.h"
++#include "zone.h"
+ 
+ namespace effects
+ {
+@@ -128,6 +134,354 @@ void LoadEffectsParameters()
+         auto filename = fmt::format("./scripts/effects/{}.lua", EffectsParams[static_cast<uint16>(id)].Name);
+         luautils::LoadLuaObjectFromFile(filename);
+     }
++
++    // OverlordsXI Eos Companion custom status effect slots (789: stackable Regen, 814: hidden Orphic Refresh).
++    EffectsParams[789].Name             = "regen";
++    EffectsParams[789].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[789].Element          = 7;
++    EffectsParams[789].SortKey          = 700;
++    EffectsParams[789].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[814].Name             = "eos_refresh";
++    EffectsParams[814].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::NoCancel | xi::StatusEffectFlag::HideTimer;
++    EffectsParams[814].Element          = 7;
++    EffectsParams[814].SortKey          = 10000;
++    EffectsParams[814].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Commander custom tactical status effects (815-818).
++    EffectsParams[815].Name             = "commander_breach";
++    EffectsParams[815].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[815].SortKey          = 10000;
++    EffectsParams[815].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[816].Name             = "commander_bulwark";
++    EffectsParams[816].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[816].SortKey          = 10000;
++    EffectsParams[816].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[817].Name             = "commander_cadence";
++    EffectsParams[817].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[817].SortKey          = 10000;
++    EffectsParams[817].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[818].Name             = "commander_regroup";
++    EffectsParams[818].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[818].SortKey          = 10000;
++    EffectsParams[818].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Berserker custom status effect (819).
++    EffectsParams[819].Name             = "berserker_surge";
++    EffectsParams[819].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[819].SortKey          = 10000;
++    EffectsParams[819].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI WAR Gladiator custom status effect (820).
++    EffectsParams[820].Name             = "gladiator_ward";
++    EffectsParams[820].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[820].SortKey          = 10000;
++    EffectsParams[820].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RUN custom status effects (821-828).
++    EffectsParams[821].Name             = "inquisitor_battuta";
++    EffectsParams[821].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[821].SortKey          = 10000;
++    EffectsParams[821].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[822].Name             = "inquisitor_aegis";
++    EffectsParams[822].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[822].SortKey          = 10000;
++    EffectsParams[822].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[823].Name             = "inquisitor_converge";
++    EffectsParams[823].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[823].SortKey          = 10000;
++    EffectsParams[823].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[824].Name             = "spellblade_edgeflare";
++    EffectsParams[824].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[824].SortKey          = 10000;
++    EffectsParams[824].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[825].Name             = "lifebinder_font";
++    EffectsParams[825].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[825].SortKey          = 10000;
++    EffectsParams[825].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[826].Name             = "lifebinder_sanctuary";
++    EffectsParams[826].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[826].SortKey          = 10000;
++    EffectsParams[826].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[827].Name             = "spellblade_conduction";
++    EffectsParams[827].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[827].SortKey          = 10000;
++    EffectsParams[827].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[828].Name             = "spellblade_ascendance";
++    EffectsParams[828].Flag             = xi::StatusEffectFlag::Death;
++    EffectsParams[828].SortKey          = 10000;
++    EffectsParams[828].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI MNK Chi Weaver custom status effects (829-830).
++    EffectsParams[829].Name             = "chiweaver_lotus";
++    EffectsParams[829].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[829].SortKey          = 10000;
++    EffectsParams[829].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[830].Name             = "chiweaver_harmony";
++    EffectsParams[830].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death;
++    EffectsParams[830].SortKey          = 10000;
++    EffectsParams[830].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RUN Spellblade Overcharge Runes status effect (831).
++    EffectsParams[831].Name             = "spellblade_overcharge";
++    EffectsParams[831].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[831].SortKey          = 10000;
++    EffectsParams[831].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI BRD custom spec status effects (832-836).
++    EffectsParams[832].Name             = "adventurer_cadence";
++    EffectsParams[832].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[832].SortKey          = 10000;
++    EffectsParams[832].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[833].Name             = "adventurer_encore";
++    EffectsParams[833].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[833].SortKey          = 10000;
++    EffectsParams[833].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[834].Name             = "musician_resonance";
++    EffectsParams[834].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[834].SortKey          = 10000;
++    EffectsParams[834].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[835].Name             = "musician_overdrive";
++    EffectsParams[835].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[835].SortKey          = 10000;
++    EffectsParams[835].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[836].Name             = "minstrel_iron_aria";
++    EffectsParams[836].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[836].SortKey          = 10000;
++    EffectsParams[836].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI SAM Crystal Spec status effects (837-841).
++    EffectsParams[837].Name             = "ronin_stagger";
++    EffectsParams[837].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[837].SortKey          = 10000;
++    EffectsParams[837].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[838].Name             = "imp_drawn_oisoya";
++    EffectsParams[838].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[838].SortKey          = 10000;
++    EffectsParams[838].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[839].Name             = "imp_cosmic_brand";
++    EffectsParams[839].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[839].SortKey          = 10000;
++    EffectsParams[839].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[840].Name             = "warlord_noto";
++    EffectsParams[840].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[840].SortKey          = 10000;
++    EffectsParams[840].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[841].Name             = "warlord_ashura";
++    EffectsParams[841].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[841].SortKey          = 10000;
++    EffectsParams[841].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI BST Alpha Warden Crystal Spec status effects (847-852).
++    EffectsParams[847].Name             = "alpha_pack_instinct";
++    EffectsParams[847].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[847].SortKey          = 10000;
++    EffectsParams[847].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[848].Name             = "alpha_rending_bite";
++    EffectsParams[848].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[848].SortKey          = 10000;
++    EffectsParams[848].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[849].Name             = "alpha_soul_bond";
++    EffectsParams[849].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[849].SortKey          = 10000;
++    EffectsParams[849].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[850].Name             = "alpha_feral_roar";
++    EffectsParams[850].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[850].SortKey          = 10000;
++    EffectsParams[850].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[851].Name             = "alpha_familiar_bond";
++    EffectsParams[851].Flag             = xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[851].SortKey          = 10000;
++    EffectsParams[851].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[852].Name             = "alpha_reward_bond";
++    EffectsParams[852].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[852].SortKey          = 10000;
++    EffectsParams[852].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI DRK Dreadnought Crystal Spec status effects (855-856).
++    EffectsParams[855].Name             = "blood_carapace";
++    EffectsParams[855].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[855].SortKey          = 10000;
++    EffectsParams[855].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[856].Name             = "dread_bastion";
++    EffectsParams[856].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[856].SortKey          = 10000;
++    EffectsParams[856].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI NIN Kagemusha Crystal Spec status effects (845-846).
++    EffectsParams[845].Name             = "kagemusha_shadow_smoke";
++    EffectsParams[845].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone;
++    EffectsParams[845].SortKey          = 10000;
++    EffectsParams[845].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[846].Name             = "kagemusha_bunshin";
++    EffectsParams[846].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[846].SortKey          = 10000;
++    EffectsParams[846].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI BLU Azure Bastion Crystal Spec status effects (857-859).
++    EffectsParams[857].Name             = "chitin_carapace";
++    EffectsParams[857].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[857].SortKey          = 10000;
++    EffectsParams[857].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[858].Name             = "azure_surge";
++    EffectsParams[858].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[858].SortKey          = 10000;
++    EffectsParams[858].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[859].Name             = "diamond_shell";
++    EffectsParams[859].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[859].SortKey          = 10000;
++    EffectsParams[859].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI RDM Crimson Duelist Crystal Spec status effects (853-854).
++    EffectsParams[853].Name             = "crimson_flow";
++    EffectsParams[853].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[853].SortKey          = 10000;
++    EffectsParams[853].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[854].Name             = "crimson_fleche";
++    EffectsParams[854].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[854].SortKey          = 10000;
++    EffectsParams[854].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI Healer Crystal Spec status effects (860-875).
++    EffectsParams[860].Name             = "solace_ward";
++    EffectsParams[860].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[860].SortKey          = 10000;
++    EffectsParams[860].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[861].Name             = "sacred_grace";
++    EffectsParams[861].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[861].SortKey          = 10000;
++    EffectsParams[861].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[862].Name             = "divine_veil";
++    EffectsParams[862].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[862].SortKey          = 10000;
++    EffectsParams[862].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[863].Name             = "lights_grace";
++    EffectsParams[863].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[863].SortKey          = 10000;
++    EffectsParams[863].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[864].Name             = "crusaders_aegis";
++    EffectsParams[864].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[864].SortKey          = 10000;
++    EffectsParams[864].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[865].Name             = "azure_catalyst";
++    EffectsParams[865].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[865].SortKey          = 10000;
++    EffectsParams[865].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[866].Name             = "osmotic_conduit";
++    EffectsParams[866].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[866].SortKey          = 10000;
++    EffectsParams[866].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[867].Name             = "crimson_veil";
++    EffectsParams[867].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[867].SortKey          = 10000;
++    EffectsParams[867].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[868].Name             = "sanguine_waltz";
++    EffectsParams[868].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[868].SortKey          = 10000;
++    EffectsParams[868].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[869].Name             = "celestial_sanctuary";
++    EffectsParams[869].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[869].SortKey          = 10000;
++    EffectsParams[869].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[870].Name             = "celestial_convergence";
++    EffectsParams[870].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[870].SortKey          = 10000;
++    EffectsParams[870].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[871].Name             = "clockwork_aegis";
++    EffectsParams[871].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[871].SortKey          = 10000;
++    EffectsParams[871].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[872].Name             = "barkskin";
++    EffectsParams[872].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[872].SortKey          = 10000;
++    EffectsParams[872].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[873].Name             = "canopy_of_the_ancients";
++    EffectsParams[873].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[873].SortKey          = 10000;
++    EffectsParams[873].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[874].Name             = "dragonscale";
++    EffectsParams[874].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[874].SortKey          = 10000;
++    EffectsParams[874].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[875].Name             = "dragonscale_sanctuary";
++    EffectsParams[875].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[875].SortKey          = 10000;
++    EffectsParams[875].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    // OverlordsXI Shared Party & Debuff Status Slots (876-881).
++    EffectsParams[876].Name             = "ox_sup_offense";
++    EffectsParams[876].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[876].SortKey          = 10000;
++    EffectsParams[876].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[877].Name             = "ox_sup_chain";
++    EffectsParams[877].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[877].SortKey          = 10000;
++    EffectsParams[877].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[878].Name             = "ox_sup_ward";
++    EffectsParams[878].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[878].SortKey          = 10000;
++    EffectsParams[878].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[879].Name             = "ox_deb_breach";
++    EffectsParams[879].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[879].SortKey          = 10000;
++    EffectsParams[879].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[880].Name             = "ox_deb_cripple";
++    EffectsParams[880].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[880].SortKey          = 10000;
++    EffectsParams[880].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[881].Name             = "ox_deb_expose";
++    EffectsParams[881].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[881].SortKey          = 10000;
++    EffectsParams[881].WearOffMessageId = MsgStd::EffectWearsOff;
+ }
+ 
+ // hacky way to get element from status effect
+@@ -181,6 +535,174 @@ auto statusOrdering(const std::unique_ptr<CStatusEffect>& AStatus, const std::un
+     return AStatus->GetStatusID() < BStatus->GetStatusID();
+ }
+ 
++struct DotAttributionEntry
++{
++    xi::StatusEffect statusId{ xi::StatusEffect::None };
++    uint32           originId{ 0 };
++    int32            regenDown{ 0 };
++};
++
++auto ResolveDotOrigin(CBattleEntity* PTarget, uint32 originId) -> CBattleEntity*
++{
++    if (originId == 0 || PTarget == nullptr)
++    {
++        return nullptr;
++    }
++
++    CBaseEntity* POrigin = nullptr;
++    if (originId < 0x01000000)
++    {
++        if (PTarget->loc.zone != nullptr)
++        {
++            POrigin = PTarget->loc.zone->GetCharByID(originId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetChar(originId);
++        }
++    }
++    else
++    {
++        if (PTarget->PInstance != nullptr)
++        {
++            const uint16 targId = static_cast<uint16>(originId & 0x00000800 ? (originId & 0x7FF) + 0x700 : originId & 0xFFF);
++            POrigin             = PTarget->GetEntity(targId);
++        }
++
++        if (POrigin == nullptr)
++        {
++            POrigin = zoneutils::GetEntity(originId);
++        }
++    }
++
++    if (POrigin != nullptr && POrigin->id != originId)
++    {
++        return nullptr;
++    }
++
++    return dynamic_cast<CBattleEntity*>(POrigin);
++}
++
++auto IsPlayerSideDotOrigin(const CBattleEntity* PTarget, const CBattleEntity* POrigin) -> bool
++{
++    if (PTarget == nullptr || POrigin == nullptr || POrigin == PTarget)
++    {
++        return false;
++    }
++
++    if (POrigin->objtype == TYPE_PC || POrigin->objtype == TYPE_TRUST || POrigin->objtype == TYPE_FELLOW)
++    {
++        return true;
++    }
++
++    if (POrigin->objtype == TYPE_PET)
++    {
++        return POrigin->PMaster == nullptr || POrigin->PMaster->objtype == TYPE_PC;
++    }
++
++    return false;
++}
++
++auto GetDisplayEntityName(const CBattleEntity* PEntity) -> std::string
++{
++    if (PEntity == nullptr)
++    {
++        return "";
++    }
++
++    std::string name = !PEntity->packetName.empty() ? PEntity->packetName : PEntity->getName();
++    std::replace(name.begin(), name.end(), '_', ' ');
++    return name;
++}
++
++auto GetDotDisplayName(xi::StatusEffect statusId) -> std::string
++{
++    switch (statusId)
++    {
++        case xi::StatusEffect::Poison:
++            return "Poison";
++        case xi::StatusEffect::Kaustra:
++            return "Kaustra";
++        case xi::StatusEffect::Burn:
++            return "Burn";
++        case xi::StatusEffect::Frost:
++            return "Frost";
++        case xi::StatusEffect::Choke:
++            return "Choke";
++        case xi::StatusEffect::Rasp:
++            return "Rasp";
++        case xi::StatusEffect::Shock:
++            return "Shock";
++        case xi::StatusEffect::Drown:
++            return "Drown";
++        case xi::StatusEffect::Dia:
++            return "Dia";
++        case xi::StatusEffect::Bio:
++            return "Bio";
++        case xi::StatusEffect::Helix:
++            return "Helix";
++        case xi::StatusEffect::Requiem:
++            return "Requiem";
++        default:
++            break;
++    }
++
++    if (static_cast<uint16>(statusId) == 540)
++    {
++        return "Geo-Poison";
++    }
++
++    std::string raw = effects::GetEffectName(static_cast<uint16>(statusId));
++    if (raw.empty())
++    {
++        return "DoT";
++    }
++
++    bool capitalizeNext = true;
++    for (char& ch : raw)
++    {
++        if (ch == '_')
++        {
++            ch             = ' ';
++            capitalizeNext = true;
++        }
++        else if (capitalizeNext)
++        {
++            ch             = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
++            capitalizeNext = false;
++        }
++    }
++
++    return raw;
++}
++
++void EmitDotDamageLog(CBattleEntity* PTarget, CBattleEntity* POrigin, xi::StatusEffect statusId, int32 damage)
++{
++    if (PTarget == nullptr || PTarget->objtype != TYPE_MOB || PTarget->loc.zone == nullptr || damage <= 0)
++    {
++        return;
++    }
++
++    if (!IsPlayerSideDotOrigin(PTarget, POrigin))
++    {
++        return;
++    }
++
++    const std::string casterName = GetDisplayEntityName(POrigin);
++    const std::string targetName = GetDisplayEntityName(PTarget);
++    if (casterName.empty() || targetName.empty())
++    {
++        return;
++    }
++
++    const std::string effectName = GetDotDisplayName(statusId);
++    const char*       pointWord  = damage == 1 ? "point" : "points";
++    const std::string message    = fmt::format("{}'s {} deals {} {} of damage to {}.", casterName, effectName, damage, pointWord, targetName);
++
++    PTarget->loc.zone->PushPacket(PTarget, CHAR_INRANGE, std::make_unique<GP_SERV_COMMAND_CHAT_STD>("", PTarget->getZone(), MESSAGE_SYSTEM_3, message));
++}
++
+ } // namespace
+ 
+ CStatusEffectContainer::CStatusEffectContainer(CBattleEntity* PEntity)
+@@ -1842,6 +2364,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                     if (PEffect && (PEffect->GetEffectFlags() & xi::StatusEffectFlag::AlwaysExpiring) != xi::StatusEffectFlag::None)
+                     {
+                         PEffect->SetStartTime(timer::now());
++                        PEffect->SetOriginID(PEntity->id);
+ 
+                         // Effect updated, probably from Ecliptic Attrition
+                         // Update status effect with new potency.
+@@ -1865,6 +2388,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                                                     4s);                                                      // Duration
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::NoLossMessage);
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::AlwaysExpiring);
++                        PEffect->SetOriginID(PEntity->id);
+                         PTarget->StatusEffectContainer->AddStatusEffect(std::unique_ptr<CStatusEffect>(PEffect), EffectNotice::Silent);
+                     }
+                 }
+@@ -1935,6 +2459,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                     if (PEffect && (PEffect->GetEffectFlags() & xi::StatusEffectFlag::AlwaysExpiring) != xi::StatusEffectFlag::None)
+                     {
+                         PEffect->SetStartTime(timer::now());
++                        PEffect->SetOriginID(PEntity->id);
+ 
+                         // Effect updated, probably from Ecliptic Attrition
+                         // Update status effect with new potency.
+@@ -1958,6 +2483,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
+                                                     4s);                                                      // Duration
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::NoLossMessage);
+                         PEffect->AddEffectFlag(xi::StatusEffectFlag::AlwaysExpiring);
++                        PEffect->SetOriginID(PEntity->id);
+                         PTarget->StatusEffectContainer->AddStatusEffect(std::unique_ptr<CStatusEffect>(PEffect), EffectNotice::Silent);
+                     }
+                 }
+@@ -1995,7 +2521,27 @@ void CStatusEffectContainer::TickEffects(timer::time_point tick)
+                     HandleAura(PStatusEffect.get());
+                 }
+                 PStatusEffect->IncrementElapsedTickCount();
+-                luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                if (m_POwner->objtype == TYPE_MOB &&
++                    (PStatusEffect->GetStatusID() == xi::StatusEffect::Helix ||
++                     (PStatusEffect->GetStatusID() == xi::StatusEffect::Bio && PStatusEffect->GetTier() >= 11)))
++                {
++                    const auto   statusId = PStatusEffect->GetStatusID();
++                    const uint32 originId = PStatusEffect->GetOriginID();
++                    const int32  hpBefore = m_POwner->health.hp;
++
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0)
++                    {
++                        EmitDotDamageLog(m_POwner, ResolveDotOrigin(m_POwner, originId), statusId, dealt);
++                    }
++                }
++                else
++                {
++                    luautils::OnEffectTick(m_POwner, PStatusEffect.get());
++                }
+             }
+         }
+     }
+@@ -2039,7 +2585,108 @@ void CStatusEffectContainer::TickRegen(timer::time_point tick)
+             monstrosity::ApplyIdleRegen(PChar);
+         }
+ 
+-        if (poison)
++        if (m_POwner->objtype == TYPE_MOB && poison > 0)
++        {
++            std::vector<DotAttributionEntry> dotEntries;
++            for (const auto& PStatusEffect : m_StatusEffectSet)
++            {
++                if (PStatusEffect == nullptr || PStatusEffect->isDeleted())
++                {
++                    continue;
++                }
++
++                int32 effectRegenDown = 0;
++                for (const auto& mod : PStatusEffect->modList())
++                {
++                    if (mod.getModID() == xi::Mod::REGEN_DOWN)
++                    {
++                        effectRegenDown += mod.getModAmount();
++                    }
++                }
++
++                const auto statusId = PStatusEffect->GetStatusID();
++                if (effectRegenDown <= 0 &&
++                    (statusId == xi::StatusEffect::Poison ||
++                     statusId == xi::StatusEffect::Requiem ||
++                     statusId == xi::StatusEffect::Kaustra))
++                {
++                    effectRegenDown = static_cast<int32>(PStatusEffect->GetPower());
++                }
++
++                if (effectRegenDown <= 0)
++                {
++                    continue;
++                }
++
++                CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, PStatusEffect->GetOriginID());
++                if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                {
++                    continue;
++                }
++
++                dotEntries.push_back({ statusId, PStatusEffect->GetOriginID(), effectRegenDown });
++            }
++
++            int32 remainingPoison = static_cast<int32>(poison);
++            bool  dealtAnyDamage  = false;
++
++            for (const auto& entry : dotEntries)
++            {
++                if (remainingPoison <= 0 || m_POwner->isDead() || m_POwner->health.hp == 0)
++                {
++                    break;
++                }
++
++                const int32 tickPortion = std::min(entry.regenDown, remainingPoison);
++                remainingPoison -= tickPortion;
++
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, tickPortion);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++
++                    CBattleEntity* POrigin = ResolveDotOrigin(m_POwner, entry.originId);
++                    if (!IsPlayerSideDotOrigin(m_POwner, POrigin))
++                    {
++                        POrigin = nullptr;
++                    }
++
++                    const int32 hpBefore = m_POwner->health.hp;
++                    m_POwner->takeDamage(damage, POrigin);
++                    const int32 dealt = std::max<int32>(0, hpBefore - m_POwner->health.hp);
++                    if (dealt > 0 && POrigin != nullptr)
++                    {
++                        EmitDotDamageLog(m_POwner, POrigin, entry.statusId, dealt);
++                    }
++                }
++            }
++
++            if (remainingPoison > 0 && !m_POwner->isDead() && m_POwner->health.hp > 0)
++            {
++                const int32 damage = battleutils::HandleStoneskin(m_POwner, remainingPoison);
++                if (damage > 0)
++                {
++                    dealtAnyDamage = true;
++                    DelStatusEffectSilent(xi::StatusEffect::Healing);
++                    m_POwner->takeDamage(damage);
++                }
++            }
++
++            if (dealtAnyDamage)
++            {
++                // If target has nightmare sleep. Don't break sleep from REGEN_DOWN damage
++                // see mobskills/nightmare.lua for full explanation
++                if (
++                    !(
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI) &&
++                        m_POwner->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::SleepI)->GetTier() >= 4)) // Tier 4 = Player Avatar Nightmare
++                {
++                    WakeUp();
++                }
++            }
++        }
++        else if (poison)
+         {
+             int16 damage = battleutils::HandleStoneskin(m_POwner, poison);
+ 

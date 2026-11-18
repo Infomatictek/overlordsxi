@@ -113,9 +113,8 @@ m:addOverride('xi.effects.solace_ward.onEffectGain', function(target, effect)
     effect:addMod(xi.mod.DMG, -800)
 end)
 
-m:addOverride('xi.effects.divine_veil.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1200)
-    effect:addMod(xi.mod.MEVA, 30)
+m:addOverride('xi.effects.divine_veil.onEffectGain', function(_target, _effect)
+    -- Party -DT and MEVA are routed through EFF_OX_SUP_WARD (capped at -15% DMG / +35 MEVA)
 end)
 
 -----------------------------------
@@ -320,6 +319,9 @@ m:addOverride('xi.actions.abilities.benediction.onUseAbility', function(player, 
             H.cleanseDebuffs(member, 10)
             H.restoreMpPct(member, 50)
             H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 25, 15, player, 0, xi.effect.SACROSANCTITY, 2)
+            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+                xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15, xi.effect.SACROSANCTITY)
+            end
         end)
         return 0
     end
@@ -341,6 +343,9 @@ m:addOverride('xi.actions.abilities.divine_veil.onUseAbility', function(player, 
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyStoneskinBarrier(member, skinAmt, skinAmt * 2, 10, player)
         H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 12, 10, player, 0, xi.effect.SACROSANCTITY, 1)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 10, xi.effect.SACROSANCTITY)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_DIVINE_VEIL

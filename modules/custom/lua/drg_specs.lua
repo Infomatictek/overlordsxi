@@ -99,9 +99,8 @@ end
 -----------------------------------
 -- Status Effect Modifiers
 -----------------------------------
-m:addOverride('xi.effects.dragonscale_sanctuary.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1500)
-    effect:addMod(xi.mod.MEVA, 30)
+m:addOverride('xi.effects.dragonscale_sanctuary.onEffectGain', function(_target, _effect)
+    -- Party -DT and MEVA are routed through EFF_OX_SUP_WARD (capped at -15% DMG / +35 MEVA)
 end)
 
 -----------------------------------
@@ -220,6 +219,9 @@ end)
 m:addOverride('xi.actions.abilities.dragonscale_sanctuary.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyCustomTimedEffect(member, EFFECT_DRAGONSCALE_SANCTUARY, 15, 12, player, 0, xi.effect.SPIRIT_SURGE, 1)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 30, 12, xi.effect.SPIRIT_SURGE)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_DRAGONSCALE_SANCTUARY

@@ -51,6 +51,18 @@ m:addOverride('xi.player.onPlayerLevelDown', function(player)
     end
 end)
 
+if xi and xi.pet and xi.pet.spawnPet then
+    m:addOverride('xi.pet.spawnPet', function(player, petId)
+        super(player, petId)
+        if player ~= nil and player:isPC() and spec.syncPetRoleMods then
+            local pet = player.getPet and player:getPet() or nil
+            if pet ~= nil then
+                spec.syncPetRoleMods(player, pet)
+            end
+        end
+    end)
+end
+
 -- Ensure !gear is registered even when hot-synced into a running xi_map process via FileWatcher
 package.loaded['modules/custom/commands/gear'] = nil
 pcall(require, 'modules/custom/commands/gear')

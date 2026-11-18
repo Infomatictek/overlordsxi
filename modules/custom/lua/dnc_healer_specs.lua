@@ -94,8 +94,8 @@ end
 -----------------------------------
 -- Status Effect Modifiers
 -----------------------------------
-m:addOverride('xi.effects.crimson_veil.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1500)
+m:addOverride('xi.effects.crimson_veil.onEffectGain', function(_target, _effect)
+    -- Party -DT is routed through EFF_OX_SUP_WARD (capped at -15% DMG)
 end)
 
 m:addOverride('xi.effects.sanguine_waltz.onEffectGain', function(target, effect)
@@ -146,6 +146,9 @@ local function attachVampireListeners(player)
         elseif WALTZ_ABILITIES[abilId] and caster:hasStatusEffect(xi.effect.CONTRADANCE) then
             H.forEachPartyMemberInRange(caster, 15, false, function(member)
                 H.applyCustomTimedEffect(member, EFFECT_CRIMSON_VEIL, 15, 10, caster, 0, xi.effect.CONTRADANCE, 1)
+                if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+                    xi.overlords.slots.applyPartyWard(caster, member, -1500, 0, 10, xi.effect.CONTRADANCE)
+                end
             end)
         end
     end)
@@ -229,7 +232,7 @@ m:addOverride('xi.actions.abilities.nocturne_feast.onAbilityCheck', function(pla
 end)
 
 m:addOverride('xi.actions.abilities.nocturne_feast.onUseAbility', function(player, target, ability)
-    local drain = math.min(math.floor(target:getHP() * 0.15), math.floor(player:getMaxHP() * 0.50))
+    local drain = math.min(math.floor(target:getHP() * 0.15), math.floor(player:getMaxHP() * 0.25))
     drain = math.max(50, drain)
     if target.takeDamage then
         target:takeDamage(drain, player, xi.attackType.SPECIAL, xi.damageType.NONE)

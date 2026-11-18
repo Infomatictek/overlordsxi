@@ -1981,7 +1981,6 @@ if xi.job and xi.job.SAM then
             mods = function(player, lvl)
                 local list =
                 {
-                    { xi.mod.ALL_WSDMG_ALL_HITS, -15 },
                 }
                 local isWiki = (player == nil) or (not player.getEquipID)
                 if not isWiki and not isGreatKatanaEquipped(player) then

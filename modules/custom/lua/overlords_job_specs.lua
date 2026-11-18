@@ -269,7 +269,7 @@ spec.SPEC_KEY_TIERS =
     musician       = 'HybridSupport',
     channeler      = 'HybridSupport',
     templar        = 'CombatHealer',
-    aegistemplar   = 'CombatHealer',
+    aegistemplar   = 'Tank',
     magus          = 'CombatHealer',
     vampire        = 'CombatHealer',
     animist        = 'CombatHealer',
@@ -660,8 +660,37 @@ function spec.getExtraAbilities(player)
     return getActiveEntryExtraIds(player, 'extraAbilities')
 end
 
+local DUAL_WIELD_SPEC_KEYS =
+{
+    magus        = true,
+    azurebastion = true,
+    adventurer   = true,
+    nightblade   = true,
+    freelancer   = true,
+}
+
 function spec.getExtraTraits(player)
-    return getActiveEntryExtraIds(player, 'extraTraits')
+    local ids = getActiveEntryExtraIds(player, 'extraTraits')
+    if player ~= nil and (player.getMainLvl and player:getMainLvl() or 1) >= 10 then
+        local active = spec.get(player, player.getMainJob and player:getMainJob() or nil)
+        if active ~= nil and spec.isLevelEligible(player, player:getMainJob(), active) then
+            local k = normalizeKey(active.key)
+            if k ~= nil and DUAL_WIELD_SPEC_KEYS[k] then
+                local dwTrait = (xi and xi.trait and xi.trait.DUAL_WIELD) or 18
+                local found = false
+                for _, id in ipairs(ids) do
+                    if id == dwTrait then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    table.insert(ids, 1, dwTrait)
+                end
+            end
+        end
+    end
+    return ids
 end
 
 local function upsertMod(list, modId, val)
@@ -705,7 +734,8 @@ function spec.evaluateMods(player, entry)
                     modId == xi.mod.ATTP or
                     modId == xi.mod.RATTP or
                     modId == xi.mod.MATT or
-                    modId == xi.mod.MACC
+                    modId == xi.mod.MACC or
+                    modId == xi.mod.ALL_WSDMG_ALL_HITS
                 ) then
                     skip = true
                 end
@@ -740,6 +770,45 @@ function spec.evaluateMods(player, entry)
     end
 
     return out
+end
+
+function spec.syncPetRoleMods(player, pet)
+    if player == nil or pet == nil or not xi or not xi.mod then
+        return
+    end
+    if pet.isAlive and not pet:isAlive() then
+        return
+    end
+
+    local tierCfg  = spec.getTierConfig(player)
+    local wantPhys = tierCfg and tierCfg.physDmgDealt or 0
+    local wantMag  = tierCfg and tierCfg.magDmgDealt or 0
+
+    if xi.mod.PHYS_DMG_DEALT and pet.getLocalVar and pet.setLocalVar and pet.addMod and pet.delMod then
+        local prevPhys = pet:getLocalVar('OX_ROLE_PHYS_DEALT') or 0
+        if prevPhys ~= wantPhys then
+            if prevPhys ~= 0 then
+                pet:delMod(xi.mod.PHYS_DMG_DEALT, prevPhys)
+            end
+            if wantPhys ~= 0 then
+                pet:addMod(xi.mod.PHYS_DMG_DEALT, wantPhys)
+            end
+            pet:setLocalVar('OX_ROLE_PHYS_DEALT', wantPhys)
+        end
+    end
+
+    if xi.mod.MAG_DMG_DEALT and pet.getLocalVar and pet.setLocalVar and pet.addMod and pet.delMod then
+        local prevMag = pet:getLocalVar('OX_ROLE_MAG_DEALT') or 0
+        if prevMag ~= wantMag then
+            if prevMag ~= 0 then
+                pet:delMod(xi.mod.MAG_DMG_DEALT, prevMag)
+            end
+            if wantMag ~= 0 then
+                pet:addMod(xi.mod.MAG_DMG_DEALT, wantMag)
+            end
+            pet:setLocalVar('OX_ROLE_MAG_DEALT', wantMag)
+        end
+    end
 end
 
 function spec.removeAppliedMods(player, invokeOnRemove)
@@ -847,6 +916,13 @@ function spec.refreshPlayer(player, opts)
     if player.addMod then
         for _, m in ipairs(mods) do
             player:addMod(m.mod, m.val)
+        end
+    end
+
+    if player.getPet then
+        local pet = player:getPet()
+        if pet ~= nil then
+            spec.syncPetRoleMods(player, pet)
         end
     end
 

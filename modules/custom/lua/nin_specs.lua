@@ -488,7 +488,11 @@ local function handleKagemushaFutaeCast(caster, target, spell)
         if target.addEnmity then
             target:addEnmity(caster, 200, 600)
         end
-        target:addStatusEffect(xi.effect.TERROR, { power = 1, duration = 5, origin = caster })
+        if target.isNM and target:isNM() then
+            target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = caster })
+        else
+            target:addStatusEffect(xi.effect.TERROR, { power = 1, duration = 5, origin = caster })
+        end
     end
 end
 
@@ -669,7 +673,6 @@ if xi.job and xi.job.NIN then
                     { xi.mod.DMG,                   scaleTier(lvl, -600, -900, -1200, -1600) },
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 
                 if isDualKatanasEquipped(player) then

@@ -755,7 +755,6 @@ if xi.job and xi.job.DRK then
                     { xi.mod.DMG,                   scaleTier(lvl, -800, -1100, -1400, -1800) },
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 
                 if isWiki then

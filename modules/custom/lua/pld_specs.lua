@@ -806,7 +806,6 @@ if xi.job and xi.job.PLD then
                     { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.CURE_POTENCY_RCVD,     scaleTier(lvl, 15, 20, 25, 30) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
 
                 if isWiki then

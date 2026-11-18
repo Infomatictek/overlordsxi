@@ -215,13 +215,9 @@ local function getGreatswordAPlusBonus(lvl)
     end
 end
 
--- Delta to adjust RUN's native B+ Enhancing Magic skill (240 @ 75) to B rank (230 @ 75) on Spellblade
-local function getEnhancingBRankDelta(lvl)
-    local l = math.max(1, lvl or 1)
-    if l <= 50 then
-        return 0
-    end
-    return -math.min(10, math.floor((l - 50) * 10 / 25))
+-- Keep Enhancing Magic at full native rank on Spellblade (no Lv.70+ skill penalty)
+local function getEnhancingBRankDelta(_lvl)
+    return 0
 end
 
 local function isRunSpec(entity, specKey)
@@ -1267,7 +1263,6 @@ if xi.job and xi.job.RUN then
                     { xi.mod.PARRY,                 scaleTier(lvl, 12, 24, 40, 50) },
                     { xi.mod.GSWORD,                scaleTier(lvl, 12, 24, 40, 50) },
                     { xi.mod.INQUARTATA,            scaleTier(lvl, 6, 10, 15, 18) },
-                    { xi.mod.ALL_WSDMG_ALL_HITS,    -15 },
                 }
             end,
             onApply = function(player)
@@ -2965,10 +2960,12 @@ end, function(player, target, _ability)
         iconId,
         {
             { xi.mod.REGEN, regenTick },
-            { xi.mod.DMG,   dtBps },
-            { xi.mod.MEVA,  mevaBonus },
         }
     )
+
+    if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+        xi.overlords.slots.applyPartyWard(player, recipient, dtBps, mevaBonus, 15, iconId)
+    end
 
     return EFFECT_SANCTIFIED_WARD
 end)

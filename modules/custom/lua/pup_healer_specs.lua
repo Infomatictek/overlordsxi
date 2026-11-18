@@ -74,8 +74,7 @@ end
 -----------------------------------
 -- Status Effect Modifiers
 -----------------------------------
-m:addOverride('xi.effects.clockwork_aegis.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1500)
+m:addOverride('xi.effects.clockwork_aegis.onEffectGain', function(_target, effect)
     effect:addMod(xi.mod.REGAIN, 20)
 end)
 
@@ -210,6 +209,9 @@ m:addOverride('xi.actions.abilities.clockwork_aegis.onUseAbility', function(play
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyStoneskinBarrier(member, skinAmt, skinAmt * 2, 12, player)
         H.applyCustomTimedEffect(member, EFFECT_CLOCKWORK_AEGIS, 15, 12, player, 0, xi.effect.REPRISAL, 1)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 12, xi.effect.REPRISAL)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_CLOCKWORK_AEGIS

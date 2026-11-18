@@ -113,8 +113,7 @@ m:addOverride('xi.effects.lights_grace.onEffectGain', function(target, effect)
     effect:addMod(xi.mod.REGEN, total)
 end)
 
-m:addOverride('xi.effects.crusaders_aegis.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1500)
+m:addOverride('xi.effects.crusaders_aegis.onEffectGain', function(_target, effect)
     effect:addMod(xi.mod.KNOCKBACK_IMMUNE, 1)
 end)
 
@@ -258,6 +257,9 @@ m:addOverride('xi.actions.abilities.rampart.onUseAbility', function(player, targ
     if isTemplar(player) then
         H.forEachPartyMemberInRange(player, 15, false, function(member)
             H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 15, player, 0, xi.effect.RAMPART, 1)
+            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15, xi.effect.RAMPART)
+            end
         end)
     end
     return res
@@ -269,6 +271,9 @@ m:addOverride('xi.actions.abilities.invincible.onUseAbility', function(player, t
             member:setHP(member:getMaxHP())
             H.cleanseDebuffs(member, 10)
             H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 20, 15, player, 0, xi.effect.INVINCIBLE, 2)
+            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15, xi.effect.INVINCIBLE)
+            end
         end)
         return 0
     end
@@ -305,6 +310,9 @@ end)
 m:addOverride('xi.actions.abilities.crusaders_aegis.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 10, player, 0, xi.effect.PALISADE, 1)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 10, xi.effect.PALISADE)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_CRUSADERS_AEGIS

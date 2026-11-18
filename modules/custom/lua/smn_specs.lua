@@ -85,9 +85,8 @@ m:addOverride('xi.effects.celestial_sanctuary.onEffectGain', function(target, ef
     effect:addMod(xi.mod.DMG, -1000)
 end)
 
-m:addOverride('xi.effects.celestial_convergence.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG, -1800)
-    effect:addMod(xi.mod.MEVA, 30)
+m:addOverride('xi.effects.celestial_convergence.onEffectGain', function(_target, _effect)
+    -- Party -DT and MEVA are routed through EFF_OX_SUP_WARD (capped at -15% DMG / +35 MEVA)
 end)
 
 -----------------------------------
@@ -213,6 +212,9 @@ end)
 m:addOverride('xi.actions.abilities.celestial_convergence.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_CONVERGENCE, 18, 12, player, 0, xi.effect.ASTRAL_FLOW, 1)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 30, 12, xi.effect.ASTRAL_FLOW)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_CELESTIAL_CONVERGENCE
