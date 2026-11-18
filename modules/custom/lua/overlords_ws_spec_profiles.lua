@@ -2,7 +2,7 @@
 -- OverlordsXI 16-Spec Bespoke Weaponskill Tree Synthesis Engine
 -- Generates 12 unique, combat-backed non-SC talent nodes (3 cols x 4 tiers)
 -- for every (WS, Spec) pair across all 16 concrete specs:
---   WAR: commander, berserker, gladiator
+--   WAR: commander, berserker, spartan (formerly gladiator)
 --   MNK: sensei, blackbelt, chiweaver (strictly 0 MP / 0 Refresh)
 --   RUN: inquisitor, spellblade, lifebinder
 --   SCH: medic, sage
@@ -19,7 +19,7 @@ P.ALL_SPECS =
 {
     'berserker',
     'commander',
-    'gladiator',
+    'spartan',
     'sensei',
     'blackbelt',
     'chiweaver',
@@ -145,9 +145,9 @@ local STANCE_DEFS =
         jobSpec = 'berserker',
         effects = { xi.effect.BERSERK, xi.effect.BLOOD_RAGE, xi.effect.AGGRESSOR, xi.effect.RESTRAINT, xi.effect.LAST_RESORT, xi.effect.SOULEATER, EFF_ZRK_SURGE },
     },
-    gladiator = {
+    spartan   = {
         label   = 'Vanguard',
-        jobSpec = 'gladiator',
+        jobSpec = 'spartan',
         effects = { xi.effect.DEFENDER, xi.effect.BLOOD_RAGE, xi.effect.RETALIATION, xi.effect.SENTINEL, xi.effect.RAMPART, EFF_GLD_WARD },
     },
     sensei = {
@@ -279,7 +279,7 @@ local SPEC_META =
 {
     commander      = { pfx = 'cmd', pref = 'str', role = 'dps',    tag = 'Banner',   col2 = 'Rally',    t1c3 = 'Tactic',    rmea = 'Signet',      col1 = { 'Order',     'Salvo',     'Decree'    } },
     berserker      = { pfx = 'zrk', pref = 'str', role = 'dps',    tag = 'Fury',     col2 = 'Carnage',  t1c3 = 'Ruin',      rmea = 'Roar',        col1 = { 'Wrath',     'Bloodbath', 'Butchery'  } },
-    gladiator      = { pfx = 'gld', pref = 'vit', role = 'tank',   tag = 'Pit',      col2 = 'Crimson',  t1c3 = 'Challenge', rmea = 'Crest',       col1 = { 'Brace',     'Pitwall',   'Arena'     } },
+    spartan        = { pfx = 'gld', pref = 'vit', role = 'tank',   tag = 'Spear',    col2 = 'Impaling',  t1c3 = 'Challenge', rmea = 'Crest',       col1 = { 'Brace',     'Pitwall',   'Arena'     } },
     sensei         = { pfx = 'sen', pref = 'vit', role = 'tank',   tag = 'Kata',     col2 = 'Riposte',  t1c3 = 'Form',      rmea = 'Kamae',       col1 = { 'Stance',    'Kataform',  'Dojomaster'} },
     blackbelt      = { pfx = 'bbt', pref = 'dex', role = 'dps',    tag = 'Fist',     col2 = 'Meridian', t1c3 = 'Tempo',     rmea = 'Oath',        col1 = { 'Strike',    'Combo',     'Finisher'  } },
     chiweaver      = { pfx = 'chw', pref = 'mnd', role = 'healer', tag = 'Chi',      col2 = 'Lotus',    t1c3 = 'Chakra',    rmea = 'Mantra',      col1 = { 'Flow',      'Calm',      'Mandala'   }, noMp = true },
@@ -350,7 +350,7 @@ local function buildT1C1(specKey, ctx)
     if ctx.isUtil then
         if ctx.wsId == 39 then -- Spirits Within (Breath HP scaling)
             local c = { 1.25, 1.85, 2.60 }
-            if specKey == 'gladiator' then
+            if specKey == 'spartan' then
                 return mkFtpNode(name, c, ' & +1..6% HP/+Enm',
                     function(r) return string.format(', +%d%% HP/+%d Enm', r, r * 6) end,
                     { selfMaxHpHealPct = lin(1, 6), enmity = lin(6, 6) })
@@ -380,7 +380,7 @@ local function buildT1C1(specKey, ctx)
                 'Self Heal 2..12% Max HP & +20..120 Party TP',
                 function(r) return string.format('Self +%d%% HP, +%d Party TP', h[r], p[r]) end,
                 { selfMaxHpHealPct = h, partyTp = p })
-        elseif specKey == 'gladiator' then
+        elseif specKey == 'spartan' then
             return mkNode(1, 1, 'ftp', name, 6,
                 '+12..72% Potency & Self +1..6% Max HP',
                 function(r) return string.format('+%d%% Potency, Self +%d%% HP', r * 12, r) end,
@@ -418,7 +418,7 @@ local function buildT1C1(specKey, ctx)
     end
 
     local c = ctx.ftpCurve
-    if specKey == 'gladiator' then
+    if specKey == 'spartan' then
         return mkFtpNode(name, c, ' & +6..36 Enm/+HP',
             function(r) return string.format(', +%d Enm/+%d%% HP', r * 6, math.ceil(r / 2)) end,
             { enmity = lin(6, 6), selfMaxHpHealPct = { 1, 1, 2, 2, 3, 3 } })
@@ -562,7 +562,7 @@ local function buildT1C2(specKey, ctx)
             function(r) return string.format('%s, +%d PtyTP', fmtWscShort(u1, u2, r), p[r]) end,
             { wsc = wsc, partyTp = p })
 
-    elseif specKey == 'gladiator' then
+    elseif specKey == 'spartan' then
         local h = { 2, 3, 5, 6, 8, 10, 12 }
         return mkNode(1, 2, key, name, 7,
             string.format('%s & Heal 2..12%% Max HP', wz),
@@ -702,7 +702,7 @@ local function buildT1C3(specKey, ctx)
     -- 1. Multi-hit physical rebuild (except blackbelt which already placed hits in T1C2)
     if ctx.isPhys and ctx.numHits >= 2 and specKey ~= 'blackbelt' then
         local hSeq, th = makeHitSequence(ctx.numHits, 7)
-        if specKey == 'gladiator' then
+        if specKey == 'spartan' then
             return mkNode(1, 3, key, name, 7,
                 string.format('1->%d Hits, +5..35 Enm & +HP', th),
                 function(r) return string.format('1->%dh, +%d Enm, +%d%% HP', hSeq[r], r * 5, math.ceil(r / 2)) end,
@@ -1299,7 +1299,7 @@ local function buildCol2Nodes(specKey, ctx)
                 { partyBuffs = {{ effect = xi.effect.REGAIN, power = lin(4, 5), duration = 21 }}, wsd = lin(7, 5) })
         end
 
-    elseif specKey == 'gladiator' then
+    elseif specKey == 'spartan' then
         if v == 1 then
             t2 = mkNode(2, 2, k2, m .. ' Ward', 5,
                 'Stoneskin 85..425 & +7..35 Enmity',
@@ -2325,7 +2325,7 @@ local STANCE_TITLES =
 {
     commander   = { 'Battlecry',  'Formation', 'Phalanx',   'Vanguard'  },
     berserker   = { 'Bloodlust',  'Berserk',   'Outrage',   'Rampancy'  },
-    gladiator   = { 'Defender',   'Gladius',   'Pit-Guard', 'Colosseum' },
+    spartan     = { 'Defender',   'Hoplite',   'Spear-Wall', 'Phalanx' },
     sensei      = { 'Dojo',       'Kamae-St',  'Kata-St',   'Zazen'     },
     blackbelt   = { 'Footwork',   'Focus-St',  'Oath-St',   'Kensei'    },
     chiweaver   = { 'Lotus-St',   'Harmony',   'Prana',     'Zen'       },
@@ -2355,7 +2355,7 @@ local T3C3_TITLES =
 {
     commander      = { 'Barrage',   'Pincer',    'Horn',      'Legion'    },
     berserker      = { 'Ravage',    'Havoc',     'Decimate',  'Overkill'  },
-    gladiator      = { 'Bastion',   'Tribute',   'Ironclad',  'Gauntlet'  },
+    spartan        = { 'Bastion',   'Aspis',     'Ironclad',  'Gauntlet'  },
     sensei         = { 'Parry',     'Disarm',    'Meditation','Balance'   },
     blackbelt      = { 'Momentum',  'Flurry',    'Impact',    'Velocity'  },
     chiweaver      = { 'Radiance',  'Breeze',    'Stillness', 'Mercy'     },
@@ -2386,7 +2386,7 @@ local T4C3_TITLES =
 {
     commander      = { 'Sovereign', 'Imperator', 'Strategos', 'Warmaster' },
     berserker      = { 'Apex',      'Warlord-Z', 'Massacre',  'Cataclysm' },
-    gladiator      = { 'Immortal',  'Colossus',  'Praetor',   'Titan'     },
+    spartan        = { 'Immortal',  'Leonidas',  'Praetor',   'Titan'     },
     sensei         = { 'Mastery',   'Zenith',    'Grandkata', 'Shogun'    },
     blackbelt      = { 'Grandfist', 'Pinnacle',  'Godhand',   'Supremacy' },
     chiweaver      = { 'Avatar',    'Halo',      'Transcend', 'Solstice'  },
@@ -2585,7 +2585,7 @@ end
 -----------------------------------
 local NO_SPIKE_SPECS =
 {
-    gladiator  = true,
+    spartan    = true,
     sensei     = true,
     inquisitor = true,
     ronin      = true,
@@ -2764,7 +2764,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
 {
     commander      = WAR_OPEN_SKILLS,
     berserker      = WAR_OPEN_SKILLS,
-    gladiator      = { [S.CLUB or 11] = true },
+    spartan        = { [S.POLEARM or 8] = true },
     blackbelt      = { [S.HAND_TO_HAND or 1] = true },
     chiweaver      = { [S.HAND_TO_HAND or 1] = true },
     sensei         = { [S.STAFF or 12] = true },

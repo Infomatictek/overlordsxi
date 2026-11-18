@@ -31,7 +31,7 @@ custom/sql/eos_companion.sql
 custom/sql/sch_specs.sql
 custom/sql/war_commander_abilities.sql
 custom/sql/war_berserker_abilities.sql
-custom/sql/war_gladiator_abilities.sql
+custom/sql/war_spartan_abilities.sql
 custom/sql/dnc_chakram_spec.sql
 custom/sql/dnc_mirage_spec.sql
 custom/sql/blm_necro_spec.sql

@@ -1,6 +1,6 @@
 -----------------------------------
 -- OverlordsXI Warrior Crystal Specs
--- Registers Warrior crystals (Commander, Berserker, Gladiator) and
+-- Registers Warrior crystals (Commander, Berserker, Spartan [formerly Gladiator]) and
 -- implements their passive scaling stats and ability transformations.
 -----------------------------------
 require('modules/module_utils')
@@ -16,7 +16,7 @@ local spec = xi.overlords.spec
 
 local COMMANDER_KEY = 'commander'
 local BERSERKER_KEY = 'berserker'
-local GLADIATOR_KEY = 'gladiator'
+local SPARTAN_KEY = 'spartan'
 
 local COMMANDER_BREACH_ABIL_ID  = 396
 local COMMANDER_BULWARK_ABIL_ID = 397
@@ -24,15 +24,15 @@ local COMMANDER_CADENCE_ABIL_ID = 398
 local COMMANDER_HORN_ABIL_ID    = 399
 local BERSERKER_SURGE_ABIL_ID   = 400
 local BERSERKER_CLEAVE_ABIL_ID  = 401
-local GLADIATOR_CRUSH_ABIL_ID   = 402
-local GLADIATOR_WARD_ABIL_ID    = 403
+local SPARTAN_THRUST_ABIL_ID   = 402
+local SPARTAN_WARD_ABIL_ID    = 403
 
 local COMMANDER_BREACH_EFFECT_ID  = 815
 local COMMANDER_BULWARK_EFFECT_ID = 816
 local COMMANDER_CADENCE_EFFECT_ID = 817
 local COMMANDER_REGROUP_EFFECT_ID = 818
 local BERSERKER_SURGE_EFFECT_ID   = 819
-local GLADIATOR_WARD_EFFECT_ID    = 820
+local SPARTAN_WARD_EFFECT_ID    = 820
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.TACTICAL_BREACH   = COMMANDER_BREACH_ABIL_ID
@@ -41,8 +41,10 @@ xi.jobAbility.BATTLE_CADENCE    = COMMANDER_CADENCE_ABIL_ID
 xi.jobAbility.RALLYING_HORN     = COMMANDER_HORN_ABIL_ID
 xi.jobAbility.BLOODLUST_SURGE   = BERSERKER_SURGE_ABIL_ID
 xi.jobAbility.SAVAGE_CLEAVE     = BERSERKER_CLEAVE_ABIL_ID
-xi.jobAbility.CRIMSON_CRUSH     = GLADIATOR_CRUSH_ABIL_ID
-xi.jobAbility.VANGUARD_WARD     = GLADIATOR_WARD_ABIL_ID
+xi.jobAbility.IMPALING_THRUST   = SPARTAN_THRUST_ABIL_ID
+xi.jobAbility.PHALANX_WARD      = SPARTAN_WARD_ABIL_ID
+xi.jobAbility.CRIMSON_CRUSH     = SPARTAN_THRUST_ABIL_ID -- legacy alias
+xi.jobAbility.VANGUARD_WARD     = SPARTAN_WARD_ABIL_ID   -- legacy alias
 
 xi.effect = xi.effect or {}
 xi.effect.COMMANDER_BREACH  = COMMANDER_BREACH_EFFECT_ID
@@ -50,7 +52,8 @@ xi.effect.COMMANDER_BULWARK = COMMANDER_BULWARK_EFFECT_ID
 xi.effect.COMMANDER_CADENCE = COMMANDER_CADENCE_EFFECT_ID
 xi.effect.COMMANDER_REGROUP = COMMANDER_REGROUP_EFFECT_ID
 xi.effect.BERSERKER_SURGE   = BERSERKER_SURGE_EFFECT_ID
-xi.effect.GLADIATOR_WARD    = GLADIATOR_WARD_EFFECT_ID
+xi.effect.GLADIATOR_WARD    = SPARTAN_WARD_EFFECT_ID -- legacy alias
+xi.effect.SPARTAN_WARD      = SPARTAN_WARD_EFFECT_ID
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
@@ -60,8 +63,8 @@ xi.actions.abilities.battle_cadence    = xi.actions.abilities.battle_cadence or 
 xi.actions.abilities.rallying_horn     = xi.actions.abilities.rallying_horn or {}
 xi.actions.abilities.bloodlust_surge   = xi.actions.abilities.bloodlust_surge or {}
 xi.actions.abilities.savage_cleave     = xi.actions.abilities.savage_cleave or {}
-xi.actions.abilities.crimson_crush     = xi.actions.abilities.crimson_crush or {}
-xi.actions.abilities.vanguard_ward     = xi.actions.abilities.vanguard_ward or {}
+xi.actions.abilities.impaling_thrust   = xi.actions.abilities.impaling_thrust or {}
+xi.actions.abilities.phalanx_ward      = xi.actions.abilities.phalanx_ward or {}
 
 xi.effects = xi.effects or {}
 xi.effects.commander_breach  = xi.effects.commander_breach or {}
@@ -134,128 +137,369 @@ local function hasShieldEquipped(player)
     return false
 end
 
-local function isClubAndShield(player)
-    if player == nil or (player.isPC and not player:isPC()) then
-        return false
-    end
+-----------------------------------
+-- Spartan helpers: Polearm + Size-1 Buckler, Spartan's Grit, Spear-Wall Brace
+-----------------------------------
+local GRIT_VAR       = 'OX_SPT_GRIT'
+local BRACE_VAR      = 'OX_SPT_BRACE'      -- 0 none, 1 light, 2 heavy
+local BRACE_MOD_VAR  = 'OX_SPT_BRACE_MOD'  -- DMG mod value currently applied
+local BRACE_TOK_VAR  = 'OX_SPT_BRACE_TOK'
+local ADRENALINE_VAR = 'OX_SPT_ADRENALINE'
+local TICK_VAR       = 'OX_SPT_TICK'
+local MAX_GRIT       = 5
 
-    if not player.getWeaponSkillType or not xi.slot or not xi.skill then
-        return false
-    end
+local gritBlockStamp = {}
 
-    if player:getWeaponSkillType(xi.slot.MAIN) ~= xi.skill.CLUB then
-        return false
-    end
-
-    return hasShieldEquipped(player)
+local function hasPolearmMain(player)
+    return player ~= nil and
+        player.getWeaponSkillType and
+        xi.slot and xi.skill and
+        player:getWeaponSkillType(xi.slot.MAIN) == xi.skill.POLEARM
 end
 
-local function isBloodthirsty(player)
-    if player == nil or not player.hasStatusEffect then
+-- Real Size-1 Buckler in SUB.
+local function hasSize1Buckler(player)
+    if player == nil or not player.getEquippedItem or not xi.slot then
         return false
     end
 
-    return player:hasStatusEffect(xi.effect.BLOOD_RAGE) or player:hasStatusEffect(xi.effect.MIGHTY_STRIKES)
+    local sub = player:getEquippedItem(xi.slot.SUB)
+    return sub ~= nil and sub.isShield ~= nil and sub:isShield() and sub:getShieldSize() == 1
 end
 
-local function healBloodthirsty(player, baseAmount)
-    if
-        player == nil or
-        not isWarriorSpec(player, GLADIATOR_KEY) or
-        not isClubAndShield(player)
-    then
+-- Real Size-1 Buckler or empty SUB (virtual Aspis Buckler).
+local function hasBucklerSetup(player)
+    if hasSize1Buckler(player) then
+        return true
+    end
+
+    return player ~= nil and player.getEquippedItem ~= nil and player:getEquippedItem(xi.slot.SUB) == nil
+end
+
+local function isPhalanxSetup(player)
+    return hasPolearmMain(player) and hasBucklerSetup(player)
+end
+
+local function getGrit(player)
+    return player:getLocalVar(GRIT_VAR)
+end
+
+local function addGrit(player, amount)
+    if player == nil or amount == nil or amount <= 0 then
         return 0
     end
 
-    local amount = math.max(0, math.floor(tonumber(baseAmount) or 0))
-    if amount <= 0 then
-        return 0
-    end
-
-    if isBloodthirsty(player) then
-        amount = amount * 2
-    end
-
-    if player.addHP then
-        player:addHP(amount)
-    end
-
-    return amount
+    local grit = utils.clamp(getGrit(player) + amount, 0, MAX_GRIT)
+    player:setLocalVar(GRIT_VAR, grit)
+    return grit
 end
 
-local function applyGladiatorBloodRage(target, origin, duration)
-    if target == nil then
-        return
+local function getTierIndex(lvl)
+    local l = lvl or 1
+    if l >= 70 then
+        return 4
+    elseif l >= 50 then
+        return 3
+    elseif l >= 30 then
+        return 2
+    end
+    return 1
+end
+
+local function pickTier(lvl, a, b, c, d)
+    local list = { a, b, c, d }
+    return list[getTierIndex(lvl)]
+end
+
+local function applyDebuff(target, effectId, power, duration, origin, mods)
+    if target == nil or xi.overlords == nil or xi.overlords.slots == nil then
+        return false
     end
 
-    local regenPower = 18
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
-        regenPower = xi.overlords.regen.computeHybridTick(origin or target, target, 18, 250)
-    else
-        local targetMaxHp = target.getMaxHP and math.max(0, target:getMaxHP() or 0) or 0
-        regenPower = 18 + math.floor(targetMaxHp * 250 / 10000)
+    local clean = {}
+    for _, pair in ipairs(mods) do
+        if pair[1] ~= nil then
+            table.insert(clean, pair)
+        end
     end
-    local targetId    = target:getID()
-    pendingBloodRageMods[targetId] =
+
+    return xi.overlords.slots.applySlot(target, effectId, power, duration, origin, clean, effectId)
+end
+
+-- Maim / Cripple: -15% ATTP, -20 ACC
+local function applyMaim(target, origin, duration)
+    applyDebuff(target, xi.effect.EFF_OX_DEB_CRIPPLE, 15, duration or 15, origin,
     {
-        { xi.mod.DMG,    -1000 },
-        { xi.mod.ENMITY, 25 },
-        { xi.mod.REGEN,  regenPower },
-    }
-    target:addStatusEffect(xi.effect.BLOOD_RAGE, { power = 5, duration = duration, origin = origin or target, subPower = 1 })
-    pendingBloodRageMods[targetId] = nil
+        { xi.mod.ATTP, -15 },
+        { xi.mod.ACC,  -20 },
+    })
 end
 
-local function detachGladiatorListeners(player)
-    if player ~= nil and player.removeListener then
-        player:removeListener('OX_GLAD_MELEE')
-        player:removeListener('OX_GLAD_WS')
+-- Off-Balance: -15 ACC, -15% Multi-Attack, +20% Cast Time
+local function applyOffBalance(target, origin)
+    applyDebuff(target, xi.effect.EFF_OX_DEB_EXPOSE, 15, 6, origin,
+    {
+        { xi.mod.ACC,           -15 },
+        { xi.mod.DOUBLE_ATTACK, -15 },
+        { xi.mod.TRIPLE_ATTACK, -15 },
+        { xi.mod.FASTCAST,      -20 },
+    })
+end
+
+-- Exposed Guard: -15% DEF / -15 MDEF, 0% Multi-Attack / Crit
+local function applyExposedGuard(target, origin)
+    applyDebuff(target, xi.effect.EFF_OX_DEB_BREACH, 15, 8, origin,
+    {
+        { xi.mod.DEFP,          -15 },
+        { xi.mod.MDEF,          -15 },
+        { xi.mod.DOUBLE_ATTACK, -100 },
+        { xi.mod.TRIPLE_ATTACK, -100 },
+        { xi.mod.CRITHITRATE,   -100 },
+    })
+end
+
+local function isTargetCasting(target)
+    if target == nil or not target.getCurrentAction or not xi.action then
+        return false
     end
+
+    local act = target:getCurrentAction()
+    return act == xi.action.MAGIC_START or act == xi.action.MAGIC_CASTING
 end
 
-local function attachGladiatorListeners(player)
-    if player == nil or not player.addListener then
+local function staggerTarget(target, origin, seconds, silenceSeconds)
+    if target == nil or not target.addStatusEffect then
         return
     end
 
-    detachGladiatorListeners(player)
+    target:addStatusEffect(xi.effect.STUN, { power = 1, duration = seconds, origin = origin })
+    if silenceSeconds ~= nil and silenceSeconds > 0 then
+        target:addStatusEffect(xi.effect.SILENCE, { power = 1, duration = silenceSeconds, origin = origin })
+    end
+end
 
-    player:addListener('MELEE_SWING_HIT', 'OX_GLAD_MELEE', function(actor, target)
+-- Brace: a one-shot damage cut implemented as a temporary DMG mod that is
+-- removed the moment the next hit lands (TAKE_DAMAGE).
+local function disarmBrace(player)
+    if player == nil then
+        return
+    end
+
+    local applied = player:getLocalVar(BRACE_MOD_VAR)
+    if applied ~= 0 then
+        player:delMod(xi.mod.DMG, applied)
+    end
+
+    player:setLocalVar(BRACE_MOD_VAR, 0)
+    player:setLocalVar(BRACE_VAR, 0)
+end
+
+local function armBrace(player, level)
+    if player == nil then
+        return
+    end
+
+    disarmBrace(player)
+
+    -- Light: -25% hit damage. Heavy: -50% hit damage.
+    local dmgMod = level >= 2 and -5000 or -2500
+    player:addMod(xi.mod.DMG, dmgMod)
+    player:setLocalVar(BRACE_MOD_VAR, dmgMod)
+    player:setLocalVar(BRACE_VAR, level)
+
+    local token = player:getLocalVar(BRACE_TOK_VAR) + 1
+    player:setLocalVar(BRACE_TOK_VAR, token)
+    player:timer(10000, function(p)
+        if p ~= nil and p:getLocalVar(BRACE_TOK_VAR) == token and p:getLocalVar(BRACE_VAR) > 0 then
+            disarmBrace(p)
+        end
+    end)
+end
+
+-- Iron Resolve: HP barrier from consumed Grit. Non-stacking (never replaces a stronger barrier).
+local function applyIronResolve(player, stacks)
+    if stacks <= 0 then
+        return
+    end
+
+    local lvl      = player:getMainLvl()
+    local perStack = pickTier(lvl, 4, 5, 6, 7)
+    local capPct   = hasSize1Buckler(player) and 40 or 35
+    local pct      = math.min(capPct, perStack * stacks)
+    local amount   = math.floor(player:getMaxHP() * pct / 100)
+
+    local existing = player:getStatusEffect(xi.effect.STONESKIN)
+    if existing ~= nil and existing:getPower() >= amount then
+        return
+    end
+
+    player:delStatusEffectSilent(xi.effect.STONESKIN)
+    player:addStatusEffect(xi.effect.STONESKIN, { power = amount, duration = 30, origin = player })
+end
+
+-- Adrenaline Surge: 20% Max HP self-heal below 50% HP, 30s ICD.
+local function tryAdrenalineSurge(player)
+    if player == nil or not isWarriorSpec(player, SPARTAN_KEY) then
+        return
+    end
+
+    local maxHp = player:getMaxHP()
+    if maxHp <= 0 or player:getHP() >= maxHp * 0.5 then
+        return
+    end
+
+    local now = os.time()
+    if now < player:getLocalVar(ADRENALINE_VAR) then
+        return
+    end
+
+    player:setLocalVar(ADRENALINE_VAR, now + 30)
+    player:addHP(math.floor(maxHp * 0.20))
+end
+
+local function onSpartanHit(defender, amount, attacker, attackType)
+    if defender == nil or not isWarriorSpec(defender, SPARTAN_KEY) or not isPhalanxSetup(defender) then
+        return
+    end
+
+    if (amount or 0) <= 0 and attacker == nil then
+        return
+    end
+
+    local brace = defender:getLocalVar(BRACE_VAR)
+    local spell = attackType == xi.attackType.MAGICAL or attackType == xi.attackType.SPELL
+
+    if brace > 0 then
+        disarmBrace(defender)
+
+        if attacker ~= nil and attacker.getID then
+            if brace >= 2 then
+                -- Phalanx Deflection
+                defender:setLocalVar(GRIT_VAR, MAX_GRIT)
+                staggerTarget(attacker, defender, 2, spell and 4 or 0)
+                applyExposedGuard(attacker, defender)
+            else
+                -- Light Brace
+                addGrit(defender, 1)
+                applyOffBalance(attacker, defender)
+            end
+        end
+
+        return
+    end
+
+    local stamp = gritBlockStamp[defender:getID()]
+    if stamp ~= nil and os.clock() - stamp < 0.5 then
+        return
+    end
+
+    addGrit(defender, 1)
+end
+
+-- Tactical Instinct: warn when the engaged target is coiling for a heavy attack / casting.
+local function startTacticalInstinct(player)
+    if player == nil or not player.timer then
+        return
+    end
+
+    local token = player:getLocalVar(TICK_VAR) + 1
+    player:setLocalVar(TICK_VAR, token)
+
+    local warnedTp, warnedCast = false, false
+
+    local function tick(p)
         if
-            actor == nil or
-            target == nil or
-            target == actor or
-            not isWarriorSpec(actor, GLADIATOR_KEY) or
-            not isClubAndShield(actor)
+            p == nil or
+            p:getLocalVar(TICK_VAR) ~= token or
+            not isWarriorSpec(p, SPARTAN_KEY)
         then
             return
         end
 
-        local maxHp = actor.getMaxHP and actor:getMaxHP() or 0
-        local lvl = actor.getMainLvl and actor:getMainLvl() or 10
-        local baseHeal = math.max(4, math.floor(maxHp * 0.01) + math.floor(lvl * 0.2))
-        healBloodthirsty(actor, baseHeal)
+        local target = p.getTarget and p:getTarget() or nil
+        if target ~= nil and target.getTP and p:getBattleTarget() ~= nil then
+            if target:getTP() >= 750 then
+                if not warnedTp then
+                    warnedTp = true
+                    p:printToPlayer(string.format('[Sense] %s is coiling for a heavy attack!', target:getName()))
+                end
+            else
+                warnedTp = false
+            end
+
+            if isTargetCasting(target) then
+                if not warnedCast then
+                    warnedCast = true
+                    p:printToPlayer(string.format('[Sense] %s is coiling for a heavy attack!', target:getName()))
+                end
+            else
+                warnedCast = false
+            end
+        else
+            warnedTp, warnedCast = false, false
+        end
+
+        p:timer(1500, tick)
+    end
+
+    player:timer(1500, tick)
+end
+
+local function detachSpartanListeners(player)
+    if player ~= nil and player.removeListener then
+        player:removeListener('OX_SPT_HIT')
+        player:removeListener('OX_SPT_WS')
+    end
+
+    if player ~= nil then
+        player:setLocalVar(TICK_VAR, player:getLocalVar(TICK_VAR) + 1)
+        disarmBrace(player)
+        player:setLocalVar(GRIT_VAR, 0)
+        player:setLocalVar('OX_POLEARM_BUCKLER', 0)
+    end
+end
+
+local function attachSpartanListeners(player)
+    if player == nil or not player.addListener then
+        return
+    end
+
+    detachSpartanListeners(player)
+    player:setLocalVar('OX_POLEARM_BUCKLER', 1)
+
+    player:addListener('TAKE_DAMAGE', 'OX_SPT_HIT', function(defender, amount, attacker, attackType, _damageType)
+        onSpartanHit(defender, amount, attacker, attackType)
     end)
 
-    player:addListener('WEAPONSKILL_USE', 'OX_GLAD_WS', function(actor, target, _ws, tp, _action, dmg)
+    -- Spartan's Grit: any Polearm WS (that landed) converts Grit into Iron Resolve.
+    player:addListener('WEAPONSKILL_USE', 'OX_SPT_WS', function(actor, target, _ws, _tp, _action, dmg)
         if
             actor == nil or
             target == nil or
             target == actor or
             (dmg ~= nil and dmg <= 0) or
-            not isWarriorSpec(actor, GLADIATOR_KEY) or
-            not isClubAndShield(actor)
+            not isWarriorSpec(actor, SPARTAN_KEY) or
+            not hasPolearmMain(actor)
         then
             return
         end
 
-        local maxHp = actor.getMaxHP and actor:getMaxHP() or 0
-        local spentTp = tonumber(tp) or 1000
-        local extraSteps = math.min(2, math.max(0, (spentTp - 1000) / 1000))
-        local pct = 0.03 + (0.01 * extraSteps)
-        local baseHeal = math.max(12, math.floor(maxHp * pct))
-        healBloodthirsty(actor, baseHeal)
+        local stacks = getGrit(actor)
+        if stacks <= 0 then
+            return
+        end
+
+        actor:setLocalVar(GRIT_VAR, 0)
+        applyIronResolve(actor, stacks)
+
+        if target.addEnmity then
+            target:addEnmity(actor, 100 * stacks, 300 * stacks)
+        end
+
+        applyMaim(target, actor, 15)
     end)
+
+    startTacticalInstinct(player)
 end
 
 local function clearOtherCommanderStances(player, keepEffectId)
@@ -382,50 +626,56 @@ if xi.job and xi.job.WAR then
         },
         {
             id          = 3,
-            key         = GLADIATOR_KEY,
-            name        = 'Gladiator',
-            role        = 'Bloodthirsty Club & Shield Tank',
+            key         = SPARTAN_KEY,
+            name        = 'Spartan',
+            role        = 'Phalanx Spear-Wall & Grit Barrier Tank',
             icon        = 'amber_crescent',
             reqLevel    = 10,
             extraAbilities =
             {
-                GLADIATOR_CRUSH_ABIL_ID,
-                GLADIATOR_WARD_ABIL_ID,
+                SPARTAN_THRUST_ABIL_ID,
+                SPARTAN_WARD_ABIL_ID,
             },
             extraTraits = { 142 },
-            description = 'Bloodthirsty Club & Shield tank (Lv10+): extreme sturdiness, Shield Mastery, high enmity, and Bloodthirsty self-healing at the cost of much lower damage output.',
+            description = 'Frontline phalanx tank (Lv10+): requires a Polearm paired with a Size-1 Buckler (or an empty SUB for a virtual Aspis Buckler) to unlock Spear-Wall Guard/Block, Spartan\'s Grit damage-to-barrier conversion, and charge-based Melee & Spell Brace deflection.',
             highlights  =
             {
-                'Passives (Lv10/30/50+): +10/15/22% Max HP, +6/12/20 VIT, +12/20/30% DEF, -6/10/15% Damage Taken, +15/25/40 Enmity, +10/15/20% Cure Rcvd.',
-                'Club & Shield Mastery: +10/20/35 Club & Shield skill, +12/24/40 Shield DEF, +8/14/22% Block Rate, +15/25/40 Shield TP (+10% Block w/ Club+Shield).',
-                'Crimson Crush (Lv10, 20s CD, Enemy 4y, Club+Shield): High-enmity bloodthirsty club strike that drains 4/6/8/10% Max HP (2x during Blood Rage or Mighty Strikes).',
-                'Vanguard Ward (Lv10, 30s CD, 12s, Self): +12/18/25/35% Shield Block Rate, -8/10/12/15% Damage Taken, and +20/30/40/50 Enmity.',
-                'Lower Damage Output: -25% Attack%, -25% Ranged Attack%, and -20% Weaponskill Damage.',
-                'Bloodthirsty Leech (Club+Shield): Club hits heal 1% Max HP + 0.2*Lv, Club WSs heal 3-5% Max HP, Shield Blocks heal 1.5% Max HP (2x under Blood Rage or Mighty Strikes).',
-                'Tank JAs: Defender (+35% DEF, -10% PDT, +15% Block), Blood Rage (-10% DT, +25 Enmity, Regen, 2x Leech), Warcry (party -8% DT; self +12 Enmity & 15% HP heal), Mighty Strikes (-25% DT, +50 Enmity, 2x Leech).',
+                'Passives (Lv10/30/50/70+): +12/16/20/25% Max HP, +8/14/20/26 VIT, +14/20/26/32% DEF (+12/24/36/48 Shield DEF), -8/11/14/18% Damage Taken, +60/80/100/120 Enmity, +20/30/40/50% Enmity Retention.',
+                'Phalanx Spear & Buckler Mastery: +15/25/35/50 Polearm & Shield skill, +10/16/22/28% Block Rate, +15/25/35/45 Shield TP. Real Size-1 Buckler: +10% Block and Iron Resolve cap 40% Max HP; empty SUB: 10% virtual Aspis Buckler block.',
+                'Spartan\'s Grit: taking damage or blocking grants +1 Grit (max 5). Any Polearm WS consumes all Grit for an Iron Resolve barrier (4/5/6/7% Max HP per stack, cap 35%/40%), heavy enmity, and Maim.',
+                'Impaling Thrust (Lv10, 20s CD, Enemy 8y, Polearm): Stun 2s (+5s Silence mid-cast), Maim, +2 Grit (+4 during Defender / Mighty Strikes).',
+                'Phalanx Ward (Lv10, 35s CD, 2 Grit, Self 12s, Polearm): +15/22/30/38% Block, -10/12/15/18% DT, +25/35/45/55 Enmity, Knockback Immunity, arms a Heavy Brace.',
+                'Spear-Wall Brace: Defender (15s CD) arms a Light Brace (-25% next hit, +1 Grit, Off-Balance). Heavy Brace: -50% next hit, Grit to 5, 2s Stun, Exposed Guard (+4s Silence vs spells).',
+                'Tactical Instinct: warns when your target crosses 750 TP or begins casting.',
+                'Tier 6 Tank: -60% Physical & Magical Damage Dealt, no negative ATTP/RATTP/WSD penalties.',
+                'WAR JAs: Warcry (party -8% DMG, +20 self Enmity, Adrenaline Surge below 50% HP), Provoke (Adrenaline Surge below 50% HP), Mighty Strikes (-25% DT, +50 Enmity, instant 5 Grit).',
             },
             mods = function(_player, lvl)
-                return
+                local mods =
                 {
-                    { xi.mod.HPP,                  scaleTier(lvl, 10, 15, 22) },
-                    { xi.mod.VIT,                  scaleTier(lvl, 6, 12, 20) },
-                    { xi.mod.DEFP,                 scaleTier(lvl, 12, 20, 30) },
-                    { xi.mod.DMG,                  scaleTier(lvl, -600, -1000, -1500) },
-                    { xi.mod.ENMITY,               scaleTier(lvl, 15, 25, 40) },
-                    { xi.mod.CURE_POTENCY_RCVD,    scaleTier(lvl, 10, 15, 20) },
-                    { xi.mod.CLUB,                 scaleTier(lvl, 10, 20, 35) },
-                    { xi.mod.SHIELD,               scaleTier(lvl, 10, 20, 35) },
-                    { xi.mod.DEF,                  scaleTier(lvl, 12, 24, 40) },
-                    { xi.mod.SHIELD_DEF_BONUS,     scaleTier(lvl, 2, 4, 6) },
-                    { xi.mod.PALISADE_BLOCK_BONUS, scaleTier(lvl, 8, 14, 22) },
-                    { xi.mod.SHIELD_MASTERY_TP,    scaleTier(lvl, 15, 25, 40) },
+                    { xi.mod.HPP,                  pickTier(lvl, 12, 16, 20, 25) },
+                    { xi.mod.VIT,                  pickTier(lvl, 8, 14, 20, 26) },
+                    { xi.mod.DEFP,                 pickTier(lvl, 14, 20, 26, 32) },
+                    { xi.mod.SHIELD_DEF_BONUS,     pickTier(lvl, 12, 24, 36, 48) },
+                    { xi.mod.DMG,                  pickTier(lvl, -800, -1100, -1400, -1800) },
+                    { xi.mod.ENMITY,               pickTier(lvl, 60, 80, 100, 120) },
+                    { xi.mod.POLEARM,              pickTier(lvl, 15, 25, 35, 50) },
+                    { xi.mod.SHIELD,               pickTier(lvl, 15, 25, 35, 50) },
+                    { xi.mod.PALISADE_BLOCK_BONUS, pickTier(lvl, 10, 16, 22, 28) },
+                    { xi.mod.SHIELD_MASTERY_TP,    pickTier(lvl, 15, 25, 35, 45) },
                 }
+
+                if xi.mod.ENMITY_LOSS_REDUCTION then
+                    table.insert(mods, { xi.mod.ENMITY_LOSS_REDUCTION, pickTier(lvl, 20, 30, 40, 50) })
+                end
+
+                return mods
             end,
             onApply = function(player)
-                attachGladiatorListeners(player)
+                attachSpartanListeners(player)
             end,
             onRemove = function(player)
-                detachGladiatorListeners(player)
+                detachSpartanListeners(player)
             end,
         },
     })
@@ -491,9 +741,13 @@ m:addOverride('xi.job_utils.warrior.useDefender', function(player, target, abili
         local duration = 180 + player:getMod(xi.mod.DEFENDER_DURATION)
         player:addStatusEffect(xi.effect.DEFENDER, { power = 15, duration = duration, origin = player, subPower = 1 })
         return xi.effect.DEFENDER
-    elseif isWarriorSpec(player, GLADIATOR_KEY) then
+    elseif isWarriorSpec(player, SPARTAN_KEY) then
         local duration = 180 + player:getMod(xi.mod.DEFENDER_DURATION)
-        player:addStatusEffect(xi.effect.DEFENDER, { power = 35, duration = duration, origin = player, subPower = 2 })
+        player:addStatusEffect(xi.effect.DEFENDER, { power = 30, duration = duration, origin = player, subPower = 2 })
+        if hasPolearmMain(player) then
+            armBrace(player, 1)
+        end
+
         return xi.effect.DEFENDER
     end
 
@@ -513,10 +767,11 @@ m:addOverride('xi.effects.defender.onEffectGain', function(target, effect)
         effect:addMod(xi.mod.ATTP, 15)
         effect:addMod(xi.mod.RATTP, 15)
     elseif tag == 2 then
-        -- Gladiator Defender (Iron Bastion): +35% DEFP, -10% PDT, +15% Block Rate, +20 Shield DEF
+        -- Spartan Defender (Spear-Wall): +30% DEFP, -10% PDT, +15% Block, zero Attack penalty, arms Light Brace
         effect:addMod(xi.mod.DMGPHYS, -1000)
         effect:addMod(xi.mod.PALISADE_BLOCK_BONUS, 15)
-        effect:addMod(xi.mod.SHIELD_DEF_BONUS, 20)
+        effect:addMod(xi.mod.ATTP, 25)
+        effect:addMod(xi.mod.RATTP, 25)
     end
 end)
 
@@ -530,7 +785,7 @@ m:addOverride('xi.job_utils.warrior.useAggressor', function(player, target, abil
         local merits = player:getMerit(xi.merit.AGGRESSIVE_AIM)
         player:addStatusEffect(xi.effect.AGGRESSOR, { power = merits, duration = 180 + player:getMod(xi.mod.AGGRESSOR_DURATION), origin = player, subPower = 1 })
         return xi.effect.AGGRESSOR
-    elseif isWarriorSpec(player, GLADIATOR_KEY) then
+    elseif isWarriorSpec(player, SPARTAN_KEY) then
         local merits = player:getMerit(xi.merit.AGGRESSIVE_AIM)
         player:addStatusEffect(xi.effect.AGGRESSOR, { power = merits, duration = 180 + player:getMod(xi.mod.AGGRESSOR_DURATION), origin = player, subPower = 2 })
         return xi.effect.AGGRESSOR
@@ -569,7 +824,7 @@ m:addOverride('xi.job_utils.warrior.useRetaliation', function(player, target, ab
         clearOtherCommanderStances(player, xi.effect.RETALIATION)
         player:addStatusEffect(xi.effect.RETALIATION, { power = 1, duration = 180, origin = player, subPower = 2 })
         return xi.effect.RETALIATION
-    elseif isWarriorSpec(player, GLADIATOR_KEY) then
+    elseif isWarriorSpec(player, SPARTAN_KEY) then
         player:addStatusEffect(xi.effect.RETALIATION, { power = 1, duration = 180, origin = player, subPower = 3 })
         return xi.effect.RETALIATION
     end
@@ -612,16 +867,7 @@ m:addOverride('xi.job_utils.warrior.useRestraint', function(player, target, abil
 end)
 
 m:addOverride('xi.job_utils.warrior.useBloodRage', function(player, target, ability)
-    if isWarriorSpec(player, GLADIATOR_KEY) then
-        local duration = 45 + player:getMod(xi.mod.ENHANCES_BLOOD_RAGE)
-        applyGladiatorBloodRage(target, player, duration)
-
-        if player:getID() ~= target:getID() then
-            ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
-        end
-
-        return xi.effect.BLOOD_RAGE
-    elseif isWarriorSpec(player, BERSERKER_KEY) then
+    if isWarriorSpec(player, BERSERKER_KEY) then
         local power    = 30 + player:getJobPointLevel(xi.jp.BLOOD_RAGE_EFFECT)
         local duration = 45 + player:getMod(xi.mod.ENHANCES_BLOOD_RAGE)
 
@@ -657,8 +903,8 @@ end)
 m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability)
     local isCmd  = isWarriorSpec(player, COMMANDER_KEY)
     local isBrk  = isWarriorSpec(player, BERSERKER_KEY)
-    local isGlad = isWarriorSpec(player, GLADIATOR_KEY)
-    if not isCmd and not isBrk and not isGlad then
+    local isSpt  = isWarriorSpec(player, SPARTAN_KEY)
+    if not isCmd and not isBrk and not isSpt then
         return super(player, target, ability)
     end
 
@@ -726,30 +972,26 @@ m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability
         return xi.effect.WARCRY
     end
 
-    if isGlad then
+    if isSpt then
         local isSelf   = (player:getID() == target:getID())
-        local merit    = player:getMerit(xi.merit.SAVAGERY)
         local duration = 30 + player:getMod(xi.mod.WARCRY_DURATION)
 
         if target:hasStatusEffect(xi.effect.WARCRY) then
             target:delStatusEffectSilent(xi.effect.WARCRY)
         end
 
-        local targetId = target:getID()
-        local mods =
-        {
-            { xi.mod.DMG, -800 },
-        }
-        if isSelf then
-            table.insert(mods, { xi.mod.ENMITY, 12 })
+        -- Party -8% DMG routed through the capped shared ward slot (EFF_OX_SUP_WARD)
+        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
+            xi.overlords.slots.applyPartyWard(player, target, -800, 0, duration, xi.effect.WARCRY)
         end
-        pendingWarcryMods[targetId] = mods
-        target:addStatusEffect(xi.effect.WARCRY, { power = 0, duration = duration, origin = player, subPower = merit })
+
+        local targetId = target:getID()
+        pendingWarcryMods[targetId] = isSelf and { { xi.mod.ENMITY, 20 } } or nil
+        target:addStatusEffect(xi.effect.WARCRY, { power = 0, duration = duration, origin = player, subPower = player:getMerit(xi.merit.SAVAGERY) })
         pendingWarcryMods[targetId] = nil
 
-        if isSelf and player.addHP and player.getMaxHP then
-            local selfHeal = math.max(15, math.floor(player:getMaxHP() * 0.15))
-            player:addHP(selfHeal)
+        if isSelf then
+            tryAdrenalineSurge(player)
         else
             ability:setMsg(xi.msg.basic.JA_ATK_ENHANCED)
         end
@@ -787,29 +1029,13 @@ m:addOverride('xi.effects.warcry.onEffectGain', function(target, effect)
     end
 end)
 
-m:addOverride('xi.job_utils.warrior.useWarriorsCharge', function(player, target, ability, action)
-    if not isWarriorSpec(player, GLADIATOR_KEY) then
-        return super(player, target, ability, action)
-    end
-
-    local merits = player:getMerit(xi.merit.WARRIORS_CHARGE)
-    player:addStatusEffect(xi.effect.WARRIORS_CHARGE, { power = math.max(merits - 5, 5), duration = 60, origin = player })
-    applyGladiatorBloodRage(player, player, 20)
-
-    if player.addHP and player.getMaxHP then
-        local selfHeal = math.max(10, math.floor(player:getMaxHP() * 0.10))
-        player:addHP(selfHeal)
-    end
-
-    return xi.effect.WARRIORS_CHARGE
-end)
-
 m:addOverride('xi.job_utils.warrior.useMightyStrikes', function(player, target, ability)
-    if not isWarriorSpec(player, GLADIATOR_KEY) then
+    if not isWarriorSpec(player, SPARTAN_KEY) then
         return super(player, target, ability)
     end
 
     player:addStatusEffect(xi.effect.MIGHTY_STRIKES, { power = 1, duration = 60, origin = player, subPower = 2 })
+    player:setLocalVar(GRIT_VAR, MAX_GRIT)
 
     return xi.effect.MIGHTY_STRIKES
 end)
@@ -833,12 +1059,12 @@ m:addOverride('xi.effects.mighty_strikes.onEffectLose', function(target, effect)
 end)
 
 -----------------------------------
--- Gladiator Club & Shield Block Mastery + Bloodthirsty Sustain
+-- Spartan Phalanx Block Mastery + Grit on Block
 -----------------------------------
 m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attacker)
     local rate = super(defender, attacker)
 
-    if isWarriorSpec(defender, GLADIATOR_KEY) and isClubAndShield(defender) then
+    if isWarriorSpec(defender, SPARTAN_KEY) and hasPolearmMain(defender) and hasSize1Buckler(defender) then
         rate = utils.clamp((tonumber(rate) or 0) + 10, 5, 100)
     end
 
@@ -848,14 +1074,16 @@ end)
 m:addOverride('xi.combat.physical.isBlocked', function(defender, attacker)
     local blocked = super(defender, attacker)
 
-    if blocked and isWarriorSpec(defender, GLADIATOR_KEY) and isClubAndShield(defender) then
-        local maxHp = defender.getMaxHP and defender:getMaxHP() or 0
-        local baseHeal = math.max(6, math.floor(maxHp * 0.015))
-        healBloodthirsty(defender, baseHeal)
+    if blocked and isWarriorSpec(defender, SPARTAN_KEY) and isPhalanxSetup(defender) then
+        gritBlockStamp[defender:getID()] = os.clock()
+        if defender:getLocalVar(BRACE_VAR) == 0 then
+            addGrit(defender, 1)
+        end
     end
 
     return blocked
 end)
+
 
 -----------------------------------
 -- Commander Custom Active Job Abilities (Lv10+, Scaling Lv10/30/50/70+)
@@ -1327,11 +1555,11 @@ m:addOverride('xi.actions.abilities.savage_cleave.onUseAbility', function(player
 end)
 
 -----------------------------------
--- Gladiator Custom Active Job Abilities (Lv10+, Scaling Lv10/30/50/70+)
+-- Spartan Custom Active Job Abilities (reuse IDs 402 / 403, Lv10+, scaling Lv10/30/50/70+)
 -----------------------------------
--- 1) Crimson Crush (402): 20s CD, Enemy 4y, Club+Shield bloodthirsty strike + drain + enmity
-m:addOverride('xi.actions.abilities.crimson_crush.onAbilityCheck', function(player, target, ability)
-    if not isWarriorSpec(player, GLADIATOR_KEY) or not isClubAndShield(player) then
+-- 1) Impaling Thrust (402): 20s CD, Enemy 8y, Polearm
+m:addOverride('xi.actions.abilities.impaling_thrust.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, SPARTAN_KEY) or not hasPolearmMain(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
 
@@ -1342,9 +1570,8 @@ m:addOverride('xi.actions.abilities.crimson_crush.onAbilityCheck', function(play
     return 0, 0
 end)
 
-m:addOverride('xi.actions.abilities.crimson_crush.onUseAbility', function(player, target, ability)
+m:addOverride('xi.actions.abilities.impaling_thrust.onUseAbility', function(player, target, ability)
     local lvl = getCommanderLevel(player)
-    local drainPct = scaleCommanderTier(lvl, 4, 6, 8, 10)
     local weaponDmg = player.getWeaponDmg and (player:getWeaponDmg() or 0) or 0
     local vitStat = player.getStat and xi.mod and xi.mod.VIT and (player:getStat(xi.mod.VIT) or 0) or 0
     local damage = math.max(12, math.floor(weaponDmg * 1.1 + vitStat * 0.5 + lvl * 1.0))
@@ -1352,55 +1579,61 @@ m:addOverride('xi.actions.abilities.crimson_crush.onUseAbility', function(player
         damage = xi.customBossServer.scaleDamageByLevelGap(player, target, damage)
     end
 
+    local casting = isTargetCasting(target)
+
     if target ~= nil and target.takeDamage and xi.attackType and xi.damageType then
-        target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
+        target:takeDamage(damage, player, xi.attackType.PHYSICAL, xi.damageType.PIERCING or xi.damageType.BLUNT)
     end
 
     if target ~= nil and target.addEnmity then
         target:addEnmity(player, 150, 450)
     end
 
-    local maxHp = player.getMaxHP and (player:getMaxHP() or 0) or 0
-    if maxHp > 0 then
-        local baseHeal = math.max(10, math.floor(maxHp * drainPct / 100))
-        healBloodthirsty(player, baseHeal)
-    end
+    staggerTarget(target, player, 2, casting and 5 or 0)
+    applyMaim(target, player, 15)
+
+    local boosted = player:hasStatusEffect(xi.effect.DEFENDER) or player:hasStatusEffect(xi.effect.MIGHTY_STRIKES)
+    addGrit(player, boosted and 4 or 2)
 
     return damage
 end)
 
--- 2) Vanguard Ward (403): 30s CD, 12s Self (+Block Rate, -DMG%, +Enmity)
-m:addOverride('xi.actions.abilities.vanguard_ward.onAbilityCheck', function(player, target, ability)
-    if not isWarriorSpec(player, GLADIATOR_KEY) then
+-- 2) Phalanx Ward (403): 35s CD, 2 Grit, Self 12s, status effect 820
+m:addOverride('xi.actions.abilities.phalanx_ward.onAbilityCheck', function(player, target, ability)
+    if not isWarriorSpec(player, SPARTAN_KEY) or not hasPolearmMain(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+
+    if getGrit(player) < 2 then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
 
     return 0, 0
 end)
 
-m:addOverride('xi.actions.abilities.vanguard_ward.onUseAbility', function(player, target, ability)
+m:addOverride('xi.actions.abilities.phalanx_ward.onUseAbility', function(player, target, ability)
     local lvl = getCommanderLevel(player)
-    local blockBonus, tier = scaleCommanderTier(lvl, 12, 18, 25, 35)
-    local dtBps = scaleCommanderTier(lvl, -800, -1000, -1200, -1500)
-    local enmityVal = scaleCommanderTier(lvl, 20, 30, 40, 50)
-    local iconId = xi.effect and xi.effect.DEFENDER or GLADIATOR_WARD_EFFECT_ID
+    local blockBonus, tier = scaleCommanderTier(lvl, 15, 22, 30, 38)
+    local dtBps = scaleCommanderTier(lvl, -1000, -1200, -1500, -1800)
+    local enmityVal = scaleCommanderTier(lvl, 25, 35, 45, 55)
+    local iconId = xi.effect and xi.effect.DEFENDER or SPARTAN_WARD_EFFECT_ID
 
-    applyCommanderTimedEffect(
-        target,
-        GLADIATOR_WARD_EFFECT_ID,
-        blockBonus,
-        12,
-        player,
-        tier,
-        iconId,
-        {
-            { xi.mod.PALISADE_BLOCK_BONUS, blockBonus },
-            { xi.mod.DMG,                  dtBps },
-            { xi.mod.ENMITY,               enmityVal },
-        }
-    )
+    player:setLocalVar(GRIT_VAR, math.max(0, getGrit(player) - 2))
 
-    return GLADIATOR_WARD_EFFECT_ID
+    local mods =
+    {
+        { xi.mod.PALISADE_BLOCK_BONUS, blockBonus },
+        { xi.mod.DMG,                  dtBps },
+        { xi.mod.ENMITY,               enmityVal },
+    }
+    if xi.mod.KNOCKBACK_REDUCTION then
+        table.insert(mods, { xi.mod.KNOCKBACK_REDUCTION, 100 })
+    end
+
+    applyCommanderTimedEffect(target, SPARTAN_WARD_EFFECT_ID, blockBonus, 12, player, tier, iconId, mods)
+    armBrace(player, 2)
+
+    return SPARTAN_WARD_EFFECT_ID
 end)
 
 m:addOverride('xi.effects.gladiator_ward.onEffectGain', function(target, effect)
@@ -1410,11 +1643,26 @@ end)
 m:addOverride('xi.effects.gladiator_ward.onEffectLose', function(target, effect)
 end)
 
+-- Defender: 15s CD for Spartan (Polearm)
+m:addOverride('xi.actions.abilities.defender.onAbilityCheck', function(player, target, ability)
+    if isWarriorSpec(player, SPARTAN_KEY) and hasPolearmMain(player) and ability ~= nil and ability.setRecast then
+        ability:setRecast(15)
+    end
+
+    return super(player, target, ability)
+end)
+
+-- Provoke: Adrenaline Surge below 50% HP
+m:addOverride('xi.actions.abilities.provoke.onUseAbility', function(player, target, ability)
+    tryAdrenalineSurge(player)
+    return super(player, target, ability)
+end)
+
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     super(player, firstLogin, zoning)
 
-    if isWarriorSpec(player, GLADIATOR_KEY) then
-        attachGladiatorListeners(player)
+    if isWarriorSpec(player, SPARTAN_KEY) then
+        attachSpartanListeners(player)
     end
 end)
 

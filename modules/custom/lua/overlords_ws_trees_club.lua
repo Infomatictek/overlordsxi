@@ -15,7 +15,7 @@ local WAR_EFFECTS  = { xi.effect.BERSERK, xi.effect.WARCRY, xi.effect.AGGRESSOR,
 
 local function gladStance(t, c, k, name, mr, zeroDesc, rankDesc, eff, req)
     eff.stance = {
-        jobSpec = 'gladiator',
+        jobSpec = 'spartan',
         effects = GLAD_EFFECTS,
         wsd     = eff.stWsd,
         atkPct  = eff.stAtk,
