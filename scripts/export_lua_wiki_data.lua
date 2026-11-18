@@ -213,7 +213,7 @@ xi.weaponskill  = makeEnumTable({})
 xi.item         = makeEnumTable({})
 xi.keyItem      = makeEnumTable({})
 xi.petId        = makeEnumTable({})
-xi.trait        = makeEnumTable({})
+xi.trait        = makeEnumTable({ DUAL_WIELD = 18, DOUBLE_ATTACK = 19, TRIPLE_ATTACK = 20, SUBTLE_BLOW = 38, COUNTER = 39, KICK_ATTACKS = 40 })
 xi.skillRank    = makeEnumTable({})
 xi.attackType   = makeEnumTable({})
 xi.damageType   = makeEnumTable({})
@@ -321,7 +321,16 @@ end
 -- 3. Load Combat & EXP Rules module
 pcall(require, 'modules/custom/lua/boss_like_combat_and_exp')
 
--- Fake player stub to evaluate crystal mods(player, lvl) & extraAbilities(player)
+-- Fake player stub to evaluate crystal mods(player, lvl) & extraAbilities(player, lvl)
+-- Intentionally omits getEquipID so `isWiki = (player == nil) or (not player.getEquipID)` evaluates true.
+local function makeMockItem(skillType, isShieldFlag)
+    return {
+        getSkillType = function() return skillType or 0 end,
+        isShield = function() return isShieldFlag == true end,
+        getID = function() return 0 end,
+    }
+end
+
 local function makeFakePlayer(jobId, lvl)
     return {
         getMainJob = function() return jobId end,
@@ -329,14 +338,41 @@ local function makeFakePlayer(jobId, lvl)
         getJobLevel = function(_, j) return (j == jobId) and lvl or 1 end,
         getID = function() return 1 end,
         isPC = function() return true end,
+        isUsingH2H = function() return jobId == xi.job.PUP or jobId == xi.job.MNK end,
         getMod = function() return 0 end,
         getStat = function() return 50 end,
         hasPet = function() return false end,
         getPet = function() return nil end,
         hasStatusEffect = function() return false end,
         getCharVar = function() return 0 end,
-        getWeaponSkillType = function() return 0 end,
-        getEquippedItem = function() return nil end,
+        getLocalVar = function() return 0 end,
+        setLocalVar = function() end,
+        getWeaponSkillType = function(_, slot)
+            if slot == xi.slot.RANGED then
+                if jobId == xi.job.COR then return xi.skill.MARKSMANSHIP end
+                if jobId == xi.job.RNG then return xi.skill.ARCHERY end
+                if jobId == xi.job.DNC then return xi.skill.THROWING end
+            end
+            if jobId == xi.job.PUP or jobId == xi.job.MNK then return xi.skill.HAND_TO_HAND end
+            if jobId == xi.job.SAM then return xi.skill.GREAT_KATANA end
+            if jobId == xi.job.DRK then return xi.skill.SCYTHE end
+            if jobId == xi.job.DRG then return xi.skill.POLEARM end
+            if jobId == xi.job.NIN then return xi.skill.KATANA end
+            return xi.skill.SWORD
+        end,
+        getEquippedItem = function(_, slot)
+            if slot == xi.slot.RANGED then
+                if jobId == xi.job.COR then return makeMockItem(xi.skill.MARKSMANSHIP, false) end
+                if jobId == xi.job.RNG or jobId == xi.job.SAM then return makeMockItem(xi.skill.ARCHERY, false) end
+            elseif slot == xi.slot.SUB then
+                if jobId == xi.job.PLD or jobId == xi.job.WAR then return makeMockItem(0, true) end
+            elseif slot == xi.slot.MAIN then
+                if jobId == xi.job.PUP then return makeMockItem(xi.skill.HAND_TO_HAND, false) end
+                if jobId == xi.job.SAM then return makeMockItem(xi.skill.GREAT_KATANA, false) end
+                if jobId == xi.job.COR then return makeMockItem(xi.skill.SWORD, false) end
+            end
+            return nil
+        end,
         capSkill = function() end,
     }
 end
@@ -384,11 +420,11 @@ for _, jid in ipairs(sortedJobIds) do
             })
         end
 
-        -- Evaluate extraAbilities (table or function)
+        -- Evaluate extraAbilities (table or function(player, lvl))
         local extraAbils = {}
         local rawAbils = entry.extraAbilities
         if type(rawAbils) == 'function' then
-            local ok, res = pcall(rawAbils, makeFakePlayer(jid, 75))
+            local ok, res = pcall(rawAbils, makeFakePlayer(jid, 75), 75)
             if ok and type(res) == 'table' then rawAbils = res else rawAbils = {} end
         end
         if type(rawAbils) == 'table' then
@@ -400,8 +436,13 @@ for _, jid in ipairs(sortedJobIds) do
         end
 
         local extraTraits = {}
-        if type(entry.extraTraits) == 'table' then
-            for _, tid in ipairs(entry.extraTraits) do
+        local rawTraits = entry.extraTraits
+        if type(rawTraits) == 'function' then
+            local ok, res = pcall(rawTraits, makeFakePlayer(jid, 75), 75)
+            if ok and type(res) == 'table' then rawTraits = res else rawTraits = {} end
+        end
+        if type(rawTraits) == 'table' then
+            for _, tid in ipairs(rawTraits) do
                 if type(tid) == 'number' then
                     table.insert(extraTraits, tid)
                 end
