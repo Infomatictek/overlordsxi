@@ -401,6 +401,7 @@ local SPEC_KEY_TO_CATEGORY =
     animist        = 'animist',
     verdant        = 'verdant',
     wyvernheart    = 'wyvernheart',
+    huntsman       = 'huntsman',
     tank           = 'inquisitor',
     healer         = 'lifebinder',
 }

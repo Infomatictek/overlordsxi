@@ -43,6 +43,7 @@ P.ALL_SPECS =
     'animist',
     'verdant',
     'wyvernheart',
+    'huntsman',
 }
 
 local STAT_UP =
@@ -273,6 +274,12 @@ local STANCE_DEFS =
         petAlive = true,
         effects  = { xi.effect.SPIRIT_SURGE, xi.effect.FLY_HIGH, 874, 875 },
     },
+    huntsman = {
+        label    = 'Apex Bond',
+        jobSpec  = 'huntsman',
+        petAlive = true,
+        effects  = { xi.effect.SHARPSHOT, xi.effect.BARRAGE, xi.effect.CAMOUFLAGE, xi.effect.UNLIMITED_SHOT },
+    },
 }
 
 local SPEC_META =
@@ -303,6 +310,7 @@ local SPEC_META =
     animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true, noMp = true },
     verdant        = { pfx = 'vrd', pref = 'mnd', role = 'healer', tag = 'Sylvan',   col2 = 'Luopan',   t1c3 = 'Bloom',       rmea = 'Canopy',       col1 = { 'Barkskin', 'Renewal',   'Grove'     }, pet = true },
     wyvernheart    = { pfx = 'wyv', pref = 'mnd', role = 'healer', tag = 'Wyrm',     col2 = 'Breath',   t1c3 = 'Scale',       rmea = 'Wyrmblood',    col1 = { 'Link',     'Jump',      'Sanctuary' }, pet = true },
+    huntsman       = { pfx = 'hnt', pref = 'agi', role = 'support',tag = 'Apex',     col2 = 'Primeval', t1c3 = 'Quiver',      rmea = 'Predator',     col1 = { 'Tusk',     'Talon',     'Pack'      }, pet = true },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
@@ -2465,6 +2473,7 @@ local STANCE_TITLES =
     animist        = { 'Repair-St',  'Aether-St', 'Clock-St',  'Auto-St'   },
     verdant        = { 'Luopan-St',  'Bolster-St','Canopy-St', 'Sylvan-St' },
     wyvernheart    = { 'Breath-St',  'Wyrm-St',   'Scale-St',  'Spirit-St' },
+    huntsman       = { 'Tusker-St',  'Saurian-St','Apex-St',   'Predator'  },
 }
 
 local T3C3_TITLES =
@@ -2495,6 +2504,7 @@ local T3C3_TITLES =
     animist        = { 'Aether',    'Overhaul',  'Clockwork', 'Fiber'     },
     verdant        = { 'Sylvan',    'Bloom',     'Renewal',   'Canopy'    },
     wyvernheart    = { 'Wyrmblood', 'Breath',    'Scale',     'Sanctuary' },
+    huntsman       = { 'Rimetusk',  'Saurian',   'Primeval',  'Apex-Pack' },
     generic        = { 'Precision', 'Impact',    'Momentum',  'Edge'      },
 }
 
@@ -2526,6 +2536,7 @@ local T4C3_TITLES =
     animist        = { 'Animist',   'Artificer', 'Clockwork', 'Sovereign' },
     verdant        = { 'Verdant',   'Dryad',     'Sylvan',    'Worldtree' },
     wyvernheart    = { 'Wyvern',    'Dragoon',   'Crimson',   'Skywarden' },
+    huntsman       = { 'Cehuetzi',  'Gabbrath',  'Warden',    'Apex-Bond' },
     generic        = { 'Prowess',   'Zenith',    'Mastery',   'Triumph'   },
 }
 
@@ -2720,8 +2731,15 @@ local NO_SPIKE_SPECS =
     animist      = true,
     verdant      = true,
     wyvernheart  = true,
+    huntsman     = true,
     tank         = true,
     healer       = true,
+}
+
+local SINGLE_TARGET_ONLY_SPECS =
+{
+    necromancer  = true,
+    huntsman     = true,
 }
 
 local PET_SPECS =
@@ -2735,6 +2753,7 @@ local PET_SPECS =
     animist     = true,
     verdant     = true,
     wyvernheart = true,
+    huntsman    = true,
 }
 
 local function sanitizeSpecNode(node, specKey, ctx)
@@ -2909,6 +2928,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
     alphawarden    = { [S.AXE or 5] = true },
+    huntsman       = { [S.ARCHERY or 25] = true, [S.MARKSMANSHIP or 26] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)

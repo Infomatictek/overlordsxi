@@ -73,7 +73,7 @@ INSERT INTO `mob_pools`
 SELECT
     6022, 'undead_warrior', 'Undead Warrior', `speciesid`, `modelid`, 1, 8, 1, 240, 100,
     0, 0, 0, 0, 0, 0, 32, 0, 3,
-    0, 0, 0, 0, 0, `skill_list_id`, `resist_id`,
+    0, 0, 0, 0, 0, 6022, `resist_id`,
     0, 6
 FROM `mob_pools`
 WHERE `name` IN ('Wight_war', 'Guard_Skeleton_war_SSR', 'Crossbones', 'Skeleton_Warrior', 'Ghoul')
@@ -120,11 +120,21 @@ INSERT INTO `mob_pools`
 SELECT
     6025, 'undead_dullahan', 'Dullahan', `speciesid`, `modelid`, 8, 1, 7, 240, 115,
     0, 0, 0, 0, 0, 0, 32, 0, 3,
-    0, 0, 0, 0, 0, `skill_list_id`, `resist_id`,
+    0, 0, 0, 0, 0, 6025, `resist_id`,
     0, 6
 FROM `mob_pools`
 WHERE `name` LIKE '%Dullahan%' OR `packet_name` LIKE '%Dullahan%'
 LIMIT 1;
+
+-- ---------------------------------------------------------------------------
+-- 2b. Single-Target Mob Skill Lists for Tank Thralls (6022 & 6025)
+-- ---------------------------------------------------------------------------
+DELETE FROM `mob_skill_lists` WHERE `skill_list_id` IN (6022, 6025);
+INSERT INTO `mob_skill_lists` (`skill_list_name`, `skill_list_id`, `mob_skill_id`) VALUES
+    ('undead_warrior_st',  6022, 478), -- Hell Slash (Single-Target)
+    ('undead_warrior_st',  6022, 479), -- Horror Cloud (Single-Target)
+    ('undead_dullahan_st', 6025, 478), -- Hell Slash (Single-Target)
+    ('undead_dullahan_st', 6025, 479); -- Horror Cloud (Single-Target)
 
 -- ---------------------------------------------------------------------------
 -- 3. Undead Mage (601) & Corse (602) Spell Lists
