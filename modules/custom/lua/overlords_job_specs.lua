@@ -1134,6 +1134,18 @@ function spec.onTraitsRebuild(player)
     local curSpecId = active and active.id or 0
 
     if
+        curJobId == xi.job.BLU and
+        curLvl >= 10 and
+        active ~= nil and
+        active.key == 'magus' and
+        xi.overlords.bluHealerSpecs and
+        xi.overlords.bluHealerSpecs.syncMagusSpells
+    then
+        local leveledUp = (prevLvl ~= nil and prevJobId == curJobId and curLvl > prevLvl)
+        xi.overlords.bluHealerSpecs.syncMagusSpells(player, { isLevelUp = leveledUp })
+    end
+
+    if
         sessionReset or
         prev == nil or
         prevJobId ~= curJobId or
@@ -1205,8 +1217,18 @@ function spec.set(player, jobId, specKeyOrId, opts)
     end
 
     local prevId = player:getCharVar(varName)
+    local bluSwapped = false
     if prevId ~= resolved.id then
         local prevEntry = spec.resolve(targetJob, prevId)
+        if
+            targetJob == xi.job.BLU and
+            targetJob == player:getMainJob() and
+            prevEntry ~= nil and
+            xi.overlords.bluHealerSpecs and
+            xi.overlords.bluHealerSpecs.saveSoulSpells
+        then
+            xi.overlords.bluHealerSpecs.saveSoulSpells(player, prevEntry.key)
+        end
         if
             prevEntry ~= nil and
             type(prevEntry.onRemove) == 'function' and
@@ -1218,10 +1240,18 @@ function spec.set(player, jobId, specKeyOrId, opts)
         end
 
         player:setCharVar(varName, resolved.id)
+        bluSwapped = (targetJob == xi.job.BLU and targetJob == player:getMainJob())
     end
 
     if targetJob == player:getMainJob() then
         spec.refreshPlayer(player)
+        if
+            bluSwapped and
+            xi.overlords.bluHealerSpecs and
+            xi.overlords.bluHealerSpecs.restoreSoulSpells
+        then
+            xi.overlords.bluHealerSpecs.restoreSoulSpells(player, resolved.key)
+        end
     end
 
     if opts.protoSync then
@@ -1251,6 +1281,14 @@ function spec.clear(player, jobId, opts)
     local prevId = player:getCharVar(varName)
     if prevId > 0 and targetJob == player:getMainJob() then
         local prevEntry = spec.resolve(targetJob, prevId)
+        if
+            targetJob == xi.job.BLU and
+            prevEntry ~= nil and
+            xi.overlords.bluHealerSpecs and
+            xi.overlords.bluHealerSpecs.saveSoulSpells
+        then
+            xi.overlords.bluHealerSpecs.saveSoulSpells(player, prevEntry.key)
+        end
         spec.removeAppliedMods(player, false)
         if prevEntry ~= nil and type(prevEntry.onRemove) == 'function' then
             prevEntry.onRemove(player, prevEntry)

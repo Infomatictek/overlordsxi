@@ -15,6 +15,9 @@ local m = Module:new('overlords_blu_healer_specs')
 local spec = xi.overlords.spec
 local MAGUS_KEY = 'magus'
 
+xi.overlords                = xi.overlords or {}
+xi.overlords.bluHealerSpecs = xi.overlords.bluHealerSpecs or {}
+
 -- Dual Wield (18) & Custom Trait ID (171; Azure Diffusion)
 local TRAIT_DUAL_WIELD      = (xi.trait and xi.trait.DUAL_WIELD) or 18
 local TRAIT_AZURE_DIFFUSION = 171
@@ -56,8 +59,312 @@ local BLU_HEAL_SPELLS =
     [xi.magic.spell.MAGIC_FRUIT]       = true,
     [xi.magic.spell.PLENILUNE_EMBRACE] = true,
     [xi.magic.spell.WHITE_WIND]        = true,
-    [xi.magic.spell.RESTORAL]          = true,
 }
+
+-- Curated 100% single-target-enemy-safe Magus baseline loadout (Priority 1 -> 3).
+-- Skips post-75 DB-disabled spells (Erratic Flutter 710, Restoral 711).
+local MAGUS_BASELINE_SPELLS =
+{
+    -- Priority 1: Core Heals & Cleanse
+    { id = xi.magic.spell.MAGIC_FRUIT,        setPts = 3, reqLvl = 58, baseMp = 72  },
+    { id = xi.magic.spell.WHITE_WIND,         setPts = 5, reqLvl = 94, baseMp = 145 },
+    { id = xi.magic.spell.PLENILUNE_EMBRACE,  setPts = 4, reqLvl = 76, baseMp = 106 },
+    { id = xi.magic.spell.HEALING_BREEZE,     setPts = 4, reqLvl = 16, baseMp = 55  },
+    { id = xi.magic.spell.WILD_CARROT,        setPts = 3, reqLvl = 30, baseMp = 37  },
+    { id = xi.magic.spell.WINDS_OF_PROMYVION, setPts = 5, reqLvl = 89, baseMp = 36  },
+    { id = xi.magic.spell.POLLEN,             setPts = 1, reqLvl = 1,  baseMp = 8   },
+
+    -- Priority 2: Diffusion Party Wards, Refresh & Haste
+    { id = xi.magic.spell.BATTERY_CHARGE,     setPts = 3, reqLvl = 79, baseMp = 50  },
+    { id = xi.magic.spell.DIAMONDHIDE,        setPts = 3, reqLvl = 67, baseMp = 99  },
+    { id = xi.magic.spell.REFUELING,          setPts = 4, reqLvl = 48, baseMp = 29  },
+    { id = xi.magic.spell.COCOON,             setPts = 1, reqLvl = 8,  baseMp = 10  },
+    { id = xi.magic.spell.METALLIC_BODY,      setPts = 1, reqLvl = 8,  baseMp = 19  },
+    { id = xi.magic.spell.ZEPHYR_MANTLE,      setPts = 2, reqLvl = 65, baseMp = 31  },
+
+    -- Priority 3: Single-Target Scalpel Utility (zero enemy AoE/conal pulls)
+    { id = xi.magic.spell.HEAD_BUTT,          setPts = 3, reqLvl = 12, baseMp = 12  },
+    { id = xi.magic.spell.BLANK_GAZE,         setPts = 2, reqLvl = 38, baseMp = 25  },
+    { id = xi.magic.spell.SUDDEN_LUNGE,       setPts = 4, reqLvl = 95, baseMp = 18  },
+    { id = xi.magic.spell.DIGEST,             setPts = 2, reqLvl = 36, baseMp = 20  },
+}
+
+local MAGUS_SPELL_BY_ID = {}
+for idx, entry in ipairs(MAGUS_BASELINE_SPELLS) do
+    entry.bit = bit.lshift(1, idx - 1)
+    MAGUS_SPELL_BY_ID[entry.id] = entry
+end
+
+local SOUL_TAG =
+{
+    warmage      = 'WMG',
+    magus        = 'MAG',
+    azurebastion = 'AZB',
+}
+
+local function getBluMaxSlots(lvl)
+    return math.max(6, math.min(20, math.floor((math.max(1, lvl or 1) - 1) / 10) * 2 + 6))
+end
+
+local function getBluMaxPoints(player, lvl)
+    local l = math.max(1, lvl or 1)
+    local pts = math.max(0, math.min(55, math.floor((l - 1) / 10) * 5 + 10))
+    if l >= 75 and player.getMerit and xi.merit and xi.merit.ASSIMILATION then
+        pts = pts + (player:getMerit(xi.merit.ASSIMILATION) or 0)
+    end
+    return pts
+end
+
+local function getScaledMagusMp(lvl, entry)
+    if (lvl or 1) >= entry.reqLvl then
+        return entry.baseMp
+    end
+    local ratio = math.min(1.0, math.max(0.20, (lvl or 1) / entry.reqLvl))
+    return math.max(4, math.floor(entry.baseMp * ratio + 0.5))
+end
+
+local function getCurrentBluSlots(player)
+    local slots = {}
+    for i = 1, 20 do
+        slots[i] = 0
+    end
+    if player == nil then
+        return slots
+    end
+    if player.getBlueMagicSlots then
+        local raw = player:getBlueMagicSlots()
+        if type(raw) == 'table' then
+            for i = 1, 20 do
+                slots[i] = tonumber(raw[i]) or 0
+            end
+        end
+        return slots
+    end
+    if player.getSetBlueSpells then
+        local raw = player:getSetBlueSpells()
+        if type(raw) == 'table' then
+            for i = 1, math.min(20, #raw) do
+                slots[i] = tonumber(raw[i]) or 0
+            end
+        end
+    end
+    return slots
+end
+
+local function learnMagusBaselineSpells(player)
+    if player == nil or not player.hasSpell or not player.addSpell then
+        return
+    end
+
+    local mask = player:getCharVar('OX_BLU_MAGUS_LEARNED') or 0
+    local toGrant = {}
+    for _, entry in ipairs(MAGUS_BASELINE_SPELLS) do
+        if not player:hasSpell(entry.id) then
+            table.insert(toGrant, entry)
+        end
+    end
+
+    if #toGrant == 0 then
+        return
+    end
+
+    for i, entry in ipairs(toGrant) do
+        local isLast = (i == #toGrant)
+        player:addSpell(entry.id, { silentLog = true, saveToDB = true, sendUpdate = isLast })
+        mask = bit.bor(mask, entry.bit)
+    end
+    player:setCharVar('OX_BLU_MAGUS_LEARNED', mask)
+end
+
+local function saveSoulSpells(player, soulKey)
+    local tag = SOUL_TAG[soulKey]
+    if player == nil or tag == nil or not player.setCharVar then
+        return
+    end
+
+    local slots = getCurrentBluSlots(player)
+    for chunk = 0, 6 do
+        local baseIdx = chunk * 3
+        local b0 = (slots[baseIdx + 1] > 0) and (slots[baseIdx + 1] - 0x200) or 0
+        local b1 = (baseIdx + 2 <= 20 and slots[baseIdx + 2] > 0) and (slots[baseIdx + 2] - 0x200) or 0
+        local b2 = (baseIdx + 3 <= 20 and slots[baseIdx + 3] > 0) and (slots[baseIdx + 3] - 0x200) or 0
+        local packed = b0 + b1 * 256 + b2 * 65536
+        player:setCharVar(string.format('OX_BLU_SET_%s_%d', tag, chunk + 1), packed)
+    end
+    player:setCharVar(string.format('OX_BLU_SET_%s_SAVED', tag), 1)
+end
+
+local function syncMagusSpells(player, opts)
+    opts = opts or {}
+    if player == nil or not isMagus(player) then
+        return
+    end
+    if player.getLocalVar and player:getLocalVar('OX_MAG_SYNCING_SPELLS') == 1 then
+        return
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_MAG_SYNCING_SPELLS', 1)
+    end
+
+    learnMagusBaselineSpells(player)
+
+    if player.setBlueMagicSpell then
+        local lvl       = player:getMainLvl() or 1
+        local maxSlots  = getBluMaxSlots(lvl)
+        local maxPoints = getBluMaxPoints(player, lvl)
+
+        local forceReset  = opts.forceReset == true
+        local slots       = getCurrentBluSlots(player)
+        local equippedSet = {}
+        local equippedCnt = 0
+        local usedPoints  = 0
+        local emptySlots  = {}
+
+        if forceReset then
+            for i = 0, 19 do
+                if slots[i + 1] ~= 0 then
+                    player:setBlueMagicSpell(i, 0, false)
+                end
+            end
+            for i = 0, maxSlots - 1 do
+                table.insert(emptySlots, i)
+            end
+        else
+            for i = 0, 19 do
+                local sid = slots[i + 1]
+                if sid > 0 then
+                    equippedSet[sid] = true
+                    equippedCnt = equippedCnt + 1
+                    local entry = MAGUS_SPELL_BY_ID[sid]
+                    if entry then
+                        usedPoints = usedPoints + entry.setPts
+                    end
+                elseif i < maxSlots then
+                    table.insert(emptySlots, i)
+                end
+            end
+        end
+
+        local isFirstSeed = (player:getCharVar('OX_BLU_MAGUS_SET_INIT') == 0) or (equippedCnt == 0)
+        local shouldFill  = forceReset or isFirstSeed or (opts.isLevelUp == true)
+        local changed     = false
+
+        if shouldFill and #emptySlots > 0 then
+            local emptyCursor = 1
+            for _, entry in ipairs(MAGUS_BASELINE_SPELLS) do
+                if emptyCursor > #emptySlots then
+                    break
+                end
+                if
+                    not equippedSet[entry.id] and
+                    player:hasSpell(entry.id) and
+                    lvl >= entry.reqLvl and
+                    (usedPoints + entry.setPts) <= maxPoints
+                then
+                    local slotIdx = emptySlots[emptyCursor]
+                    emptyCursor = emptyCursor + 1
+                    player:setBlueMagicSpell(slotIdx, entry.id, false)
+                    equippedSet[entry.id] = true
+                    usedPoints = usedPoints + entry.setPts
+                    changed = true
+                end
+            end
+        end
+
+        if isFirstSeed or forceReset then
+            player:setCharVar('OX_BLU_MAGUS_SET_INIT', 1)
+        end
+
+        if changed or forceReset then
+            if player.syncBlueMagicSpells then
+                player:syncBlueMagicSpells()
+            end
+            saveSoulSpells(player, MAGUS_KEY)
+        end
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_MAG_SYNCING_SPELLS', 0)
+    end
+end
+
+local function restoreSoulSpells(player, soulKey)
+    local tag = SOUL_TAG[soulKey]
+    if player == nil or tag == nil then
+        return
+    end
+
+    if player:getCharVar(string.format('OX_BLU_SET_%s_SAVED', tag)) ~= 1 then
+        if soulKey == MAGUS_KEY then
+            syncMagusSpells(player, { forceReset = false })
+        end
+        return
+    end
+
+    if not player.setBlueMagicSpell then
+        return
+    end
+    if player.getLocalVar and player:getLocalVar('OX_MAG_SYNCING_SPELLS') == 1 then
+        return
+    end
+    if player.setLocalVar then
+        player:setLocalVar('OX_MAG_SYNCING_SPELLS', 1)
+    end
+
+    if soulKey == MAGUS_KEY then
+        learnMagusBaselineSpells(player)
+    end
+
+    local lvl       = player:getMainLvl() or 1
+    local maxSlots  = getBluMaxSlots(lvl)
+    local maxPoints = getBluMaxPoints(player, lvl)
+    local usedPts   = 0
+
+    for i = 0, 19 do
+        player:setBlueMagicSpell(i, 0, false)
+    end
+
+    for chunk = 0, 6 do
+        local packed = player:getCharVar(string.format('OX_BLU_SET_%s_%d', tag, chunk + 1)) or 0
+        local b0 = packed % 256
+        local b1 = math.floor(packed / 256) % 256
+        local b2 = math.floor(packed / 65536) % 256
+        local bytes = { b0, b1, b2 }
+        for k = 1, 3 do
+            local slotIdx = chunk * 3 + (k - 1)
+            if slotIdx < maxSlots and bytes[k] > 0 then
+                local sid = bytes[k] + 0x200
+                if player:hasSpell(sid) then
+                    local entry = MAGUS_SPELL_BY_ID[sid]
+                    local ptsOk = (entry == nil) or ((usedPts + entry.setPts) <= maxPoints)
+                    local lvlOk = (entry == nil) or (lvl >= entry.reqLvl)
+                    if ptsOk and lvlOk then
+                        player:setBlueMagicSpell(slotIdx, sid, false)
+                        if entry then
+                            usedPts = usedPts + entry.setPts
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if player.syncBlueMagicSpells then
+        player:syncBlueMagicSpells()
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_MAG_SYNCING_SPELLS', 0)
+    end
+end
+
+xi.overlords.bluHealerSpecs.syncMagusSpells   = syncMagusSpells
+xi.overlords.bluHealerSpecs.saveSoulSpells    = saveSoulSpells
+xi.overlords.bluHealerSpecs.restoreSoulSpells = restoreSoulSpells
+xi.overlords.bluHealerSpecs.resetMagusSpells  = function(player)
+    syncMagusSpells(player, { forceReset = true })
+end
 
 local MAGUS_WS_IDS =
 {
@@ -160,6 +467,23 @@ local function attachMagusListeners(player)
         end
     end)
 
+    player:addListener('MAGIC_START', 'OX_MAG_MAGIC_START', function(caster, _target, spell, _action)
+        if not isMagus(caster) or spell == nil then
+            return
+        end
+        local spellId = spell.getID and spell:getID() or 0
+        local entry = MAGUS_SPELL_BY_ID[spellId]
+        if entry ~= nil and spell.setMPCost then
+            local lvl = caster:getMainLvl() or 1
+            if lvl < entry.reqLvl then
+                local scaled = getScaledMagusMp(lvl, entry)
+                if (spell.getMPCost and spell:getMPCost() or entry.baseMp) > scaled then
+                    spell:setMPCost(scaled)
+                end
+            end
+        end
+    end)
+
     player:addListener('MAGIC_USE', 'OX_MAG_MAGIC', function(caster, target, spell, action)
         if not isMagus(caster) or spell == nil then
             return
@@ -186,6 +510,7 @@ local function detachMagusListeners(player)
     player:removeListener('OX_MAG_EFF_LOSE')
     player:removeListener('OX_MAG_ATTACK')
     player:removeListener('OX_MAG_WS')
+    player:removeListener('OX_MAG_MAGIC_START')
     player:removeListener('OX_MAG_MAGIC')
     local prev = player:getLocalVar('OX_MAG_SIRD_MOD')
     if prev ~= 0 then
@@ -193,6 +518,33 @@ local function detachMagusListeners(player)
         player:setLocalVar('OX_MAG_SIRD_MOD', 0)
     end
 end
+
+-----------------------------------
+-- Magus Baseline Spell Override & Level-Scaled MP
+-----------------------------------
+m:addOverride('xi.spells.canUseSpellOverride', function(player, spell)
+    if
+        player ~= nil and
+        spell ~= nil and
+        isMagus(player) and
+        (player:getMainLvl() or 1) >= 10
+    then
+        local spellId = spell:getID()
+        local entry   = MAGUS_SPELL_BY_ID[spellId]
+        if entry ~= nil and player:hasSpell(spellId) then
+            local lvl = player:getMainLvl() or 1
+            if lvl < entry.reqLvl and spell.setMPCost then
+                local scaled = getScaledMagusMp(lvl, entry)
+                if (spell.getMPCost and spell:getMPCost() or entry.baseMp) > scaled then
+                    spell:setMPCost(scaled)
+                end
+            end
+            return true
+        end
+    end
+
+    return super(player, spell)
+end)
 
 -----------------------------------
 -- Vanilla JA Enhancements
@@ -295,6 +647,7 @@ if xi.job and xi.job.BLU then
         onApply = function(player)
             attachMagusListeners(player)
             syncMagusSird(player)
+            syncMagusSpells(player, { isLevelUp = false })
         end,
         onRemove = function(player)
             if player ~= nil and player.delStatusEffectSilent then
