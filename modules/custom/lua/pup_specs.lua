@@ -554,6 +554,33 @@ m:addOverride('xi.effects.overdrive.onEffectGain', function(target, effect)
 end)
 
 -----------------------------------
+-- Vanguard Maneuver Duration (2 hours)
+-----------------------------------
+local MANEUVER_EFFECT_NAMES =
+{
+    'fire_maneuver',
+    'ice_maneuver',
+    'wind_maneuver',
+    'earth_maneuver',
+    'thunder_maneuver',
+    'water_maneuver',
+    'light_maneuver',
+    'dark_maneuver',
+}
+
+local VANGUARD_MANEUVER_DURATION_MS = 7200 * 1000 -- 2 hours
+
+for _, maneuverName in ipairs(MANEUVER_EFFECT_NAMES) do
+    m:addOverride(string.format('xi.effects.%s.onEffectGain', maneuverName), function(target, effect)
+        super(target, effect)
+
+        if target ~= nil and isVanguard(target) and effect ~= nil then
+            effect:setDuration(VANGUARD_MANEUVER_DURATION_MS)
+        end
+    end)
+end
+
+-----------------------------------
 -- Aegis Protocol (443) & Palisade Fortress Mode
 -----------------------------------
 m:addOverride('xi.effects.palisade.onEffectGain', function(target, effect)
@@ -750,7 +777,7 @@ if xi.job and xi.job.PUP then
             highlights =
             {
                 'Passives (Lv10/30/50/70+): +12/16/20/25% Max HP (Master) & +25/35/45/60% (Automaton), +8/14/20/26 VIT & DEX, +12/18/24/30% DEF (Master) & +20/30/40/50% (Automaton), -8/11/14/18% DT (Master) & -15/20/25/30% (Automaton), +25/35/45/60 Enmity (both).',
-                'Hand-to-Hand & Automaton Mastery: +15/25/35/50 H2H & Automaton Melee/Ranged/Magic skill, +12/18/24/30% Guard/Counter Rate (Master), +15/20/25/30% Shield Block Rate (Automaton), and 100% Overload Immunity.',
+                'Hand-to-Hand & Automaton Mastery: +15/25/35/50 H2H & Automaton Melee/Ranged/Magic skill, +12/18/24/30% Guard/Counter Rate (Master), +15/20/25/30% Shield Block Rate (Automaton), 100% Overload Immunity, and 2-hour Maneuver duration.',
                 'Clockwork Proxy Tether & Enmity Funnel: Strobe (15s) & Flashbulb (22s) recasts cut by 50% with 2x VE; H2H WSs transfer 100% VE to Automaton, grant +400 TP & 12% Max HP barrier, and inflict Concussive Blow (-15% ATK, -20 Acc, 15s).',
                 'Emergency Chassis Link: Below 25% Automaton HP, 35% of subsequent Automaton damage redirects to Master until Automaton recovers above 35% HP.',
                 'Tank Tradeoff & JAs: -20% ATK/RATK & -15% WSD (Master); Repair (20s CD, 0 oil, 45% HP heal, full cleanse, -20% DT 6s), Ventriloquy (15s CD, locks hate & +25 Enmity), Overdrive (30s, -35% DT, +50% Haste, Shield Bash/Strobe spam).',
