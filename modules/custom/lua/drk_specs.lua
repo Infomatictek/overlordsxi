@@ -834,7 +834,7 @@ local function attachDrkListeners(player)
         end
 
         local charId = actor.getID and actor:getID() or 0
-        local now    = os.clock()
+        local now    = xi.overlords.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if isPrimary and charId > 0 then
             lastWsCastAtByChar[charId] = now

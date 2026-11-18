@@ -1997,7 +1997,7 @@ if xi.job and xi.job.SAM then
                 table.insert(list, { xi.mod.ZANSHIN,      scaleTier(lvl, 12, 18, 24, 32) })
                 table.insert(list, { xi.mod.STORETP,      scaleTier(lvl, 10, 15, 20, 25) })
                 table.insert(list, { xi.mod.SUBTLE_BLOW,  scaleTier(lvl, 15, 22, 30, 38) })
-                table.insert(list, { xi.mod.GREAT_KATANA, scaleTier(lvl, 15, 25, 35, 50) })
+                table.insert(list, { xi.mod.GKATANA, scaleTier(lvl, 15, 25, 35, 50) })
                 table.insert(list, { xi.mod.PARRY,        scaleTier(lvl, 10, 14, 18, 22) })
                 table.insert(list, { xi.mod.ENMITY,       scaleTier(lvl, -15, -20, -25, -30) })
                 return list

@@ -255,27 +255,71 @@ local function syncAutomatonHealerMods(player)
     local fc      = H.scaleTier(lvl, 40, 50, 60, 70)
     local ref     = H.scaleTier(lvl, 6, 9, 12, 16)
 
-    pet:addMod(xi.mod.HPP, hpMpPct)
-    pet:addMod(xi.mod.MPP, hpMpPct)
-    pet:addMod(xi.mod.DMG, -3500)
-    pet:addMod(xi.mod.FASTCAST, fc)
-    pet:addMod(xi.mod.REFRESH, ref)
-    pet:addMod(xi.mod.ENMITY, -60)
+    local mods =
+    {
+        { xi.mod.HPP, hpMpPct },
+        { xi.mod.MPP, hpMpPct },
+        { xi.mod.DMG, -3500 },
+        { xi.mod.FASTCAST, fc },
+        { xi.mod.REFRESH, ref },
+        { xi.mod.ENMITY, -60 },
+    }
     if xi.mod.DMGBREATH then
-        pet:addMod(xi.mod.DMGBREATH, -10000)
+        table.insert(mods, { xi.mod.DMGBREATH, -10000 })
     end
     if xi.mod.UDMBREATH then
-        pet:addMod(xi.mod.UDMBREATH, -10000)
+        table.insert(mods, { xi.mod.UDMBREATH, -10000 })
     end
     if xi.mod.DMGMAGIC then
-        pet:addMod(xi.mod.DMGMAGIC, -10000)
+        table.insert(mods, { xi.mod.DMGMAGIC, -10000 })
     end
     if xi.mod.UDMMAGIC then
-        pet:addMod(xi.mod.UDMMAGIC, -10000)
+        table.insert(mods, { xi.mod.UDMMAGIC, -10000 })
     end
+    for _, pair in ipairs(mods) do
+        pet:addMod(pair[1], pair[2])
+    end
+    pet:setLocalVar('OX_ANM_MODS_COUNT', #mods)
     pet:updateHealth()
     pet:setHP(pet:getMaxHP())
     pet:setMP(pet:getMaxMP())
+end
+
+local function unsyncAnimistPetMods(player)
+    if player == nil or not player.getPet then
+        return
+    end
+    local pet = player:getPet()
+    if pet == nil or not pet.getLocalVar then
+        return
+    end
+    if pet:getLocalVar('OX_ANM_SYNCED') == 1 and pet.delMod then
+        local lvl     = player:getMainLvl() or 1
+        local hpMpPct = H.scaleTier(lvl, 40, 50, 60, 75)
+        local fc      = H.scaleTier(lvl, 40, 50, 60, 70)
+        local ref     = H.scaleTier(lvl, 6, 9, 12, 16)
+        pet:delMod(xi.mod.HPP, hpMpPct)
+        pet:delMod(xi.mod.MPP, hpMpPct)
+        pet:delMod(xi.mod.DMG, -3500)
+        pet:delMod(xi.mod.FASTCAST, fc)
+        pet:delMod(xi.mod.REFRESH, ref)
+        pet:delMod(xi.mod.ENMITY, -60)
+        if xi.mod.DMGBREATH then
+            pet:delMod(xi.mod.DMGBREATH, -10000)
+        end
+        if xi.mod.UDMBREATH then
+            pet:delMod(xi.mod.UDMBREATH, -10000)
+        end
+        if xi.mod.DMGMAGIC then
+            pet:delMod(xi.mod.DMGMAGIC, -10000)
+        end
+        if xi.mod.UDMMAGIC then
+            pet:delMod(xi.mod.UDMMAGIC, -10000)
+        end
+        pet:updateHealth()
+    end
+    pet:setLocalVar('OX_ANM_SYNCED', 0)
+    pet:setLocalVar('OX_ANM_GUARDRAIL', 0)
 end
 
 -----------------------------------
@@ -357,7 +401,7 @@ local function attachAnimistListeners(player)
         end
 
         local charId    = caster.getID and caster:getID() or 0
-        local now       = os.clock()
+        local now       = xi.overlords.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if not isPrimary then
             return
@@ -810,6 +854,7 @@ if xi.job and xi.job.PUP then
                 player:setLocalVar('OX_ANM_CELL_EXP', 0)
             end
             detachAnimistListeners(player)
+            unsyncAnimistPetMods(player)
         end,
     })
 end

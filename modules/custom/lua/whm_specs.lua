@@ -411,7 +411,7 @@ if xi.job and xi.job.WHM then
                 { xi.mod.REFRESH,      H.scaleTier(lvl, 4, 6, 8, 12) },
                 { xi.mod.HEALING,      H.scaleTier(lvl, 15, 25, 35, 50) },
                 { xi.mod.DIVINE,       H.scaleTier(lvl, 15, 25, 35, 50) },
-                { xi.mod.ENHANCING,    H.scaleTier(lvl, 15, 25, 35, 50) },
+                { xi.mod.ENHANCE,      H.scaleTier(lvl, 15, 25, 35, 50) },
                 { xi.mod.CLUB,         H.scaleTier(lvl, 15, 25, 35, 50) },
                 { xi.mod.STAFF,        H.scaleTier(lvl, 15, 25, 35, 50) },
             }

@@ -84,7 +84,7 @@ end
 -- Status Effect Modifiers
 -----------------------------------
 m:addOverride('xi.effects.osmotic_conduit.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.DMG_MAGIC, -1000)
+    effect:addMod(xi.mod.DMGMAGIC, -1000)
 end)
 
 -----------------------------------

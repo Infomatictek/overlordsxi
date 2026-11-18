@@ -907,7 +907,7 @@ if xi.job and xi.job.MNK then
             mods = function(_player, lvl)
                 return
                 {
-                    { xi.mod.HANDTOHAND,         scaleTier(lvl, 10, 20, 32, 45) },
+                    { xi.mod.HTH,                scaleTier(lvl, 10, 20, 32, 45) },
                     { xi.mod.ACC,                scaleTier(lvl, 8, 16, 26, 38) },
                     { xi.mod.ATT,                scaleTier(lvl, 12, 24, 40, 60) },
                     { xi.mod.ATTP,               scaleTier(lvl, 6, 10, 15, 20) },
@@ -958,7 +958,7 @@ if xi.job and xi.job.MNK then
                     { xi.mod.MND,          scaleTier(lvl, 8, 16, 26, 36) },
                     { xi.mod.VIT,          scaleTier(lvl, 5, 10, 16, 24) },
                     { xi.mod.CURE_POTENCY, scaleTier(lvl, 12, 20, 28, 35) },
-                    { xi.mod.HANDTOHAND,   scaleTier(lvl, 8, 15, 24, 35) },
+                    { xi.mod.HTH,          scaleTier(lvl, 8, 15, 24, 35) },
                     { xi.mod.MACC,         scaleTier(lvl, 10, 20, 32, 45) },
                     { xi.mod.MATT,         scaleTier(lvl, 8, 15, 24, 34) },
                     { xi.mod.ENMITY,       scaleTier(lvl, -12, -18, -25, -32) },

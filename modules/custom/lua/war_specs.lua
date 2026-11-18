@@ -389,7 +389,7 @@ local function onSpartanHit(defender, amount, attacker, attackType)
     end
 
     local stamp = gritBlockStamp[defender:getID()]
-    if stamp ~= nil and os.clock() - stamp < 0.5 then
+    if stamp ~= nil and xi.overlords.nowSec() - stamp < 0.5 then
         return
     end
 
@@ -1075,7 +1075,7 @@ m:addOverride('xi.combat.physical.isBlocked', function(defender, attacker)
     local blocked = super(defender, attacker)
 
     if blocked and isWarriorSpec(defender, SPARTAN_KEY) and isPhalanxSetup(defender) then
-        gritBlockStamp[defender:getID()] = os.clock()
+        gritBlockStamp[defender:getID()] = xi.overlords.nowSec()
         if defender:getLocalVar(BRACE_VAR) == 0 then
             addGrit(defender, 1)
         end

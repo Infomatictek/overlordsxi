@@ -2308,7 +2308,7 @@ function talents.resetAll(player, jobId)
     local function clearPrefix(prefix)
         local vars = player:getCharVarsWithPrefix(prefix)
         for varName, val in pairs(vars) do
-            if val ~= 0 then
+            if val ~= 0 and string.sub(varName, 1, #prefix) == prefix then
                 player:setCharVar(varName, 0)
                 count = count + 1
             end

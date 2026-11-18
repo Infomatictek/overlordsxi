@@ -5,6 +5,14 @@ xi = xi or {}
 xi.overlords = xi.overlords or {}
 xi.overlords.spec = xi.overlords.spec or {}
 
+-- Monotonic wall-clock seconds (works identically on Linux and Windows, unlike os.clock()).
+function xi.overlords.nowSec()
+    if getMonotonicSeconds then
+        return getMonotonicSeconds()
+    end
+    return os.time()
+end
+
 -- Returns nearby alive mobs within `radius` yalms of `entity`, using the engine's
 -- getEntitiesInRange API when a non-mob entity has a mob anchor, and falling back
 -- to zone:getMobs() when no mob anchor is available (or when `entity` is a mob).
@@ -310,7 +318,7 @@ local KEY_ALIASES =
     aegistemplar   = 'defender',
     alphawarden    = 'alphawarden',
     soulbeast      = 'alphawarden',
-    marionettist   = 'vanguard',
+    vanguard       = 'marionettist',
     miragesentinel = 'freelancer',
     caller         = 'celestial',
 }

@@ -70,22 +70,29 @@ diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
  
  }; // namespace luautils
 diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_container.cpp
-index 51f4872f59..cbdc356adb 100644
 --- a/src/map/status_effect_container.cpp
 +++ b/src/map/status_effect_container.cpp
-@@ -1842,6 +2188,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
-                     if (PEffect && (PEffect->GetEffectFlags() & xi::StatusEffectFlag::AlwaysExpiring) != xi::StatusEffectFlag::None)
-                     {
-                         PEffect->SetStartTime(timer::now());
-+                        PEffect->SetOriginID(PEntity->id);
+@@ -289,7 +289,23 @@ void LoadEffectsParameters()
+     EffectsParams[841].Name             = "warlord_ashura";
+     EffectsParams[841].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
+     EffectsParams[841].SortKey          = 10000;
+     EffectsParams[841].WearOffMessageId = MsgStd::EffectWearsOff;
  
-                         // Effect updated, probably from Ecliptic Attrition
-                         // Update status effect with new potency.
-@@ -1865,6 +2212,7 @@ void CStatusEffectContainer::HandleAura(CStatusEffect* PStatusEffect)
-                                                     4s);                                                      // Duration
-                         PEffect->AddEffectFlag(xi::StatusEffectFlag::NoLossMessage);
-                         PEffect->AddEffectFlag(xi::StatusEffectFlag::AlwaysExpiring);
-+                        PEffect->SetOriginID(PEntity->id);
-                         PTarget->StatusEffectContainer->AddStatusEffect(std::unique_ptr<CStatusEffect>(PEffect), EffectNotice::Silent);
-                     }
-                 }
++    // OverlordsXI PLD Aegis Templar Crystal Spec status effects (842-844).
++    EffectsParams[842].Name             = "aegis_zeal";
++    EffectsParams[842].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[842].SortKey          = 10000;
++    EffectsParams[842].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[843].Name             = "aegis_consecration";
++    EffectsParams[843].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[843].SortKey          = 10000;
++    EffectsParams[843].WearOffMessageId = MsgStd::EffectWearsOff;
++
++    EffectsParams[844].Name             = "holy_retribution";
++    EffectsParams[844].Flag             = xi::StatusEffectFlag::Dispelable | xi::StatusEffectFlag::Death | xi::StatusEffectFlag::OnZone | xi::StatusEffectFlag::OnJobchange;
++    EffectsParams[844].SortKey          = 10000;
++    EffectsParams[844].WearOffMessageId = MsgStd::EffectWearsOff;
++
+     // OverlordsXI BST Alpha Warden Crystal Spec status effects (847-852).
+     EffectsParams[847].Name             = "alpha_pack_instinct";

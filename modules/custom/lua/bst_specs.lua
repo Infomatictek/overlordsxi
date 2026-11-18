@@ -478,7 +478,7 @@ local function attachBstListeners(player)
         end
 
         local charId = actor.getID and actor:getID() or 0
-        local now    = os.clock()
+        local now    = xi.overlords.nowSec()
         if charId > 0 and (now - (lastAxeWsByChar[charId] or 0)) <= 0.1 then
             return
         end

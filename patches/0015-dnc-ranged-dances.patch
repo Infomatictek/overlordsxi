@@ -265,14 +265,12 @@ index e27b61e..f522979 100644
  void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_result_t* Action, bool isFirstSwing, CItemWeapon* weapon, int32 finaldamage, CAttack& attack)
  {
      auto* PChar = dynamic_cast<CCharEntity*>(PAttacker);
-@@ -1464,6 +1628,10 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
+@@ -1464,6 +1628,7 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
          }
-         else if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
+-        else if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
++        else if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0 &&
++                 !(PChar != nullptr && PChar->GetLocalVar("OX_RUN_SPELLBLADE") == 1)) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
          {
-+            if (PChar != nullptr && PChar->GetLocalVar("OX_RUN_SPELLBLADE") == 1)
-+            {
-+                return;
-+            }
              xi::StatusEffect highestRuneEffect = PAttacker->StatusEffectContainer->GetHighestRuneEffect();
              xi::StatusEffect newestRuneEffect  = PAttacker->StatusEffectContainer->GetNewestRuneEffect();
              int              highestRuneCount  = PAttacker->StatusEffectContainer->GetEffectsCount(highestRuneEffect);

@@ -2,7 +2,12 @@ diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state
 index 6aae57f6..f751901b 100644
 --- a/src/map/ai/states/attack_state.cpp
 +++ b/src/map/ai/states/attack_state.cpp
-@@ -89,7 +89,60 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+@@ -26,3 +26,4 @@
+ #include "ai/ai_container.h"
+ #include "entities/char_entity.h"
++#include "items/item_weapon.h"
+ #include "packets/s2c/0x028_battle2.h"
+@@ -89,7 +90,66 @@ auto CAttackState::Update(timer::time_point tick) -> bool
  
      if (AttackReady())
      {
@@ -12,12 +17,18 @@ index 6aae57f6..f751901b 100644
 +            if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity);
 +                PChar != nullptr && PChar->GetLocalVar("OX_AUTO_RANGED") == 1 && m_PEntity->battleTarget().isSet())
 +            {
-+                const auto* PRanged  = PChar->getEquip(SLOT_RANGED);
++                const auto* PRanged  = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_RANGED));
++                const auto* PAmmo    = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_AMMO));
++                const bool  hasAmmo  = (PRanged != nullptr && PRanged->isType(ITEM_WEAPON) &&
++                                       (PRanged->getSkillType() == xi::SkillType::Throwing ||
++                                        ((PRanged->getSkillType() == xi::SkillType::Archery || PRanged->getSkillType() == xi::SkillType::Marksmanship) &&
++                                         PAmmo != nullptr && PAmmo->isType(ITEM_WEAPON)))) ||
++                                      (PRanged == nullptr && PAmmo != nullptr && PAmmo->isThrowing());
 +                const float maxRange = PChar->GetLocalVar("OX_AUTO_RANGED_RANGE") > 0
 +                                           ? static_cast<float>(PChar->GetLocalVar("OX_AUTO_RANGED_RANGE"))
 +                                           : 20.0f;
 +                const float dist = distance(PChar->loc.p, PTarget->loc.p);
-+                if (PRanged != nullptr &&
++                if (hasAmmo &&
 +                    !PTarget->PAI->IsUntargetable() &&
 +                    (allowMeleeRange || dist > PChar->GetMeleeRange(PTarget)) &&
 +                    dist <= maxRange + PChar->modelHitboxSize + PTarget->modelHitboxSize &&
@@ -38,13 +49,13 @@ index 6aae57f6..f751901b 100644
 +                    }
 +
 +                    PChar->m_LastRangedAttackTime = tick;
-+                    auto        rangedDelay       = battleutils::GetRangedDelayReduction(PChar, PChar->GetRangedWeaponDelay(false));
++                    const int32 baseDelay         = static_cast<int32>(battleutils::GetRangedDelayReduction(PChar, PChar->GetRangedWeaponDelay(false)));
 +                    const float hasteMagic        = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_MAGIC) / 10000.0f, -1.0f, 0.4375f);
 +                    const float hasteAbility      = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_ABILITY) / 10000.0f, -0.25f, 0.25f);
 +                    const float hasteGear         = std::min<float>(PChar->getMod(xi::Mod::HASTE_GEAR) / 10000.0f, 0.25f);
 +                    const float hasteMult         = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, 0.20f, 2.0f);
-+                    rangedDelay                   = static_cast<int16>(rangedDelay * hasteMult);
-+                    m_attackTime                  = std::chrono::milliseconds(std::max<int16>(rangedDelay, 600));
++                    const int32 rangedDelay       = static_cast<int32>(static_cast<float>(baseDelay) * hasteMult);
++                    m_attackTime                  = std::chrono::milliseconds(std::max<int32>(rangedDelay, 600));
 +                    return true;
 +                }
 +            }

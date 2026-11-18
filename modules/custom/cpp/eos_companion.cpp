@@ -339,7 +339,7 @@ std::optional<FaerieCastAction> GetEosSupportAction(CPetEntity* PPet, timer::tim
         }
 
         auto spellId = GetNaSpell(PTarget);
-        if (spellId.has_value())
+        if (spellId.has_value() && CanCast(PPet, spellId.value(), true))
         {
             return FaerieCastAction{ spellId.value(), PTarget };
         }

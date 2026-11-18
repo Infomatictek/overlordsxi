@@ -762,7 +762,7 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
 
         -- Primary-cast-gated Kawarimi Ash cashout (3 stacks -> +1 shadow & 8/10/12/14% Max HP heal)
         local charId = actor.getID and actor:getID() or 0
-        local now    = os.clock()
+        local now    = xi.overlords.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if isPrimary and charId > 0 then
             lastWsCastAtByChar[charId] = now

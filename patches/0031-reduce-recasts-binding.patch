@@ -108,3 +108,16 @@ index 1be3e52441..785ccc1afd 100644
      void         AddLootRecast(LootRecastID id, timer::duration duration);
      auto         Load(xi::RecastType type, xi::Recast id, timer::duration duration, timer::duration chargeTime = 0s, uint8 maxCharges = 0) -> Recast_t*;
      virtual void ResetAbilities();
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -318,5 +318,9 @@
+ 
+     lua.set_function("GarbageCollectStep", &luautils::garbageCollectStep);
+     lua.set_function("GarbageCollectFull", &luautils::garbageCollectFull);
++    lua.set_function("getMonotonicSeconds", []() -> double
++    {
++        return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
++    });
+     lua.set_function("GetZone", &luautils::GetZone);
+     lua.set_function("GetItemByID", &luautils::GetItemByID);

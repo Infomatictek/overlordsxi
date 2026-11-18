@@ -421,7 +421,7 @@ function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, da
     local windowCap   = math.max(1, math.floor(pldMaxHp * (consecrated and 0.40 or 0.30)))
 
     local charId = pld:getID()
-    local now    = os.clock()
+    local now    = xi.overlords.nowSec()
     local win    = interceptWindowByChar[charId]
     if win == nil or (now - win.start) >= 1.5 then
         win = { start = now, used = 0 }

@@ -128,6 +128,30 @@ local function healWithPotency(caster, target, baseAmount)
     return healed, overheal
 end
 
+local wyvernAppliedModsByPet = {}
+
+local function unsyncWyvernHealerMods(player)
+    if player == nil or not player.getPet then
+        return
+    end
+    local pet = player:getPet()
+    if pet == nil then
+        return
+    end
+    local petId = pet:getID()
+    local mods = wyvernAppliedModsByPet[petId]
+    if mods ~= nil and pet.delMod then
+        for _, pair in ipairs(mods) do
+            pet:delMod(pair[1], pair[2])
+        end
+        wyvernAppliedModsByPet[petId] = nil
+        pet:updateHealth()
+    end
+    if pet.setLocalVar then
+        pet:setLocalVar('OX_WYV_SYNCED', 0)
+    end
+end
+
 local function syncWyvernHealerMods(player)
     if not isWyvernheart(player) or not player.getPet then
         return
@@ -146,21 +170,28 @@ local function syncWyvernHealerMods(player)
 
     local lvl   = player:getMainLvl() or 1
     local hpPct = H.scaleTier(lvl, 40, 50, 60, 75)
-    pet:addMod(xi.mod.HPP, hpPct)
-    pet:addMod(xi.mod.DMG, -4000)
-    pet:addMod(xi.mod.ENMITY, -60)
+    local mods  =
+    {
+        { xi.mod.HPP, hpPct },
+        { xi.mod.DMG, -4000 },
+        { xi.mod.ENMITY, -60 },
+    }
     if xi.mod.DMGBREATH then
-        pet:addMod(xi.mod.DMGBREATH, -10000)
+        table.insert(mods, { xi.mod.DMGBREATH, -10000 })
     end
     if xi.mod.UDMBREATH then
-        pet:addMod(xi.mod.UDMBREATH, -10000)
+        table.insert(mods, { xi.mod.UDMBREATH, -10000 })
     end
     if xi.mod.DMGMAGIC then
-        pet:addMod(xi.mod.DMGMAGIC, -10000)
+        table.insert(mods, { xi.mod.DMGMAGIC, -10000 })
     end
     if xi.mod.UDMMAGIC then
-        pet:addMod(xi.mod.UDMMAGIC, -10000)
+        table.insert(mods, { xi.mod.UDMMAGIC, -10000 })
     end
+    for _, pair in ipairs(mods) do
+        pet:addMod(pair[1], pair[2])
+    end
+    wyvernAppliedModsByPet[pet:getID()] = mods
     pet:updateHealth()
     pet:setHP(pet:getMaxHP())
 end
@@ -197,7 +228,7 @@ local function attachWyvernheartListeners(player)
         end
 
         local charId    = caster.getID and caster:getID() or 0
-        local now       = os.clock()
+        local now       = xi.overlords.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if not isPrimary then
             return
@@ -503,6 +534,7 @@ if xi.job and xi.job.DRG then
                 player:setLocalVar('OX_WYV_SCALE_EXP', 0)
             end
             detachWyvernheartListeners(player)
+            unsyncWyvernHealerMods(player)
         end,
     })
 end

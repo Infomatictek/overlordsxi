@@ -105,7 +105,7 @@ function R.getCasterCurePotency(caster)
 end
 
 function R.computePctBonus(target, maxHpPctBp, casterCurePotency, isSelfPureDps)
-    if isSelfPureDps or target == nil or not target.getMaxHP then
+    if isSelfPureDps or target == nil or not target.getMaxHP or (target.isMob and target:isMob()) then
         return 0
     end
 
