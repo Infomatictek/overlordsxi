@@ -57,4 +57,11 @@ commandObj.onTrigger = function(player)
     player:customMenu({ title = 'Buckler (Sub)', options = options })
 end
 
+xi.commands = xi.commands or {}
+xi.commands.buckler = commandObj
+
+if xi.module and xi.module.registerCommand then
+    xi.module.registerCommand('buckler', commandObj)
+end
+
 return commandObj
