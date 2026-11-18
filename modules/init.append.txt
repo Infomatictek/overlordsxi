@@ -1,4 +1,5 @@
 custom/lua/overlords_status_registry.lua
+custom/lua/overlords_mob_status_sync.lua
 custom/sql/custom_status_effects_sync.sql
 custom/lua/boss_like_combat_and_exp.lua
 custom/lua/overlords_job_specs.lua

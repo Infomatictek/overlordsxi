@@ -125,7 +125,7 @@ local function handleEosRegenCast(caster, target, spell, superFn)
         local params = eosRegenSpells[spell:getID()] or eosRegenSpells[xi.magic.spell.REGEN]
         local maxHp  = target ~= nil and target.getMaxHP and math.max(0, target:getMaxHP() or 0) or 0
         local power  = math.max(params.minPower, math.floor(maxHp * params.pct))
-        if target:addStatusEffect(eosRegenEffectId, { power = power, tick = 3, duration = params.duration, icon = xi.effect.REGEN, origin = caster }) then
+        if target:addStatusEffect(eosRegenEffectId, { power = power, tick = 3, duration = params.duration, icon = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(eosRegenEffectId, xi.effect.REGEN)) or xi.effect.REGEN, origin = caster }) then
             spell:setMsg(xi.msg.basic.MAGIC_GAIN_EFFECT)
             return xi.effect.REGEN
         end

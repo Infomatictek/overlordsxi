@@ -9,6 +9,31 @@
   ],
   "effects": [
     {
+      "effectId": 789,
+      "iconId": 233,
+      "key": "EOS_REGEN",
+      "aliases": [],
+      "name": "regen",
+      "displayName": "Eos Regen",
+      "tooltip": "Eos is steadily restoring your HP.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#16a34a",
+        "accent": "#86efac",
+        "motif": "leaf_heart"
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "faerie"
+    },
+    {
       "effectId": 815,
       "iconId": 24,
       "key": "COMMANDER_BREACH",
@@ -28,7 +53,10 @@
         "border": "#b22222",
         "accent": "#ff6b4a",
         "motif": "shattered_armor"
-      }
+      },
+      "isDebuff": true,
+      "isShared": false,
+      "soulKey": "commander"
     },
     {
       "effectId": 816,
@@ -50,7 +78,10 @@
         "border": "#2d6cdf",
         "accent": "#78b7ff",
         "motif": "shield_ward"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "commander"
     },
     {
       "effectId": 817,
@@ -72,7 +103,10 @@
         "border": "#d97706",
         "accent": "#fbbf24",
         "motif": "sword_surge"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "commander"
     },
     {
       "effectId": 818,
@@ -94,7 +128,10 @@
         "border": "#16a34a",
         "accent": "#6ee7b7",
         "motif": "heart_cross"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "commander"
     },
     {
       "effectId": 819,
@@ -116,7 +153,10 @@
         "border": "#dc2626",
         "accent": "#fca5a5",
         "motif": "axe_fury"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "berserker"
     },
     {
       "effectId": 820,
@@ -140,7 +180,10 @@
         "border": "#b45309",
         "accent": "#fde047",
         "motif": "spartan_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "spartan"
     },
     {
       "effectId": 821,
@@ -163,7 +206,10 @@
         "border": "#0284c7",
         "accent": "#7dd3fc",
         "motif": "crossed_blades"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "inquisitor"
     },
     {
       "effectId": 822,
@@ -186,7 +232,10 @@
         "border": "#2563eb",
         "accent": "#93c5fd",
         "motif": "rune_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "inquisitor"
     },
     {
       "effectId": 823,
@@ -209,7 +258,10 @@
         "border": "#7c3aed",
         "accent": "#c4b5fd",
         "motif": "rune_burst"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "inquisitor"
     },
     {
       "effectId": 824,
@@ -232,7 +284,10 @@
         "border": "#ea580c",
         "accent": "#fdba74",
         "motif": "flame_blade"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "spellblade"
     },
     {
       "effectId": 825,
@@ -255,7 +310,10 @@
         "border": "#059669",
         "accent": "#6ee7b7",
         "motif": "lifebinder_drop"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "lifebinder"
     },
     {
       "effectId": 826,
@@ -278,7 +336,10 @@
         "border": "#0d9488",
         "accent": "#5eead4",
         "motif": "sanctuary_halo"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "lifebinder"
     },
     {
       "effectId": 827,
@@ -301,7 +362,10 @@
         "border": "#4f46e5",
         "accent": "#a5b4fc",
         "motif": "lightning_rune"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "spellblade"
     },
     {
       "effectId": 828,
@@ -322,7 +386,10 @@
         "border": "#9333ea",
         "accent": "#e9d5ff",
         "motif": "ascendant_star"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "spellblade"
     },
     {
       "effectId": 829,
@@ -344,7 +411,10 @@
         "border": "#0891b2",
         "accent": "#67e8f9",
         "motif": "lotus_chi"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "chiweaver"
     },
     {
       "effectId": 830,
@@ -366,7 +436,10 @@
         "border": "#10b981",
         "accent": "#a7f3d0",
         "motif": "yin_yang_chi"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "chiweaver"
     },
     {
       "effectId": 831,
@@ -389,7 +462,10 @@
         "border": "#0284c7",
         "accent": "#38bdf8",
         "motif": "overcharge_bolt"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "spellblade"
     },
     {
       "effectId": 832,
@@ -412,7 +488,10 @@
         "border": "#d97706",
         "accent": "#fde68a",
         "motif": "music_note"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "adventurer"
     },
     {
       "effectId": 833,
@@ -435,7 +514,10 @@
         "border": "#f59e0b",
         "accent": "#fef08a",
         "motif": "double_note"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "adventurer"
     },
     {
       "effectId": 834,
@@ -458,7 +540,10 @@
         "border": "#8b5cf6",
         "accent": "#ddd6fe",
         "motif": "harp_wave"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "musician"
     },
     {
       "effectId": 835,
@@ -481,7 +566,10 @@
         "border": "#ec4899",
         "accent": "#fbcfe8",
         "motif": "sonic_burst"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "musician"
     },
     {
       "effectId": 836,
@@ -504,7 +592,10 @@
         "border": "#64748b",
         "accent": "#cbd5e1",
         "motif": "iron_clef"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "minstrel"
     },
     {
       "effectId": 837,
@@ -527,7 +618,10 @@
         "border": "#b91c1c",
         "accent": "#fca5a5",
         "motif": "katana_guard"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "ronin"
     },
     {
       "effectId": 838,
@@ -551,7 +645,10 @@
         "border": "#15803d",
         "accent": "#86efac",
         "motif": "bow_arrow"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "imperial"
     },
     {
       "effectId": 839,
@@ -575,7 +672,10 @@
         "border": "#6d28d9",
         "accent": "#c4b5fd",
         "motif": "cosmic_sigil"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "imperial"
     },
     {
       "effectId": 840,
@@ -599,7 +699,10 @@
         "border": "#b45309",
         "accent": "#fcd34d",
         "motif": "sheathed_blade"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "warlord"
     },
     {
       "effectId": 841,
@@ -623,7 +726,10 @@
         "border": "#dc2626",
         "accent": "#f87171",
         "motif": "ashura_crest"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "warlord"
     },
     {
       "effectId": 842,
@@ -647,7 +753,10 @@
         "border": "#ca8a04",
         "accent": "#fef08a",
         "motif": "sun_sword"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "aegistemplar"
     },
     {
       "effectId": 843,
@@ -671,7 +780,10 @@
         "border": "#eab308",
         "accent": "#fef9c3",
         "motif": "holy_crest"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "aegistemplar"
     },
     {
       "effectId": 844,
@@ -695,7 +807,10 @@
         "border": "#d97706",
         "accent": "#fde68a",
         "motif": "radiant_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "aegistemplar"
     },
     {
       "effectId": 845,
@@ -718,7 +833,10 @@
         "border": "#475569",
         "accent": "#94a3b8",
         "motif": "smoke_cloud"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "kagemusha"
     },
     {
       "effectId": 846,
@@ -742,7 +860,10 @@
         "border": "#334155",
         "accent": "#cbd5e1",
         "motif": "twin_shuriken"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "kagemusha"
     },
     {
       "effectId": 847,
@@ -766,7 +887,10 @@
         "border": "#b45309",
         "accent": "#fbbf24",
         "motif": "wolf_fang"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 848,
@@ -790,7 +914,10 @@
         "border": "#991b1b",
         "accent": "#f87171",
         "motif": "claw_slash"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 849,
@@ -814,7 +941,10 @@
         "border": "#16a34a",
         "accent": "#86efac",
         "motif": "beast_link"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 850,
@@ -838,7 +968,10 @@
         "border": "#9f1239",
         "accent": "#fda4af",
         "motif": "roar_wave"
-      }
+      },
+      "isDebuff": true,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 851,
@@ -861,7 +994,10 @@
         "border": "#65a30d",
         "accent": "#bef264",
         "motif": "paw_emblem"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 852,
@@ -885,7 +1021,10 @@
         "border": "#059669",
         "accent": "#6ee7b7",
         "motif": "leaf_heart"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "alphawarden"
     },
     {
       "effectId": 853,
@@ -909,7 +1048,10 @@
         "border": "#be123c",
         "accent": "#fda4af",
         "motif": "rapier_arc"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "crimsonduelist"
     },
     {
       "effectId": 854,
@@ -933,7 +1075,10 @@
         "border": "#e11d48",
         "accent": "#fecdd3",
         "motif": "fencing_thrust"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "crimsonduelist"
     },
     {
       "effectId": 855,
@@ -957,7 +1102,10 @@
         "border": "#881337",
         "accent": "#fb7185",
         "motif": "blood_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "dreadnought"
     },
     {
       "effectId": 856,
@@ -981,7 +1129,10 @@
         "border": "#4c1d95",
         "accent": "#a78bfa",
         "motif": "dread_helm"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "dreadnought"
     },
     {
       "effectId": 857,
@@ -1005,7 +1156,10 @@
         "border": "#0369a1",
         "accent": "#7dd3fc",
         "motif": "azure_shell"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "azurebastion"
     },
     {
       "effectId": 858,
@@ -1029,7 +1183,10 @@
         "border": "#0284c7",
         "accent": "#38bdf8",
         "motif": "azure_bolt"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "azurebastion"
     },
     {
       "effectId": 859,
@@ -1053,7 +1210,10 @@
         "border": "#0ea5e9",
         "accent": "#bae6fd",
         "motif": "diamond_crest"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "azurebastion"
     },
     {
       "effectId": 860,
@@ -1077,7 +1237,10 @@
         "border": "#0284c7",
         "accent": "#e0f2fe",
         "motif": "white_wing"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "medic"
     },
     {
       "effectId": 861,
@@ -1101,7 +1264,10 @@
         "border": "#0d9488",
         "accent": "#99f6e4",
         "motif": "chalice_glow"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "medic"
     },
     {
       "effectId": 862,
@@ -1125,7 +1291,10 @@
         "border": "#2563eb",
         "accent": "#dbeafe",
         "motif": "angel_veil"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "medic"
     },
     {
       "effectId": 863,
@@ -1149,7 +1318,10 @@
         "border": "#ca8a04",
         "accent": "#fef08a",
         "motif": "light_cross"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "lightbringer"
     },
     {
       "effectId": 864,
@@ -1173,7 +1345,10 @@
         "border": "#d97706",
         "accent": "#fde68a",
         "motif": "templar_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "lightbringer"
     },
     {
       "effectId": 865,
@@ -1197,7 +1372,10 @@
         "border": "#0891b2",
         "accent": "#67e8f9",
         "motif": "azure_orb"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "magus"
     },
     {
       "effectId": 866,
@@ -1221,7 +1399,10 @@
         "border": "#0284c7",
         "accent": "#7dd3fc",
         "motif": "water_spiral"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "magus"
     },
     {
       "effectId": 867,
@@ -1245,7 +1426,10 @@
         "border": "#be185d",
         "accent": "#f9a8d4",
         "motif": "ribbon_veil"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "crimsonduelist"
     },
     {
       "effectId": 868,
@@ -1269,7 +1453,10 @@
         "border": "#e11d48",
         "accent": "#fda4af",
         "motif": "rose_waltz"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "bloodmaiden"
     },
     {
       "effectId": 869,
@@ -1293,7 +1480,10 @@
         "border": "#7c3aed",
         "accent": "#ddd6fe",
         "motif": "moon_sanctuary"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "celestial"
     },
     {
       "effectId": 870,
@@ -1317,7 +1507,10 @@
         "border": "#6366f1",
         "accent": "#c7d2fe",
         "motif": "astral_ring"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "celestial"
     },
     {
       "effectId": 871,
@@ -1341,7 +1534,10 @@
         "border": "#b45309",
         "accent": "#fcd34d",
         "motif": "gear_shield"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "clockwork"
     },
     {
       "effectId": 872,
@@ -1365,7 +1561,10 @@
         "border": "#15803d",
         "accent": "#86efac",
         "motif": "bark_plate"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "geomancer"
     },
     {
       "effectId": 873,
@@ -1389,7 +1588,10 @@
         "border": "#166534",
         "accent": "#4ade80",
         "motif": "canopy_leaf"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "geomancer"
     },
     {
       "effectId": 874,
@@ -1413,7 +1615,10 @@
         "border": "#1d4ed8",
         "accent": "#93c5fd",
         "motif": "dragon_scale"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "wyvernheart"
     },
     {
       "effectId": 875,
@@ -1437,7 +1642,10 @@
         "border": "#4338ca",
         "accent": "#a5b4fc",
         "motif": "wyvern_wing"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "wyvernheart"
     },
     {
       "effectId": 876,
@@ -1461,7 +1669,10 @@
         "border": "#dc2626",
         "accent": "#fca5a5",
         "motif": "sword_surge"
-      }
+      },
+      "isDebuff": false,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 877,
@@ -1485,7 +1696,10 @@
         "border": "#9333ea",
         "accent": "#d8b4fe",
         "motif": "chain_burst"
-      }
+      },
+      "isDebuff": false,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 878,
@@ -1509,7 +1723,10 @@
         "border": "#2563eb",
         "accent": "#93c5fd",
         "motif": "shield_ward"
-      }
+      },
+      "isDebuff": false,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 879,
@@ -1531,7 +1748,10 @@
         "border": "#b91c1c",
         "accent": "#f87171",
         "motif": "shattered_armor"
-      }
+      },
+      "isDebuff": true,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 880,
@@ -1553,7 +1773,10 @@
         "border": "#991b1b",
         "accent": "#fb923c",
         "motif": "severed_blade"
-      }
+      },
+      "isDebuff": true,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 881,
@@ -1575,7 +1798,10 @@
         "border": "#c2410c",
         "accent": "#fde047",
         "motif": "crosshair_expose"
-      }
+      },
+      "isDebuff": true,
+      "isShared": true,
+      "soulKey": ""
     },
     {
       "effectId": 882,
@@ -1597,7 +1823,10 @@
         "border": "#7f1d1d",
         "accent": "#fca5a5",
         "motif": "dice_debt"
-      }
+      },
+      "isDebuff": true,
+      "isShared": false,
+      "soulKey": "gambler"
     },
     {
       "effectId": 883,
@@ -1620,7 +1849,10 @@
         "border": "#0f766e",
         "accent": "#5eead4",
         "motif": "card_pip"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "gambler"
     },
     {
       "effectId": 884,
@@ -1643,7 +1875,10 @@
         "border": "#b45309",
         "accent": "#fde047",
         "motif": "crown_dice"
-      }
+      },
+      "isDebuff": false,
+      "isShared": false,
+      "soulKey": "gambler"
     }
   ]
 }

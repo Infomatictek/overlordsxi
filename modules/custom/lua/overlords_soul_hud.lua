@@ -93,6 +93,11 @@ function hud.buildPacketData(player)
         end
     end
 
+    local oxBuffs = hud.collectOxBuffs and hud.collectOxBuffs(player) or ''
+    if oxBuffs ~= '' then
+        kvParts[#kvParts + 1] = 'ox_buffs=' .. oxBuffs
+    end
+
     return {
         jobId    = jobId,
         soulKey  = sanitize(soulKey),
@@ -223,6 +228,91 @@ end)
 hud.registerProvider('spellblade', function(player)
     return { prep_stacks = player:getLocalVar('OX_RUN_PREP_STACKS') or 0 }
 end)
+
+-- Shared helper: remaining seconds + power for a custom registry effect.
+local function customEff(player, effectId)
+    local rem, eff = effectRemSec(player, effectId)
+    if eff == nil then
+        return 0, 0
+    end
+    return rem, (eff.getPower and eff:getPower() or 0)
+end
+
+-- WAR Spartan (Phalanx Ward 820).
+hud.registerProvider('spartan', function(player)
+    local rem, pow = customEff(player, xi.effect.SPARTAN_WARD or 820)
+    return { ward_rem = rem, ward_pow = pow }
+end)
+
+-- DRK Dreadnought (Blood Carapace 855, Dread Bastion 856).
+hud.registerProvider('dreadnought', function(player)
+    local cRem, cPow = customEff(player, xi.effect.BLOOD_CARAPACE or 855)
+    local bRem, bPow = customEff(player, xi.effect.DREAD_BASTION or 856)
+    return { carapace_rem = cRem, carapace_pow = cPow, bastion_rem = bRem, bastion_pow = bPow }
+end)
+
+-- DRG Wyvernheart (Dragonscale 874, Dragonscale Sanctuary 875).
+hud.registerProvider('wyvernheart', function(player)
+    local sRem, sPow = customEff(player, xi.effect.DRAGONSCALE or 874)
+    local nRem, nPow = customEff(player, xi.effect.DRAGONSCALE_SANCTUARY or 875)
+    return { scale_rem = sRem, scale_pow = sPow, sanct_rem = nRem, sanct_pow = nPow }
+end)
+
+-- COR Buccaneer (House Advantage 884, Card Counting 883, House Debt 882).
+hud.registerProvider('buccaneer', function(player)
+    local aRem, aPow = customEff(player, xi.effect.HOUSE_ADVANTAGE or 884)
+    local cRem, cPow = customEff(player, xi.effect.CARD_COUNTING or 883)
+    local dRem, dPow = customEff(player, xi.effect.HOUSE_DEBT or 882)
+    return { adv_rem = aRem, adv_pow = aPow, cc_rem = cRem, cc_pow = cPow, debt_rem = dRem, debt_pow = dPow }
+end)
+
+-- BLU Magus (Azure Catalyst 865 stacks, Osmotic Conduit 866).
+hud.registerProvider('magus', function(player)
+    local cRem, cPow = customEff(player, xi.effect.AZURE_CATALYST or 865)
+    local oRem, oPow = customEff(player, xi.effect.OSMOTIC_CONDUIT or 866)
+    return { catalyst_stacks = cPow, catalyst_rem = cRem, conduit_rem = oRem, conduit_pow = oPow }
+end)
+
+-- BLU Azure Bastion (Chitin Carapace 857 stacks, Azure Surge 858, Diamond Shell 859).
+hud.registerProvider('azurebastion', function(player)
+    local cRem, cPow = customEff(player, xi.effect.CHITIN_CARAPACE or 857)
+    local sRem = customEff(player, xi.effect.AZURE_SURGE or 858)
+    local dRem = customEff(player, xi.effect.DIAMOND_SHELL or 859)
+    return { chitin_stacks = cPow, chitin_rem = cRem, surge_rem = sRem, shell_rem = dRem }
+end)
+
+-- Active custom player buffs/shields for the client icon strip:
+--   ox_buffs=<iconId>:<power>:<remSec>,...
+local MAX_OX_BUFFS = 12
+function hud.collectOxBuffs(player)
+    local registry = xi.overlords.statusRegistry
+    if registry == nil or not player.getStatusEffects then
+        return ''
+    end
+
+    local items = {}
+    for _, eff in pairs(player:getStatusEffects() or {}) do
+        if eff ~= nil and eff.getEffectType then
+            local effectId = eff:getEffectType()
+            local reg = registry[effectId]
+            if reg ~= nil and not reg.isDebuff then
+                local rem = eff.getTimeRemaining and math.max(0, math.floor((eff:getTimeRemaining() or 0) / 1000)) or 0
+                items[#items + 1] =
+                {
+                    sort = effectId,
+                    text = string.format('%d:%d:%d', xi.overlords.getStatusIcon(effectId, effectId), math.floor(eff:getPower() or 0), rem),
+                }
+            end
+        end
+    end
+    table.sort(items, function(a, b) return a.sort < b.sort end)
+
+    local out = {}
+    for i = 1, math.min(#items, MAX_OX_BUFFS) do
+        out[#out + 1] = items[i].text
+    end
+    return table.concat(out, ',')
+end
 
 -----------------------------------
 -- Lifecycle & Event Hooks
