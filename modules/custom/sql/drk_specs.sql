@@ -11,7 +11,7 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    -- Abyssal Cleave (449): 20s CD, Enemy (8y), recastId 224
-    (449, 'abyssal_cleave', 8, 255, 4, 20, 224, 110, 0, 201, 1500, 0, 6, 8.0, 0, 0, 200, 750, 0, 0, NULL),
-    -- Dread Bastion (450): 35s CD, Self (10s), recastId 225
-    (450, 'dread_bastion',  8, 255, 1, 35, 225, 100, 0, 301, 1800, 0, 6, 0.0, 0, 0, 120, 360, 0, 0, NULL);
+    -- Abyssal Cleave (449): 25s CD, Enemy (8y), recastId 224
+    (449, 'abyssal_cleave', 8, 255, 4, 25, 224, 110, 0, 201, 1500, 0, 6, 8.0, 0, 0, 200, 900, 0, 0, NULL),
+    -- Dread Bastion (450): 60s CD, Self (12s), recastId 225
+    (450, 'dread_bastion',  8, 255, 1, 60, 225, 100, 0, 301, 1800, 0, 6, 0.0, 0, 0, 120, 360, 0, 0, NULL);

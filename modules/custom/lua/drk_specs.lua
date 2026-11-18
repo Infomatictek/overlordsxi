@@ -9,6 +9,7 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/overlords_shared_slots')
 require('scripts/globals/job_utils/dark_knight')
 require('scripts/globals/canusespell_override')
 require('scripts/globals/spells/absorb_spell')
@@ -39,6 +40,7 @@ local SPELL_DREAD_SPIKES = (xi.magic and xi.magic.spell and xi.magic.spell.DREAD
 local SPELL_ABSORB_STR   = (xi.magic and xi.magic.spell and xi.magic.spell.ABSORB_STR)   or 266
 local SPELL_ABSORB_VIT   = (xi.magic and xi.magic.spell and xi.magic.spell.ABSORB_VIT)   or 268
 local SPELL_ABSORB_TP    = (xi.magic and xi.magic.spell and xi.magic.spell.ABSORB_TP)    or 275
+local SPELL_ABSORB_ACC   = (xi.magic and xi.magic.spell and xi.magic.spell.ABSORB_ACC)   or 242
 
 -- Custom Status Effect IDs (855-856; registered in patch 0026)
 local EFFECT_BLOOD_CARAPACE = 855
@@ -73,6 +75,79 @@ xi.effects.blood_carapace = xi.effects.blood_carapace or {}
 xi.effects.dread_bastion  = xi.effects.dread_bastion  or {}
 
 local weaponModStateByChar = {}
+local lastWsCastAtByChar   = {}
+
+local function getBloodTithe(player)
+    if player == nil or not player.getLocalVar then
+        return 0
+    end
+    local exp = player:getLocalVar('OX_DRK_TITHE_EXP') or 0
+    if exp > 0 and os.time() > exp then
+        player:setLocalVar('OX_DRK_TITHE', 0)
+        player:setLocalVar('OX_DRK_TITHE_EXP', 0)
+        return 0
+    end
+    return math.min(3, math.max(0, player:getLocalVar('OX_DRK_TITHE') or 0))
+end
+
+local function addBloodTithe(player, amount)
+    if player == nil or not player.setLocalVar then
+        return 0
+    end
+    local cur  = getBloodTithe(player)
+    local next = math.min(3, cur + (amount or 1))
+    player:setLocalVar('OX_DRK_TITHE', next)
+    player:setLocalVar('OX_DRK_TITHE_EXP', os.time() + 30)
+    return next
+end
+
+local function consumeAllBloodTithe(player)
+    local count = getBloodTithe(player)
+    if player ~= nil and player.setLocalVar then
+        player:setLocalVar('OX_DRK_TITHE', 0)
+        player:setLocalVar('OX_DRK_TITHE_EXP', 0)
+    end
+    return count
+end
+
+local function primeBloodReap(player)
+    if player ~= nil and player.setLocalVar then
+        player:setLocalVar('OX_DRK_BLOOD_REAP_EXP', os.time() + 12)
+    end
+end
+
+local function consumeBloodReap(player)
+    if player == nil or not player.getLocalVar then
+        return false
+    end
+    local exp = player:getLocalVar('OX_DRK_BLOOD_REAP_EXP') or 0
+    player:setLocalVar('OX_DRK_BLOOD_REAP_EXP', 0)
+    return exp > 0 and os.time() <= exp
+end
+
+local function applySharedSlot(target, effectId, power, duration, origin, modsTable)
+    if target == nil or not target.isAlive or not target:isAlive() then
+        return
+    end
+    local slots = xi.overlords and xi.overlords.slots
+    if slots and slots.applySlot then
+        slots.applySlot(target, effectId, power, duration, origin, modsTable, effectId)
+        return
+    end
+    for _, pair in ipairs(modsTable or {}) do
+        if pair[1] == xi.mod.ATTP then
+            target:addStatusEffect(xi.effect.ATTACK_DOWN, { power = math.abs(pair[2]), duration = duration, origin = origin })
+        elseif pair[1] == xi.mod.MATT then
+            target:addStatusEffect(xi.effect.MAGIC_ATK_DOWN, { power = math.abs(pair[2]), duration = duration, origin = origin })
+        elseif pair[1] == xi.mod.ACC then
+            target:addStatusEffect(xi.effect.ACCURACY_DOWN, { power = math.abs(pair[2]), duration = duration, origin = origin })
+        elseif pair[1] == xi.mod.DEFP then
+            target:addStatusEffect(xi.effect.DEFENSE_DOWN, { power = math.abs(pair[2]), duration = duration, origin = origin })
+        elseif pair[1] == xi.mod.MDEF then
+            target:addStatusEffect(xi.effect.MAGIC_DEF_DOWN, { power = math.abs(pair[2]), duration = duration, origin = origin })
+        end
+    end
+end
 
 -----------------------------------
 -- Scaling & Equipment Helpers
@@ -183,20 +258,31 @@ local function applyBloodPoolOvercap(player, gainedHp)
     })
 end
 
-local function refreshBloodPoolDuration(player)
+local function hasBloodPoolOvercap(player)
+    if player == nil or not player.getStatusEffect then
+        return false
+    end
+    local existing = player:getStatusEffect(xi.effect.MAX_HP_BOOST)
+    return existing ~= nil and (existing:getPower() or 0) == 0 and (existing:getSubPower() or 0) > 0
+end
+
+local function extendBloodPoolDuration(player, extraSec)
     if player == nil or not player.getStatusEffect then
         return
     end
     local existing = player:getStatusEffect(xi.effect.MAX_HP_BOOST)
     if existing ~= nil and (existing:getPower() or 0) == 0 and (existing:getSubPower() or 0) > 0 then
-        local subP = existing:getSubPower()
+        local subP      = existing:getSubPower()
+        local remMs     = existing.getTimeRemaining and existing:getTimeRemaining() or 0
+        local remSec    = math.max(1, math.ceil(remMs / 1000))
+        local newDurSec = math.min(60, remSec + (extraSec or 6))
         if player.delStatusEffectSilent then
             player:delStatusEffectSilent(xi.effect.MAX_HP_BOOST)
         end
         player:addStatusEffect(xi.effect.MAX_HP_BOOST,
         {
             power    = 0,
-            duration = 30,
+            duration = newDurSec,
             origin   = player,
             subPower = subP,
         })
@@ -258,7 +344,7 @@ local function syncDrkWeaponMods(player, force)
     if hasScythe then
         table.insert(mods, { xi.mod.SCYTHE,          scaleTier(lvl, 15, 25, 35, 50) })
         table.insert(mods, { xi.mod.DARK,            scaleTier(lvl, 15, 25, 35, 50) })
-        table.insert(mods, { xi.mod.PARRY,           scaleTier(lvl, 14, 20, 26, 32) })
+        table.insert(mods, { xi.mod.INQUARTATA,      scaleTier(lvl, 10, 14, 18, 22) })
         table.insert(mods, { xi.mod.DARK_MAGIC_CAST, -scaleTier(lvl, 20, 30, 40, 50) })
         table.insert(mods, { xi.mod.SPELLINTERRUPT,  100 })
     end
@@ -315,10 +401,9 @@ function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, da
         spikes:setSubPower(remaining - absorbed)
     end
 
-    -- Reflect 25% of absorbed physical damage as volatile enmity
+    -- Generate flat volatile enmity on each absorbed physical hit
     if attacker ~= nil and attacker.isMob and attacker:isMob() and attacker.addEnmity then
-        local ve = math.max(1, math.floor(absorbed * 0.25))
-        attacker:addEnmity(defender, 0, ve)
+        attacker:addEnmity(defender, 0, 180)
     end
 
     return math.max(0, curAmount - absorbed)
@@ -347,31 +432,59 @@ m:addOverride('xi.spells.canUseSpellOverride', function(player, spell)
     return super(player, spell)
 end)
 
--- Drain II: 0 MP, 15s recast, +25% Max HP overcap for 30s
-m:addOverride('xi.actions.spells.black.drain_ii.onMagicCastingCheck', function(caster, target, spell)
-    if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
-        if spell ~= nil and spell.setMPCost then
-            spell:setMPCost(0)
-        end
-    end
-    return super(caster, target, spell)
-end)
-
+-- Drain II: normal MP cost, 30s recast, Max-HP + VIT scaled drain bypassing -60% MAG_DMG_DEALT, +25% Max HP overcap for 30s
 m:addOverride('xi.actions.spells.black.drain_ii.onSpellCast', function(caster, target, spell)
-    local dmg = super(caster, target, spell)
     if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
-        if dmg > 0 then
-            applyBloodPoolOvercap(caster, dmg)
+        local dmg = 0
+        if target ~= nil and target.isAlive and target:isAlive() and not (target.isUndead and target:isUndead()) then
+            local lvl       = caster:getMainLvl() or 1
+            local baseMaxHp = getBaseMaxHpWithoutOvercap(caster)
+            local vit       = caster:getStat(xi.mod.VIT) or 0
+            local pct       = scaleTier(lvl, 0.12, 0.15, 0.18, 0.22)
+            local rawDrain  = math.max(1, math.floor(baseMaxHp * pct + vit * 0.75))
+            local targetHp  = target:getHP() or 0
+            dmg             = math.min(rawDrain, targetHp)
+            if dmg > 0 then
+                if target.delHP then
+                    target:delHP(dmg)
+                else
+                    target:takeDamage(dmg, caster, xi.attackType.MAGICAL, xi.damageType.DARK)
+                end
+                if target.updateEnmityFromDamage then
+                    target:updateEnmityFromDamage(caster, dmg)
+                end
+                if target.addEnmity then
+                    target:addEnmity(caster, 150, 450)
+                end
+                applyBloodPoolOvercap(caster, dmg)
+                if caster.addHP then
+                    caster:addHP(dmg)
+                end
+                if spell ~= nil and spell.setMsg then
+                    spell:setMsg(xi.msg.basic.MAGIC_DRAIN_HP)
+                end
+            else
+                if spell ~= nil and spell.setMsg then
+                    spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+                end
+            end
+        else
+            if spell ~= nil and spell.setMsg then
+                spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+            end
         end
+
         if caster.timer then
             caster:timer(50, function(actor)
                 if actor ~= nil and actor.addRecast then
-                    actor:addRecast(xi.recast.MAGIC, SPELL_DRAIN_II, 15)
+                    actor:addRecast(xi.recast.MAGIC, SPELL_DRAIN_II, 30)
                 end
             end)
         end
+        return dmg
     end
-    return dmg
+
+    return super(caster, target, spell)
 end)
 
 -- Drain III: also enforces Dreadnought Blood-Pool overcap if cast
@@ -383,11 +496,17 @@ m:addOverride('xi.actions.spells.black.drain_iii.onSpellCast', function(caster, 
     return dmg
 end)
 
--- Dread Spikes: instant-cast, 30s recast, 35% Max HP dark blood-shield
+-- Dread Spikes: instant-cast, 45s recast, costs 10% Current HP (requires >15% HP),
+-- consumes Blood Tithe (0..3) for 25% + 5%/stack Max HP shield (up to 40%)
 m:addOverride('xi.actions.spells.black.dread_spikes.onMagicCastingCheck', function(caster, target, spell)
     if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
         if spell ~= nil and spell.setCastTime then
             spell:setCastTime(0)
+        end
+        local maxHp = caster:getMaxHP() or 1
+        local curHp = caster:getHP() or 0
+        if curHp <= math.floor(maxHp * 0.15) then
+            return xi.msg.basic.CANNOT_PERFORM
         end
     end
     return super(caster, target, spell)
@@ -395,8 +514,19 @@ end)
 
 m:addOverride('xi.actions.spells.black.dread_spikes.onSpellCast', function(caster, target, spell)
     if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
-        local maxHp  = caster:getMaxHP() or 0
-        local shield = math.max(1, math.floor(maxHp * 0.35))
+        local maxHp = caster:getMaxHP() or 0
+        local curHp = caster:getHP() or 0
+        local hpCost = math.floor(curHp * 0.10)
+        if curHp - hpCost < 1 then
+            hpCost = math.max(0, curHp - 1)
+        end
+        if hpCost > 0 and caster.delHP then
+            caster:delHP(hpCost)
+        end
+
+        local tithe  = consumeAllBloodTithe(caster)
+        local pct    = 0.25 + (tithe * 0.05)
+        local shield = math.max(1, math.floor(maxHp * pct))
         if caster.delStatusEffectSilent then
             caster:delStatusEffectSilent(xi.effect.DREAD_SPIKES)
         end
@@ -414,7 +544,7 @@ m:addOverride('xi.actions.spells.black.dread_spikes.onSpellCast', function(caste
         if caster.timer then
             caster:timer(50, function(actor)
                 if actor ~= nil and actor.addRecast then
-                    actor:addRecast(xi.recast.MAGIC, SPELL_DREAD_SPIKES, 30)
+                    actor:addRecast(xi.recast.MAGIC, SPELL_DREAD_SPIKES, 45)
                 end
             end)
         end
@@ -423,12 +553,13 @@ m:addOverride('xi.actions.spells.black.dread_spikes.onSpellCast', function(caste
     return super(caster, target, spell)
 end)
 
--- Absorb-VIT / Absorb-TP / Absorb-STR: instant-cast, 15s shared cycle, heavy VE, +8% Max MP
+-- Absorb-STR / VIT / TP / ACC: instant-cast, 18s shared cycle, heavy VE, +6% Max MP, +1 Blood Tithe (max 3, 30s)
 local ABSORB_TANK_SPELLS =
 {
+    { name = 'absorb-str', id = SPELL_ABSORB_STR },
     { name = 'absorb-vit', id = SPELL_ABSORB_VIT },
     { name = 'absorb-tp',  id = SPELL_ABSORB_TP  },
-    { name = 'absorb-str', id = SPELL_ABSORB_STR },
+    { name = 'absorb-acc', id = SPELL_ABSORB_ACC },
 }
 
 for _, entry in ipairs(ABSORB_TANK_SPELLS) do
@@ -445,20 +576,23 @@ for _, entry in ipairs(ABSORB_TANK_SPELLS) do
         local res = super(caster, target, spell)
         if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
             if target ~= nil and target.isMob and target:isMob() and target.addEnmity then
-                target:addEnmity(caster, 0, 600)
+                target:addEnmity(caster, 150, 750)
             end
 
             local maxMp = caster:getMaxMP() or 0
             if maxMp > 0 and caster.addMP then
-                caster:addMP(math.max(1, math.floor(maxMp * 0.08)))
+                caster:addMP(math.max(1, math.floor(maxMp * 0.06)))
             end
+
+            addBloodTithe(caster, 1)
 
             if caster.timer then
                 caster:timer(50, function(actor)
                     if actor ~= nil and actor.addRecast then
-                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_VIT, 15)
-                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_TP,  15)
-                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_STR, 15)
+                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_STR, 18)
+                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_VIT, 18)
+                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_TP,  18)
+                        actor:addRecast(xi.recast.MAGIC, SPELL_ABSORB_ACC, 18)
                     end
                 end)
             end
@@ -471,15 +605,16 @@ end
 -- Custom Status Effect Callbacks
 -----------------------------------
 m:addOverride('xi.effects.blood_carapace.onEffectGain', function(_target, effect)
-    effect:addMod(xi.mod.DMG, -2000)
+    effect:addMod(xi.mod.DMG, -1200)
 end)
 
 m:addOverride('xi.effects.blood_carapace.onEffectLose', function(_target, _effect)
 end)
 
 m:addOverride('xi.effects.dread_bastion.onEffectGain', function(_target, effect)
-    effect:addMod(xi.mod.DMG, -2000)
-    effect:addMod(xi.mod.KNOCKBACK_REDUCTION, 10)
+    effect:addMod(xi.mod.DMG, -1800)
+    effect:addMod(xi.mod.KNOCKBACK_REDUCTION, 100)
+    effect:addMod(xi.mod.ENMITY, 35)
 end)
 
 m:addOverride('xi.effects.dread_bastion.onEffectTick', function(target, _effect)
@@ -487,7 +622,7 @@ m:addOverride('xi.effects.dread_bastion.onEffectTick', function(target, _effect)
         return
     end
     if target.getNearbyEntities then
-        local nearby = target:getNearbyEntities(10)
+        local nearby = target:getNearbyEntities(8)
         if type(nearby) == 'table' then
             for _, ent in ipairs(nearby) do
                 if
@@ -497,7 +632,7 @@ m:addOverride('xi.effects.dread_bastion.onEffectTick', function(target, _effect)
                     ent.isEngaged and ent:isEngaged() and
                     ent.addEnmity
                 then
-                    ent:addEnmity(target, 0, 220)
+                    ent:addEnmity(target, 0, 260)
                 end
             end
         end
@@ -510,10 +645,10 @@ end)
 -----------------------------------
 -- Native DRK Job Ability Reworks
 -----------------------------------
--- Souleater -> Blood Carapace (20s CD, 10s duration, no HP drain, -20% DT, 15% melee lifesteal)
+-- Souleater -> Blood Carapace (45s CD, 12s duration: -12% DT; swings spend 2% HP above 20% HP for VE + Blood Tithe + Blood Reap)
 m:addOverride('xi.actions.abilities.souleater.onAbilityCheck', function(player, target, ability)
     if isDrkSpec(player, DREADNOUGHT_KEY) and ability ~= nil and ability.setRecast then
-        ability:setRecast(20)
+        ability:setRecast(45)
     end
     return super(player, target, ability)
 end)
@@ -524,23 +659,28 @@ m:addOverride('xi.job_utils.dark_knight.useSouleater', function(player, target, 
         if player.delStatusEffectSilent then
             player:delStatusEffectSilent(EFFECT_BLOOD_CARAPACE)
         end
-        applyCustomTimedEffect(player, EFFECT_BLOOD_CARAPACE, 15, 10, player, 0, iconId, 0, 1)
+        applyCustomTimedEffect(player, EFFECT_BLOOD_CARAPACE, 12, 12, player, 0, iconId, 0, 1)
         return EFFECT_BLOOD_CARAPACE
     end
     return super(player, target, ability)
 end)
 
--- Arcane Circle -> Party -12% MDT & +20 MEVA
+-- Arcane Circle -> Shared EFF_OX_SUP_WARD (-10% DMG / +25 MEVA, 15s)
 m:addOverride('xi.effects.arcane_circle.onEffectGain', function(target, effect)
     super(target, effect)
     local origin = effect.getOriginator and effect:getOriginator() or nil
     if isDrkSpec(origin or target, DREADNOUGHT_KEY) then
-        effect:addMod(xi.mod.DMGMAGIC, -1200)
-        effect:addMod(xi.mod.MEVA, 20)
+        local slots = xi.overlords and xi.overlords.slots
+        if slots and slots.applyPartyWard then
+            slots.applyPartyWard(origin or target, target, -1000, 25, 15, xi.effect.ARCANE_CIRCLE)
+        else
+            effect:addMod(xi.mod.DMG, -1000)
+            effect:addMod(xi.mod.MEVA, 25)
+        end
     end
 end)
 
--- Blood Weapon -> +50 Enmity, -20% DT, 50% physical lifesteal for 30s
+-- Blood Weapon -> +50 Enmity, -20% DT, +4% Max HP heal per landed melee swing for 30s
 m:addOverride('xi.effects.blood_weapon.onEffectGain', function(target, effect)
     super(target, effect)
     if isDrkSpec(target, DREADNOUGHT_KEY) then
@@ -577,31 +717,34 @@ m:addOverride('xi.actions.abilities.abyssal_cleave.onUseAbility', function(playe
     target:takeDamage(dmg, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
     target:updateEnmityFromDamage(player, dmg)
     if target.addEnmity then
-        target:addEnmity(player, 200, 750)
+        target:addEnmity(player, 200, 900)
     end
 
-    -- Stun target
+    -- 2s Stun (mob:isNM() safe)
+    local isNm = target.isNM and target:isNM()
     if
+        not isNm and
         not xi.data.statusEffect.isTargetImmune(target, xi.effect.STUN, xi.element.THUNDER) and
         not xi.data.statusEffect.isTargetResistant(player, target, xi.effect.STUN) and
         not xi.data.statusEffect.isEffectNullified(target, xi.effect.STUN, 0)
     then
-        target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 4, origin = player })
+        target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = player })
     end
 
-    -- Inflict -20 Accuracy & -15% Defense Down for 12s
-    target:addStatusEffect(xi.effect.ACCURACY_DOWN, { power = 20, duration = 12, origin = player })
-    target:addStatusEffect(xi.effect.DEFENSE_DOWN,  { power = 15, duration = 12, origin = player })
+    -- Apply EFF_OX_DEB_BREACH (-15% DEFP / -15 MDEF for 12s)
+    local breachId = (xi.effect and xi.effect.EFF_OX_DEB_BREACH) or 879
+    applySharedSlot(target, breachId, 15, 12, player,
+    {
+        { xi.mod.DEFP, -15 },
+        { xi.mod.MDEF, -15 },
+    })
 
-    -- Restore 12% Max HP + 10% Max MP
-    local maxHp = player:getMaxHP() or 0
+    -- Restore +8% Max MP & grant +1 Blood Tithe (max 3, 30s)
     local maxMp = player:getMaxMP() or 0
-    if maxHp > 0 and player.addHP then
-        player:addHP(math.max(1, math.floor(maxHp * 0.12)))
-    end
     if maxMp > 0 and player.addMP then
-        player:addMP(math.max(1, math.floor(maxMp * 0.10)))
+        player:addMP(math.max(1, math.floor(maxMp * 0.08)))
     end
+    addBloodTithe(player, 1)
 
     ability:setMsg(xi.msg.basic.JA_DAMAGE)
     return dmg
@@ -615,30 +758,17 @@ m:addOverride('xi.actions.abilities.dread_bastion.onAbilityCheck', function(play
 end)
 
 m:addOverride('xi.actions.abilities.dread_bastion.onUseAbility', function(player, _target, _ability, _action)
-    local maxHp  = player:getMaxHP() or 0
-    local shield = math.max(1, math.floor(maxHp * 0.40))
-
     if player.delStatusEffectSilent then
-        player:delStatusEffectSilent(xi.effect.DREAD_SPIKES)
         player:delStatusEffectSilent(EFFECT_DREAD_BASTION)
     end
 
-    player:addStatusEffect(xi.effect.DREAD_SPIKES,
-    {
-        power    = 1,
-        duration = 180,
-        origin   = player,
-        subPower = shield,
-        tier     = 1,
-    })
-
     local iconId = (xi.effect and xi.effect.DARK_SEAL) or EFFECT_DREAD_BASTION
-    applyCustomTimedEffect(player, EFFECT_DREAD_BASTION, 1, 10, player, 0, iconId, 2, 1)
+    applyCustomTimedEffect(player, EFFECT_DREAD_BASTION, 1, 12, player, 0, iconId, 2, 1)
     return EFFECT_DREAD_BASTION
 end)
 
 -----------------------------------
--- Listeners (Equip, Tick, Melee Lifesteal, Scythe WS)
+-- Listeners (Equip, Tick, Melee Risk/Reward, Scythe WS)
 -----------------------------------
 local function detachDrkListeners(player)
     if player == nil or not player.removeListener then
@@ -675,25 +805,37 @@ local function attachDrkListeners(player)
             return
         end
 
-        if actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_BLOOD_CARAPACE) then
-            local dmg = action:getParam(target:getID()) or 0
-            if dmg > 0 and actor.addHP then
-                actor:addHP(math.max(1, math.floor(dmg * 0.15)))
-            end
-        end
-    end)
-
-    player:addListener('WEAPONSKILL_USE', 'OX_DRK_WS', function(actor, target, ws, _tp, _action, dmg)
-        if not isDrkSpec(actor, DREADNOUGHT_KEY) then
+        local dmg = action:getParam(target:getID()) or 0
+        if dmg <= 0 then
             return
         end
 
-        local d = tonumber(dmg) or 0
-        if d > 0 and actor.hasStatusEffect and actor:hasStatusEffect(xi.effect.BLOOD_WEAPON) and actor.addHP then
-            actor:addHP(math.max(1, math.floor(d * 0.50)))
+        local maxHp = actor:getMaxHP() or 0
+        local curHp = actor:getHP() or 0
+
+        -- Souleater (Blood Carapace): spend 2% Current HP (above 20% HP) for heavy VE, +1 Blood Tithe, and prime Blood Reap
+        if actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_BLOOD_CARAPACE) then
+            if maxHp > 0 and curHp > math.floor(maxHp * 0.20) and actor.delHP then
+                local cost = math.max(1, math.floor(curHp * 0.02))
+                if curHp - cost >= 1 then
+                    actor:delHP(cost)
+                end
+            end
+            if target.isMob and target:isMob() and target.addEnmity then
+                target:addEnmity(actor, 0, 260)
+            end
+            addBloodTithe(actor, 1)
+            primeBloodReap(actor)
         end
 
-        if not isScytheEquipped(actor) then
+        -- Blood Weapon: heal flat 4% Max HP per landed melee swing
+        if actor.hasStatusEffect and actor:hasStatusEffect(xi.effect.BLOOD_WEAPON) and maxHp > 0 and actor.addHP then
+            actor:addHP(math.max(1, math.floor(maxHp * 0.04)))
+        end
+    end)
+
+    player:addListener('WEAPONSKILL_USE', 'OX_DRK_WS', function(actor, target, ws, _tp, _action, _dmg)
+        if not isDrkSpec(actor, DREADNOUGHT_KEY) or not isScytheEquipped(actor) then
             return
         end
 
@@ -702,18 +844,39 @@ local function attachDrkListeners(player)
             return
         end
 
-        local lvl     = actor:getMainLvl() or 1
-        local maxHp   = actor:getMaxHP() or 0
-        local healPct = scaleTier(lvl, 0.10, 0.13, 0.16, 0.20)
-        if maxHp > 0 and actor.addHP then
-            actor:addHP(math.max(1, math.floor(maxHp * healPct)))
+        local charId = actor.getID and actor:getID() or 0
+        local now    = os.clock()
+        local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
+        if isPrimary and charId > 0 then
+            lastWsCastAtByChar[charId] = now
         end
 
-        refreshBloodPoolDuration(actor)
+        if isPrimary then
+            local lvl       = actor:getMainLvl() or 1
+            local maxHp     = actor:getMaxHP() or 0
+            local empowered = hasBloodPoolOvercap(actor) or (actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_BLOOD_CARAPACE))
+            local healPct   = empowered and scaleTier(lvl, 0.10, 0.12, 0.14, 0.16) or scaleTier(lvl, 0.05, 0.06, 0.07, 0.08)
+            if actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_DREAD_BASTION) then
+                healPct = healPct * 2
+            end
+            if consumeBloodReap(actor) then
+                healPct = healPct + 0.20
+            end
+            if maxHp > 0 and actor.addHP then
+                actor:addHP(math.max(1, math.floor(maxHp * healPct)))
+            end
+
+            extendBloodPoolDuration(actor, 6)
+        end
 
         if target ~= nil and target.isAlive and target:isAlive() and target.getID and target:getID() ~= actor:getID() then
-            target:addStatusEffect(xi.effect.ATTACK_DOWN,    { power = 15, duration = 15, origin = actor })
-            target:addStatusEffect(xi.effect.MAGIC_ATK_DOWN, { power = 15, duration = 15, origin = actor })
+            local crippleId = (xi.effect and xi.effect.EFF_OX_DEB_CRIPPLE) or 880
+            applySharedSlot(target, crippleId, 15, 15, actor,
+            {
+                { xi.mod.ATTP, -15 },
+                { xi.mod.MATT, -15 },
+                { xi.mod.ACC,  -20 },
+            })
         end
     end)
 end
@@ -735,14 +898,14 @@ if xi.job and xi.job.DRK then
             extraAbilities = function(_player, _lvl)
                 return { ABIL_ABYSSAL_CLEAVE, ABIL_DREAD_BASTION }
             end,
-            description = 'Abyssal blood-knight tank (Lv10+): requires a Scythe to unlock Blood-Pool HP Overcap (Drain II/III inflating Max HP), instant Dread Spikes barriers, and vampiric Scythe WS sustain.',
+            description = 'Abyssal blood-knight tank (Lv10+): requires a Scythe to unlock Max-HP scaled Drain II Blood-Pool overcap, Blood Tithe Absorb weaving, costed Dread Spikes barriers, and Scythe WS Blood Reap sustain.',
             highlights =
             {
-                'Passives (Lv10/30/50/70+): +15/20/25/32% Max HP, +8/14/20/26 VIT & INT, +12/18/24/30% DEF, -8/11/14/18% DT, +25/35/45/60 Enmity & +25/35/45/60% Enmity Retention.',
-                'Scythe & Dark Magic Mastery: +15/25/35/50 Scythe & Dark Magic skill, +14/20/26/32% Parry Rate, +20/30/40/50% Fast Cast & 100% SIRD on Dark Magic casts.',
-                'Blood-Pool & Dread Spikes: Unlocks Lv.10 Drain II (15s CD, 0 MP, +25% Max HP overcap 30s) & instant Dread Spikes (30s CD, 35% Max HP shield, 25% absorbed dmg as VE); Absorb-VIT/TP/STR instant on 15s shared CD (+8% Max MP & heavy VE).',
-                'Vampiric Scythe WS Loop: Scythe WSs heal 10/13/16/20% Max HP, refresh Drain II overcap duration, and inflict Abyssal Rot (-15% ATK/MATK Down 15s).',
-                'Tank Tradeoff & JAs: -20% Attack/Ranged Attack & -15% WSD; Souleater becomes Blood Carapace (20s CD, 10s: no HP drain, -20% DT, 15% melee lifesteal); enhances Arcane Circle (party -12% MDT & +20 MEVA) & Blood Weapon (50% lifesteal, +50 Enmity, -20% DT).',
+                'Passives (Lv10/30/50/70+): +15/20/25/32% Max HP, +8/14/20/26 VIT & INT, +12/18/24/30% DEF, -8/11/14/18% DT, +60/80/100/120 Enmity & +25/35/45/60% Enmity Retention.',
+                'Scythe & Dark Magic Mastery: +15/25/35/50 Scythe & Dark Magic skill, +10/14/18/22% Parry Rate (Inquartata), -20/30/40/50% Dark Magic Cast Time & 100% SIRD on Dark Magic.',
+                'Blood-Pool, Blood Tithe & Dread Spikes: Drain II (30s CD) scales off 12/15/18/22% Max HP + VIT (+25% Max HP overcap 30s); Absorb-STR/VIT/TP/ACC (18s shared CD, instant) restore +6% Max MP & grant +1 Blood Tithe (max 3); Dread Spikes (45s CD, instant, 10% Current HP cost) builds 25% + 5%/Tithe Max HP shield (up to 40%).',
+                'Scythe WS Reap & Souleater: Scythe WSs heal 5/6/7/8% Max HP (10/12/14/16% w/ Drain II or Souleater; 2x in Dread Bastion), extend Drain II +6s, and inflict Cripple (-15% ATTP / -15 MATT / -20 ACC, 15s); Souleater (45s CD, 12s, -12% DT) spends 2% HP/hit for VE + Blood Tithe + Blood Reap (+20% WS heal).',
+                'JAs: Abyssal Cleave (25s CD, 2s Stun, heavy VE, Breach -15% DEF/-15 MDEF, +8% MP, +1 Blood Tithe); Dread Bastion (60s CD, 12s: -18% DT, Knockback Immune, +35 Enmity, 2s AoE VE pulses, 2x WS heal); Blood Weapon (+4% Max HP/swing, +50 Enmity, -20% DT); Arcane Circle (shared Ward -10% DMG/+25 MEVA).',
             },
             mods = function(player, lvl)
                 local isWiki = (player == nil) or (not player.getEquipID)
@@ -753,14 +916,14 @@ if xi.job and xi.job.DRK then
                     { xi.mod.INT,                   scaleTier(lvl, 8, 14, 20, 26) },
                     { xi.mod.DEFP,                  scaleTier(lvl, 12, 18, 24, 30) },
                     { xi.mod.DMG,                   scaleTier(lvl, -800, -1100, -1400, -1800) },
-                    { xi.mod.ENMITY,                scaleTier(lvl, 25, 35, 45, 60) },
+                    { xi.mod.ENMITY,                scaleTier(lvl, 60, 80, 100, 120) },
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
                 }
 
                 if isWiki then
                     table.insert(list, { xi.mod.SCYTHE,          scaleTier(lvl, 15, 25, 35, 50) })
                     table.insert(list, { xi.mod.DARK,            scaleTier(lvl, 15, 25, 35, 50) })
-                    table.insert(list, { xi.mod.PARRY,           scaleTier(lvl, 14, 20, 26, 32) })
+                    table.insert(list, { xi.mod.INQUARTATA,      scaleTier(lvl, 10, 14, 18, 22) })
                     table.insert(list, { xi.mod.DARK_MAGIC_CAST, -scaleTier(lvl, 20, 30, 40, 50) })
                     table.insert(list, { xi.mod.SPELLINTERRUPT,  100 })
                 end
@@ -776,6 +939,11 @@ if xi.job and xi.job.DRK then
                 if player ~= nil and player.delStatusEffectSilent then
                     player:delStatusEffectSilent(EFFECT_BLOOD_CARAPACE)
                     player:delStatusEffectSilent(EFFECT_DREAD_BASTION)
+                end
+                if player ~= nil and player.setLocalVar then
+                    player:setLocalVar('OX_DRK_TITHE', 0)
+                    player:setLocalVar('OX_DRK_TITHE_EXP', 0)
+                    player:setLocalVar('OX_DRK_BLOOD_REAP_EXP', 0)
                 end
                 clearDrkWeaponMods(player)
                 detachDrkListeners(player)
