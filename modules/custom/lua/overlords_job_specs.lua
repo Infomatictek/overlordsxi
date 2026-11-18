@@ -295,9 +295,9 @@ spec.JOB_SPECS =
     },
     PUP =
     {
-        { id = 'marionettist', name = 'Marionettist', abr = 'MRN', role = 'Tank' },
-        { id = 'pugilist',     name = 'Pugilist',     abr = 'PGL', role = 'Damage' },
+        { id = 'vanguard',     name = 'Vanguard',     abr = 'VNG', role = 'Tank' },
         { id = 'animist',      name = 'Animist',      abr = 'ANM', role = 'Healer' },
+        { id = 'pugilist',     name = 'Pugilist',     abr = 'PGL', role = 'Damage' },
     },
     RUN =
     {
@@ -319,7 +319,7 @@ local KEY_ALIASES =
     aegistemplar   = 'defender',
     alphawarden    = 'alphawarden',
     soulbeast      = 'alphawarden',
-    vanguard       = 'marionettist',
+    marionettist   = 'vanguard',
     caller         = 'celestial',
 }
 
@@ -852,7 +852,24 @@ function spec.syncPetRoleMods(player, pet)
 
     local tierCfg  = spec.getTierConfig(player)
     local wantPhys = tierCfg and tierCfg.physDmgDealt or 0
+    local wantRng  = wantPhys
     local wantMag  = tierCfg and tierCfg.magDmgDealt or 0
+
+    local active = spec.get and spec.get(player) or nil
+    local activeKey = active and normalizeKey(active.key) or nil
+    if activeKey == 'vanguard' then
+        wantPhys = -70
+        wantRng  = -70
+        wantMag  = -70
+    elseif activeKey == 'animist' then
+        wantPhys = -80
+        wantRng  = -80
+        wantMag  = -80
+    elseif activeKey == 'pugilist' then
+        wantPhys = 0
+        wantRng  = 0
+        wantMag  = 0
+    end
 
     if xi.mod.PHYS_DMG_DEALT and pet.getLocalVar and pet.setLocalVar and pet.addMod and pet.delMod then
         local prevPhys = pet:getLocalVar('OX_ROLE_PHYS_DEALT') or 0
@@ -864,6 +881,19 @@ function spec.syncPetRoleMods(player, pet)
                 pet:addMod(xi.mod.PHYS_DMG_DEALT, wantPhys)
             end
             pet:setLocalVar('OX_ROLE_PHYS_DEALT', wantPhys)
+        end
+    end
+
+    if xi.mod.RANGED_DMG_DEALT and pet.getLocalVar and pet.setLocalVar and pet.addMod and pet.delMod then
+        local prevRng = pet:getLocalVar('OX_ROLE_RNG_DEALT') or 0
+        if prevRng ~= wantRng then
+            if prevRng ~= 0 then
+                pet:delMod(xi.mod.RANGED_DMG_DEALT, prevRng)
+            end
+            if wantRng ~= 0 then
+                pet:addMod(xi.mod.RANGED_DMG_DEALT, wantRng)
+            end
+            pet:setLocalVar('OX_ROLE_RNG_DEALT', wantRng)
         end
     end
 
@@ -1090,6 +1120,15 @@ function spec.onTraitsRebuild(player)
 
     local active = spec.refreshPlayer(player, { skipSync = true })
     spec.syncPolearmBuckler(player, active)
+    if player.getPet then
+        local pet = player:getPet()
+        if pet ~= nil then
+            spec.syncPetRoleMods(player, pet)
+        end
+    end
+    if xi.overlords.pupSpecs and xi.overlords.pupSpecs.syncAll then
+        xi.overlords.pupSpecs.syncAll(player)
+    end
     local curJobId = player.getMainJob and player:getMainJob() or nil
     local curLvl = player.getMainLvl and player:getMainLvl() or 1
     local curSpecId = active and active.id or 0

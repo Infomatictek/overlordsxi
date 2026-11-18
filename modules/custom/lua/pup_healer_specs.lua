@@ -24,9 +24,14 @@ local ABIL_ACTIVATE         = 136
 local ABIL_REPAIR           = 137
 local ABIL_DEPLOY           = 138
 local ABIL_RETRIEVE         = 140
+local ABIL_FIRE_MANEUVER    = 141
+local ABIL_ICE_MANEUVER     = 142
+local ABIL_WIND_MANEUVER    = 143
 local ABIL_EARTH_MANEUVER   = 144
+local ABIL_THUNDER_MANEUVER = 145
 local ABIL_WATER_MANEUVER   = 146
 local ABIL_LIGHT_MANEUVER   = 147
+local ABIL_DARK_MANEUVER    = 148
 local ABIL_VENTRILOQUY      = 180
 local ABIL_COOLDOWN         = 309
 local ABIL_DEUS_EX_AUTOMATA = 310
@@ -189,7 +194,19 @@ local function imbueAutomatonWhiteMagic(pet, lvl)
         { id = 18, minLvl = 10 }, -- Stona
         { id = 19, minLvl = 10 }, -- Viruna
         { id = 20, minLvl = 10 }, -- Cursna
+        { id = 43, minLvl = 10 }, -- Protect
+        { id = 44, minLvl = 27 }, -- Protect II
+        { id = 45, minLvl = 47 }, -- Protect III
+        { id = 46, minLvl = 63 }, -- Protect IV
+        { id = 48, minLvl = 17 }, -- Shell
+        { id = 49, minLvl = 37 }, -- Shell II
+        { id = 50, minLvl = 57 }, -- Shell III
+        { id = 51, minLvl = 68 }, -- Shell IV
+        { id = 56, minLvl = 13 }, -- Slow
+        { id = 57, minLvl = 40 }, -- Haste
+        { id = 58, minLvl = 10 }, -- Paralyze
         { id = 143, minLvl = 20 }, -- Erase
+        { id = 260, minLvl = 32 }, -- Dispel
     }
     for _, sp in ipairs(spells) do
         if l >= sp.minLvl and (not pet.hasSpell or not pet:hasSpell(sp.id)) then
@@ -553,33 +570,15 @@ end
 -----------------------------------
 -- Vanilla JA & Overdrive Enhancements
 -----------------------------------
-for _, summonName in ipairs({ 'activate', 'deus_ex_automata' }) do
-    m:addOverride('xi.actions.abilities.' .. summonName .. '.onAbilityCheck', function(player, target, ability)
-        if isAnimist(player) then
-            if player.getPet and player:getPet() ~= nil then
-                return xi.msg.basic.ALREADY_HAS_A_PET, 0
-            end
-            local frame = player.getAutomatonFrame and player:getAutomatonFrame() or nil
-            local head  = player.getAutomatonHead and player:getAutomatonHead() or nil
-            if isBlockedPart(frame, head) then
-                return xi.msg.basic.UNABLE_TO_USE_JA, 0
-            end
-            return 0, 0
+m:addOverride('xi.pets.automaton.onMobSpawn', function(mob)
+    super(mob)
+    if mob ~= nil then
+        local master = mob:getMaster()
+        if isAnimist(master) then
+            syncAutomatonHealerMods(master)
         end
-        return super(player, target, ability)
-    end)
-
-    m:addOverride('xi.actions.abilities.' .. summonName .. '.onUseAbility', function(player, target, ability)
-        if isAnimist(player) and ability ~= nil and ability.setRecast then
-            ability:setRecast(15)
-        end
-        local res = super(player, target, ability)
-        if isAnimist(player) then
-            syncAutomatonHealerMods(player)
-        end
-        return res
-    end)
-end
+    end
+end)
 
 m:addOverride('xi.job_utils.puppetmaster.onAbilityUseDeploy', function(player, target, ability)
     local res = super(player, target, ability)
@@ -804,9 +803,14 @@ if xi.job and xi.job.PUP then
                     ABIL_REPAIR,
                     ABIL_VENTRILOQUY,
                     ABIL_COOLDOWN,
+                    ABIL_FIRE_MANEUVER,
+                    ABIL_ICE_MANEUVER,
+                    ABIL_WIND_MANEUVER,
                     ABIL_EARTH_MANEUVER,
+                    ABIL_THUNDER_MANEUVER,
                     ABIL_WATER_MANEUVER,
                     ABIL_LIGHT_MANEUVER,
+                    ABIL_DARK_MANEUVER,
                     ABIL_AETHER_OVERHAUL,
                     ABIL_CLOCKWORK_AEGIS,
                 }
