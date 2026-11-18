@@ -1929,13 +1929,17 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
 
         for effId, sb in pairs(selfBuffsByEffect) do
             attacker:delStatusEffectSilent(effId)
-            local opts = { power = sb.power, duration = sb.duration, origin = attacker }
-            if sb.tier ~= nil then
-                opts.tier = sb.tier
-            elseif effId == xi.effect.STONESKIN then
-                opts.tier = 3
+            if effId == xi.effect.REGEN and xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
+                xi.overlords.regen.applyHybridRegen(attacker, attacker, effId, sb.power, 150, sb.duration, 3, sb.tier or 1)
+            else
+                local opts = { power = sb.power, duration = sb.duration, origin = attacker }
+                if sb.tier ~= nil then
+                    opts.tier = sb.tier
+                elseif effId == xi.effect.STONESKIN then
+                    opts.tier = 3
+                end
+                attacker:addStatusEffect(effId, opts)
             end
-            attacker:addStatusEffect(effId, opts)
         end
 
         if cleanseSelfCount > 0 and attacker.eraseStatusEffect then
@@ -2049,7 +2053,11 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
                 if member ~= nil and member:isAlive() and (member == attacker or member:checkDistance(attacker) <= 15) then
                     for effId, pb in pairs(partyBuffsByEffect) do
                         member:delStatusEffectSilent(effId)
-                        member:addStatusEffect(effId, { power = pb.power, duration = pb.duration, origin = attacker })
+                        if effId == xi.effect.REGEN and xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
+                            xi.overlords.regen.applyHybridRegen(attacker, member, effId, pb.power, 150, pb.duration, 3, 1)
+                        else
+                            member:addStatusEffect(effId, { power = pb.power, duration = pb.duration, origin = attacker })
+                        end
                     end
                 end
             end

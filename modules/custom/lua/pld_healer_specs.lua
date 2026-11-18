@@ -106,7 +106,11 @@ end
 -- Status Effect Modifiers
 -----------------------------------
 m:addOverride('xi.effects.lights_grace.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.REGEN, effect:getPower() or 12)
+    local total = effect:getPower() or 15
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
+        total = xi.overlords.regen.consumeEffectRegen(target, effect, 15, 220)
+    end
+    effect:addMod(xi.mod.REGEN, total)
 end)
 
 m:addOverride('xi.effects.crusaders_aegis.onEffectGain', function(target, effect)
@@ -174,16 +178,27 @@ local function attachTemplarListeners(player)
         local spellId = spell:getID()
         if MAJESTY_CURE_SPELLS[spellId] then
             local healAmt = action and action:getParam() or math.floor(caster:getMaxHP() * 0.22)
-            local hotPow = H.scaleTier(caster:getMainLvl(), 12, 18, 24, 30)
             local cleanseDiv = caster:hasStatusEffect(xi.effect.DIVINE_SEAL)
             H.forEachPartyMemberInRange(caster, 15, false, function(member)
                 if member ~= target then
                     local _, overheal = H.healEntity(caster, member, healAmt)
                     if overheal > 0 then
-                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, hotPow, 10, caster, 0, xi.effect.REGEN, 1)
+                        if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
+                            xi.overlords.regen.stampRegenContext(caster, member, 220)
+                        end
+                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.effect.REGEN, 1)
+                        if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
+                            xi.overlords.regen.clearRegenContext(member)
+                        end
                     end
                 elseif target ~= nil and target:getHP() >= target:getMaxHP() then
-                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, hotPow, 10, caster, 0, xi.effect.REGEN, 1)
+                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
+                        xi.overlords.regen.stampRegenContext(caster, target, 220)
+                    end
+                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.effect.REGEN, 1)
+                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
+                        xi.overlords.regen.clearRegenContext(target)
+                    end
                 end
                 if cleanseDiv then
                     H.cleanseDebuffs(member, 2)
@@ -319,7 +334,7 @@ if xi.job and xi.job.PLD then
         highlights  =
         {
             'Passives (Lv10/30/50/70+): +14/18/22/26% HP & MP, +10/16/22/28 MND & VIT, +18/26/34/42% Cure Potency, +15/25/35/45% Fast Cast, -25/35/45/60 Enmity, +4/6/8/12 MP/tick Refresh, +10/14/18/22% Block, 100% SIRD w/ Shield.',
-            'Perpetual Majesty: Always active @ Lv10+ (0s lockout); single-target Cures splash to party (15y) at 100% potency; overhealing grants Light\'s Grace (+12/18/24/30 HP/tick HoT, 10s).',
+            'Perpetual Majesty: Always active @ Lv10+ (0s lockout); single-target Cures splash to party (15y) at 100% potency; overhealing grants Light\'s Grace (15 + 2.2% Max HP/tick HoT, 10s).',
             'Beacon of Light: Melee hits and Club WSs heal the lowest-HP ally (12y) for 8/11/14/18% PLD Max HP and restore +5% Max MP.',
             'JA Enhancements: Divine Seal (20s CD, 2-debuff party cleanse), Chivalry (15s CD, 40% MP + 15% AoE heal), Rampart (-15% DT aura), Sanctuary Benediction (replaces Invincible: 100% party heal/cleanse + -20% DT).',
             'Holy Radiance (20s CD, Club+Shield: 25% HP AoE heal + 2-debuff cleanse + 10% MP) & Crusader\'s Aegis (25s CD, 10s -15% DT + Knockback Immune + 2x Beacon).',

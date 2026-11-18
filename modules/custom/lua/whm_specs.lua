@@ -197,9 +197,12 @@ local function attachBishopListeners(player)
             local grace = caster:getStatusEffect(EFFECT_SACRED_GRACE)
             if grace and (grace:getPower() or 0) >= 3 then
                 caster:delStatusEffectSilent(EFFECT_SACRED_GRACE)
-                local regenPow = H.scaleTier(lvl, 12, 18, 24, 30)
                 H.forEachPartyMemberInRange(caster, 15, false, function(member)
-                    member:addStatusEffect(xi.effect.REGEN, { power = regenPow, duration = 10, origin = caster, tier = 3 })
+                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
+                        xi.overlords.regen.applyHybridRegen(caster, member, xi.effect.REGEN, 15, 220, 10, 3, 3)
+                    else
+                        member:addStatusEffect(xi.effect.REGEN, { power = 15, duration = 10, origin = caster, tier = 3 })
+                    end
                 end)
             end
         end
@@ -385,7 +388,7 @@ if xi.job and xi.job.WHM then
         {
             'Passives (Lv10/30/50/70+): +14/18/22/28% HP & MP, +12/18/24/32 MND & VIT, +18/26/34/42% Cure Potency, +15/25/35/45% Fast Cast, -25/35/45/60 Enmity, +4/6/8/12 MP/tick Refresh, +10/14/18/22% Shield Block (Club+Shield), 100% SIRD in Afflatus.',
             'Proactive Afflatus Solace: Unlocked @ Lv10+ (0s CD); Cure I-VI grant Solace Ward barrier (35-50% of heal, cap 30% Max HP) + -8% DT for 8s.',
-            'Sacred Grace Smite-Weaving: Banish/Holy or Club/Staff WS grants +1 Sacred Grace (max 3) & +6% Max MP; at 3 stacks, Curaga/Esuna/Auspice triggers a 10s party Regen.',
+            'Sacred Grace Smite-Weaving: Banish/Holy or Club/Staff WS grants +1 Sacred Grace (max 3) & +6% Max MP; at 3 stacks, Curaga/Esuna/Auspice triggers a 10s party Regen (15 + 2.2% Max HP/tick).',
             'JA Enhancements: Divine Seal (20s CD, +15% Max HP barrier), Martyr & Devotion (15s CD, 0 self-HP loss), Benediction (100% party heal/cleanse + 50% MP + -25% DT 15s).',
             'Divine Veil (25s CD, 22% HP barrier + -12% DT + +30 MEVA + splash next Cure/Erase/Esuna) & Sanctuary Pulse (20s CD, 25% HP AoE heal + 3-debuff cleanse + 1 Sacred Grace).',
         },

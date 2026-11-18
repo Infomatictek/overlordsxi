@@ -1366,15 +1366,15 @@ m:addOverride('xi.job_utils.monk.useChakra', function(player, target, ability)
             player:delStatusEffect(xi.effect.SILENCE)
         end
 
-        local lvl        = player.getMainLvl and player:getMainLvl() or 10
-        local regenPct   = scaleTier(lvl, 1.5, 2.5, 3.5)
-        local minRegen   = scaleTier(lvl, 14, 28, 45)
-        local maxHp      = player.getMaxHP and math.max(0, player:getMaxHP() or 0) or 0
-        local regenPower = math.max(minRegen, math.floor(maxHp * regenPct / 100))
         if player:hasStatusEffect(xi.effect.REGEN) then
             player:delStatusEffect(xi.effect.REGEN)
         end
-        player:addStatusEffect(xi.effect.REGEN, { power = regenPower, duration = 30, origin = player, tier = 1 })
+        if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
+            xi.overlords.regen.applyHybridRegen(player, player, xi.effect.REGEN, 18, 250, 30, 3, 1)
+        else
+            local maxHp = player.getMaxHP and math.max(0, player:getMaxHP() or 0) or 0
+            player:addStatusEffect(xi.effect.REGEN, { power = 18 + math.floor(maxHp * 250 / 10000), duration = 30, origin = player, tier = 1 })
+        end
 
         local engagedTarget = player.getTarget and player:getTarget() or nil
         if engagedTarget ~= nil then
@@ -1675,7 +1675,10 @@ end, function(player, target, _ability)
     local recipient = target or player
     local lvl       = player.getMainLvl and (player:getMainLvl() or 10) or 10
     local healPct   = scaleTier(lvl, 12, 16, 20, 24)
-    local regenVal  = scaleTier(lvl, 12, 20, 30, 42)
+    local regenVal  = 25
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
+        regenVal = xi.overlords.regen.computeHybridTick(player, recipient, 25, 350)
+    end
     local cureRcvd  = scaleTier(lvl, 10, 15, 20, 25)
     local enmityRed = scaleTier(lvl, -10, -14, -18, -22)
     local mndStat   = player.getStat and (player:getStat(xi.mod.MND) or 10) or 10
@@ -1732,7 +1735,10 @@ end, function(player, _target, _ability)
     local curePot   = scaleTier(lvl, 15, 22, 30, 40)
     local magBonus  = scaleTier(lvl, 20, 30, 45, 60)
     local abilHaste = scaleTier(lvl, 500, 800, 1100, 1500)
-    local regenVal  = scaleTier(lvl, 10, 18, 28, 40)
+    local regenVal  = 25
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
+        regenVal = xi.overlords.regen.computeHybridTick(player, player, 25, 350)
+    end
     local iconId    = (xi.effect and xi.effect.AFFLATUS_SOLACE) or (xi.effect and xi.effect.ENLIGHT) or EFFECT_INNER_HARMONY
 
     applyTimedChiEffect(

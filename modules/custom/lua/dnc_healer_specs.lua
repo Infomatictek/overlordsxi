@@ -99,7 +99,11 @@ m:addOverride('xi.effects.crimson_veil.onEffectGain', function(target, effect)
 end)
 
 m:addOverride('xi.effects.sanguine_waltz.onEffectGain', function(target, effect)
-    effect:addMod(xi.mod.REGEN, effect:getPower() or 25)
+    local total = effect:getPower() or 25
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
+        total = xi.overlords.regen.consumeEffectRegen(target, effect, 25, 350)
+    end
+    effect:addMod(xi.mod.REGEN, total)
 end)
 
 -----------------------------------
@@ -205,7 +209,13 @@ m:addOverride('xi.actions.abilities.sanguine_waltz.onUseAbility', function(playe
     local total = H.healPartyPct(player, 30, 15, false, true)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.cleanseDebuffs(member, 2)
+        if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
+            xi.overlords.regen.stampRegenContext(player, member, 350)
+        end
         H.applyCustomTimedEffect(member, EFFECT_SANGUINE_WALTZ, 25, 15, player, 0, xi.effect.REGEN, 1)
+        if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
+            xi.overlords.regen.clearRegenContext(member)
+        end
     end)
     ability:setMsg(xi.msg.basic.JA_RECOVERS_HP)
     return total
@@ -262,7 +272,7 @@ if xi.job and xi.job.DNC then
             'Crimson Drain Samba: Party (15y) heals for 18/24/30/36% of physical damage dealt; overhealing converts into Crimson Veil Stoneskin (up to 20% Max HP).',
             'Sanguine Flourish: Steps grant +2 FM & 10% party heal; Dagger/Throwing WSs consume up to 5 FM for 6%/FM AoE heal + party cleanse.',
             'JA Enhancements: Trance (0 TP Waltzes, infinite FMs, 2x Drain Samba) & Contradance (15s CD, +100% Waltz & -15% DT 10s).',
-            'Sanguine Waltz (18s CD, 200 TP: 30% HP AoE heal + 2-debuff cleanse + 25/t Regen) & Nocturne Feast (25s CD: drains 15% foe HP into party HP + 250 TP + 5 FMs).',
+            'Sanguine Waltz (18s CD, 200 TP: 30% HP AoE heal + 2-debuff cleanse + 25 + 3.5% Max HP/t Regen) & Nocturne Feast (25s CD: drains 15% foe HP into party HP + 250 TP + 5 FMs).',
         },
         mods = function(_player, lvl)
             return

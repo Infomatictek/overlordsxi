@@ -531,12 +531,18 @@ m:addOverride('xi.job_utils.beastmaster.useReward', function(player, target, abi
     end
 
     -- 10s Regen + -10% DT bond on both Master and Pet
-    local bondRegen = math.max(regenAmount, math.floor((player:getMaxHP() or 100) * 0.01))
+    local flatBond = math.max(15, regenAmount)
+    local petBondRegen = flatBond
+    local masterBondRegen = flatBond
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
+        petBondRegen = xi.overlords.regen.computeHybridTick(player, pet, flatBond, 220)
+        masterBondRegen = xi.overlords.regen.computeHybridTick(player, player, flatBond, 220)
+    end
     pet:delStatusEffectSilent(EFFECT_ALPHA_REWARD_BOND)
-    pet:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = bondRegen, duration = 10, origin = player, tick = 3 })
+    pet:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = petBondRegen, duration = 10, origin = player, tick = 3 })
 
     player:delStatusEffectSilent(EFFECT_ALPHA_REWARD_BOND)
-    player:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = bondRegen, duration = 10, origin = player, tick = 3 })
+    player:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = masterBondRegen, duration = 10, origin = player, tick = 3 })
 
     player:removeAmmo(1)
 

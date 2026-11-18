@@ -189,7 +189,11 @@ m:addOverride('xi.actions.abilities.verdant_renewal.onUseAbility', function(play
     local total = H.healPartyPct(player, 30, 15, false, false)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.cleanseDebuffs(member, 3)
-        member:addStatusEffect(xi.effect.REGEN,   { power = 30, duration = 15, origin = player, tier = 3 })
+        if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
+            xi.overlords.regen.applyHybridRegen(player, member, xi.effect.REGEN, 25, 350, 15, 3, 3)
+        else
+            member:addStatusEffect(xi.effect.REGEN, { power = 25, duration = 15, origin = player, tier = 3 })
+        end
         member:addStatusEffect(xi.effect.REFRESH, { power = 8,  duration = 15, origin = player, tier = 3 })
     end)
     ability:setMsg(xi.msg.basic.JA_RECOVERS_HP)
@@ -238,7 +242,7 @@ if xi.job and xi.job.GEO then
             'Living Luopan Sanctuary: Luopan pulses Verdant Bloom every 3s (15y): 6/8/10/12% Max HP heal, +15 MP, and overheal Barkskin Stoneskin (cap 25% Max HP).',
             'Sylvan Resonance: Indi/Geo/Cure or Club/Staff WS heals Luopan to 100% HP and triggers Nature\'s Surge (16% Max HP party heal + 1-debuff cleanse).',
             'JA Enhancements: Life Cycle (15s CD, 0 self-HP loss + 25% party heal) & Bolster (doubles Verdant Bloom).',
-            'Verdant Renewal (20s CD, 30% HP AoE heal + 3-debuff cleanse + 30/t Regen + 8/t Refresh 15s) & Canopy of the Ancients (25s CD, 12s -18% DT + Knockback Immune + 10% AoE heal per spell/WS).',
+            'Verdant Renewal (20s CD, 30% HP AoE heal + 3-debuff cleanse + 25 + 3.5% Max HP/t Regen + 8/t Refresh 15s) & Canopy of the Ancients (25s CD, 12s -18% DT + Knockback Immune + 10% AoE heal per spell/WS).',
         },
         mods = function(_player, lvl)
             return

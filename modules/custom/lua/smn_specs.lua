@@ -75,7 +75,12 @@ end
 -----------------------------------
 m:addOverride('xi.effects.celestial_sanctuary.onEffectGain', function(target, effect)
     local lvl = effect:getSubPower() or 75
-    effect:addMod(xi.mod.REGEN, H.scaleTier(lvl, 15, 22, 30, 38))
+    local flat = H.scaleTier(lvl, 12, 16, 20, 24)
+    local regenTotal = flat
+    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
+        regenTotal = xi.overlords.regen.consumeEffectRegen(target, effect, flat, 150)
+    end
+    effect:addMod(xi.mod.REGEN, regenTotal)
     effect:addMod(xi.mod.REFRESH, H.scaleTier(lvl, 4, 6, 8, 10))
     effect:addMod(xi.mod.DMG, -1000)
 end)
@@ -99,7 +104,14 @@ local function pulseSanctuaryAura(smn)
     local lvl = smn:getMainLvl()
     H.forEachPartyMemberInRange(smn, 15, false, function(member)
         if not member:hasStatusEffect(EFFECT_CELESTIAL_SANCTUARY) then
-            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, 1, 6, smn, lvl, xi.effect.AVATARS_FAVOR, 1)
+            local flat = H.scaleTier(lvl, 12, 16, 20, 24)
+            if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
+                xi.overlords.regen.stampRegenContext(smn, member, 150)
+            end
+            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, flat, 6, smn, lvl, xi.effect.AVATARS_FAVOR, 1)
+            if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
+                xi.overlords.regen.clearRegenContext(member)
+            end
         end
     end)
 end
@@ -230,7 +242,7 @@ if xi.job and xi.job.SMN then
         highlights  =
         {
             'Passives (Lv10/30/50/70+): +14/18/22/28% HP & MP, +12/18/24/32 MND & CHR, +18/26/34/42% Cure & Ward Potency, +15/25/35/45% Fast Cast, -25/35/45/60 Enmity, +5/8/11/15 MP/tick Refresh, -100% Avatar Perpetuation.',
-            'Astral Avatar Resonance: Summoned Avatar projects Celestial Sanctuary (15y): +15/22/30/38 HP/t Regen, +4/6/8/10 MP/t Refresh, -10% DT.',
+            'Astral Avatar Resonance: Summoned Avatar projects Celestial Sanctuary (15y): 12/16/20/24 + 1.5% Max HP/t Regen, +4/6/8/10 MP/t Refresh, -10% DT.',
             'Ward-Loop & Starlight Mend: Blood Pact: Ward has a flat 12s recast (6s Apogee); Wards and Staff/Club WSs heal Avatar 50% HP and pulse 15% Max HP party heal.',
             'JA Enhancements: Elemental Siphon (20s CD, 45% MP without dismissing Avatar + 20% AoE heal) & Astral Flow (5s Ward CD, 25% Stoneskin).',
             'Astral Benediction (22s CD, 32% HP AoE heal + 3-debuff cleanse + Reraise III) & Celestial Convergence (25s CD, 12s -18% DT + +30 MEVA + 10% MP per Ward/WS).',
