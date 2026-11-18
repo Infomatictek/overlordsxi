@@ -314,6 +314,11 @@ try {
             Push-Location $tmpWorktree
             try {
                 foreach ($p in $patchFiles) {
+                    # Mirror the main apply loop: patches whose content is already present
+                    # (e.g. folded into an earlier patch) are skipped instead of failing validation.
+                    if (Test-PatchApplied $p.FullName) {
+                        continue
+                    }
                     $prevEap = $ErrorActionPreference
                     $ErrorActionPreference = 'Continue'
                     git apply --check $p.FullName 2>&1 | Out-Null

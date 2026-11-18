@@ -102,4 +102,4 @@ index b1e4a8c3..f4a79d12 100644
 +    MAX_PETID = 138,
  };
  
- namespace petutils
+ struct Pet_t
