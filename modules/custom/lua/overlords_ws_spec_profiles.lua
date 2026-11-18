@@ -2902,7 +2902,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     kagemusha      = { [S.KATANA or 9] = true },
     bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     templar        = { [S.CLUB or 11] = true },
-    magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
+    magus          = { [S.SWORD or 3] = true },
     vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
     celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },
     animist        = { [S.HAND_TO_HAND or 1] = true },
