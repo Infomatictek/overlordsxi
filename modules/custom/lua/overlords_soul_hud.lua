@@ -217,6 +217,15 @@ local function attachHudListeners(player)
         end
     end
 
+    -- Replacing by listener id is not guaranteed across all server cores;
+    -- remove first so zoning/re-entry cannot stack duplicate callbacks.
+    player:removeListener('OX_SOULHUD_ABILITY')
+    player:removeListener('OX_SOULHUD_EFF_GAIN')
+    player:removeListener('OX_SOULHUD_EFF_LOSE')
+    player:removeListener('OX_SOULHUD_DMG')
+    player:removeListener('OX_SOULHUD_DEATH')
+    player:removeListener('OX_SOULHUD_RAISE')
+
     player:addListener('ABILITY_USE', 'OX_SOULHUD_ABILITY', onDirty)
     player:addListener('EFFECT_GAIN', 'OX_SOULHUD_EFF_GAIN', onDirty)
     player:addListener('EFFECT_LOSE', 'OX_SOULHUD_EFF_LOSE', onDirty)
