@@ -25,6 +25,7 @@ LUA_DIR = ROOT_DIR / "modules" / "custom" / "lua"
 CMD_DIR = ROOT_DIR / "modules" / "custom" / "commands"
 SQL_DIR = ROOT_DIR / "modules" / "custom" / "sql"
 PATCH_DIR = ROOT_DIR / "patches"
+GUIDES_DIR = ROOT_DIR / "docs" / "guides"
 SITE_DIR = ROOT_DIR / "site"
 
 
@@ -2295,6 +2296,88 @@ def run_lua_exporter(lua_bin: str) -> dict | None:
         return None
 
 
+def parse_spec_guides() -> dict[str, dict]:
+    """Parse docs/guides/<spec_key>.md files into structured Playstyle Guides for the Wiki."""
+    guides = {}
+    if not GUIDES_DIR.exists():
+        return guides
+
+    def clean_md_item(line: str) -> str:
+        s = re.sub(r"^\s*(?:[-*]|\d+\.)\s+", "", line.strip())
+        return s.strip()
+
+    for md_file in sorted(GUIDES_DIR.glob("*.md")):
+        if md_file.stem.lower() == "readme":
+            continue
+        ckey = md_file.stem.lower()
+        raw = md_file.read_text(encoding="utf-8", errors="replace")
+        sections = {}
+        current = None
+        for line in raw.splitlines():
+            hm = re.match(r"^##\s+(.+)$", line.strip())
+            if hm:
+                current = hm.group(1).strip().lower()
+                sections[current] = []
+            elif current is not None:
+                sections[current].append(line)
+
+        def collect_items(key_prefixes: tuple[str, ...]) -> list[str]:
+            items = []
+            for sk, lines in sections.items():
+                if any(sk.startswith(p) for p in key_prefixes):
+                    for ln in lines:
+                        st = ln.strip()
+                        if not st:
+                            continue
+                        if re.match(r"^(?:[-*]|\d+\.)\s+", st):
+                            items.append(clean_md_item(st))
+                        elif items:
+                            items[-1] = f"{items[-1]} {st}"
+                        else:
+                            items.append(st)
+            return items
+
+        at_a_glance = " ".join(
+            ln.strip()
+            for sk, lines in sections.items()
+            if sk.startswith("at a glance")
+            for ln in lines
+            if ln.strip()
+        )
+        setup = collect_items(("setup", "gear", "requirements"))
+        loop = collect_items(("how to play", "core loop", "gameplay loop", "rotation"))
+        mechanics = collect_items(("key mechanics", "mechanics", "stacks", "stances"))
+        tips = collect_items(("common mistakes", "tips", "watch out", "avoid"))
+
+        guides[ckey] = {
+            "atAGlance": at_a_glance,
+            "setup": setup,
+            "loop": loop,
+            "mechanics": mechanics,
+            "tips": tips,
+            "hasHandwrittenGuide": True,
+            "sourceFile": f"docs/guides/{md_file.name}",
+        }
+    return guides
+
+
+def build_fallback_guide(job: dict, crystal: dict) -> dict:
+    """Automatic plain-English fallback guide when docs/guides/<spec_key>.md is not yet written."""
+    desc = crystal.get("description", "")
+    hls = crystal.get("highlights", [])
+    abils = crystal.get("customAbilities", [])
+    loop = [f"**Core Abilities:** {', '.join(a['name'] + ' (' + a['cd'] + ')' for a in abils[:4])}"] if abils else []
+    mechanics = [h for h in hls if not re.match(r"^Passives?\s*\(", h, flags=re.IGNORECASE)][:4]
+    return {
+        "atAGlance": desc,
+        "setup": [f"Socket `{crystal.get('name', '')}` via `!spec set {crystal.get('key', '')}` at Lv.{crystal.get('reqLevel', 10)}+."],
+        "loop": loop,
+        "mechanics": mechanics,
+        "tips": [],
+        "hasHandwrittenGuide": False,
+    }
+
+
 def parse_commands() -> list[dict]:
     """Dynamically scan modules/custom/commands/*.lua + boss_like_combat_and_exp.lua."""
     known_summaries = {
@@ -2548,10 +2631,13 @@ def main():
         rules = parse_server_rules()
 
     wiki_extras = get_companions_and_equipment()
-    # Dynamically populate all resolved custom job traits across every registered crystal
+    guides_map = parse_spec_guides()
+    # Attach Playstyle Guide + dynamically populate all resolved custom job traits
     all_traits_by_id = {ct["id"]: copy.deepcopy(ct) for ct in CUSTOM_TRAITS.values()}
     for j in jobs:
         for c in j.get("crystals", []):
+            ckey = c.get("key", "")
+            c["guide"] = guides_map.get(ckey) or build_fallback_guide(j, c)
             for t in c.get("customTraits", []):
                 tid = t.get("id")
                 if isinstance(tid, int) and tid >= 140 and tid not in all_traits_by_id:

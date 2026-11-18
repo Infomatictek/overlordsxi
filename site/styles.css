@@ -837,6 +837,97 @@ code {
   color: var(--accent-gold);
 }
 
+/* Playstyle Guide Panel inside Crystal Cards */
+.guide-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(56, 189, 248, 0.06));
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.15rem;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.guide-title {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-emerald);
+}
+
+.guide-glance {
+  font-size: 0.95rem;
+  color: #f8fafc;
+  margin: 0 0 0.85rem;
+  line-height: 1.5;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1.25rem;
+}
+
+.guide-section h5 {
+  margin: 0 0 0.4rem;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+}
+
+.guide-section.guide-tips-sec h5 {
+  color: var(--accent-gold);
+}
+
+.guide-list,
+.guide-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  font-size: 0.87rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.guide-steps li::marker {
+  color: var(--accent-emerald);
+  font-weight: 700;
+}
+
+.guide-list li::marker {
+  color: var(--accent-cyan);
+}
+
+.guide-tips-sec .guide-list li::marker {
+  color: var(--accent-gold);
+}
+
+.view-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* -----------------------------------------------------------
    Weaponskill Talent Tree Explorer
 ----------------------------------------------------------- */

@@ -28,6 +28,7 @@
     data: window.OVERLORDS_DATA || null,
     activePage: 'overview',
     selectedJobKey: 'ALL',
+    crystalViewMode: 'full',
     selectedSkillName: 'Hand-to-Hand',
     selectedWsId: 1,
     selectedWsSpec: 'berserker',
@@ -553,6 +554,86 @@
     `;
   }
 
+  function formatGuideInline(str) {
+    return escapeHtml(str || '')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  function renderCrystalGuideBox(c) {
+    const g = c.guide;
+    if (!g) return '';
+    const glance = g.atAGlance || c.description || '';
+    const setup = g.setup || [];
+    const loop = g.loop || [];
+    const mechanics = g.mechanics || [];
+    const tips = g.tips || [];
+
+    return `
+      <div class="guide-box">
+        <div class="guide-header">
+          <div class="guide-title">📖 How to Play ${escapeHtml(c.name)}</div>
+          ${
+            g.hasHandwrittenGuide
+              ? `<span class="badge badge-emerald">Playstyle &amp; Rotation Guide</span>`
+              : `<span class="badge badge-cyan">Quick Summary</span>`
+          }
+        </div>
+        ${glance ? `<p class="guide-glance">${formatGuideInline(glance)}</p>` : ''}
+        <div class="guide-grid">
+          ${
+            setup.length > 0
+              ? `
+            <div class="guide-section">
+              <h5>⚔️ Setup &amp; Requirements</h5>
+              <ul class="guide-list">
+                ${setup.map((item) => `<li>${formatGuideInline(item)}</li>`).join('')}
+              </ul>
+            </div>
+          `
+              : ''
+          }
+          ${
+            loop.length > 0
+              ? `
+            <div class="guide-section">
+              <h5>🔄 Core Gameplay Loop</h5>
+              <ol class="guide-steps">
+                ${loop.map((item) => `<li>${formatGuideInline(item)}</li>`).join('')}
+              </ol>
+            </div>
+          `
+              : ''
+          }
+          ${
+            mechanics.length > 0
+              ? `
+            <div class="guide-section">
+              <h5>⚙️ Key Stacks &amp; Stances</h5>
+              <ul class="guide-list">
+                ${mechanics.map((item) => `<li>${formatGuideInline(item)}</li>`).join('')}
+              </ul>
+            </div>
+          `
+              : ''
+          }
+          ${
+            tips.length > 0
+              ? `
+            <div class="guide-section guide-tips-sec">
+              <h5>⚠️ Common Mistakes / Tips</h5>
+              <ul class="guide-list">
+                ${tips.map((item) => `<li>${formatGuideInline(item)}</li>`).join('')}
+              </ul>
+            </div>
+          `
+              : ''
+          }
+        </div>
+      </div>
+    `;
+  }
+
   // ---------------------------------------------------------------------------
   // PAGE 3: Job Soul Crystals & Spec Encyclopedia
   // ---------------------------------------------------------------------------
@@ -562,6 +643,7 @@
       state.selectedJobKey === 'ALL'
         ? jobs
         : jobs.filter((j) => j.jobKey === state.selectedJobKey);
+    const guidesOnly = state.crystalViewMode === 'guides';
 
     return `
       <section class="wiki-hero">
@@ -569,10 +651,18 @@
         <h1>Job Soul Crystals &amp; Specializations</h1>
         <p>
           At <strong>Level 10</strong> in any supported job, use <code>!spec</code> (or the Ashita v4 Equipment Crystal UI) to socket a Soul Crystal.
-          Each crystal grants level-scaling passive stats (scaling at <strong>Lv. 10 / 30 / 50 / 70+</strong>), custom Job Traits in your traits menu,
-          new active Job Abilities, and deep transformations to existing abilities and spells.
+          Each crystal leads with a plain-English <strong>How to Play</strong> guide (setup, rotation loop, and pitfalls), followed by its exact scaling passives, custom traits, and unlocked abilities.
         </p>
       </section>
+
+      <div class="view-mode-bar">
+        <button class="filter-chip ${!guidesOnly ? 'active' : ''}" data-crystal-view="full">
+          📚 Guides + Full Mechanics &amp; Stats
+        </button>
+        <button class="filter-chip ${guidesOnly ? 'active' : ''}" data-crystal-view="guides">
+          📖 How-to-Play Guides Only (Cheat Sheet)
+        </button>
+      </div>
 
       <div class="job-filter-bar">
         <button class="filter-chip ${state.selectedJobKey === 'ALL' ? 'active' : ''}" data-job-filter="ALL">
@@ -603,6 +693,7 @@
     const mods = c.passiveMods || [];
     const abils = c.customAbilities || [];
     const traits = c.customTraits || [];
+    const guidesOnly = state.crystalViewMode === 'guides';
 
     return `
       <article class="crystal-card" id="crystal-${escapeHtml(job.jobKey)}-${escapeHtml(c.key)}">
@@ -622,11 +713,18 @@
           </div>
         </div>
 
-        <p style="font-size:0.98rem; color:var(--text-primary); margin-top:0;">
+        ${renderCrystalGuideBox(c)}
+
+        ${
+          guidesOnly
+            ? ''
+            : `
+        <p style="font-size:0.94rem; color:var(--text-secondary); margin-top:0;">
           ${escapeHtml(c.description)}
         </p>
 
-        <div class="crystal-columns">
+        <div class="crystal-columns">`
+        }
           <div>
             <h4 style="margin:0 0 0.6rem; color:var(--accent-cyan); text-transform:uppercase; font-size:0.78rem; letter-spacing:0.06em;">
               ✨ Key Mechanics &amp; Ability Transformations
@@ -724,11 +822,19 @@
         `
             : ''
         }
+        `
+        }
       </article>
     `;
   }
 
   function bindCrystalsEvents(container) {
+    container.querySelectorAll('[data-crystal-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.crystalViewMode = btn.getAttribute('data-crystal-view');
+        renderCurrentPage();
+      });
+    });
     container.querySelectorAll('[data-job-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.selectedJobKey = btn.getAttribute('data-job-filter');
@@ -1311,7 +1417,9 @@
 
     for (const job of state.data.jobSpecs || []) {
       for (const c of job.crystals || []) {
-        const hay = `${job.jobKey} ${job.jobName} ${c.name} ${c.role} ${c.description} ${(c.highlights || []).join(' ')}`.toLowerCase();
+        const g = c.guide || {};
+        const guideHay = `${g.atAGlance || ''} ${(g.setup || []).join(' ')} ${(g.loop || []).join(' ')} ${(g.mechanics || []).join(' ')} ${(g.tips || []).join(' ')}`;
+        const hay = `${job.jobKey} ${job.jobName} ${c.name} ${c.role} ${c.description} ${(c.highlights || []).join(' ')} ${guideHay}`.toLowerCase();
         if (hay.includes(q)) {
           results.push({
             title: `${job.jobKey}: ${c.name} Crystal`,
