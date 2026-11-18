@@ -2708,6 +2708,7 @@ local NO_SPIKE_SPECS =
     aegistemplar = true,
     dreadnought  = true,
     kagemusha  = true,
+    alphawarden = true,
     chiweaver    = true,
     lifebinder   = true,
     medic        = true,
@@ -2729,6 +2730,7 @@ local PET_SPECS =
     sage        = true,
     necromancer = true,
     berserker   = true, -- BST Axe pet hooks
+    alphawarden = true,
     celestial   = true,
     animist     = true,
     verdant     = true,
@@ -2906,6 +2908,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     animist        = { [S.HAND_TO_HAND or 1] = true },
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
+    alphawarden    = { [S.AXE or 5] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)

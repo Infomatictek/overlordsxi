@@ -275,7 +275,7 @@ spec.JOB_SPECS =
     BST =
     {
         { id = 'untamed',      name = 'Untamed',      abr = 'UNT', role = 'Damage' },
-        { id = 'soulbeast',    name = 'Soulbeast',    abr = 'SLB', role = 'Tank' },
+        { id = 'alphawarden',  name = 'Alpha Warden', abr = 'ALW', role = 'Tank' },
         { id = 'beastspeaker', name = 'Beastspeaker', abr = 'BSP', role = 'Support' },
     },
     SMN =
@@ -308,8 +308,9 @@ local KEY_ALIASES =
 {
     gladiator      = 'spartan',
     aegistemplar   = 'defender',
-    alphawarden    = 'soulbeast',
-    vanguard       = 'marionettist',
+    alphawarden    = 'alphawarden',
+    soulbeast      = 'alphawarden',
+    marionettist   = 'vanguard',
     miragesentinel = 'freelancer',
     caller         = 'celestial',
 }

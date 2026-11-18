@@ -19,7 +19,7 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    -- Soul Bond (441): 25s CD, Self & Pet (10s), recastId 216
-    (441, 'soul_bond',  9, 255, 1, 25, 216, 100, 0, 239, 1500, 0, 6, 0.0, 0, 0, 300,  900, 0, 0, NULL),
-    -- Feral Roar (442): 20s CD, Enemy Target (8y), recastId 217
-    (442, 'feral_roar', 9, 255, 4, 20, 217, 110, 0, 126, 1500, 0, 6, 8.0, 0, 0, 300, 1800, 0, 0, NULL);
+    -- Soul Bond (441): 35s CD, Self & Pet, recastId 216
+    (441, 'soul_bond',  9, 255, 1, 35, 216, 100, 0, 239, 1500, 0, 6, 0.0, 0, 0, 300,  900, 0, 0, NULL),
+    -- Feral Roar (442): 25s CD, Enemy Target (8y), recastId 217
+    (442, 'feral_roar', 9, 255, 4, 25, 217, 110, 0, 126, 1500, 0, 6, 8.0, 0, 0, 300, 1800, 0, 0, NULL);
