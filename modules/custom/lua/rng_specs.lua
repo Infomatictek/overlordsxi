@@ -24,7 +24,7 @@ require('scripts/combat/physical_utilities')
 local m = Module:new('overlords_rng_specs')
 
 local spec  = xi.overlords.spec
-local slots = xi.overlords.sharedSlots
+local slots = xi.overlords.slots
 
 local HUNTSMAN_KEY = 'huntsman'
 
@@ -803,13 +803,12 @@ end, function(player, target, ability, action)
 
     local healAmt = math.max(1, math.floor(pet:getMaxHP() * 0.20))
     pet:addHP(healAmt)
-    if xi.effect.DAMAGE_SPIKES or xi.effect.PROTECT then
-        pet:addStatusEffect(xi.effect.DEFENSE_BOOST, { power = 20, duration = 10, origin = pet })
+    pet:delStatusEffectSilent(xi.effect.DEFENSE_BOOST)
+    pet:addStatusEffect(xi.effect.DEFENSE_BOOST, { power = 20, duration = 10, origin = pet })
+    local defEff = pet:getStatusEffect(xi.effect.DEFENSE_BOOST)
+    if defEff ~= nil then
+        defEff:addMod(xi.mod.DMG, -2000)
     end
-    -- Grant -20% Pet DT for 10s via EFF_OX_DEF_GUARD or direct status
-    slots.applySlot(pet, slots.EFF_OX_DEF_GUARD or 881, 20, 10, pet, function(eff)
-        eff:addMod(xi.mod.DMG, -2000)
-    end, slots.EFF_OX_DEF_GUARD or 881)
 
     if isApex then
         slots.applySlot(target, slots.EFF_OX_DEB_CRIPPLE, 15, 15, pet, function(eff)

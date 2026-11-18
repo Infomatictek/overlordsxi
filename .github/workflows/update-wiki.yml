@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/**
+      - feature/**
     paths-ignore:
       - 'site/data.json'
       - 'site/data.js'

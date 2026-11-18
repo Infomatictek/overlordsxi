@@ -186,6 +186,7 @@ def parse_number_list(brace_expr: str) -> list[float]:
 
 # Human-readable labels and formatting for xi.mod.* constants
 MOD_LABELS = {
+    "HP": ("Max HP", "", 1),
     "HPP": ("Max HP", "%", 1),
     "MPP": ("Max MP", "%", 1),
     "ATT": ("Attack", "", 1),
@@ -200,50 +201,154 @@ MOD_LABELS = {
     "MACC": ("Magic Accuracy", "", 1),
     "MDEF": ("Magic Defense", "", 1),
     "MEVA": ("Magic Evasion", "", 1),
+    "MAGIC_DAMAGE": ("Magic Damage", "", 1),
+    "MAG_DMG_DEALT": ("Magic Damage Dealt", "%", 1),
+    "PHYS_DMG_DEALT": ("Physical Damage Dealt", "%", 1),
+    "RANGED_DMG_DEALT": ("Ranged Damage Dealt", "%", 1),
+    "MAGIC_BURST_BONUS_CAPPED": ("Magic Burst Bonus", "%", 1),
+    "MAGIC_BURST_BONUS_UNCAPPED": ("Magic Burst Bonus II", "%", 1),
+    "MAG_BURST_BONUS": ("Magic Burst Bonus", "%", 1),
+    "MAGIC_ABSORB": ("Magic Absorb Rate", "%", 1),
     "EVA": ("Evasion", "", 1),
     "EVA_PERCENT": ("Evasion Rate", "%", 1),
     "EVASION": ("Evasion Skill", "", 1),
     "PARRY": ("Parry Skill", "", 1),
     "INQUARTATA": ("Parry Rate", "%", 1),
+    "ADDITIVE_GUARD": ("Guard Rate", "%", 1),
     "COUNTER": ("Counter Rate", "%", 1),
     "COUNTER_DAMAGE": ("Counter Damage", "%", 1),
+    "COUNTERSTANCE_EFFECT": ("Counterstance Bonus", "%", 1),
+    "DODGE_EFFECT": ("Dodge Bonus", "", 1),
+    "FOCUS_EFFECT": ("Focus Bonus", "", 1),
+    "CHAKRA_MULT": ("Chakra Potency", "", 1),
     "STORETP": ("Store TP", "", 1),
+    "SAVETP": ("Save TP", "", 1),
+    "CONSERVE_TP": ("Conserve TP", "%", 1),
     "DOUBLE_ATTACK": ("Double Attack", "%", 1),
+    "DOUBLE_ATTACK_DMG": ("Double Attack Damage", "%", 1),
+    "TRIPLE_ATTACK": ("Triple Attack", "%", 1),
     "ZANSHIN": ("Zanshin", "%", 1),
+    "DUAL_WIELD": ("Dual Wield Delay", "%", -1),
+    "MARTIAL_ARTS": ("Martial Arts Delay", "", -1),
+    "DELAYP": ("Attack Delay", "%", 1),
     "CRITHITRATE": ("Critical Hit Rate", "%", 1),
     "CRIT_DMG_INCREASE": ("Critical Hit Damage", "%", 1),
+    "RANGED_CRIT_DMG_INC": ("Ranged Crit Damage", "%", 1),
+    "CRITICAL_HIT_EVASION": ("Crit Hit Evasion", "%", 1),
+    "CRIT_DEF_BONUS": ("Crit Defense Bonus", "%", 1),
+    "HASTE_GEAR": ("Equipment Haste", "%", 0.01),
     "HASTE_ABILITY": ("Ability Haste", "%", 0.01),
+    "HASTE_MAGIC": ("Magic Haste", "%", 0.01),
     "SUBTLE_BLOW": ("Subtle Blow", "", 1),
+    "SUBTLE_BLOW_II": ("Subtle Blow II", "", 1),
     "KICK_ATTACK_RATE": ("Kick Attack Rate", "%", 1),
     "KICK_DMG": ("Kick Damage", "", 1),
-    "HANDTOHAND": ("Hand-to-Hand Skill", "", 1),
+    "SKILLCHAINDMG": ("Skillchain Damage", "%", 1),
+    "SKILLCHAINBONUS": ("Skillchain Bonus", "%", 1),
     "ALL_WSDMG_ALL_HITS": ("Weaponskill Damage", "%", 1),
     "DMG": ("Damage Taken", "%", 0.01),
+    "DMGPHYS": ("Physical Damage Taken", "%", 0.01),
+    "DMGMAGIC": ("Magic Damage Taken", "%", 0.01),
+    "DMGBREATH": ("Breath Damage Taken", "%", 0.01),
+    "UDMMAGIC": ("Uncapped Magic DT", "%", 0.01),
+    "UDMBREATH": ("Uncapped Breath DT", "%", 0.01),
+    "FIRE_SDT": ("Fire Damage Taken", "%", 0.01),
+    "ICE_SDT": ("Ice Damage Taken", "%", 0.01),
+    "WIND_SDT": ("Wind Damage Taken", "%", 0.01),
+    "EARTH_SDT": ("Earth Damage Taken", "%", 0.01),
+    "THUNDER_SDT": ("Thunder Damage Taken", "%", 0.01),
+    "WATER_SDT": ("Water Damage Taken", "%", 0.01),
+    "LIGHT_SDT": ("Light Damage Taken", "%", 0.01),
+    "DARK_SDT": ("Dark Damage Taken", "%", 0.01),
+    "PHALANX": ("Phalanx", "", 1),
     "ENMITY": ("Enmity", "", 1),
     "ENMITY_LOSS_REDUCTION": ("Enmity Retention", "%", 1),
+    "STATUSRES": ("Status Ailment Resist", "", 1),
+    "KNOCKBACK_REDUCTION": ("Knockback Reduction", "%", 1),
+    "KNOCKBACK_IMMUNE": ("Knockback Immunity", "", 1),
+    "MOVE_SPEED_STACKABLE": ("Movement Speed", "%", 1),
     "CURE_POTENCY": ("Cure Potency", "%", 1),
     "CURE_POTENCY_RCVD": ("Cure Potency Received", "%", 1),
+    "WALTZ_POTENCY": ("Waltz Potency", "%", 1),
+    "HEALING_BREATH": ("Healing Breath Potency", "%", 1),
     "FASTCAST": ("Fast Cast", "%", 1),
+    "UFASTCAST": ("Uncapped Fast Cast", "%", 1),
+    "SPELLINTERRUPT": ("Spell Interruption Down", "%", 1),
+    "ELEMENTAL_CELERITY": ("Elemental Cast Time Down", "%", 1),
+    "DARK_MAGIC_CAST": ("Dark Magic Cast Time", "%", 1),
+    "SONG_SPELLCASTING_TIME": ("Song Cast Time Down", "%", 1),
+    "SONG_RECAST_DELAY": ("Song Recast Down", "s", 1),
+    "RECAST_REDUCTION": ("Recast Reduction", "s", 1),
     "SNAPSHOT": ("Snapshot", "%", 1),
+    "SNAP_SHOT": ("Snapshot", "%", 1),
+    "RAPID_SHOT": ("Rapid Shot", "%", 1),
     "RECYCLE": ("Recycle", "%", 1),
     "REFRESH": ("Refresh", "/tick", 1),
     "REGEN": ("Regen", "/tick", 1),
     "REGEN_MULTIPLIER": ("Regen Potency", "%", 1),
     "REGEN_DURATION": ("Regen Duration", "s", 1),
+    "REGAIN": ("Regain", " TP/tick", 1),
+    "REGAIN_DOWN": ("Regain Down", "", 1),
+    "MP_COST_REDUCTION": ("MP Cost Reduction", "%", 1),
     "OCCULT_ACUMEN": ("Occult Acumen", "", 1),
+    "SUBLIMATION_BONUS": ("Sublimation Charge", "", 1),
+    "EBULLIENCE_AMOUNT": ("Ebullience Bonus", "%", 1),
+    "AUGMENTS_CONVERT": ("Enhances Convert", "", 1),
+    "BERSERK_POTENCY": ("Berserk Potency", "%", 1),
+    "BERSERK_DURATION": ("Berserk Duration", "s", 1),
+    "DEFENDER_DURATION": ("Defender Duration", "s", 1),
+    "AGGRESSOR_DURATION": ("Aggressor Duration", "s", 1),
+    "WARCRY_DURATION": ("Warcry Duration", "s", 1),
+    "ENHANCES_BLOOD_RAGE": ("Enhances Blood Rage", "", 1),
+    "UTSUSEMI": ("Utsusemi Shadows", "", 1),
+    "VFLOURISH_MACC": ("Violent Flourish M.Acc", "", 1),
+    "PHANTOM_ROLL": ("Phantom Roll+", "", 1),
+    "PHANTOM_DURATION": ("Phantom Roll Duration", "s", 1),
+    "REPAIR_EFFECT": ("Repair Potency", "%", 1),
+    "OVERLOAD_THRESH": ("Overload Threshold", "", 1),
+    "PREVENT_OVERLOAD": ("Overload Immunity", "", 1),
+    "AVATAR_PERPETUATION": ("Avatar Perpetuation", "", 1),
+    "SIC_READY_RECAST": ("Sic / Ready Recast", "s", 1),
+    "AUTO_MELEE_SKILL": ("Automaton Melee Skill", "", 1),
+    "AUTO_RANGED_SKILL": ("Automaton Ranged Skill", "", 1),
+    "AUTO_MAGIC_SKILL": ("Automaton Magic Skill", "", 1),
     "SHIELD": ("Shield Skill", "", 1),
+    "SHIELDBLOCKRATE": ("Shield Block Rate", "%", 1),
     "SHIELD_DEF_BONUS": ("Shield Defense Bonus", "", 1),
     "PALISADE_BLOCK_BONUS": ("Shield Block Rate", "%", 1),
     "SHIELD_MASTERY_TP": ("Shield Mastery TP", "", 1),
+    "HTH": ("Hand-to-Hand Skill", "", 1),
+    "HANDTOHAND": ("Hand-to-Hand Skill", "", 1),
+    "DAGGER": ("Dagger Skill", "", 1),
+    "SWORD": ("Sword Skill", "", 1),
+    "GSWORD": ("Great Sword Skill", "", 1),
+    "GREAT_SWORD": ("Great Sword Skill", "", 1),
+    "AXE": ("Axe Skill", "", 1),
+    "SCYTHE": ("Scythe Skill", "", 1),
+    "POLEARM": ("Polearm Skill", "", 1),
+    "KATANA": ("Katana Skill", "", 1),
+    "GKATANA": ("Great Katana Skill", "", 1),
+    "GREAT_KATANA": ("Great Katana Skill", "", 1),
     "CLUB": ("Club Skill", "", 1),
     "STAFF": ("Staff Skill", "", 1),
-    "GREAT_SWORD": ("Great Sword Skill", "", 1),
-    "GREAT_KATANA": ("Great Katana Skill", "", 1),
     "ARCHERY": ("Archery Skill", "", 1),
-    "SCYTHE": ("Scythe Skill", "", 1),
-    "ENHANCING": ("Enhancing Magic Skill", "", 1),
+    "MARKSMANSHIP": ("Marksmanship Skill", "", 1),
     "DIVINE": ("Divine Magic Skill", "", 1),
     "HEALING": ("Healing Magic Skill", "", 1),
+    "ENHANCE": ("Enhancing Magic Skill", "", 1),
+    "ENHANCING": ("Enhancing Magic Skill", "", 1),
+    "ENFEEBLE": ("Enfeebling Magic Skill", "", 1),
+    "ELEM": ("Elemental Magic Skill", "", 1),
+    "DARK": ("Dark Magic Skill", "", 1),
+    "SUMMONING": ("Summoning Magic Skill", "", 1),
+    "NINJUTSU": ("Ninjutsu Skill", "", 1),
+    "NINJA_TOOL": ("Ninja Tool Expertise", "%", 1),
+    "SINGING": ("Singing Skill", "", 1),
+    "STRING": ("String Instrument Skill", "", 1),
+    "WIND": ("Wind Instrument Skill", "", 1),
+    "BLUE": ("Blue Magic Skill", "", 1),
+    "GEOMANCY": ("Geomancy Skill", "", 1),
+    "HANDBELL": ("Handbell Skill", "", 1),
     "STR": ("STR", "", 1),
     "DEX": ("DEX", "", 1),
     "VIT": ("VIT", "", 1),
@@ -417,8 +522,489 @@ CUSTOM_ABILITIES_BY_SPEC = {
     ],
 }
 
+# Standard FFXI abilities unlocked early (Lv.10+) by Crystal Specs via extraAbilities
+VANILLA_ABILITY_INFO = {
+    2: ("Warcry", "60s", "Party (10y)", "Increases party Attack and shares active stances in OverlordsXI."),
+    22: ("Invincible", "3600s", "Self", "Grants immunity to physical attacks for 30s."),
+    27: ("Meikyo Shisui", "3600s", "Self", "Allows rapid Weapon Skill chaining for 30s."),
+    28: ("Mijin Gakure", "3600s", "Enemy", "Sacrifices HP for massive elemental damage."),
+    46: ("Shield Bash", "60s", "Enemy", "Strikes with shield to Stun target and generate enmity."),
+    48: ("Sentinel", "300s", "Self", "Dramatically reduces physical damage taken and boosts enmity."),
+    61: ("Call Wyvern", "1200s", "Self", "Summons your Wyvern companion."),
+    62: ("Third Eye", "60s", "Self", "Anticipates incoming attacks and counters with Seigan."),
+    63: ("Meditate", "180s", "Self", "Grants 1000–2000 TP over time."),
+    64: ("Warding Circle", "300s", "Party", "Grants Demon Killer and Magic Defense Bonus against Demons."),
+    66: ("Jump", "60s", "Enemy", "Leaps into the air to deliver a high-damage attack."),
+    67: ("High Jump", "120s", "Enemy", "Leaping strike that sheds enmity or triggers spec effects."),
+    68: ("Super Jump", "180s", "Enemy", "Evades all enmity briefly with a high leap."),
+    69: ("Fight", "5s", "Enemy", "Commands your beast/pet to attack the target."),
+    70: ("Heel", "5s", "Self", "Commands your pet to disengage and follow you."),
+    72: ("Sic", "90s", "Enemy", "Commands your jug pet to execute a special ability."),
+    73: ("Stay", "5s", "Self", "Commands your pet to hold position and regenerate."),
+    78: ("Reward", "90s", "Self", "Restores your pet's HP and removes status ailments."),
+    80: ("Spirit Link", "90s", "Self", "Transfers HP and status effects with your Wyvern."),
+    85: ("Call Beast", "300s", "Self", "Calls a loyal beast companion."),
+    92: ("Rampart", "180s", "Party", "Raises defense and grants Magic Shield to nearby party members."),
+    96: ("Wild Card", "3600s", "Party", "Rolls the die to reset party Job Abilities and restore MP."),
+    97: ("Phantom Roll", "60s", "Party", "Rolls a Corsair buff die for your party (crystal-customized)."),
+    123: ("Double-Up", "5s", "Self", "Increases the total of your active Phantom Roll."),
+    125: ("Fire Shot", "1s*", "Enemy", "Quick Draw: Fire shot + enhances Fire debuffs (2 charges)."),
+    126: ("Ice Shot", "1s*", "Enemy", "Quick Draw: Ice shot + enhances Ice debuffs (2 charges)."),
+    127: ("Wind Shot", "1s*", "Enemy", "Quick Draw: Wind shot + enhances Wind debuffs (2 charges)."),
+    128: ("Earth Shot", "1s*", "Enemy", "Quick Draw: Earth shot + enhances Earth debuffs (2 charges)."),
+    129: ("Thunder Shot", "1s*", "Enemy", "Quick Draw: Thunder shot + enhances Thunder debuffs (2 charges)."),
+    130: ("Water Shot", "1s*", "Enemy", "Quick Draw: Water shot + enhances Water debuffs (2 charges)."),
+    131: ("Light Shot", "1s*", "Enemy", "Quick Draw: Light shot + Sleeping/Light enhancement (2 charges)."),
+    132: ("Dark Shot", "1s*", "Enemy", "Quick Draw: Dark shot + Dispel effect (2 charges)."),
+    133: ("Random Deal", "1200s*", "Party", "Refreshes party Job Ability recast timers."),
+    136: ("Activate", "1200s", "Self", "Summons your Automaton companion."),
+    137: ("Repair", "90s*", "Self", "Restores your Automaton's HP and removes status ailments."),
+    138: ("Deploy", "5s", "Enemy", "Commands your Automaton to engage the target."),
+    140: ("Retrieve", "5s", "Self", "Commands your Automaton to disengage and follow."),
+    141: ("Fire Maneuver", "10s", "Self", "Enhances Automaton Attack and offensive combat modules."),
+    142: ("Ice Maneuver", "10s", "Self", "Enhances Automaton INT/Magic Attack and Enfeebling AI."),
+    143: ("Wind Maneuver", "10s", "Self", "Enhances Automaton Haste and Ranged/Melee evasion."),
+    144: ("Earth Maneuver", "10s", "Self", "Enhances Automaton Defense, Shield/Damage reduction, and tanking."),
+    145: ("Thunder Maneuver", "10s", "Self", "Enhances Automaton Accuracy, Critical Hit Rate, and stun AI."),
+    146: ("Water Maneuver", "10s", "Self", "Enhances Automaton MND, Magic Defense, and Cure thresholds."),
+    147: ("Light Maneuver", "10s", "Self", "Enhances Automaton Regen, Light curing AI, and healing potency."),
+    148: ("Dark Maneuver", "10s", "Self", "Enhances Automaton Refresh and MP conservation."),
+    153: ("Martyr", "600s*", "Ally", "Sacrifices a portion of HP to restore an ally's HP."),
+    154: ("Devotion", "600s*", "Ally", "Sacrifices a portion of HP to restore an ally's MP."),
+    158: ("Chivalry", "600s*", "Self", "Converts TP into MP."),
+    167: ("Shikikoyo", "300s", "Ally", "Transfers excess TP above 1000 to a party member."),
+    168: ("Blade Bash", "180s*", "Enemy", "Two-handed strike that Stuns and lowers target Defense/Attack."),
+    173: ("Hasso", "60s*", "Self", "Offensive stance granting Haste, Accuracy, and STR."),
+    174: ("Seigan", "60s*", "Self", "Defensive counter-anticipation stance paired with Third Eye."),
+    176: ("Diffusion", "600s*", "Self", "Extends your next self-target Blue Magic spell to party members in AoE."),
+    177: ("Snake Eye", "300s*", "Self", "Forces the next Double-Up roll to land on 1."),
+    178: ("Fold", "300s*", "Self", "Removes Bust or one active Phantom Roll immediately."),
+    180: ("Ventriloquy", "60s*", "Enemy", "Swaps cumulative enmity with your Automaton."),
+    181: ("Trance", "3600s", "Self", "Reduces TP cost of Waltzes and Sambas to zero for 60s."),
+    184: ("Drain Samba", "60s", "Party", "Grants melee Drain Samba effect on attacks."),
+    185: ("Drain Samba II", "60s", "Party", "Upgraded Drain Samba restoring greater HP on melee hits."),
+    186: ("Drain Samba III", "60s", "Party", "Highest-tier Drain Samba lifetap aura for party."),
+    190: ("Curing Waltz", "6s", "Ally", "Spends TP to instantly heal a party member."),
+    191: ("Curing Waltz II", "8s", "Ally", "Mid-tier TP heal for a party member."),
+    192: ("Curing Waltz III", "10s", "Ally", "High-potency TP heal for a party member."),
+    193: ("Curing Waltz IV", "13s", "Ally", "Strong TP heal for a party member."),
+    201: ("Quickstep", "5s", "Enemy", "Lowers target Evasion and grants Finishing Moves."),
+    202: ("Box Step", "5s", "Enemy", "Lowers target Defense and grants Finishing Moves."),
+    203: ("Stutter Step", "5s", "Enemy", "Lowers target Magic Resistance and grants Finishing Moves."),
+    204: ("Animated Flourish", "30s", "Enemy", "Spends Finishing Moves for a high-enmity provoke."),
+    205: ("Desperate Flourish", "20s", "Enemy", "Spends Finishing Moves to inflict Gravity."),
+    207: ("Violent Flourish", "20s", "Enemy", "Spends Finishing Moves to Stun the target."),
+    225: ("Snarl", "30s", "Self", "Transfers all of your accumulated enmity to your jug pet."),
+    230: ("Sekkanoki", "300s", "Self", "Caps next Weapon Skill TP consumption to 1000 TP."),
+    238: ("Fan Dance", "180s", "Self", "Reduces Physical Damage Taken and generates Waltz/Step enmity."),
+    239: ("No Foot Rise", "180s", "Self", "Immediately generates maximum Finishing Moves."),
+    245: ("Afflatus Solace", "60s*", "Self", "Unlocks Cure Stoneskin ward and Holy/Sacrifice bonuses."),
+    248: ("Yonin", "180s*", "Self", "Tank stance boosting Enmity, Parry/DT, and Shadow mitigation."),
+    251: ("Ready", "Charge", "Self", "Commands your pet to perform a Ready skill immediately."),
+    258: ("Sengikori", "180s", "Self", "Enhances your next Skillchain damage bonus."),
+    259: ("Futae", "180s*", "Self", "Spends Ninja Tools to double-cast / surge your next Ninjutsu."),
+    287: ("Hamanoha", "300s", "Enemy", "Lowers target Accuracy, Attack, Magic Attack, and Store TP."),
+    288: ("Hagakure", "180s*", "Self", "Grants Save TP and TP Bonus to your next Weapon Skill."),
+    309: ("Cooldown", "300s*", "Self", "Halves your Automaton's current elemental burden."),
+    310: ("Deus Ex Automata", "60s", "Self", "Summons an Automaton when Activate is on cooldown."),
+    311: ("Curing Waltz V", "16s", "Ally", "Capstone single-target TP heal."),
+    319: ("Restoring Breath", "60s", "Party", "Commands your Wyvern to heal party members immediately."),
+    320: ("Konzen-ittai", "180s", "Enemy", "Primes the target for immediate Skillchain closing."),
+    367: ("Swordplay", "300s", "Self", "Builds Evasion and Accuracy over time while avoiding hits."),
+    369: ("Pflug", "180s", "Party", "Boosts status and elemental resistance matching active Runes."),
+    371: ("Valiance", "300s", "Party", "Shares elemental damage reduction matching active Runes."),
+    373: ("Liement", "180s", "Party", "Converts elemental damage matching active Runes into HP."),
+    374: ("One for All", "300s", "Party", "Grants a Max-HP-scaled magic barrier to nearby party members."),
+    376: ("Battuta", "300s", "Self", "Raises Parry Rate and deals elemental counter spikes on parry."),
+    383: ("Vivacious Pulse", "60s*", "Party", "Restores HP/MP/Status based on active Runes."),
+    387: ("Bestial Loyalty", "1200s*", "Self", "Calls your jug beast without consuming a jug."),
+    394: ("Majesty", "60s", "Self", "Turns Cure spells AoE and improves Cure potency + Protect."),
+}
 
-def parse_job_specs() -> list[dict]:
+
+def _clean_ident_name(raw_name: str, strip_prefix: str = "") -> str:
+    s = raw_name.strip()
+    if strip_prefix and s.startswith(strip_prefix):
+        s = s[len(strip_prefix) :]
+    # Restore common possessive forms like HIGH_ROLLER_STAKES / DREADNOUGHTS_CARAPACE
+    s = re.sub(r"^IMP_", "Imperial ", s)
+    words = [w for w in s.split("_") if w]
+    out = []
+    possessive_map = {
+        "ALPHAS": "Alpha's",
+        "ADVENTURER": "Adventurer's",
+        "MUSICIAN": "Musician's",
+        "MINSTREL": "Minstrel's",
+        "WARLORD": "Warlord's",
+        "DREADNOUGHTS": "Dreadnought's",
+        "VANGUARDS": "Vanguard's",
+        "PUGILISTS": "Pugilist's",
+        "CRUSADERS": "Crusader's",
+        "TROUBADOURS": "Troubadour's",
+        "MANS": "Man's",
+        "WARDENS": "Warden's",
+    }
+    for w in words:
+        up = w.upper()
+        if up in possessive_map:
+            out.append(possessive_map[up])
+        else:
+            out.append(w.capitalize())
+    return " ".join(out)
+
+
+def _norm_key(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (text or "").lower())
+
+
+def parse_lua_metadata() -> dict:
+    """Dynamically extract trait names/comments and ability display names/comments from all *_specs.lua."""
+    traits = {18: {"name": "Dual Wield", "desc": "Unlocks wielding a weapon in each hand and reduces dual-wield attack delay."}}
+    ability_names = {}
+    ability_comments = {}
+
+    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
+    seen = set()
+    for fpath in spec_files:
+        if not fpath.exists() or fpath.name in seen:
+            continue
+        seen.add(fpath.name)
+        raw = fpath.read_text(encoding="utf-8", errors="replace")
+
+        # 1. -- Custom Trait ID (173; Astral Sanctuary) or (166: Alpha's Soul-Link)
+        for m in re.finditer(r"--\s*Custom Trait ID\s*\(\s*(\d+)\s*[;:]\s*([^)\r\n]+)\)", raw):
+            tid = int(m.group(1))
+            label = m.group(2).strip()
+            if "display id" not in label.lower():
+                traits[tid] = {"name": label, "desc": ""}
+
+        # 2. local TRAIT_NAME = <ID>
+        for m in re.finditer(r"local\s+(TRAIT_[A-Z0-9_]+)\s*=\s*(\d+)", raw):
+            const_name = m.group(1)
+            tid = int(m.group(2))
+            if tid not in traits:
+                traits[tid] = {"name": _clean_ident_name(const_name, "TRAIT_"), "desc": ""}
+
+        # 3. local ABIL_NAME = <ID> -- Display: Clockwork Bulwark
+        for m in re.finditer(r"local\s+(?:ABIL_[A-Z0-9_]+|[A-Z0-9_]+_ABIL_ID)\s*=\s*(\d+)([^\r\n]*)", raw):
+            aid = int(m.group(1))
+            tail = m.group(2)
+            disp = re.search(r"--\s*Display:\s*(.+)$", tail)
+            if disp:
+                ability_names[aid] = disp.group(1).strip()
+
+        # 4. Inline ability summary comments: -- 419: Grave Provoke (Lv.10+): High-enmity undead taunt + Attack Down
+        for m in re.finditer(r"^\s*--\s*(\d{3,4})\s*:\s*([^:\r\n]+?)(?:\s*\([^)\r\n]+\))?\s*:\s*(.+)$", raw, re.MULTILINE):
+            aid = int(m.group(1))
+            aname = m.group(2).strip()
+            adesc = m.group(3).strip()
+            if "client display id" in adesc.lower() or "recastid" in aname.lower():
+                continue
+            ability_names.setdefault(aid, aname)
+            ability_comments.setdefault(aid, adesc)
+
+    # Ensure curated CUSTOM_TRAITS override/complete anything above
+    for tid, ct in CUSTOM_TRAITS.items():
+        traits[tid] = {"name": ct["name"], "desc": ct["desc"]}
+
+    return {"traits": traits, "abilityNames": ability_names, "abilityComments": ability_comments}
+
+
+def _extract_highlight_clause(highlights: list[str], target_name: str) -> str:
+    """Find the most informative highlight clause describing an ability or trait."""
+    t_norm = _norm_key(target_name)
+    if not t_norm:
+        return ""
+
+    # Search with flexible apostrophe/punctuation matching; prefer definitions with Name ( or Name:
+    def find_match_in_highlights(search_name: str, require_delim: bool) -> str:
+        s_norm = _norm_key(search_name)
+        if not s_norm:
+            return ""
+        chars = re.sub(r"[^A-Za-z0-9]", "", search_name)
+        pat_core = r"['’\s:\-]*".join(re.escape(ch) for ch in chars)
+        pat = pat_core + (r"\s*[\(:]" if require_delim else r"\b")
+        for hl in highlights:
+            if s_norm not in _norm_key(hl):
+                continue
+            cleaned = re.sub(r"^(?:Custom\s+JAs?|Crystal\s+JAs?|Tank\s+JAs?|JAs?)\s*:\s*", "", hl.strip(), flags=re.IGNORECASE)
+            m = re.search(pat, cleaned, flags=re.IGNORECASE)
+            if m:
+                sub = cleaned[m.start() :].strip()
+                # If a second named ability follows as ") & NextName (" or "), NextName (", trim cleanly after first clause
+                split_m = re.search(r"\)\s*(?:&|;|,|and)\s+[A-Z][A-Za-z' -]+\s*\(", sub)
+                if split_m and require_delim:
+                    sub = sub[: split_m.start() + 1]
+                return sub.rstrip(" ;.") + "."
+            elif not require_delim:
+                return cleaned.rstrip(" ;.") + "."
+        return ""
+
+    hit = find_match_in_highlights(target_name, require_delim=True)
+    if hit:
+        return hit
+    hit = find_match_in_highlights(target_name, require_delim=False)
+    if hit:
+        return hit
+    # For summon abilities like "Call Cehuetzi" / "Summon Corse", match the companion name in highlights
+    stripped = re.sub(r"^(?:Call|Summon)\s+", "", target_name, flags=re.IGNORECASE).strip()
+    if stripped and stripped.lower() != target_name.lower():
+        for hl in highlights:
+            if _norm_key(stripped) in _norm_key(hl):
+                return hl.strip().rstrip(" ;.") + "."
+    return ""
+
+
+def _synthesize_trait_desc(trait_name: str, highlights: list[str], crystal_desc: str) -> str:
+    """Synthesize a concise, factual trait description from a crystal's highlights & description."""
+    direct = _extract_highlight_clause(highlights, trait_name)
+    if direct:
+        return direct
+    parts = []
+    for hl in highlights:
+        # Skip pure stat dump lines when picking core mechanical summary
+        if re.match(r"^(?:Passives?|Base Mods)\s*\(", hl, flags=re.IGNORECASE):
+            continue
+        parts.append(hl.rstrip(" ."))
+        if len(parts) >= 2:
+            break
+    if parts:
+        joined = "; ".join(parts)
+        return (joined[:260].rsplit(" ", 1)[0] + "...") if len(joined) > 265 else joined + "."
+    if crystal_desc:
+        return crystal_desc.rstrip(" .") + "."
+    return f"Core {trait_name} crystal mastery passive."
+
+
+def resolve_spec_traits(
+    extra_traits: list[int],
+    jkey: str,
+    cname: str,
+    highlights: list[str],
+    cdesc: str,
+    lua_meta: dict,
+) -> list[dict]:
+    traits_map = lua_meta["traits"]
+    out = []
+    seen = set()
+    for tid in extra_traits:
+        if tid in seen:
+            continue
+        seen.add(tid)
+        if tid in CUSTOM_TRAITS:
+            ct = copy.deepcopy(CUSTOM_TRAITS[tid])
+            out.append(ct)
+            continue
+        info = traits_map.get(tid, {})
+        tname = info.get("name") or f"{cname} Mastery"
+        tdesc = info.get("desc") or _synthesize_trait_desc(tname, highlights, cdesc)
+        display_id = (1536 + tid) if 140 <= tid <= 255 else tid
+        out.append({"id": tid, "displayId": display_id, "name": tname, "job": jkey, "crystal": cname, "desc": tdesc})
+    return out
+
+
+def resolve_spec_abilities(
+    extra_ids: list[int],
+    jkey: str,
+    ckey: str,
+    cname: str,
+    highlights: list[str],
+    sql_abils: dict[int, dict],
+    lua_meta: dict,
+) -> list[dict]:
+    curated_by_id = {a["id"]: a for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), [])}
+    disp_names = lua_meta["abilityNames"]
+    lua_comments = lua_meta["abilityComments"]
+    spec_abilities = []
+    seen_aids = set()
+
+    for aid in extra_ids:
+        if aid in seen_aids:
+            continue
+        if aid in curated_by_id:
+            spec_abilities.append(curated_by_id[aid])
+            seen_aids.add(aid)
+        elif aid in sql_abils:
+            ab = copy.deepcopy(sql_abils[aid])
+            if aid in disp_names:
+                ab["name"] = disp_names[aid]
+            desc = ""
+            if aid in lua_comments:
+                desc = lua_comments[aid]
+            if not desc:
+                desc = _extract_highlight_clause(highlights, ab["name"])
+            if not desc and ab.get("sqlDesc"):
+                desc = ab["sqlDesc"]
+            if not desc:
+                desc = f"{cname} custom Job Ability ({ab['cd']} recast, {ab['target']})."
+            ab["desc"] = desc
+            ab.pop("sqlDesc", None)
+            spec_abilities.append(ab)
+            seen_aids.add(aid)
+        elif aid in VANILLA_ABILITY_INFO:
+            vname, vcd, vtarget, vdesc = VANILLA_ABILITY_INFO[aid]
+            hl_override = _extract_highlight_clause(highlights, vname)
+            spec_abilities.append(
+                {
+                    "id": aid,
+                    "name": disp_names.get(aid, vname),
+                    "cd": vcd,
+                    "target": vtarget,
+                    "desc": hl_override if hl_override else f"{vdesc} (Unlocked at Lv.10 by {cname}).",
+                }
+            )
+            seen_aids.add(aid)
+
+    for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), []):
+        if a["id"] not in seen_aids:
+            spec_abilities.append(a)
+            seen_aids.add(a["id"])
+    return spec_abilities
+
+
+def _parse_id_list_block(block: str, consts: dict) -> list[int]:
+    """Parse Lua array body or `return { ... }` of IDs/constants cleanly."""
+    ids = []
+    for item in split_top_level_args(block):
+        tok = item.strip()
+        if not tok:
+            continue
+        # Handle `(xi.jobAbility and xi.jobAbility.WARCRY) or 2`
+        m_or = re.search(r"\bor\s+(\d+)\b", tok)
+        if m_or:
+            ids.append(int(m_or.group(1)))
+            continue
+        if tok.isdigit():
+            ids.append(int(tok))
+        elif tok in consts and isinstance(consts[tok], int):
+            ids.append(consts[tok])
+    return ids
+
+
+def _parse_crystal_entry(entry_str: str, consts: dict, job_key: str, fpath_name: str, sql_abils: dict, lua_meta: dict, fallback_idx: int) -> dict | None:
+    entry_str = entry_str.strip()
+    if not entry_str.startswith("{"):
+        return None
+
+    def extract_field(name: str, src: str = entry_str) -> str:
+        fm = re.search(rf"\b{name}\s*=\s*(['\"](?:\\.|[^'\"])*['\"]|[A-Z0-9_]+|\d+)", src)
+        if not fm:
+            return ""
+        val = fm.group(1)
+        if val in consts:
+            return str(consts[val])
+        return unquote_lua_str(val)
+
+    cid = extract_field("id")
+    ckey = extract_field("key")
+    cname = extract_field("name")
+    if not cname or not ckey:
+        return None
+    crole = extract_field("role")
+    cicon = extract_field("icon")
+    creq = extract_field("reqLevel") or "10"
+    cdesc = extract_field("description")
+
+    highlights = []
+    hm = re.search(r"\bhighlights\s*=\s*\{", entry_str)
+    if hm:
+        h_start = entry_str.find("{", hm.start())
+        h_end = find_balanced(entry_str, h_start, "{", "}")
+        if h_end != -1:
+            h_body = entry_str[h_start + 1 : h_end]
+            for h_item in split_top_level_args(h_body):
+                h_item = h_item.strip()
+                if h_item:
+                    highlights.append(unquote_lua_str(h_item))
+
+    # Extract extraTraits = { ... }
+    extra_traits = []
+    tm = re.search(r"\bextraTraits\s*=\s*\{", entry_str)
+    if tm:
+        t_start = entry_str.find("{", tm.start())
+        t_end = find_balanced(entry_str, t_start, "{", "}")
+        if t_end != -1:
+            extra_traits = _parse_id_list_block(entry_str[t_start + 1 : t_end], consts)
+
+    # Extract extraAbilities = { ... } or function(...) return { ... } end
+    extra_abilities = []
+    am = re.search(r"\bextraAbilities\s*=", entry_str)
+    if am:
+        after_eq = entry_str[am.end() :]
+        if after_eq.lstrip().startswith("{"):
+            a_start = entry_str.find("{", am.end())
+            a_end = find_balanced(entry_str, a_start, "{", "}")
+            if a_end != -1:
+                extra_abilities = _parse_id_list_block(entry_str[a_start + 1 : a_end], consts)
+        else:
+            fn_m = re.search(r"function\b", after_eq)
+            if fn_m:
+                fn_slice = after_eq[fn_m.start() :]
+                # Extract SHARED_* table references + any direct return { ... } IDs
+                for ret_m in re.finditer(r"return\s*\{", fn_slice):
+                    r_start = fn_slice.find("{", ret_m.start())
+                    r_end = find_balanced(fn_slice, r_start, "{", "}")
+                    if r_end != -1:
+                        extra_abilities.extend(_parse_id_list_block(fn_slice[r_start + 1 : r_end], consts))
+                for ref_m in re.finditer(r"ipairs\s*\(\s*([A-Z0-9_]+)\s*\)|table\.insert\s*\(\s*\w+\s*,\s*([A-Z0-9_]+|\d+)\s*\)", fn_slice):
+                    sym = ref_m.group(1) or ref_m.group(2)
+                    if sym and sym.isdigit():
+                        extra_abilities.append(int(sym))
+                    elif sym and sym in consts:
+                        val = consts[sym]
+                        if isinstance(val, list):
+                            extra_abilities.extend(val)
+                        elif isinstance(val, int):
+                            extra_abilities.append(val)
+
+    passive_mods = []
+    mm = re.search(r"\bmods\s*=\s*function", entry_str)
+    if mm:
+        fn_slice = entry_str[mm.start() :]
+        local_vars = {}
+        for lm in re.finditer(r"local\s+(\w+)\s*=\s*([^\r\n]+)", fn_slice):
+            local_vars[lm.group(1).strip()] = lm.group(2).strip()
+
+        for ret_m in re.finditer(r"return\s*\{", fn_slice):
+            r_start = fn_slice.find("{", ret_m.start())
+            r_end = find_balanced(fn_slice, r_start, "{", "}")
+            if r_end != -1:
+                r_body = fn_slice[r_start + 1 : r_end]
+                for mod_item in split_top_level_args(r_body):
+                    mod_item = mod_item.strip()
+                    if mod_item.startswith("{") and mod_item.endswith("}"):
+                        inner = mod_item[1:-1].strip()
+                        kv = split_top_level_args(inner)
+                        if len(kv) >= 2:
+                            mod_name = kv[0].replace("xi.mod.", "").strip()
+                            mod_val = kv[1].strip()
+                            passive_mods.append(format_mod_scaling(mod_name, mod_val, local_vars))
+
+    spec_traits = resolve_spec_traits(extra_traits, job_key, cname, highlights, cdesc, lua_meta)
+    spec_abilities = resolve_spec_abilities(extra_abilities, job_key, ckey, cname, highlights, sql_abils, lua_meta)
+
+    return {
+        "id": int(cid) if cid.isdigit() else fallback_idx,
+        "key": ckey,
+        "name": cname,
+        "role": crole,
+        "icon": cicon,
+        "reqLevel": int(creq) if creq.isdigit() else 10,
+        "description": cdesc,
+        "highlights": highlights,
+        "passiveMods": passive_mods,
+        "customAbilities": spec_abilities,
+        "customTraits": spec_traits,
+        "sourceFile": f"modules/custom/lua/{fpath_name}",
+    }
+
+
+def parse_job_specs(sql_abils: dict | None = None, lua_meta: dict | None = None) -> list[dict]:
+    if sql_abils is None:
+        sql_abils = parse_sql_custom_abilities()
+    if lua_meta is None:
+        lua_meta = parse_lua_metadata()
+
     spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
     seen_files = set()
     jobs_out = {}
@@ -431,9 +1017,15 @@ def parse_job_specs() -> list[dict]:
         clean = strip_lua_comments(raw)
 
         consts = {}
-        for cm in re.finditer(r"local\s+([A-Z0-9_]+)\s*=\s*(['\"][^'\"]+['\"]|\d+)", clean):
+        for cm in re.finditer(r"local\s+([A-Z0-9_]+)\s*=\s*(?:\([^)]+\)\s*or\s*)?(['\"][^'\"]+['\"]|\d+)", clean):
             k, v = cm.group(1), cm.group(2)
             consts[k] = unquote_lua_str(v) if v[0] in ("'", '"') else int(v)
+        # Also parse local SHARED_* = { ... } arrays
+        for tm in re.finditer(r"local\s+(SHARED_[A-Z0-9_]+)\s*=\s*\{", clean):
+            t_start = clean.find("{", tm.start())
+            t_end = find_balanced(clean, t_start, "{", "}")
+            if t_end != -1:
+                consts[tm.group(1)] = _parse_id_list_block(clean[t_start + 1 : t_end], consts)
 
         for m in re.finditer(r"spec\.registerJob\s*\(\s*[^,]+,\s*['\"]([A-Z]+)['\"]\s*,", clean):
             job_key = m.group(1)
@@ -444,88 +1036,11 @@ def parse_job_specs() -> list[dict]:
             if brace_end == -1:
                 continue
             list_body = clean[brace_start + 1 : brace_end]
-            entries_raw = split_top_level_args(list_body)
-
             crystals = []
-            for entry_str in entries_raw:
-                entry_str = entry_str.strip()
-                if not entry_str.startswith("{"):
-                    continue
-
-                def extract_field(name: str, src: str = entry_str) -> str:
-                    fm = re.search(rf"\b{name}\s*=\s*(['\"](?:\\.|[^'\"])*['\"]|[A-Z0-9_]+|\d+)", src)
-                    if not fm:
-                        return ""
-                    val = fm.group(1)
-                    if val in consts:
-                        return str(consts[val])
-                    return unquote_lua_str(val)
-
-                cid = extract_field("id")
-                ckey = extract_field("key")
-                cname = extract_field("name")
-                crole = extract_field("role")
-                cicon = extract_field("icon")
-                creq = extract_field("reqLevel") or "10"
-                cdesc = extract_field("description")
-
-                highlights = []
-                hm = re.search(r"\bhighlights\s*=\s*\{", entry_str)
-                if hm:
-                    h_start = entry_str.find("{", hm.start())
-                    h_end = find_balanced(entry_str, h_start, "{", "}")
-                    if h_end != -1:
-                        h_body = entry_str[h_start + 1 : h_end]
-                        for h_item in split_top_level_args(h_body):
-                            h_item = h_item.strip()
-                            if h_item:
-                                highlights.append(unquote_lua_str(h_item))
-
-                passive_mods = []
-                mm = re.search(r"\bmods\s*=\s*function", entry_str)
-                if mm:
-                    fn_slice = entry_str[mm.start() :]
-                    local_vars = {}
-                    for lm in re.finditer(r"local\s+(\w+)\s*=\s*([^\r\n]+)", fn_slice):
-                        local_vars[lm.group(1).strip()] = lm.group(2).strip()
-
-                    ret_m = re.search(r"return\s*\{", fn_slice)
-                    if ret_m:
-                        r_start = fn_slice.find("{", ret_m.start())
-                        r_end = find_balanced(fn_slice, r_start, "{", "}")
-                        if r_end != -1:
-                            r_body = fn_slice[r_start + 1 : r_end]
-                            for mod_item in split_top_level_args(r_body):
-                                mod_item = mod_item.strip()
-                                if mod_item.startswith("{") and mod_item.endswith("}"):
-                                    inner = mod_item[1:-1].strip()
-                                    kv = split_top_level_args(inner)
-                                    if len(kv) >= 2:
-                                        mod_name = kv[0].replace("xi.mod.", "").strip()
-                                        mod_val = kv[1].strip()
-                                        passive_mods.append(format_mod_scaling(mod_name, mod_val, local_vars))
-
-                spec_traits = [
-                    t for t in CUSTOM_TRAITS.values() if t["job"] == job_key and t["crystal"].lower() == cname.lower()
-                ]
-                spec_abilities = CUSTOM_ABILITIES_BY_SPEC.get((job_key, ckey), [])
-
-                crystals.append(
-                    {
-                        "id": int(cid) if cid.isdigit() else len(crystals) + 1,
-                        "key": ckey,
-                        "name": cname,
-                        "role": crole,
-                        "icon": cicon,
-                        "reqLevel": int(creq) if creq.isdigit() else 10,
-                        "description": cdesc,
-                        "highlights": highlights,
-                        "passiveMods": passive_mods,
-                        "customAbilities": spec_abilities,
-                        "customTraits": spec_traits,
-                        "sourceFile": f"modules/custom/lua/{fpath.name}",
-                    }
-                )
+            for entry_str in split_top_level_args(list_body):
+                parsed = _parse_crystal_entry(entry_str, consts, job_key, fpath.name, sql_abils, lua_meta, len(crystals) + 1)
+                if parsed:
+                    crystals.append(parsed)
 
             jmeta = JOB_META.get(job_key, {"id": 99, "name": job_key, "color": "#60a5fa", "badge": job_key})
             jobs_out[job_key] = {
@@ -536,6 +1051,36 @@ def parse_job_specs() -> list[dict]:
                 "sourceFile": f"modules/custom/lua/{fpath.name}",
                 "crystals": crystals,
             }
+
+        for m in re.finditer(r"spec\.registerCrystal\s*\(\s*xi\.job\.([A-Z]+)\s*,", clean):
+            job_key = m.group(1)
+            brace_start = clean.find("{", m.end())
+            if brace_start == -1:
+                continue
+            brace_end = find_balanced(clean, brace_start, "{", "}")
+            if brace_end == -1:
+                continue
+            entry_str = clean[brace_start : brace_end + 1]
+            if job_key not in jobs_out:
+                jmeta = JOB_META.get(job_key, {"id": 99, "name": job_key, "color": "#60a5fa", "badge": job_key})
+                jobs_out[job_key] = {
+                    "jobKey": job_key,
+                    "jobId": jmeta["id"],
+                    "jobName": jmeta["name"],
+                    "color": jmeta["color"],
+                    "sourceFile": f"modules/custom/lua/{fpath.name}",
+                    "crystals": [],
+                }
+            parsed = _parse_crystal_entry(entry_str, consts, job_key, fpath.name, sql_abils, lua_meta, len(jobs_out[job_key]["crystals"]) + 1)
+            if parsed:
+                # Replace crystal with same key if already registered
+                existing = jobs_out[job_key]["crystals"]
+                idx = next((i for i, x in enumerate(existing) if x["key"] == parsed["key"]), None)
+                if idx is not None:
+                    existing[idx] = parsed
+                else:
+                    existing.append(parsed)
+                existing.sort(key=lambda x: x["id"])
 
     return sorted(jobs_out.values(), key=lambda j: j["jobId"])
 
@@ -1660,6 +2205,16 @@ def parse_sql_custom_abilities() -> dict[int, dict]:
     abils = {}
     for sql_file in sorted(SQL_DIR.glob("*.sql")):
         txt = sql_file.read_text(encoding="utf-8", errors="replace")
+        # Extract any header/inline SQL summary comments for single ability IDs (exclude ranges like (432-437))
+        sql_comments = {}
+        for cm in re.finditer(r"^\s*--\s*(?:-\s*)?([A-Za-z0-9' &:.-]+?)\s*\((\d{3,4})(?!\s*[-–])[^)\r\n]*\)\s*(?::\s*([^\r\n]+)|\[([^\]]+)\])?", txt, re.MULTILINE):
+            cid = int(cm.group(2))
+            cname = cm.group(1).strip()
+            cdetail = (cm.group(3) or "").strip()
+            if "Abilities" in cname or "Custom" in cname:
+                continue
+            sql_comments[cid] = (cname, cdetail)
+
         for m in re.finditer(
             r"\(\s*(\d+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*,\s*(\d+)\s*,\s*(\d+)",
             txt,
@@ -1679,12 +2234,15 @@ def parse_sql_custom_abilities() -> dict[int, dict]:
                 target_lbl = f"Ally ({int(rng)}y)" if rng > 0 else "Ally"
             else:
                 target_lbl = "Self"
+            comment_name, comment_detail = sql_comments.get(aid, ("", ""))
+            display_name = comment_name if comment_name else _clean_ident_name(raw_name.upper())
             abils[aid] = {
                 "id": aid,
-                "name": raw_name.replace("_", " ").title(),
+                "name": display_name,
                 "cd": f"{recast}s",
                 "target": target_lbl,
-                "desc": f"Custom Job Ability (#{aid}) defined in modules/custom/sql/{sql_file.name}.",
+                "sqlDesc": comment_detail,
+                "desc": comment_detail or f"Custom Job Ability ({recast}s recast, {target_lbl}).",
             }
     return abils
 
@@ -1812,6 +2370,21 @@ def parse_patches() -> list[dict]:
         "0022-run-overcharge-effect.patch": "Registers RUN Spellblade Overcharge Runes custom effect ID 831 cleanly and raises MAX_EFFECTID to 832.",
         "0023-brd-spec-effects.patch": "Raises MAX_EFFECTID to 840 and registers BRD spec status effects 832–836.",
         "0024-sam-spec-effects.patch": "Raises MAX_EFFECTID to 848 and registers SAM spec status effects 837–841 (ronin_stagger, imp_drawn_oisoya, imp_cosmic_brand, warlord_noto, warlord_ashura).",
+        "0025-bst-alpha-warden.patch": "Implements Alpha Warden pet enmity forwarding, Master/Pet damage split hooks, and shared recast reduction helpers.",
+        "0025-pld-spec-effects.patch": "Adds PLD Aegis Sentinel/Retribution status effects and Shield Mastery interception hooks.",
+        "0026-drk-spec-effects.patch": "Registers DRK Dreadnought spec status effects for Blood Tithe and Dread Bastion.",
+        "0026-nin-kagemusha-spec.patch": "Implements NIN Kagemusha shadow-break hooks, Kawarimi Ash triggers, and custom spec effects.",
+        "0027-blu-spec-effects.patch": "Registers BLU Azure Carapace spec status effects for Azure Surge and Bastion affinity buffs.",
+        "0027-rdm-crimson-duelist.patch": "Adds RDM Crimson Duelist riposte, Flow weaving, and hex-mitigation C++ engine hooks.",
+        "0028-healer-spec-effects.patch": "Registers status effect IDs for the WHM Bishop, PLD Martyr, BLU Magus, DNC Reveler, SMN Celestial, PUP Mechanist, GEO Arborist, and DRG Lifescale healer crystals.",
+        "0029-shared-ox-status-slots.patch": "Allocates reusable shared OverlordsXI buff and debuff status effect slots (Breach, Cripple, etc.) across all Crystal Specs.",
+        "0030-polearm-buckler-equip.patch": "Allows Warrior Spartan crystal holders to equip Polearms alongside Size-1 Buckler shields.",
+        "0031-reduce-recasts-binding.patch": "Exposes player:reduceRecasts(seconds) Lua binding for spec abilities that shave ally cooldowns.",
+        "0032-cor-gambler-effects.patch": "Adds Corsair Gambler ability-only recast reduction (reduceAbilityRecasts) and Lucky/Roll XI hook support.",
+        "0033-blu-set-spell-binding.patch": "Exposes getBlueMagicSlots Lua bindings so BLU Crystal Specs can grant bonus Blue Magic set points and slots.",
+        "0033-talent-packet-dispatch.patch": "Handles crystal socket change packet dispatch and instant Weaponskill talent sync updates.",
+        "0034-talent-ws-gating.patch": "Enforces Tier-1 Weaponskill Talent gating cleanly in C++ battleutils when inspecting unlocked WSs.",
+        "0035-rng-huntsman-pets.patch": "Configures custom Huntsman pet IDs and subjobs (Wild Raaz, Stalker Raptor, Cehuetzi, Gabbrath) in petutils.cpp for exact-level scaling.",
     }
     desc_map.update({k: v for k, v in extra_descriptions.items() if k not in desc_map})
 
@@ -1824,13 +2397,17 @@ def parse_patches() -> list[dict]:
         num_m = re.match(r"^(\d+)-(.+)\.patch$", pfile.name)
         num_str = num_m.group(1) if num_m else ""
         slug = num_m.group(2).replace("-", " ").title() if num_m else pfile.stem
+        desc = desc_map.get(pfile.name)
+        if not desc:
+            commit_msg = run_git(["log", "-n", "1", "--format=%s", "--", f"patches/{pfile.name}"])
+            desc = commit_msg if commit_msg else f"Engine patch modifying {', '.join(touched_files)}."
 
         patches.append(
             {
                 "number": num_str,
                 "filename": pfile.name,
                 "title": slug,
-                "description": desc_map.get(pfile.name, f"Engine patch modifying {', '.join(touched_files)}."),
+                "description": desc,
                 "files": touched_files,
                 "linesAdded": added,
                 "linesRemoved": removed,
@@ -1896,6 +2473,7 @@ def main():
     SITE_DIR.mkdir(parents=True, exist_ok=True)
 
     sql_abils = parse_sql_custom_abilities()
+    lua_meta = parse_lua_metadata()
     lua_bin = find_lua_binary()
     lua_data = run_lua_exporter(lua_bin) if lua_bin else None
 
@@ -1908,32 +2486,16 @@ def main():
             for c in j.get("crystals", []):
                 ckey = c["key"]
                 cname = c["name"]
+                highlights = c.get("highlights", [])
+                cdesc = c.get("description", "")
                 passive_mods = [format_evaluated_mod(m["mod"], m["values"]) for m in c.get("evaluatedMods", [])]
 
-                # Merge curated descriptions with all abilities from Lua extraAbilities + SQL
-                curated_by_id = {a["id"]: a for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), [])}
-                extra_ids = c.get("extraAbilities", [])
-                spec_abilities = []
-                seen_aids = set()
-                for aid in extra_ids:
-                    if aid in curated_by_id:
-                        spec_abilities.append(curated_by_id[aid])
-                        seen_aids.add(aid)
-                    elif aid in sql_abils:
-                        spec_abilities.append(sql_abils[aid])
-                        seen_aids.add(aid)
-                for a in CUSTOM_ABILITIES_BY_SPEC.get((jkey, ckey), []):
-                    if a["id"] not in seen_aids:
-                        spec_abilities.append(a)
-
-                spec_traits = []
-                for tid in c.get("extraTraits", []):
-                    if tid in CUSTOM_TRAITS:
-                        spec_traits.append(CUSTOM_TRAITS[tid])
-                    else:
-                        spec_traits.append(
-                            {"id": tid, "name": f"{cname} Trait #{tid}", "job": jkey, "crystal": cname, "desc": f"Custom Job Trait #{tid} unlocked by {cname}."}
-                        )
+                spec_abilities = resolve_spec_abilities(
+                    c.get("extraAbilities", []), jkey, ckey, cname, highlights, sql_abils, lua_meta
+                )
+                spec_traits = resolve_spec_traits(
+                    c.get("extraTraits", []), jkey, cname, highlights, cdesc, lua_meta
+                )
 
                 crystals_out.append(
                     {
@@ -1943,8 +2505,8 @@ def main():
                         "role": c["role"],
                         "icon": c["icon"],
                         "reqLevel": c["reqLevel"],
-                        "description": c["description"],
-                        "highlights": c["highlights"],
+                        "description": cdesc,
+                        "highlights": highlights,
                         "passiveMods": passive_mods,
                         "customAbilities": spec_abilities,
                         "customTraits": spec_traits,
@@ -1985,12 +2547,21 @@ def main():
             ]
     else:
         print("Lua runtime not found locally; using Python Lua parser fallback.")
-        jobs = parse_job_specs()
+        jobs = parse_job_specs(sql_abils=sql_abils, lua_meta=lua_meta)
         ws_catalog = parse_ws_catalog()
         ws_trees = parse_ws_trees(ws_catalog)
         rules = parse_server_rules()
 
     wiki_extras = get_companions_and_equipment()
+    # Dynamically populate all resolved custom job traits across every registered crystal
+    all_traits_by_id = {ct["id"]: copy.deepcopy(ct) for ct in CUSTOM_TRAITS.values()}
+    for j in jobs:
+        for c in j.get("crystals", []):
+            for t in c.get("customTraits", []):
+                tid = t.get("id")
+                if isinstance(tid, int) and tid >= 140 and tid not in all_traits_by_id:
+                    all_traits_by_id[tid] = t
+    wiki_extras["customTraits"] = [all_traits_by_id[k] for k in sorted(all_traits_by_id)]
     commands = parse_commands()
     patches = parse_patches()
     commits = parse_git_commits(60)
