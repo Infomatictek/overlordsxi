@@ -17,6 +17,9 @@ commandObj.onTrigger = function(player, sub)
 
     local action = string.lower(tostring(sub or 'sync'))
     if action == 'sync' or action == '' then
+        if player.setLocalVar then
+            player:setLocalVar('OX_HUD_SUB', 1)
+        end
         if xi.overlords and xi.overlords.hud and xi.overlords.hud.sync then
             xi.overlords.hud.sync(player, true)
         end

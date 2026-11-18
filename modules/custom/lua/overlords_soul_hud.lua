@@ -26,7 +26,7 @@ hud.providers = hud.providers or {}
 hud.lastSigByCharId = hud.lastSigByCharId or {}
 hud.lastSentAtByCharId = hud.lastSentAtByCharId or {}
 
-local MIN_AUTO_INTERVAL_SEC = 0.25
+local MIN_AUTO_INTERVAL_SEC = 1.0
 
 local function sanitize(v)
     if type(v) == 'boolean' then
@@ -66,6 +66,10 @@ end
 
 function hud.sync(player, force)
     if player == nil or not player:isPC() then
+        return
+    end
+
+    if not force and player.getLocalVar and player:getLocalVar('OX_HUD_SUB') ~= 1 then
         return
     end
 
@@ -242,7 +246,9 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     super(player, firstLogin, zoning)
     if player ~= nil and player:isPC() then
         attachHudListeners(player)
-        hud.sync(player, true)
+        if player.getLocalVar and player:getLocalVar('OX_HUD_SUB') == 1 then
+            hud.sync(player, true)
+        end
     end
 end)
 
@@ -250,7 +256,7 @@ if spec and spec.refreshPlayer then
     local prevRefresh = spec.refreshPlayer
     spec.refreshPlayer = function(player, ...)
         local res = prevRefresh(player, ...)
-        if player ~= nil and player:isPC() then
+        if player ~= nil and player:isPC() and player.getLocalVar and player:getLocalVar('OX_HUD_SUB') == 1 then
             hud.sync(player, true)
         end
         return res
