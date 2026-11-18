@@ -973,6 +973,39 @@ function spec.refreshPlayer(player, opts)
     return active
 end
 
+-- WAR Spartan/Gladiator may wield a 2H Polearm together with a Size-1 Buckler.
+-- C++ (charutils::CanEquipPolearmBuckler) reads the OX_POLEARM_BUCKLER local var.
+function spec.syncPolearmBuckler(player, active)
+    if player == nil or (player.isPC and not player:isPC()) then
+        return
+    end
+
+    local enabled = 0
+    if player:getMainJob() == xi.job.WAR and active ~= nil and active.key ~= nil then
+        local key = string.lower(tostring(active.key))
+        if key == 'spartan' or key == 'gladiator' then
+            enabled = 1
+        end
+    end
+
+    local prev = player:getLocalVar('OX_POLEARM_BUCKLER')
+    player:setLocalVar('OX_POLEARM_BUCKLER', enabled)
+
+    if enabled == 0 then
+        local main = player:getEquippedItem(xi.slot.MAIN)
+        local sub  = player:getEquippedItem(xi.slot.SUB)
+        if
+            main ~= nil and sub ~= nil and
+            sub:isShield() and
+            player:getWeaponSkillType(xi.slot.MAIN) == xi.skill.POLEARM
+        then
+            player:unequipItem(xi.slot.SUB)
+        end
+    end
+
+    return prev ~= enabled
+end
+
 function spec.onTraitsRebuild(player)
     if player == nil or (player.isPC and not player:isPC()) then
         return nil
@@ -986,6 +1019,7 @@ function spec.onTraitsRebuild(player)
     local prevSpecId = prev and prev.specId or nil
 
     local active = spec.refreshPlayer(player, { skipSync = true })
+    spec.syncPolearmBuckler(player, active)
     local curJobId = player.getMainJob and player:getMainJob() or nil
     local curLvl = player.getMainLvl and player:getMainLvl() or 1
     local curSpecId = active and active.id or 0

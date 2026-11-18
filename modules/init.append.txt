@@ -71,3 +71,6 @@ custom/sql/smn_specs.sql
 custom/sql/pup_healer_specs.sql
 custom/sql/geo_specs.sql
 custom/sql/drg_specs.sql
+custom/lua/overlords_polearm_buckler.lua
+custom/commands/buckler.lua
+custom/commands/shield.lua

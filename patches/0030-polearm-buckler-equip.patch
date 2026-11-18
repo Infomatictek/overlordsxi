@@ -1,0 +1,59 @@
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index 9338b24397..e15ccf6815 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -2056,6 +2056,11 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate,
+     }
+ }
+ 
++// OverlordsXI: WAR Spartan/Gladiator specs may pair a two-handed Polearm with a Size-1 Buckler.
++auto CanEquipPolearmBuckler(CCharEntity* PChar) -> bool
++{
++    return PChar != nullptr && PChar->GetMJob() == xi::Job::WAR && PChar->GetLocalVar("OX_POLEARM_BUCKLER") == 1;
++}
+ auto hasSlotEquipped(CCharEntity* PChar, uint8 equipSlotID) -> bool
+ {
+     CItem* PItem = PChar->getEquip((SLOTTYPE)equipSlotID);
+@@ -2173,7 +2178,13 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+                                 }
+                                 else
+                                 {
+-                                    UnequipItem(PChar, SLOT_SUB, Recalculate::No);
++                                    const bool keepBuckler = static_cast<CItemWeapon*>(PItem)->getSkillType() == xi::SkillType::Polearm &&
++                                                             static_cast<CItemWeapon*>(PItem)->isTwoHanded() && CanEquipPolearmBuckler(PChar) &&
++                                                             sub->IsShield() && sub->getShieldSize() == 1;
++                                    if (!keepBuckler)
++                                    {
++                                        UnequipItem(PChar, SLOT_SUB, Recalculate::No);
++                                    }
+                                 }
+                             }
+                             if (static_cast<CItemWeapon*>(PItem)->getSkillType() == xi::SkillType::HandToHand)
+@@ -2250,7 +2261,26 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+                             }
+                         }
+                         break;
+-                        default:
++                        case xi::SkillType::Polearm:
++                        {
++                            if (PItem->IsShield())
++                            {
++                                // Only a Size-1 Buckler may accompany a two-handed Polearm (WAR Spartan/Gladiator)
++                                if (!CanEquipPolearmBuckler(PChar) || PItem->getShieldSize() != 1)
++                                {
++                                    return false;
++                                }
++                            }
++                            else if (!PItem->isType(ITEM_WEAPON))
++                            {
++                                UnequipItem(PChar, SLOT_MAIN, Recalculate::No);
++                            }
++                            else if (static_cast<CItemWeapon*>(PItem)->getSkillType() != xi::SkillType::None)
++                            {
++                                return false;
++                            }
++                        }
++                        break;                        default:
+                         {
+                             if (!PItem->isType(ITEM_WEAPON))
+                             {
