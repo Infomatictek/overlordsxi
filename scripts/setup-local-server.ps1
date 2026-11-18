@@ -772,6 +772,24 @@ try {
                 }
             }
 
+            $serverPrefix = ([System.IO.Path]::GetFullPath($ServerDir)).TrimEnd('\') + '\'
+            $runningServerProcs = Get-Process -Name @('xi_map', 'xi_connect', 'xi_world', 'xi_search', 'xi_profile') -ErrorAction SilentlyContinue |
+                Where-Object {
+                    try {
+                        $_.Path -and $_.Path.StartsWith($serverPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+                    } catch {
+                        $false
+                    }
+                }
+            if ($runningServerProcs) {
+                $procNames = ($runningServerProcs | ForEach-Object { "$($_.ProcessName) ($($_.Id))" }) -join ', '
+                Write-Host "==> Stopping running server processes to release binary locks: $procNames" -ForegroundColor Yellow
+                $runningServerProcs | Stop-Process -Force -ErrorAction SilentlyContinue
+                $runningServerProcs | ForEach-Object {
+                    try { $_.WaitForExit(5000) | Out-Null } catch {}
+                }
+            }
+
             $reasonSummary = ($buildReasons | Select-Object -Unique) -join '; '
             $targetArgs = $finalTargets -join ' '
             Write-Host "==> Building $targetArgs (-j $BuildJobs) [$reasonSummary]..." -ForegroundColor Yellow
