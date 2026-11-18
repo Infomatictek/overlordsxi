@@ -36,17 +36,17 @@ diff --git a/src/map/status_effect_container.cpp b/src/map/status_effect_contain
 +    EffectsParams[878].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[879].Name             = "ox_deb_breach";
-+    EffectsParams[879].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[879].Flag             = xi::StatusEffectFlag::Erasable | xi::StatusEffectFlag::Death;
 +    EffectsParams[879].SortKey          = 10000;
 +    EffectsParams[879].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[880].Name             = "ox_deb_cripple";
-+    EffectsParams[880].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[880].Flag             = xi::StatusEffectFlag::Erasable | xi::StatusEffectFlag::Death;
 +    EffectsParams[880].SortKey          = 10000;
 +    EffectsParams[880].WearOffMessageId = MsgStd::EffectWearsOff;
 +
 +    EffectsParams[881].Name             = "ox_deb_expose";
-+    EffectsParams[881].Flag             = xi::StatusEffectFlag::Eraseable | xi::StatusEffectFlag::Death;
++    EffectsParams[881].Flag             = xi::StatusEffectFlag::Erasable | xi::StatusEffectFlag::Death;
 +    EffectsParams[881].SortKey          = 10000;
 +    EffectsParams[881].WearOffMessageId = MsgStd::EffectWearsOff;
  }
