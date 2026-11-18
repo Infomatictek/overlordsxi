@@ -1724,6 +1724,64 @@ local function buildCol2Nodes(specKey, ctx)
                 { partyHealPct = { 3, 5, 8, 11, 14 }, wsd = lin(6, 5) })
         end
 
+    elseif specKey == 'wyvernheart' then
+        if v == 1 then
+            t2 = mkNode(2, 2, k2, m .. ' Breath', 5,
+                'Party Heal 2..10% HP & Wyvern Heal 6..30%',
+                function(r) return string.format('Party +%d%% HP, Wyvern +%d%%', r * 2, r * 6) end,
+                { partyHealPct = lin(2, 5), eosHeal = lin(6, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Mending Mist', 5,
+                'Party Regen 4..20/t (24s) & Cleanse Party',
+                function(r) return string.format('Pty Regen %d/t, Cleanse Pty', r * 4) end,
+                { statusBuffs = {{ effect = xi.effect.REGEN, power = lin(4, 5), duration = 24 }}, cleanseParty = { 1, 1, 1, 2, 2 } })
+            t4 = mkNode(4, 2, k4, m .. ' Dragonheart', 5,
+                'Party Heal 3..14% HP, Wyvern +8..40% & +WSD',
+                function(r) return string.format('Pty +%d%% HP, Wyvern +%d%%, +%d%% WSD', ({ 3, 5, 8, 11, 14 })[r], r * 8, r * 5) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, eosHeal = lin(8, 5), wsd = lin(5, 5) })
+        elseif v == 2 then
+            t2 = mkNode(2, 2, k2, m .. ' Dragonscale', 5,
+                'Party Stoneskin 80..400 & +5..25 Subtle Blow',
+                function(r) return string.format('Pty Skin %d, +%d SB', r * 80, r * 5) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(80, 5), duration = 30 }}, subtleBlow = lin(5, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Bloodsurge', 5,
+                'Cleanse Party & Self +3..15% Max HP',
+                function(r) return string.format('Cleanse Pty, Self +%d%% HP', r * 3) end,
+                { cleanseParty = { 1, 1, 1, 2, 2 }, selfMaxHpHealPct = lin(3, 5) })
+            t4 = mkNode(4, 2, k4, m .. ' Sanctuary', 5,
+                'Party Heal 3..14% HP & +6..30% SC Dmg',
+                function(r) return string.format('Party +%d%% HP, +%d%% SC Dmg', ({ 3, 5, 8, 11, 14 })[r], r * 6) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, scBonus = lin(6, 5) })
+        elseif v == 3 then
+            t2 = mkNode(2, 2, k2, m .. ' Crimson Aid', 5,
+                'Party Heal 2..10% HP & -4..-20 Enmity',
+                function(r) return string.format('Party +%d%% HP, -%d Enmity', r * 2, r * 4) end,
+                { partyHealPct = lin(2, 5), enmity = lin(-4, 5) })
+            t3 = mkNode(3, 2, k3, n .. ' Pacify', 5,
+                'Foe -4..20% Atk/M.Atk & Party +2..10% HP',
+                function(r) return string.format('Foe -%d%% Atk/MAtk, Pty +%d%% HP', r * 4, r * 2) end,
+                { partyHealPct = lin(2, 5), targetDebuffs = {
+                    { effect = xi.effect.ATTACK_DOWN, power = lin(4, 5), duration = 45 },
+                    { effect = xi.effect.MAGIC_ATK_DOWN, power = lin(4, 5), duration = 45 },
+                } })
+            t4 = mkNode(4, 2, k4, m .. ' Skywarden', 5,
+                'Party Regen 4..20/t, Cleanse & +6..30% WSD',
+                function(r) return string.format('Pty Regen %d/t, Cleanse, +%d%% WSD', r * 4, r * 6) end,
+                { statusBuffs = {{ effect = xi.effect.REGEN, power = lin(4, 5), duration = 24 }}, cleanseParty = { 1, 1, 1, 2, 2 }, wsd = lin(6, 5) })
+        else
+            t2 = mkNode(2, 2, k2, m .. ' Wyrmgift', 5,
+                'Party Stoneskin 80..400 & Party +2..8% HP',
+                function(r) return string.format('Pty Skin %d, +%d%% HP', r * 80, ({ 2, 3, 5, 6, 8 })[r]) end,
+                { statusBuffs = {{ effect = xi.effect.STONESKIN, power = lin(80, 5), duration = 30 }}, partyHealPct = { 2, 3, 5, 6, 8 } })
+            t3 = mkNode(3, 2, k3, n .. ' Wyrmbond', 5,
+                'Wyvern Heal 6..30% & Cleanse Party',
+                function(r) return string.format('Wyvern +%d%%, Cleanse Pty', r * 6) end,
+                { eosHeal = lin(6, 5), cleanseParty = { 1, 1, 1, 2, 2 } })
+            t4 = mkNode(4, 2, k4, m .. ' Wyrmblood', 5,
+                'Party Heal 3..14% HP & +6..30% WSD',
+                function(r) return string.format('Party +%d%% HP, +%d%% WSD', ({ 3, 5, 8, 11, 14 })[r], r * 6) end,
+                { partyHealPct = { 3, 5, 8, 11, 14 }, wsd = lin(6, 5) })
+        end
+
     elseif specKey == 'medic' then
         if v == 1 then
             t2 = mkNode(2, 2, k2, m .. ' Whisper', 5,
