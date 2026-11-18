@@ -41,6 +41,7 @@ if _G.bit == nil then
     end
     _G.bit = bit
 end
+_G.unpack = _G.unpack or table.unpack
 
 -- Minimal JSON encoder (zero external dependencies)
 local function jsonEscape(str)
@@ -278,7 +279,7 @@ _G.require = function(modName)
         end
     end
     -- Mock upstream LandSandBoat scripts/* or modules/module_utils
-    local stub = {}
+    local stub = makeTableProxy()
     loadedModules[modName] = stub
     return stub
 end
@@ -324,14 +325,37 @@ pcall(require, 'modules/custom/lua/boss_like_combat_and_exp')
 -- Fake player stub to evaluate crystal mods(player, lvl) & extraAbilities(player, lvl)
 -- Intentionally omits getEquipID so `isWiki = (player == nil) or (not player.getEquipID)` evaluates true.
 local function makeMockItem(skillType, isShieldFlag)
+    local st = skillType or 0
     return {
-        getSkillType = function() return skillType or 0 end,
+        getSkillType = function() return st end,
         isShield = function() return isShieldFlag == true end,
-        getID = function() return 0 end,
+        getSize = function() return 1 end,
+        getArmorSkillType = function() return 0 end,
+        isTwoHanded = function()
+            return st == xi.skill.GREAT_SWORD or st == xi.skill.SCYTHE or st == xi.skill.POLEARM or st == xi.skill.GREAT_KATANA or st == xi.skill.STAFF
+        end,
+        getID = function() return 1 end,
     }
 end
 
-local function makeFakePlayer(jobId, lvl)
+local function makeMockPet(jobId, specKey)
+    local pid = 1
+    if jobId == xi.job.BLM and specKey == 'necromancer' then pid = 130 end
+    if jobId == xi.job.RNG and specKey == 'huntsman' then pid = 134 end
+    return {
+        isAlive = function() return true end,
+        getPetID = function() return pid end,
+        getLocalVar = function() return 1 end,
+        isAutomaton = function() return jobId == xi.job.PUP end,
+        isAvatar = function() return jobId == xi.job.SMN end,
+    }
+end
+
+local function makeFakePlayer(jobId, lvl, entry, jKey)
+    local specKey = entry and entry.key or ''
+    local specId = entry and entry.id or 0
+    local varNameExpected = jKey and ('OX_SPEC_' .. tostring(jKey)) or ''
+    local mockPet = makeMockPet(jobId, specKey)
     return {
         getMainJob = function() return jobId end,
         getMainLvl = function() return lvl end,
@@ -341,35 +365,59 @@ local function makeFakePlayer(jobId, lvl)
         isUsingH2H = function() return jobId == xi.job.PUP or jobId == xi.job.MNK end,
         getMod = function() return 0 end,
         getStat = function() return 50 end,
-        hasPet = function() return false end,
-        getPet = function() return nil end,
+        hasPet = function()
+            return jobId == xi.job.PUP or jobId == xi.job.BST or jobId == xi.job.SMN or jobId == xi.job.DRG or jobId == xi.job.BLM or jobId == xi.job.RNG
+        end,
+        getPet = function()
+            if jobId == xi.job.PUP or jobId == xi.job.BST or jobId == xi.job.SMN or jobId == xi.job.DRG or jobId == xi.job.BLM or jobId == xi.job.RNG then
+                return mockPet
+            end
+            return nil
+        end,
         hasStatusEffect = function() return false end,
-        getCharVar = function() return 0 end,
+        getCharVar = function(_, vn)
+            if varNameExpected ~= '' and vn == varNameExpected then return specId end
+            return 0
+        end,
         getLocalVar = function() return 0 end,
         setLocalVar = function() end,
         getWeaponSkillType = function(_, slot)
             if slot == xi.slot.RANGED then
                 if jobId == xi.job.COR then return xi.skill.MARKSMANSHIP end
-                if jobId == xi.job.RNG then return xi.skill.ARCHERY end
-                if jobId == xi.job.DNC then return xi.skill.THROWING end
+                if jobId == xi.job.RNG or (jobId == xi.job.SAM and specKey == 'imperialarcher') then return xi.skill.ARCHERY end
+                if jobId == xi.job.DNC and specKey == 'bladewheel' then return xi.skill.THROWING end
             end
             if jobId == xi.job.PUP or jobId == xi.job.MNK then return xi.skill.HAND_TO_HAND end
             if jobId == xi.job.SAM then return xi.skill.GREAT_KATANA end
-            if jobId == xi.job.DRK then return xi.skill.SCYTHE end
-            if jobId == xi.job.DRG then return xi.skill.POLEARM end
+            if jobId == xi.job.DRK or jobId == xi.job.BLM then return xi.skill.SCYTHE end
+            if jobId == xi.job.DRG or (jobId == xi.job.WAR and specKey == 'spartan') then return xi.skill.POLEARM end
             if jobId == xi.job.NIN then return xi.skill.KATANA end
+            if jobId == xi.job.WHM or jobId == xi.job.PLD then return xi.skill.CLUB end
+            if jobId == xi.job.DNC then return xi.skill.DAGGER end
             return xi.skill.SWORD
         end,
         getEquippedItem = function(_, slot)
             if slot == xi.slot.RANGED then
                 if jobId == xi.job.COR then return makeMockItem(xi.skill.MARKSMANSHIP, false) end
-                if jobId == xi.job.RNG or jobId == xi.job.SAM then return makeMockItem(xi.skill.ARCHERY, false) end
+                if jobId == xi.job.RNG or (jobId == xi.job.SAM and specKey == 'imperialarcher') then return makeMockItem(xi.skill.ARCHERY, false) end
+                if jobId == xi.job.DNC and specKey == 'bladewheel' then return makeMockItem(xi.skill.THROWING, false) end
             elseif slot == xi.slot.SUB then
-                if jobId == xi.job.PLD or jobId == xi.job.WAR then return makeMockItem(0, true) end
+                if jobId == xi.job.PLD or jobId == xi.job.WHM or (jobId == xi.job.WAR and specKey == 'spartan') then
+                    return makeMockItem(0, true)
+                end
+                if jobId == xi.job.NIN then return makeMockItem(xi.skill.KATANA, false) end
+                if jobId == xi.job.DNC and specKey ~= 'bladewheel' then return makeMockItem(xi.skill.DAGGER, false) end
+                if jobId == xi.job.BLU then return makeMockItem(xi.skill.SWORD, false) end
             elseif slot == xi.slot.MAIN then
-                if jobId == xi.job.PUP then return makeMockItem(xi.skill.HAND_TO_HAND, false) end
+                if jobId == xi.job.PUP or jobId == xi.job.MNK then return makeMockItem(xi.skill.HAND_TO_HAND, false) end
                 if jobId == xi.job.SAM then return makeMockItem(xi.skill.GREAT_KATANA, false) end
-                if jobId == xi.job.COR then return makeMockItem(xi.skill.SWORD, false) end
+                if jobId == xi.job.DRK or jobId == xi.job.BLM then return makeMockItem(xi.skill.SCYTHE, false) end
+                if jobId == xi.job.DRG or (jobId == xi.job.WAR and specKey == 'spartan') then return makeMockItem(xi.skill.POLEARM, false) end
+                if jobId == xi.job.NIN then return makeMockItem(xi.skill.KATANA, false) end
+                if jobId == xi.job.WHM or jobId == xi.job.PLD then return makeMockItem(xi.skill.CLUB, false) end
+                if jobId == xi.job.DNC or jobId == xi.job.BRD then return makeMockItem(xi.skill.DAGGER, false) end
+                if jobId == xi.job.WAR then return makeMockItem(xi.skill.AXE, false) end
+                return makeMockItem(xi.skill.SWORD, false)
             end
             return nil
         end,
@@ -390,13 +438,13 @@ for _, jid in ipairs(sortedJobIds) do
     local jKey = j.jobKey or spec.getJobKey(jid)
     local crystalsOut = {}
     for _, entry in ipairs(j.ordered or {}) do
-        -- Evaluate passive mods at Lv 10, 30, 50, 70
+        -- Evaluate passive mods at Lv 10, 30, 50, 75
         local modsByModName = {}
         local modOrder = {}
         if type(entry.mods) == 'function' then
             local levels = { 10, 30, 50, 75 }
             for li, lvl in ipairs(levels) do
-                local ok, list = pcall(entry.mods, makeFakePlayer(jid, lvl), lvl)
+                local ok, list = pcall(entry.mods, makeFakePlayer(jid, lvl, entry, jKey), lvl)
                 if ok and type(list) == 'table' then
                     for _, pair in ipairs(list) do
                         local modId = pair[1]
@@ -424,7 +472,7 @@ for _, jid in ipairs(sortedJobIds) do
         local extraAbils = {}
         local rawAbils = entry.extraAbilities
         if type(rawAbils) == 'function' then
-            local ok, res = pcall(rawAbils, makeFakePlayer(jid, 75), 75)
+            local ok, res = pcall(rawAbils, makeFakePlayer(jid, 75, entry, jKey), 75)
             if ok and type(res) == 'table' then rawAbils = res else rawAbils = {} end
         end
         if type(rawAbils) == 'table' then
@@ -438,7 +486,7 @@ for _, jid in ipairs(sortedJobIds) do
         local extraTraits = {}
         local rawTraits = entry.extraTraits
         if type(rawTraits) == 'function' then
-            local ok, res = pcall(rawTraits, makeFakePlayer(jid, 75), 75)
+            local ok, res = pcall(rawTraits, makeFakePlayer(jid, 75, entry, jKey), 75)
             if ok and type(res) == 'table' then rawTraits = res else rawTraits = {} end
         end
         if type(rawTraits) == 'table' then
