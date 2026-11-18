@@ -677,7 +677,7 @@ local function grantCosmicBrand(player, silent)
     local _, t   = scaleTier(lvl, 1, 2, 3, 4)
     local accVal = scaleTier(lvl, 15, 25, 35, 45)
     local atkVal = scaleTier(lvl, 10, 14, 18, 22)
-    local iconId = (xi.effect and (xi.effect.YAEGASUMI or xi.effect.POTENCY or xi.effect.SENGIKORI)) or EFFECT_IMP_COSMIC_BRAND
+    local iconId = (xi.effect and (xi.effect.POTENCY or xi.effect.SENGIKORI)) or EFFECT_IMP_COSMIC_BRAND
     local ok     = applyCustomTimedEffect(player, EFFECT_IMP_COSMIC_BRAND, t, 15, player, 0, iconId,
     {
         { xi.mod.ACC,  accVal },
