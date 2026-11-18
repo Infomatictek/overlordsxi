@@ -160,13 +160,24 @@ end
 -----------------------------------
 -- Vanilla JA Enhancements
 -----------------------------------
-m:addOverride('xi.actions.abilities.blood_pact_ward.onAbilityCheck', function(player, target, ability)
-    local res, msg = super(player, target, ability)
-    if res == 0 and isCelestial(player) then
-        local cd = player:hasStatusEffect(xi.effect.ASTRAL_FLOW) and 5 or (player:hasStatusEffect(xi.effect.APOGEE) and 6 or 12)
-        ability:setRecast(cd)
+m:addOverride('xi.job_utils.summoner.onUseBloodPact', function(target, pet, petskill, summoner, action)
+    super(target, pet, petskill, summoner, action)
+
+    if
+        isCelestial(summoner) and
+        target ~= nil and
+        action ~= nil and
+        target:getID() == action:getPrimaryTargetID() and
+        petskill ~= nil
+    then
+        local bloodPactAbility = GetAbility(petskill:getID())
+        if bloodPactAbility and bloodPactAbility:getRecastID() == xi.recastID.BLOOD_PACT_WARD then
+            local cd = summoner:hasStatusEffect(xi.effect.ASTRAL_FLOW) and 5
+                or (summoner:hasStatusEffect(xi.effect.APOGEE) and 6 or 12)
+            summoner:resetRecast(xi.recast.ABILITY, xi.recastID.BLOOD_PACT_WARD)
+            summoner:addRecast(xi.recast.ABILITY, xi.recastID.BLOOD_PACT_WARD, cd)
+        end
     end
-    return res, msg
 end)
 
 m:addOverride('xi.actions.abilities.elemental_siphon.onUseAbility', function(player, target, ability)
