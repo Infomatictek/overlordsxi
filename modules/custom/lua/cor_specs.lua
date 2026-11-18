@@ -891,7 +891,7 @@ end)
 -- Job Crystal Registration (COR - Gambler)
 -----------------------------------
 if xi.job and xi.job.COR then
-    spec.registerEntry(xi.job.COR, 'COR',
+    spec.registerCrystal(xi.job.COR,
     {
         id             = 2,
         key            = GAMBLER_KEY,

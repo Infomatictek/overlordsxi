@@ -351,7 +351,7 @@ new file mode 100644
 index 0000000000..485a90bd21
 --- /dev/null
 +++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,120 @@
 +/*
 +===========================================================================
 +
@@ -404,14 +404,17 @@ index 0000000000..485a90bd21
 +            const uint32 nowSec = earth_time::timestamp();
 +            if (PChar->GetLocalVar("OX_CRYSTAL_SYNC_AT") >= nowSec)
 +            {
-+                return;
++                result = crystal::Result::Busy;
 +            }
-+            const uint8_t targetJob = job == 0 ? static_cast<uint8_t>(PChar->GetMJob()) : job;
-+            if (targetJob > 0 && targetJob < crystal::MaxJobs)
++            else
 +            {
-+                PChar->SetLocalVar("OX_CRYSTAL_SYNC_AT", nowSec);
-+                crystal::pushCatalogPackets(PChar, requestId, targetJob);
-+                result = crystal::Result::Success;
++                const uint8_t targetJob = job == 0 ? static_cast<uint8_t>(PChar->GetMJob()) : job;
++                if (targetJob > 0 && targetJob < crystal::MaxJobs)
++                {
++                    PChar->SetLocalVar("OX_CRYSTAL_SYNC_AT", nowSec);
++                    crystal::pushCatalogPackets(PChar, requestId, targetJob);
++                    result = crystal::Result::Success;
++                }
 +            }
 +        }
 +        else if (operation == std::to_underlying(crystal::Operation::Select))
