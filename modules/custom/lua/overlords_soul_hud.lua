@@ -238,39 +238,93 @@ local function customEff(player, effectId)
     return rem, (eff.getPower and eff:getPower() or 0)
 end
 
--- WAR Spartan (Phalanx Ward 820).
+-- Shared helper: expiring localVar resource -> (value clamped to [0, cap], seconds remaining).
+local function timedVar(player, var, expVar, cap)
+    local val = player:getLocalVar(var) or 0
+    local exp = player:getLocalVar(expVar) or 0
+    local now = os.time()
+    if val <= 0 or (exp > 0 and now > exp) then
+        return 0, 0
+    end
+    if cap ~= nil then
+        val = math.min(cap, val)
+    end
+    return math.max(0, val), math.max(0, exp - now)
+end
+
+-- WAR Spartan (Phalanx Ward 820; Spartan's Grit 0..5 from OX_SPT_GRIT).
 hud.registerProvider('spartan', function(player)
     local rem, pow = customEff(player, xi.effect.SPARTAN_WARD or 820)
-    return { ward_rem = rem, ward_pow = pow }
+    return {
+        grit     = math.min(5, math.max(0, player:getLocalVar('OX_SPT_GRIT') or 0)),
+        ward_rem = rem,
+        ward_pow = pow,
+    }
 end)
 
--- DRK Dreadnought (Blood Carapace 855, Dread Bastion 856).
+-- DRK Dreadnought (Blood Carapace 855, Dread Bastion 856; Blood Tithe 0..3, Blood Reap window).
 hud.registerProvider('dreadnought', function(player)
     local cRem, cPow = customEff(player, xi.effect.BLOOD_CARAPACE or 855)
     local bRem, bPow = customEff(player, xi.effect.DREAD_BASTION or 856)
-    return { carapace_rem = cRem, carapace_pow = cPow, bastion_rem = bRem, bastion_pow = bPow }
+    local tithe, titheRem = timedVar(player, 'OX_DRK_TITHE', 'OX_DRK_TITHE_EXP', 3)
+    local reapExp = player:getLocalVar('OX_DRK_BLOOD_REAP_EXP') or 0
+    return {
+        tithe        = tithe,
+        tithe_rem    = titheRem,
+        reap_rem     = math.max(0, reapExp - os.time()),
+        carapace_rem = cRem,
+        carapace_pow = cPow,
+        bastion_rem  = bRem,
+        bastion_pow  = bPow,
+    }
 end)
 
--- DRG Wyvernheart (Dragonscale 874, Dragonscale Sanctuary 875).
+-- DRG Wyvernheart (Dragonscale 874, Dragonscale Sanctuary 875; Wyrmscale 0..3).
 hud.registerProvider('wyvernheart', function(player)
     local sRem, sPow = customEff(player, xi.effect.DRAGONSCALE or 874)
     local nRem, nPow = customEff(player, xi.effect.DRAGONSCALE_SANCTUARY or 875)
-    return { scale_rem = sRem, scale_pow = sPow, sanct_rem = nRem, sanct_pow = nPow }
+    local scale, scaleRem = timedVar(player, 'OX_WYV_SCALE', 'OX_WYV_SCALE_EXP', 3)
+    return {
+        wyrmscale     = scale,
+        wyrmscale_rem = scaleRem,
+        scale_rem     = sRem,
+        scale_pow     = sPow,
+        sanct_rem     = nRem,
+        sanct_pow     = nPow,
+    }
 end)
 
--- COR Buccaneer (House Advantage 884, Card Counting 883, House Debt 882).
+-- PUP Animist (Soulspark cells 0..3 from OX_ANM_CELLS).
+hud.registerProvider('animist', function(player)
+    local cells, cellsRem = timedVar(player, 'OX_ANM_CELLS', 'OX_ANM_CELL_EXP', 3)
+    return { soulspark = cells, soulspark_rem = cellsRem }
+end)
+
+-- COR Buccaneer (House Advantage 884, Card Counting 883, House Debt 882; Grapeshot 0..3, Salt Spray shield).
 hud.registerProvider('buccaneer', function(player)
     local aRem, aPow = customEff(player, xi.effect.HOUSE_ADVANTAGE or 884)
     local cRem, cPow = customEff(player, xi.effect.CARD_COUNTING or 883)
     local dRem, dPow = customEff(player, xi.effect.HOUSE_DEBT or 882)
-    return { adv_rem = aRem, adv_pow = aPow, cc_rem = cRem, cc_pow = cPow, debt_rem = dRem, debt_pow = dPow }
+    local grape = timedVar(player, 'OX_COR_GRAPESHOT', 'OX_COR_GRAPESHOT_EXP', 3)
+    local salt, saltRem = timedVar(player, 'OX_COR_SALTSPRAY', 'OX_COR_SALTSPRAY_EXP', nil)
+    return {
+        grapeshot    = grape,
+        saltspray    = salt,
+        saltspray_rem = saltRem,
+        adv_rem      = aRem,
+        adv_pow      = aPow,
+        cc_rem       = cRem,
+        cc_pow       = cPow,
+        debt_rem     = dRem,
+        debt_pow     = dPow,
+    }
 end)
 
 -- BLU Magus (Azure Catalyst 865 stacks, Osmotic Conduit 866).
 hud.registerProvider('magus', function(player)
     local cRem, cPow = customEff(player, xi.effect.AZURE_CATALYST or 865)
     local oRem, oPow = customEff(player, xi.effect.OSMOTIC_CONDUIT or 866)
-    return { catalyst_stacks = cPow, catalyst_rem = cRem, conduit_rem = oRem, conduit_pow = oPow }
+    return { catalyst = cPow, catalyst_stacks = cPow, catalyst_rem = cRem, conduit_rem = oRem, conduit_pow = oPow }
 end)
 
 -- BLU Azure Bastion (Chitin Carapace 857 stacks, Azure Surge 858, Diamond Shell 859).
@@ -278,12 +332,12 @@ hud.registerProvider('azurebastion', function(player)
     local cRem, cPow = customEff(player, xi.effect.CHITIN_CARAPACE or 857)
     local sRem = customEff(player, xi.effect.AZURE_SURGE or 858)
     local dRem = customEff(player, xi.effect.DIAMOND_SHELL or 859)
-    return { chitin_stacks = cPow, chitin_rem = cRem, surge_rem = sRem, shell_rem = dRem }
+    return { carapace = cPow, chitin_stacks = cPow, chitin_rem = cRem, surge_rem = sRem, shell_rem = dRem }
 end)
 
 -- Active custom player buffs/shields for the client icon strip:
 --   ox_buffs=<iconId>:<power>:<remSec>,...
-local MAX_OX_BUFFS = 12
+local MAX_OX_BUFFS = 14
 function hud.collectOxBuffs(player)
     local registry = xi.overlords.statusRegistry
     if registry == nil or not player.getStatusEffects then
@@ -295,7 +349,8 @@ function hud.collectOxBuffs(player)
         if eff ~= nil and eff.getEffectType then
             local effectId = eff:getEffectType()
             local reg = registry[effectId]
-            if reg ~= nil and not reg.isDebuff then
+            -- Custom Overlords effects only (789 Eos Regen, 815..884); debuffs included so House Debt etc. show.
+            if reg ~= nil and (effectId == 789 or (effectId >= 815 and effectId <= 884)) then
                 local rem = eff.getTimeRemaining and math.max(0, math.floor((eff:getTimeRemaining() or 0) / 1000)) or 0
                 items[#items + 1] =
                 {
