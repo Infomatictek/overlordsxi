@@ -3484,8 +3484,8 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     local j = xi.job or {}
 
     if jobId == (j.WAR or 1) then
-        if specKey == 'gladiator' then
-            return { role = 'tank', weapon = 'club', offhand = 'shield', ranged = 'none', ammo = 'ammo_tank', label = 'WAR Gladiator (Club & Shield Tank)', specEntry = specEntry }
+        if specKey == 'spartan' or specKey == 'gladiator' then
+            return { role = 'tank', weapon = 'polearm', offhand = 'none', ranged = 'none', ammo = 'ammo_tank', label = 'WAR Spartan (Polearm & Buckler Tank)', specEntry = specEntry }
         elseif specKey == 'commander' then
             return { role = 'tp', weapon = 'gaxe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'WAR Commander (Great Axe TP)', specEntry = specEntry }
         elseif specKey == 'berserker' then

@@ -1713,7 +1713,7 @@ m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attack
         local hasBurst = defender.hasStatusEffect and (
             (xi.effect.PALISADE and defender:hasStatusEffect(xi.effect.PALISADE)) or
             (xi.effect.REPRISAL and defender:hasStatusEffect(xi.effect.REPRISAL)) or
-            defender:hasStatusEffect(820) -- GLADIATOR_WARD_EFFECT_ID
+            defender:hasStatusEffect(820) -- SPARTAN_WARD_EFFECT_ID (formerly GLADIATOR_WARD_EFFECT_ID)
         )
         local cap = hasBurst and (tpCfg.blockBurstCap or 75) or (tpCfg.blockPassiveCap or 60)
         if rate > cap then

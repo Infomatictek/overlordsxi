@@ -807,7 +807,7 @@ m:addOverride('xi.effects.aggressor.onEffectGain', function(target, effect)
         effect:addMod(xi.mod.EVA, 25)
         effect:addMod(xi.mod.CRITHITRATE, 5)
     elseif tag == 2 then
-        -- Gladiator Aggressor (Challenger's Stance): no EVA penalty, +20 Enmity, +10% Shield Block Rate
+        -- Spartan Aggressor (Challenger's Stance): no EVA penalty, +20 Enmity, +10% Shield Block Rate
         effect:addMod(xi.mod.EVA, 25)
         effect:addMod(xi.mod.ENMITY, 20)
         effect:addMod(xi.mod.PALISADE_BLOCK_BONUS, 10)
@@ -840,7 +840,7 @@ m:addOverride('xi.effects.retaliation.onEffectGain', function(target, effect)
             effect:addMod(xi.mod.COUNTER, 8)
             return
         elseif tag == 3 then
-            -- Gladiator Retaliation: no movement speed penalty + 12% Counter + 15 Enmity
+            -- Spartan Retaliation: no movement speed penalty + 12% Counter + 15 Enmity
             effect:addMod(xi.mod.COUNTER, 12)
             effect:addMod(xi.mod.ENMITY, 15)
             return

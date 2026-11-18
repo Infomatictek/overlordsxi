@@ -327,7 +327,7 @@ JOB_META = {
 CUSTOM_TRAITS = {
     140: {"id": 140, "displayId": 1676, "name": "Commander's Tactics", "job": "WAR", "crystal": "Commander", "desc": "Unlocks short-cooldown tactical battle cries and single-stance Warcry sharing at Lv.10+."},
     141: {"id": 141, "displayId": 1677, "name": "Berserker's Fury", "job": "WAR", "crystal": "Berserker", "desc": "Amplifies Attack%, Double Attack, Weaponskill Damage, and Berserk/Blood Rage ferocity."},
-    142: {"id": 142, "displayId": 1678, "name": "Gladiator's Bastion", "job": "WAR", "crystal": "Gladiator", "desc": "Grants Shield Mastery, Bloodthirsty Club & Shield self-leech, and heavy damage mitigation."},
+    142: {"id": 142, "displayId": 1678, "name": "Spartan's Phalanx", "job": "WAR", "crystal": "Spartan", "desc": "Grants Polearm & Size-1 Buckler Mastery, Spartan's Grit damage-to-barrier conversion, charge-based Melee & Spell Brace deflection, and phalanx mitigation."},
     143: {"id": 143, "displayId": 1679, "name": "Sensei's Flow", "job": "MNK", "crystal": "Sensei", "desc": "Mastery of Staff deflection: parrying and evading restore HP/TP, build enmity, and riposte."},
     144: {"id": 144, "displayId": 1680, "name": "Medic's Grace", "job": "SCH", "crystal": "Medic", "desc": "Unlocks Call Eos, 2-hour Addendum: White, HP-free 2x Sublimation, and free 10y Accession on Cure/Regen."},
     145: {"id": 145, "displayId": 1681, "name": "Sage's Wisdom", "job": "SCH", "crystal": "Sage", "desc": "Unlocks Call Titania, 2-hour Addendum: Black, permanent Ebullience, and +50% 2-hour Helix spells."},
@@ -357,9 +357,9 @@ CUSTOM_ABILITIES_BY_SPEC = {
         {"id": 400, "name": "Bloodlust Surge", "cd": "25s", "target": "Self", "desc": "10s burst: +10/14/18/24% Attack% and +15/22/30/40% Double Attack Damage at the cost of -10% Defense."},
         {"id": 401, "name": "Savage Cleave", "cd": "20s", "target": "Enemy (4y)", "desc": "Overstraining physical cleave (1.4x-2.6x Weapon DMG + STR, 0 TP gained) that inflicts 6/8/10/12% Max HP non-lethal self-recoil."},
     ],
-    ("WAR", "gladiator"): [
-        {"id": 402, "name": "Crimson Crush", "cd": "20s", "target": "Enemy (4y)", "desc": "Requires Club + Shield. High-enmity blunt strike that drains 4/6/8/10% Max HP (doubled during Blood Rage or Mighty Strikes)."},
-        {"id": 403, "name": "Vanguard Ward", "cd": "30s", "target": "Self", "desc": "12s bastion: +12/18/25/35% Shield Block Rate, -8/10/12/15% Damage Taken, and +20/30/40/50 Enmity."},
+    ("WAR", "spartan"): [
+        {"id": 402, "name": "Impaling Thrust", "cd": "20s", "target": "Enemy (8y)", "desc": "Requires Polearm. High-enmity spear strike that Stuns (2s, +5s Silence mid-cast), applies Maim (-15% ATK / -20 ACC for 15s), and grants +2 Grit (+4 during Defender or Mighty Strikes)."},
+        {"id": 403, "name": "Phalanx Ward", "cd": "35s (2 Grit)", "target": "Self (12s)", "desc": "Requires Polearm. Grants +15/22/30/38% Block, -10/12/15/18% DT, +25/35/45/55 Enmity, Knockback Immunity, and arms 1 Heavy Brace (-50% next hit, maxes Grit to 5, 2s Stun, Exposed Guard, +4s Silence vs spells)."},
     ],
     ("MNK", "sensei"): [
         {"id": 61, "name": "Iron Counterstance", "cd": "120s", "target": "Self", "desc": "Unlocked early at Lv.10 on a 120s recast: +30% Counter Rate, +20 Counter DMG, -10% Damage Taken, +20 Enmity, with ZERO Defense penalty."},
@@ -669,7 +669,7 @@ RANK_LEVEL_TABLES = {
 SPEC_CATEGORIES = [
     {"key": "berserker",      "label": "Berserker (WAR)",       "specs": "WAR Berserker"},
     {"key": "commander",      "label": "Commander (WAR)",       "specs": "WAR Commander"},
-    {"key": "gladiator",      "label": "Gladiator (WAR)",       "specs": "WAR Gladiator (Club+Shield Leech Tank), BRD Minstrel"},
+    {"key": "spartan",        "label": "Spartan (WAR)",         "specs": "WAR Spartan (Polearm & Buckler Phalanx Tank), BRD Minstrel"},
     {"key": "sensei",         "label": "Sensei (MNK)",          "specs": "MNK Sensei (Staff Counter/Parry Tank)"},
     {"key": "blackbelt",      "label": "Black Belt (MNK)",      "specs": "MNK Black Belt (H2H Martial Finisher)"},
     {"key": "chiweaver",      "label": "Chi Weaver (MNK)",      "specs": "MNK Chi Weaver (0-MP Chi Pulse Healer)"},
