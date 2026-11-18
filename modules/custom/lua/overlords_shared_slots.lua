@@ -93,12 +93,13 @@ function S.applySlot(target, effectId, power, duration, origin, modsTable, iconI
 
     local key = getPendingKey(target, effectId)
     pendingSlotMods[key] = modsTable or {}
+    local resolvedIcon = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId
     local ok = target:addStatusEffect(effectId,
     {
         power    = pwr,
         duration = duration or 12,
         origin   = origin or target,
-        icon     = iconId or effectId,
+        icon     = resolvedIcon,
         tier     = 1,
     })
     pendingSlotMods[key] = nil
@@ -116,7 +117,7 @@ function S.applyPartyWard(caster, target, dtBps, meva, duration, iconId)
     if clampedMeva ~= 0 then
         table.insert(mods, { xi.mod.MEVA, clampedMeva })
     end
-    return S.applySlot(target, S.EFF_OX_SUP_WARD, potency, duration or 12, caster, mods, iconId or xi.effect.RAMPART)
+    return S.applySlot(target, S.EFF_OX_SUP_WARD, potency, duration or 12, caster, mods, iconId)
 end
 
 return m

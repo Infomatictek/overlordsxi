@@ -650,7 +650,7 @@ m:addOverride('xi.job_utils.corsair.useDoubleUp', function(caster, target, abili
                 power    = 25,
                 duration = 12,
                 origin   = caster,
-                icon     = xi.effect.BUST,
+                icon     = xi.overlords.getStatusIcon(EFFECT_HOUSE_DEBT),
             })
             setRollLock(caster, 15)
         elseif roll == 11 then
@@ -981,7 +981,7 @@ m:addOverride('xi.job_utils.corsair.useElementalShot', function(actor, target, a
             power    = CARD_COUNT_FIRE_LIGHT,
             duration = 10,
             origin   = actor,
-            icon     = xi.effect.FIRE_SHOT or xi.effect.DOUBLE_UP_CHANCE,
+            icon     = xi.overlords.getStatusIcon(EFFECT_CARD_COUNTING),
         })
     elseif abilityId == ABIL_ICE_SHOT or abilityId == ABIL_WATER_SHOT then
         actor:delStatusEffectSilent(EFFECT_CARD_COUNTING)
@@ -989,7 +989,7 @@ m:addOverride('xi.job_utils.corsair.useElementalShot', function(actor, target, a
             power    = CARD_COUNT_ICE_WATER,
             duration = 10,
             origin   = actor,
-            icon     = xi.effect.ICE_SHOT or xi.effect.DOUBLE_UP_CHANCE,
+            icon     = xi.overlords.getStatusIcon(EFFECT_CARD_COUNTING),
         })
     end
 
@@ -1110,7 +1110,7 @@ m:addOverride('xi.actions.abilities.house_advantage.onUseAbility', function(cast
             power    = 1,
             duration = 30,
             origin   = caster,
-            icon     = xi.effect.SNAKE_EYE,
+            icon     = xi.overlords.getStatusIcon(EFFECT_HOUSE_ADVANTAGE),
         })
 
         forEachPartyMemberInRange(caster, 15, function(member)

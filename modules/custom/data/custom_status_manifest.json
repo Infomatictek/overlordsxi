@@ -1,0 +1,1649 @@
+{
+  "version": 1,
+  "maxEffectId": 1024,
+  "iconPoolMaxExclusive": 639,
+  "excludedIcons": [
+    0,
+    255,
+    511
+  ],
+  "effects": [
+    {
+      "effectId": 815,
+      "iconId": 24,
+      "key": "COMMANDER_BREACH",
+      "aliases": [],
+      "name": "commander_breach",
+      "displayName": "Tactical Breach",
+      "tooltip": "Enemy defenses are breached, increasing damage taken.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#b22222",
+        "accent": "#ff6b4a",
+        "motif": "shattered_armor"
+      }
+    },
+    {
+      "effectId": 816,
+      "iconId": 25,
+      "key": "COMMANDER_BULWARK",
+      "aliases": [],
+      "name": "commander_bulwark",
+      "displayName": "Formation: Bulwark",
+      "tooltip": "Damage taken is reduced and guarding is enhanced.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#2d6cdf",
+        "accent": "#78b7ff",
+        "motif": "shield_ward"
+      }
+    },
+    {
+      "effectId": 817,
+      "iconId": 26,
+      "key": "COMMANDER_CADENCE",
+      "aliases": [],
+      "name": "commander_cadence",
+      "displayName": "Battle Cadence",
+      "tooltip": "Attack speed and combat tempo are enhanced.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#d97706",
+        "accent": "#fbbf24",
+        "motif": "sword_surge"
+      }
+    },
+    {
+      "effectId": 818,
+      "iconId": 27,
+      "key": "COMMANDER_REGROUP",
+      "aliases": [],
+      "name": "commander_regroup",
+      "displayName": "Rallying Regroup",
+      "tooltip": "Gradually recovering HP and bolstered resolve.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#16a34a",
+        "accent": "#6ee7b7",
+        "motif": "heart_cross"
+      }
+    },
+    {
+      "effectId": 819,
+      "iconId": 224,
+      "key": "BERSERKER_SURGE",
+      "aliases": [],
+      "name": "berserker_surge",
+      "displayName": "Berserker Surge",
+      "tooltip": "Attack power and ferocity are greatly enhanced.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#dc2626",
+        "accent": "#fca5a5",
+        "motif": "axe_fury"
+      }
+    },
+    {
+      "effectId": 820,
+      "iconId": 225,
+      "key": "GLADIATOR_WARD",
+      "aliases": [
+        "SPARTAN_WARD"
+      ],
+      "name": "gladiator_ward",
+      "displayName": "Spartan Phalanx Ward",
+      "tooltip": "Phalanx mitigation and shield defense are enhanced.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#b45309",
+        "accent": "#fde047",
+        "motif": "spartan_shield"
+      }
+    },
+    {
+      "effectId": 821,
+      "iconId": 226,
+      "key": "INQUISITOR_BATTUTA",
+      "aliases": [],
+      "name": "inquisitor_battuta",
+      "displayName": "Iron Battuta",
+      "tooltip": "Parrying rate and counter-strike power are enhanced.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#0284c7",
+        "accent": "#7dd3fc",
+        "motif": "crossed_blades"
+      }
+    },
+    {
+      "effectId": 822,
+      "iconId": 232,
+      "key": "INQUISITOR_AEGIS",
+      "aliases": [],
+      "name": "inquisitor_aegis",
+      "displayName": "Runic Aegis",
+      "tooltip": "Magic damage taken is reduced by a runic barrier.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#2563eb",
+        "accent": "#93c5fd",
+        "motif": "rune_shield"
+      }
+    },
+    {
+      "effectId": 823,
+      "iconId": 372,
+      "key": "INQUISITOR_CONVERGE",
+      "aliases": [],
+      "name": "inquisitor_converge",
+      "displayName": "Runic Convergence",
+      "tooltip": "Runic energies converge, amplifying elemental potency.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#7c3aed",
+        "accent": "#c4b5fd",
+        "motif": "rune_burst"
+      }
+    },
+    {
+      "effectId": 824,
+      "iconId": 373,
+      "key": "SPELLBLADE_EDGEFLARE",
+      "aliases": [],
+      "name": "spellblade_edgeflare",
+      "displayName": "Edgeflare",
+      "tooltip": "Weapon strikes unleash searing elemental flares.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#ea580c",
+        "accent": "#fdba74",
+        "motif": "flame_blade"
+      }
+    },
+    {
+      "effectId": 825,
+      "iconId": 374,
+      "key": "LIFEBINDER_FONT",
+      "aliases": [],
+      "name": "lifebinder_font",
+      "displayName": "Font of Life",
+      "tooltip": "Vitality is overflowing, enhancing healing potency.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#059669",
+        "accent": "#6ee7b7",
+        "motif": "lifebinder_drop"
+      }
+    },
+    {
+      "effectId": 826,
+      "iconId": 514,
+      "key": "LIFEBINDER_SANCTUARY",
+      "aliases": [],
+      "name": "lifebinder_sanctuary",
+      "displayName": "Sanctified Ward",
+      "tooltip": "Protected by a sanctified barrier against damage.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#0d9488",
+        "accent": "#5eead4",
+        "motif": "sanctuary_halo"
+      }
+    },
+    {
+      "effectId": 827,
+      "iconId": 520,
+      "key": "SPELLBLADE_CONDUCTION",
+      "aliases": [],
+      "name": "spellblade_conduction",
+      "displayName": "Runic Conduction",
+      "tooltip": "Elemental conduction amplifies magic bursts and enfeebles.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#4f46e5",
+        "accent": "#a5b4fc",
+        "motif": "lightning_rune"
+      }
+    },
+    {
+      "effectId": 828,
+      "iconId": 521,
+      "key": "SPELLBLADE_ASCENDANCE",
+      "aliases": [],
+      "name": "spellblade_ascendance",
+      "displayName": "Runic Ascendance",
+      "tooltip": "All runic attributes and spellblade power are elevated.",
+      "flags": [
+        "DEATH"
+      ],
+      "flagMask": 32,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#9333ea",
+        "accent": "#e9d5ff",
+        "motif": "ascendant_star"
+      }
+    },
+    {
+      "effectId": 829,
+      "iconId": 636,
+      "key": "CHIWEAVER_LOTUS",
+      "aliases": [],
+      "name": "chiweaver_lotus",
+      "displayName": "Tranquil Lotus",
+      "tooltip": "Chi flows serenely, enhancing ranged chi and focus.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#0891b2",
+        "accent": "#67e8f9",
+        "motif": "lotus_chi"
+      }
+    },
+    {
+      "effectId": 830,
+      "iconId": 637,
+      "key": "CHIWEAVER_HARMONY",
+      "aliases": [],
+      "name": "chiweaver_harmony",
+      "displayName": "Inner Harmony",
+      "tooltip": "Inner chi is balanced, boosting evasion and recovery.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH"
+      ],
+      "flagMask": 33,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#10b981",
+        "accent": "#a7f3d0",
+        "motif": "yin_yang_chi"
+      }
+    },
+    {
+      "effectId": 831,
+      "iconId": 638,
+      "key": "SPELLBLADE_OVERCHARGE",
+      "aliases": [],
+      "name": "spellblade_overcharge",
+      "displayName": "Overcharge Runes",
+      "tooltip": "Runes are overcharged, surging elemental weapon damage.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#0284c7",
+        "accent": "#38bdf8",
+        "motif": "overcharge_bolt"
+      }
+    },
+    {
+      "effectId": 832,
+      "iconId": 244,
+      "key": "ADVENTURER_CADENCE",
+      "aliases": [],
+      "name": "adventurer_cadence",
+      "displayName": "Adventurer Cadence",
+      "tooltip": "Rhythmic cadence boosts movement and combat flow.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#d97706",
+        "accent": "#fde68a",
+        "motif": "music_note"
+      }
+    },
+    {
+      "effectId": 833,
+      "iconId": 245,
+      "key": "ADVENTURER_ENCORE",
+      "aliases": [],
+      "name": "adventurer_encore",
+      "displayName": "Adventurer Encore",
+      "tooltip": "Encore resonance extends and empowers party melodies.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194337,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#f59e0b",
+        "accent": "#fef08a",
+        "motif": "double_note"
+      }
+    },
+    {
+      "effectId": 834,
+      "iconId": 246,
+      "key": "MUSICIAN_RESONANCE",
+      "aliases": [],
+      "name": "musician_resonance",
+      "displayName": "Musician Resonance",
+      "tooltip": "Harmonic resonance amplifies song potency and magic.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#8b5cf6",
+        "accent": "#ddd6fe",
+        "motif": "harp_wave"
+      }
+    },
+    {
+      "effectId": 835,
+      "iconId": 247,
+      "key": "MUSICIAN_OVERDRIVE",
+      "aliases": [],
+      "name": "musician_overdrive",
+      "displayName": "Musician Overdrive",
+      "tooltip": "Sonic overdrive accelerates casting and song tempo.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194337,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#ec4899",
+        "accent": "#fbcfe8",
+        "motif": "sonic_burst"
+      }
+    },
+    {
+      "effectId": 836,
+      "iconId": 248,
+      "key": "MINSTREL_IRON_ARIA",
+      "aliases": [],
+      "name": "minstrel_iron_aria",
+      "displayName": "Iron Aria",
+      "tooltip": "Stalwart aria fortifies party defense and resistance.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194337,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#64748b",
+        "accent": "#cbd5e1",
+        "motif": "iron_clef"
+      }
+    },
+    {
+      "effectId": 837,
+      "iconId": 473,
+      "key": "RONIN_STAGGER",
+      "aliases": [],
+      "name": "ronin_stagger",
+      "displayName": "Ronin Stagger",
+      "tooltip": "Balanced stance absorbs incoming blows and steadies TP.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#b91c1c",
+        "accent": "#fca5a5",
+        "motif": "katana_guard"
+      }
+    },
+    {
+      "effectId": 838,
+      "iconId": 475,
+      "key": "IMP_DRAWN_OISOYA",
+      "aliases": [],
+      "name": "imp_drawn_oisoya",
+      "displayName": "Drawn Oisoya",
+      "tooltip": "Bow is drawn with deadly precision and ranged power.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#15803d",
+        "accent": "#86efac",
+        "motif": "bow_arrow"
+      }
+    },
+    {
+      "effectId": 839,
+      "iconId": 476,
+      "key": "IMP_COSMIC_BRAND",
+      "aliases": [],
+      "name": "imp_cosmic_brand",
+      "displayName": "Cosmic Brand",
+      "tooltip": "Marked by a cosmic brand, amplifying skillchain damage.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#6d28d9",
+        "accent": "#c4b5fd",
+        "motif": "cosmic_sigil"
+      }
+    },
+    {
+      "effectId": 840,
+      "iconId": 486,
+      "key": "WARLORD_NOTO",
+      "aliases": [],
+      "name": "warlord_noto",
+      "displayName": "Warlord Noto",
+      "tooltip": "Sheathed discipline stores immense TP for the next strike.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#b45309",
+        "accent": "#fcd34d",
+        "motif": "sheathed_blade"
+      }
+    },
+    {
+      "effectId": 841,
+      "iconId": 487,
+      "key": "WARLORD_ASHURA",
+      "aliases": [],
+      "name": "warlord_ashura",
+      "displayName": "Warlord Ashura",
+      "tooltip": "Ashura spirit unleashes relentless multi-hit fury.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#dc2626",
+        "accent": "#f87171",
+        "motif": "ashura_crest"
+      }
+    },
+    {
+      "effectId": 842,
+      "iconId": 488,
+      "key": "AEGIS_ZEAL",
+      "aliases": [],
+      "name": "aegis_zeal",
+      "displayName": "Aegis Zeal",
+      "tooltip": "Righteous zeal empowers holy strikes and enmity.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#ca8a04",
+        "accent": "#fef08a",
+        "motif": "sun_sword"
+      }
+    },
+    {
+      "effectId": 843,
+      "iconId": 489,
+      "key": "AEGIS_CONSECRATION",
+      "aliases": [],
+      "name": "aegis_consecration",
+      "displayName": "Aegis Consecration",
+      "tooltip": "Consecrated ground fortifies defense and holy magic.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#eab308",
+        "accent": "#fef9c3",
+        "motif": "holy_crest"
+      }
+    },
+    {
+      "effectId": 844,
+      "iconId": 506,
+      "key": "HOLY_RETRIBUTION",
+      "aliases": [],
+      "name": "holy_retribution",
+      "displayName": "Holy Retribution",
+      "tooltip": "Retaliatory light punishes attackers with holy damage.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#d97706",
+        "accent": "#fde68a",
+        "motif": "radiant_shield"
+      }
+    },
+    {
+      "effectId": 845,
+      "iconId": 509,
+      "key": "KAGEMUSHA_SHADOW_SMOKE",
+      "aliases": [],
+      "name": "kagemusha_shadow_smoke",
+      "displayName": "Shadow Smoke",
+      "tooltip": "Veiled in shinobi smoke, evading incoming attacks.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE"
+      ],
+      "flagMask": 289,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#475569",
+        "accent": "#94a3b8",
+        "motif": "smoke_cloud"
+      }
+    },
+    {
+      "effectId": 846,
+      "iconId": 510,
+      "key": "KAGEMUSHA_BUNSHIN",
+      "aliases": [],
+      "name": "kagemusha_bunshin",
+      "displayName": "Kage Bunshin",
+      "tooltip": "Shadow clones mirror your strikes and confound foes.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#334155",
+        "accent": "#cbd5e1",
+        "motif": "twin_shuriken"
+      }
+    },
+    {
+      "effectId": 847,
+      "iconId": 572,
+      "key": "ALPHA_PACK_INSTINCT",
+      "aliases": [],
+      "name": "alpha_pack_instinct",
+      "displayName": "Pack Instinct",
+      "tooltip": "Primal pack bond heightens attack and ferocity.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#b45309",
+        "accent": "#fbbf24",
+        "motif": "wolf_fang"
+      }
+    },
+    {
+      "effectId": 848,
+      "iconId": 573,
+      "key": "ALPHA_RENDING_BITE",
+      "aliases": [],
+      "name": "alpha_rending_bite",
+      "displayName": "Rending Bite",
+      "tooltip": "Savage fangs rend armor and inflict bleeding.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#991b1b",
+        "accent": "#f87171",
+        "motif": "claw_slash"
+      }
+    },
+    {
+      "effectId": 849,
+      "iconId": 578,
+      "key": "ALPHA_SOUL_BOND",
+      "aliases": [],
+      "name": "alpha_soul_bond",
+      "displayName": "Alpha Soul Bond",
+      "tooltip": "Master and beast share vitality and combat spirit.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#16a34a",
+        "accent": "#86efac",
+        "motif": "beast_link"
+      }
+    },
+    {
+      "effectId": 850,
+      "iconId": 585,
+      "key": "ALPHA_FERAL_ROAR",
+      "aliases": [],
+      "name": "alpha_feral_roar",
+      "displayName": "Feral Roar",
+      "tooltip": "Intimidated by a primal roar, lowering combat prowess.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#9f1239",
+        "accent": "#fda4af",
+        "motif": "roar_wave"
+      }
+    },
+    {
+      "effectId": 851,
+      "iconId": 587,
+      "key": "ALPHA_FAMILIAR_BOND",
+      "aliases": [],
+      "name": "alpha_familiar_bond",
+      "displayName": "Familiar Bond",
+      "tooltip": "Deepened familiar bond empowers pet stats and haste.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#65a30d",
+        "accent": "#bef264",
+        "motif": "paw_emblem"
+      }
+    },
+    {
+      "effectId": 852,
+      "iconId": 602,
+      "key": "ALPHA_REWARD_BOND",
+      "aliases": [],
+      "name": "alpha_reward_bond",
+      "displayName": "Reward Bond",
+      "tooltip": "Shared rejuvenation steadily restores HP to master and pet.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#059669",
+        "accent": "#6ee7b7",
+        "motif": "leaf_heart"
+      }
+    },
+    {
+      "effectId": 853,
+      "iconId": 605,
+      "key": "CRIMSON_FLOW",
+      "aliases": [],
+      "name": "crimson_flow",
+      "displayName": "Crimson Flow",
+      "tooltip": "Duelist momentum accelerates enfeebling and bladework.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#be123c",
+        "accent": "#fda4af",
+        "motif": "rapier_arc"
+      }
+    },
+    {
+      "effectId": 854,
+      "iconId": 606,
+      "key": "CRIMSON_FLECHE",
+      "aliases": [],
+      "name": "crimson_fleche",
+      "displayName": "Crimson Fleche",
+      "tooltip": "Piercing lunge readiness sharpens critical precision.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#e11d48",
+        "accent": "#fecdd3",
+        "motif": "fencing_thrust"
+      }
+    },
+    {
+      "effectId": 855,
+      "iconId": 607,
+      "key": "BLOOD_CARAPACE",
+      "aliases": [],
+      "name": "blood_carapace",
+      "displayName": "Blood Carapace",
+      "tooltip": "Sanguine barrier absorbs damage with dark vitality.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#881337",
+        "accent": "#fb7185",
+        "motif": "blood_shield"
+      }
+    },
+    {
+      "effectId": 856,
+      "iconId": 608,
+      "key": "DREAD_BASTION",
+      "aliases": [],
+      "name": "dread_bastion",
+      "displayName": "Dread Bastion",
+      "tooltip": "Dark bastion fortifies defense and drains life from foes.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#4c1d95",
+        "accent": "#a78bfa",
+        "motif": "dread_helm"
+      }
+    },
+    {
+      "effectId": 857,
+      "iconId": 609,
+      "key": "CHITIN_CARAPACE",
+      "aliases": [],
+      "name": "chitin_carapace",
+      "displayName": "Chitin Carapace",
+      "tooltip": "Hardened chitinous plating reduces physical damage taken.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#0369a1",
+        "accent": "#7dd3fc",
+        "motif": "azure_shell"
+      }
+    },
+    {
+      "effectId": 858,
+      "iconId": 610,
+      "key": "AZURE_SURGE",
+      "aliases": [],
+      "name": "azure_surge",
+      "displayName": "Azure Surge",
+      "tooltip": "Blue magic energy surges, boosting spell and physical power.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#0284c7",
+        "accent": "#38bdf8",
+        "motif": "azure_bolt"
+      }
+    },
+    {
+      "effectId": 859,
+      "iconId": 613,
+      "key": "DIAMOND_SHELL",
+      "aliases": [],
+      "name": "diamond_shell",
+      "displayName": "Diamond Shell",
+      "tooltip": "Crystalline shell provides formidable damage mitigation.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#0ea5e9",
+        "accent": "#bae6fd",
+        "motif": "diamond_crest"
+      }
+    },
+    {
+      "effectId": 860,
+      "iconId": 614,
+      "key": "SOLACE_WARD",
+      "aliases": [],
+      "name": "solace_ward",
+      "displayName": "Solace Ward",
+      "tooltip": "Gentle ward reduces damage taken and aids recovery.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#0284c7",
+        "accent": "#e0f2fe",
+        "motif": "white_wing"
+      }
+    },
+    {
+      "effectId": 861,
+      "iconId": 616,
+      "key": "SACRED_GRACE",
+      "aliases": [],
+      "name": "sacred_grace",
+      "displayName": "Sacred Grace",
+      "tooltip": "Sacred grace enhances Cure potency and MP efficiency.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#0d9488",
+        "accent": "#99f6e4",
+        "motif": "chalice_glow"
+      }
+    },
+    {
+      "effectId": 862,
+      "iconId": 618,
+      "key": "DIVINE_VEIL",
+      "aliases": [],
+      "name": "divine_veil",
+      "displayName": "Divine Veil",
+      "tooltip": "Protective veil shields the party from magic and harm.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#2563eb",
+        "accent": "#dbeafe",
+        "motif": "angel_veil"
+      }
+    },
+    {
+      "effectId": 863,
+      "iconId": 620,
+      "key": "LIGHTS_GRACE",
+      "aliases": [],
+      "name": "lights_grace",
+      "displayName": "Light's Grace",
+      "tooltip": "Holy light enhances healing and defensive resolve.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#ca8a04",
+        "accent": "#fef08a",
+        "motif": "light_cross"
+      }
+    },
+    {
+      "effectId": 864,
+      "iconId": 624,
+      "key": "CRUSADERS_AEGIS",
+      "aliases": [],
+      "name": "crusaders_aegis",
+      "displayName": "Crusader's Aegis",
+      "tooltip": "Crusader ward mitigates damage and bolsters magic evasion.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#d97706",
+        "accent": "#fde68a",
+        "motif": "templar_shield"
+      }
+    },
+    {
+      "effectId": 865,
+      "iconId": 627,
+      "key": "AZURE_CATALYST",
+      "aliases": [],
+      "name": "azure_catalyst",
+      "displayName": "Azure Catalyst",
+      "tooltip": "Azure catalyst amplifies restorative blue magic.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#0891b2",
+        "accent": "#67e8f9",
+        "motif": "azure_orb"
+      }
+    },
+    {
+      "effectId": 866,
+      "iconId": 629,
+      "key": "OSMOTIC_CONDUIT",
+      "aliases": [],
+      "name": "osmotic_conduit",
+      "displayName": "Osmotic Conduit",
+      "tooltip": "Osmotic conduit shares healing and MP across allies.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#0284c7",
+        "accent": "#7dd3fc",
+        "motif": "water_spiral"
+      }
+    },
+    {
+      "effectId": 867,
+      "iconId": 630,
+      "key": "CRIMSON_VEIL",
+      "aliases": [],
+      "name": "crimson_veil",
+      "displayName": "Crimson Veil",
+      "tooltip": "Dancer veil reduces incoming damage with graceful poise.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#be185d",
+        "accent": "#f9a8d4",
+        "motif": "ribbon_veil"
+      }
+    },
+    {
+      "effectId": 868,
+      "iconId": 631,
+      "key": "SANGUINE_WALTZ",
+      "aliases": [],
+      "name": "sanguine_waltz",
+      "displayName": "Sanguine Waltz",
+      "tooltip": "Sanguine waltz restores HP steadily to nearby allies.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#e11d48",
+        "accent": "#fda4af",
+        "motif": "rose_waltz"
+      }
+    },
+    {
+      "effectId": 869,
+      "iconId": 632,
+      "key": "CELESTIAL_SANCTUARY",
+      "aliases": [],
+      "name": "celestial_sanctuary",
+      "displayName": "Celestial Sanctuary",
+      "tooltip": "Avatar blessing shields allies and eases recovery.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#7c3aed",
+        "accent": "#ddd6fe",
+        "motif": "moon_sanctuary"
+      }
+    },
+    {
+      "effectId": 870,
+      "iconId": 633,
+      "key": "CELESTIAL_CONVERGENCE",
+      "aliases": [],
+      "name": "celestial_convergence",
+      "displayName": "Celestial Convergence",
+      "tooltip": "Astral convergence empowers party wards and summons.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#6366f1",
+        "accent": "#c7d2fe",
+        "motif": "astral_ring"
+      }
+    },
+    {
+      "effectId": 871,
+      "iconId": 634,
+      "key": "CLOCKWORK_AEGIS",
+      "aliases": [],
+      "name": "clockwork_aegis",
+      "displayName": "Clockwork Aegis",
+      "tooltip": "Automaton plating projects a protective ward over allies.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#b45309",
+        "accent": "#fcd34d",
+        "motif": "gear_shield"
+      }
+    },
+    {
+      "effectId": 872,
+      "iconId": 635,
+      "key": "BARKSKIN",
+      "aliases": [],
+      "name": "barkskin",
+      "displayName": "Barkskin",
+      "tooltip": "Earthen bark fortifies physical and elemental resilience.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#15803d",
+        "accent": "#86efac",
+        "motif": "bark_plate"
+      }
+    },
+    {
+      "effectId": 873,
+      "iconId": 250,
+      "key": "CANOPY_OF_THE_ANCIENTS",
+      "aliases": [],
+      "name": "canopy_of_the_ancients",
+      "displayName": "Canopy of the Ancients",
+      "tooltip": "Ancient canopy shields the party from heavy blows.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#166534",
+        "accent": "#4ade80",
+        "motif": "canopy_leaf"
+      }
+    },
+    {
+      "effectId": 874,
+      "iconId": 264,
+      "key": "DRAGONSCALE",
+      "aliases": [],
+      "name": "dragonscale",
+      "displayName": "Dragonscale",
+      "tooltip": "Draconic scales harden defense against fierce attacks.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#1d4ed8",
+        "accent": "#93c5fd",
+        "motif": "dragon_scale"
+      }
+    },
+    {
+      "effectId": 875,
+      "iconId": 267,
+      "key": "DRAGONSCALE_SANCTUARY",
+      "aliases": [],
+      "name": "dragonscale_sanctuary",
+      "displayName": "Dragonscale Sanctuary",
+      "tooltip": "Wyvern sanctuary guards allies from damage and magic.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "healer",
+        "border": "#4338ca",
+        "accent": "#a5b4fc",
+        "motif": "wyvern_wing"
+      }
+    },
+    {
+      "effectId": 876,
+      "iconId": 284,
+      "key": "EFF_OX_SUP_OFFENSE",
+      "aliases": [],
+      "name": "ox_sup_offense",
+      "displayName": "Overlords Offense",
+      "tooltip": "Party offensive surge: attack power is enhanced.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#dc2626",
+        "accent": "#fca5a5",
+        "motif": "sword_surge"
+      }
+    },
+    {
+      "effectId": 877,
+      "iconId": 292,
+      "key": "EFF_OX_SUP_CHAIN",
+      "aliases": [],
+      "name": "ox_sup_chain",
+      "displayName": "Overlords Chain",
+      "tooltip": "Party chain surge: skillchain and multi-hit potency up.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#9333ea",
+        "accent": "#d8b4fe",
+        "motif": "chain_burst"
+      }
+    },
+    {
+      "effectId": 878,
+      "iconId": 474,
+      "key": "EFF_OX_SUP_WARD",
+      "aliases": [],
+      "name": "ox_sup_ward",
+      "displayName": "Overlords Ward",
+      "tooltip": "Party defensive ward: damage taken reduced, magic evasion up.",
+      "flags": [
+        "DISPELABLE",
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194593,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "tank",
+        "border": "#2563eb",
+        "accent": "#93c5fd",
+        "motif": "shield_ward"
+      }
+    },
+    {
+      "effectId": 879,
+      "iconId": 481,
+      "key": "EFF_OX_DEB_BREACH",
+      "aliases": [],
+      "name": "ox_deb_breach",
+      "displayName": "Armor Breach",
+      "tooltip": "Defenses are shattered, lowering Defense and Magic Defense.",
+      "flags": [
+        "ERASABLE",
+        "DEATH"
+      ],
+      "flagMask": 34,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#b91c1c",
+        "accent": "#f87171",
+        "motif": "shattered_armor"
+      }
+    },
+    {
+      "effectId": 880,
+      "iconId": 495,
+      "key": "EFF_OX_DEB_CRIPPLE",
+      "aliases": [],
+      "name": "ox_deb_cripple",
+      "displayName": "Crippled",
+      "tooltip": "Combat prowess is crippled, lowering Attack and Accuracy.",
+      "flags": [
+        "ERASABLE",
+        "DEATH"
+      ],
+      "flagMask": 34,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#991b1b",
+        "accent": "#fb923c",
+        "motif": "severed_blade"
+      }
+    },
+    {
+      "effectId": 881,
+      "iconId": 575,
+      "key": "EFF_OX_DEB_EXPOSE",
+      "aliases": [],
+      "name": "ox_deb_expose",
+      "displayName": "Exposed",
+      "tooltip": "Weaknesses are exposed, lowering Evasion and Magic Evasion.",
+      "flags": [
+        "ERASABLE",
+        "DEATH"
+      ],
+      "flagMask": 34,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#c2410c",
+        "accent": "#fde047",
+        "motif": "crosshair_expose"
+      }
+    },
+    {
+      "effectId": 882,
+      "iconId": 576,
+      "key": "HOUSE_DEBT",
+      "aliases": [],
+      "name": "house_debt",
+      "displayName": "House Debt",
+      "tooltip": "Gambler debt weighs heavily until cleared by the next roll.",
+      "flags": [
+        "DEATH",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194336,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "debuff",
+        "border": "#7f1d1d",
+        "accent": "#fca5a5",
+        "motif": "dice_debt"
+      }
+    },
+    {
+      "effectId": 883,
+      "iconId": 603,
+      "key": "CARD_COUNTING",
+      "aliases": [],
+      "name": "card_counting",
+      "displayName": "Card Counting",
+      "tooltip": "Tracking the deck sharpens precision and Double-Up odds.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "support",
+        "border": "#0f766e",
+        "accent": "#5eead4",
+        "motif": "card_pip"
+      }
+    },
+    {
+      "effectId": 884,
+      "iconId": 626,
+      "key": "HOUSE_ADVANTAGE",
+      "aliases": [],
+      "name": "house_advantage",
+      "displayName": "House Advantage",
+      "tooltip": "Odds are stacked in your favor, boosting luck and potency.",
+      "flags": [
+        "DEATH",
+        "ON_ZONE",
+        "ON_JOBCHANGE"
+      ],
+      "flagMask": 4194592,
+      "type": 0,
+      "minDuration": 0,
+      "visualTheme": {
+        "role": "offense",
+        "border": "#b45309",
+        "accent": "#fde047",
+        "motif": "crown_dice"
+      }
+    }
+  ]
+}

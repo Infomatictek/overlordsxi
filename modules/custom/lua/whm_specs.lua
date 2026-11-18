@@ -102,7 +102,7 @@ local function grantSacredGrace(player, delta)
     local eff = player:getStatusEffect(EFFECT_SACRED_GRACE)
     local cur = eff and (eff:getPower() or 0) or 0
     local nxt = math.min(3, cur + (delta or 1))
-    H.applyCustomTimedEffect(player, EFFECT_SACRED_GRACE, nxt, 30, player, 0, xi.effect.SACROSANCTITY, 1)
+    H.applyCustomTimedEffect(player, EFFECT_SACRED_GRACE, nxt, 30, player, 0, xi.overlords.getStatusIcon(EFFECT_SACRED_GRACE), 1)
     return nxt
 end
 
@@ -218,7 +218,7 @@ local function attachBishopListeners(player)
             local applySolace = function(unit)
                 local cap = math.floor(unit:getMaxHP() * 0.30)
                 H.applyStoneskinBarrier(unit, barrier, cap, 8, caster)
-                H.applyCustomTimedEffect(unit, EFFECT_SOLACE_WARD, 8, 8, caster, 0, xi.effect.AFFLATUS_SOLACE, 1)
+                H.applyCustomTimedEffect(unit, EFFECT_SOLACE_WARD, 8, 8, caster, 0, xi.overlords.getStatusIcon(EFFECT_SOLACE_WARD), 1)
             end
 
             if caster:hasStatusEffect(EFFECT_DIVINE_VEIL) then
@@ -318,9 +318,9 @@ m:addOverride('xi.actions.abilities.benediction.onUseAbility', function(player, 
             member:setHP(member:getMaxHP())
             H.cleanseDebuffs(member, 10)
             H.restoreMpPct(member, 50)
-            H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 25, 15, player, 0, xi.effect.SACROSANCTITY, 2)
+            H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 25, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_DIVINE_VEIL), 2)
             if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15, xi.effect.SACROSANCTITY)
+                xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15)
             end
         end)
         return 0
@@ -342,9 +342,9 @@ m:addOverride('xi.actions.abilities.divine_veil.onUseAbility', function(player, 
     local skinAmt = math.floor(player:getMaxHP() * 0.22)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyStoneskinBarrier(member, skinAmt, skinAmt * 2, 10, player)
-        H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 12, 10, player, 0, xi.effect.SACROSANCTITY, 1)
+        H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 12, 10, player, 0, xi.overlords.getStatusIcon(EFFECT_DIVINE_VEIL), 1)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 10, xi.effect.SACROSANCTITY)
+            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 10)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

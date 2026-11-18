@@ -369,7 +369,7 @@ xi.actions.abilities.crimson_fleche.onUseAbility = function(player, _target, _ab
     end
 
     player:delStatusEffect(EFFECT_CRIMSON_FLECHE)
-    player:addStatusEffect(EFFECT_CRIMSON_FLECHE, { power = 1, duration = 6, origin = player })
+    player:addStatusEffect(EFFECT_CRIMSON_FLECHE, { power = 1, duration = 6, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_CRIMSON_FLECHE) })
     return EFFECT_CRIMSON_FLECHE
 end
 
@@ -633,7 +633,7 @@ local function attachRdmListeners(player)
 
         if isSwordAndEmptySub(actor) and actor.addStatusEffect then
             actor:delStatusEffect(EFFECT_CRIMSON_FLOW)
-            actor:addStatusEffect(EFFECT_CRIMSON_FLOW, { power = 1, duration = 6, origin = actor })
+            actor:addStatusEffect(EFFECT_CRIMSON_FLOW, { power = 1, duration = 6, origin = actor, icon = xi.overlords.getStatusIcon(EFFECT_CRIMSON_FLOW) })
         end
 
         if actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_CRIMSON_FLECHE) then

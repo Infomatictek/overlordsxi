@@ -180,7 +180,7 @@ local function applyCustomTimedEffect(target, effectId, power, durationSec, orig
         duration = durationSec or 10,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = iconId or effectId,
+        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
         tier     = tier or 0,
     })

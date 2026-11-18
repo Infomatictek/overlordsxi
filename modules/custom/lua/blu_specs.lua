@@ -127,6 +127,7 @@ local function grantChitinCarapaceStacks(player, delta, duration)
         power    = nextStacks,
         duration = duration or 15,
         origin   = player,
+        icon     = xi.overlords.getStatusIcon(EFFECT_CHITIN_CARAPACE),
     })
     return nextStacks
 end
@@ -253,6 +254,7 @@ local function attachBluListeners(player)
             power    = 1,
             duration = 6,
             origin   = actor,
+            icon     = xi.overlords.getStatusIcon(EFFECT_AZURE_SURGE),
         })
     end)
 
@@ -576,6 +578,7 @@ m:addOverride('xi.actions.abilities.diamond_shell.onUseAbility', function(player
         power    = 1,
         duration = 10,
         origin   = player,
+        icon     = xi.overlords.getStatusIcon(EFFECT_DIAMOND_SHELL),
     })
 
     local maxHp = player.getMaxHP and player:getMaxHP() or 0

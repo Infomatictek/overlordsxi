@@ -1,0 +1,13 @@
+﻿diff --git a/src/map/status_effect.h b/src/map/status_effect.h
+index 481e8df4c1..7499c7ab0c 100644
+--- a/src/map/status_effect.h
++++ b/src/map/status_effect.h
+@@ -31,7 +31,7 @@
+ #include "data/enums/status_effect.h"
+ #include "data/enums/status_effect_flag.h"
+ 
+-#define MAX_EFFECTID 814 // 768 real + 46 custom
++#define MAX_EFFECTID 1024 // 768 real + 256 custom
+ 
+ /************************************************************************
+  *                                                                       *

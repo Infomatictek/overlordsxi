@@ -208,9 +208,9 @@ end)
 
 m:addOverride('xi.actions.abilities.canopy_of_the_ancients.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CANOPY_OF_THE_ANCIENTS, 18, 12, player, 0, xi.effect.BOLSTER, 1)
+        H.applyCustomTimedEffect(member, EFFECT_CANOPY_OF_THE_ANCIENTS, 18, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_CANOPY_OF_THE_ANCIENTS), 1)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 12, xi.effect.BOLSTER)
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 12)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

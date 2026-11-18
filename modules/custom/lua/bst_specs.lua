@@ -830,10 +830,10 @@ m:addOverride('xi.job_utils.beastmaster.useReward', function(player, target, abi
     local masterRegen = 18 + math.max(1, math.floor((player:getMaxHP() or 0) * 0.025))
 
     pet:delStatusEffectSilent(EFFECT_ALPHA_REWARD_BOND)
-    pet:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = petRegen, duration = 12, origin = player, tick = 3 })
+    pet:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = petRegen, duration = 12, origin = player, tick = 3, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_REWARD_BOND) })
 
     player:delStatusEffectSilent(EFFECT_ALPHA_REWARD_BOND)
-    player:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = masterRegen, duration = 12, origin = player, tick = 3 })
+    player:addStatusEffect(EFFECT_ALPHA_REWARD_BOND, { power = masterRegen, duration = 12, origin = player, tick = 3, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_REWARD_BOND) })
 
     return petActual
 end)
@@ -865,14 +865,14 @@ m:addOverride('xi.job_utils.beastmaster.useFamiliar', function(player, target, a
     if isAlphaWarden(player) then
         local pet = player:getPet()
         player:delStatusEffectSilent(EFFECT_ALPHA_FAMILIAR_BOND)
-        player:addStatusEffect(EFFECT_ALPHA_FAMILIAR_BOND, { power = 25, duration = 30, origin = player })
+        player:addStatusEffect(EFFECT_ALPHA_FAMILIAR_BOND, { power = 25, duration = 30, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_FAMILIAR_BOND) })
         if player.updateHealth then
             player:updateHealth()
         end
 
         if pet ~= nil then
             pet:delStatusEffectSilent(EFFECT_ALPHA_FAMILIAR_BOND)
-            pet:addStatusEffect(EFFECT_ALPHA_FAMILIAR_BOND, { power = 25, duration = 30, origin = player })
+            pet:addStatusEffect(EFFECT_ALPHA_FAMILIAR_BOND, { power = 25, duration = 30, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_FAMILIAR_BOND) })
             if pet.updateHealth then
                 pet:updateHealth()
             end
@@ -1103,7 +1103,7 @@ xi.actions.abilities.soul_bond.onUseAbility = function(player, target, ability)
     applyStoneskin(pet,    pMax * 0.15, 12, player)
 
     player:delStatusEffectSilent(EFFECT_ALPHA_SOUL_BOND)
-    player:addStatusEffect(EFFECT_ALPHA_SOUL_BOND, { power = 1, duration = 12, origin = player })
+    player:addStatusEffect(EFFECT_ALPHA_SOUL_BOND, { power = 1, duration = 12, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_SOUL_BOND) })
 
     return EFFECT_ALPHA_SOUL_BOND
 end
@@ -1126,7 +1126,7 @@ xi.actions.abilities.feral_roar.onUseAbility = function(player, target, ability)
         local dur = (mob.isNM and mob:isNM()) and 1 or 2
         mob:addStatusEffect(xi.effect.STUN, { power = 1, duration = dur, origin = player })
         mob:delStatusEffectSilent(EFFECT_ALPHA_FERAL_ROAR)
-        mob:addStatusEffect(EFFECT_ALPHA_FERAL_ROAR, { power = 20, duration = 12, origin = player })
+        mob:addStatusEffect(EFFECT_ALPHA_FERAL_ROAR, { power = 20, duration = 12, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_ALPHA_FERAL_ROAR) })
     end)
 
     if player.restoreAbilityCharge then

@@ -472,7 +472,7 @@ local function applyCustomTimedEffect(target, effectId, power, duration, origin,
         duration = duration or 15,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = iconId or effectId,
+        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
     }
 

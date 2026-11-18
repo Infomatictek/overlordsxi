@@ -107,7 +107,7 @@ local function pulseSanctuaryAura(smn)
             if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
                 xi.overlords.regen.stampRegenContext(smn, member, 150)
             end
-            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, flat, 6, smn, lvl, xi.effect.AVATARS_FAVOR, 1)
+            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, flat, 6, smn, lvl, xi.overlords.getStatusIcon(EFFECT_CELESTIAL_SANCTUARY), 1)
             if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
                 xi.overlords.regen.clearRegenContext(member)
             end
@@ -222,9 +222,9 @@ end)
 
 m:addOverride('xi.actions.abilities.celestial_convergence.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_CONVERGENCE, 18, 12, player, 0, xi.effect.ASTRAL_FLOW, 1)
+        H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_CONVERGENCE, 18, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_CELESTIAL_CONVERGENCE), 1)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 30, 12, xi.effect.ASTRAL_FLOW)
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 30, 12)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

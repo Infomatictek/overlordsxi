@@ -200,7 +200,7 @@ local function applyCustomTimedEffect(target, effectId, power, durationSec, orig
         duration = durationSec or 10,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = iconId or effectId,
+        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
         tier     = tier or 0,
     })
@@ -661,7 +661,7 @@ m:addOverride('xi.effects.arcane_circle.onEffectGain', function(target, effect)
     if isDrkSpec(origin or target, DREADNOUGHT_KEY) then
         local slots = xi.overlords and xi.overlords.slots
         if slots and slots.applyPartyWard then
-            slots.applyPartyWard(origin or target, target, -1000, 25, 15, xi.effect.ARCANE_CIRCLE)
+            slots.applyPartyWard(origin or target, target, -1000, 25, 15)
         else
             effect:addMod(xi.mod.DMG, -1000)
             effect:addMod(xi.mod.MEVA, 25)

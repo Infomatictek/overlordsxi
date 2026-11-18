@@ -461,9 +461,9 @@ m:addOverride('xi.actions.abilities.dragonscale_sanctuary.onUseAbility', functio
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         local skin = math.max(1, math.floor((member:getMaxHP() or 0) * 0.15))
         H.applyStoneskinBarrier(member, skin, skin * 2, 15, player)
-        H.applyCustomTimedEffect(member, EFFECT_DRAGONSCALE_SANCTUARY, 15, 15, player, 0, xi.effect.SPIRIT_SURGE, 1)
+        H.applyCustomTimedEffect(member, EFFECT_DRAGONSCALE_SANCTUARY, 15, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_DRAGONSCALE_SANCTUARY), 1)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15, xi.effect.SPIRIT_SURGE)
+            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

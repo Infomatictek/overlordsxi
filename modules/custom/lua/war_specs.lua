@@ -982,7 +982,7 @@ m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability
 
         -- Party -8% DMG routed through the capped shared ward slot (EFF_OX_SUP_WARD)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, target, -800, 0, duration, xi.effect.WARCRY)
+            xi.overlords.slots.applyPartyWard(player, target, -800, 0, duration)
         end
 
         local targetId = target:getID()
@@ -1194,7 +1194,7 @@ local function applyCommanderTimedEffect(target, effectId, power, duration, orig
         duration = duration,
         origin   = origin,
         subPower = subPower or 0,
-        icon     = iconId,
+        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
     })
     pendingCommanderMods[targetId] = nil
 end

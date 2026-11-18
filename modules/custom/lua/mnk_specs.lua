@@ -259,7 +259,7 @@ local function applyTimedChiEffect(target, effectId, power, duration, origin, ic
         power    = power or 1,
         duration = duration or 15,
         origin   = origin or target,
-        icon     = iconId or effectId,
+        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
     })
 
     local leftover = pendingChiEffectMods[targetId]

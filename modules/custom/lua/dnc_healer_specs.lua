@@ -145,9 +145,9 @@ local function attachVampireListeners(player)
             H.healPartyPct(caster, 10, 15, false, true)
         elseif WALTZ_ABILITIES[abilId] and caster:hasStatusEffect(xi.effect.CONTRADANCE) then
             H.forEachPartyMemberInRange(caster, 15, false, function(member)
-                H.applyCustomTimedEffect(member, EFFECT_CRIMSON_VEIL, 15, 10, caster, 0, xi.effect.CONTRADANCE, 1)
+                H.applyCustomTimedEffect(member, EFFECT_CRIMSON_VEIL, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_CRIMSON_VEIL), 1)
                 if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                    xi.overlords.slots.applyPartyWard(caster, member, -1500, 0, 10, xi.effect.CONTRADANCE)
+                    xi.overlords.slots.applyPartyWard(caster, member, -1500, 0, 10)
                 end
             end)
         end
@@ -215,7 +215,7 @@ m:addOverride('xi.actions.abilities.sanguine_waltz.onUseAbility', function(playe
         if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
             xi.overlords.regen.stampRegenContext(player, member, 350)
         end
-        H.applyCustomTimedEffect(member, EFFECT_SANGUINE_WALTZ, 25, 15, player, 0, xi.effect.REGEN, 1)
+        H.applyCustomTimedEffect(member, EFFECT_SANGUINE_WALTZ, 25, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_SANGUINE_WALTZ), 1)
         if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
             xi.overlords.regen.clearRegenContext(member)
         end

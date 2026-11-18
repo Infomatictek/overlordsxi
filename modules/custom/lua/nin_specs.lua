@@ -299,6 +299,7 @@ local function applyShadowSmoke(attacker, defender, stacksToAdd)
         power    = newStacks,
         duration = 15,
         origin   = defender,
+        icon     = xi.overlords.getStatusIcon(EFFECT_SHADOW_SMOKE),
     })
     applySharedCripple(attacker, defender, newStacks, 15)
 end
@@ -675,7 +676,7 @@ m:addOverride('xi.actions.abilities.kage_bunshin.onUseAbility', function(player,
     end
 
     player:delStatusEffectSilent(EFFECT_KAGE_BUNSHIN)
-    player:addStatusEffect(EFFECT_KAGE_BUNSHIN, { power = 1, duration = 6, origin = player })
+    player:addStatusEffect(EFFECT_KAGE_BUNSHIN, { power = 1, duration = 6, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_KAGE_BUNSHIN) })
     ability:setMsg(xi.msg.basic.GAINS_EFFECT_OF_STATUS)
     return EFFECT_KAGE_BUNSHIN
 end)

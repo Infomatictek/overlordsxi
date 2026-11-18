@@ -185,7 +185,7 @@ local function attachTemplarListeners(player)
                         if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
                             xi.overlords.regen.stampRegenContext(caster, member, 220)
                         end
-                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.effect.REGEN, 1)
+                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
                         if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
                             xi.overlords.regen.clearRegenContext(member)
                         end
@@ -194,7 +194,7 @@ local function attachTemplarListeners(player)
                     if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
                         xi.overlords.regen.stampRegenContext(caster, target, 220)
                     end
-                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.effect.REGEN, 1)
+                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
                     if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
                         xi.overlords.regen.clearRegenContext(target)
                     end
@@ -256,9 +256,9 @@ m:addOverride('xi.actions.abilities.rampart.onUseAbility', function(player, targ
     local res = super(player, target, ability)
     if isTemplar(player) then
         H.forEachPartyMemberInRange(player, 15, false, function(member)
-            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 15, player, 0, xi.effect.RAMPART, 1)
+            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
             if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15, xi.effect.RAMPART)
+                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15)
             end
         end)
     end
@@ -270,9 +270,9 @@ m:addOverride('xi.actions.abilities.invincible.onUseAbility', function(player, t
         H.forEachPartyMemberInRange(player, 15, false, function(member)
             member:setHP(member:getMaxHP())
             H.cleanseDebuffs(member, 10)
-            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 20, 15, player, 0, xi.effect.INVINCIBLE, 2)
+            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 20, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 2)
             if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15, xi.effect.INVINCIBLE)
+                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15)
             end
         end)
         return 0
@@ -309,9 +309,9 @@ end)
 
 m:addOverride('xi.actions.abilities.crusaders_aegis.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 10, player, 0, xi.effect.PALISADE, 1)
+        H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 10, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
         if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 10, xi.effect.PALISADE)
+            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 10)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

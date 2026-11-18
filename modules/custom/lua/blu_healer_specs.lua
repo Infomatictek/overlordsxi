@@ -453,7 +453,7 @@ local function attachMagusListeners(player)
             attacker:delStatusEffectSilent(EFFECT_AZURE_CATALYST)
             triggerAzureMendingWave(attacker)
         else
-            H.applyCustomTimedEffect(attacker, EFFECT_AZURE_CATALYST, cur + 1, 20, attacker, 0, xi.effect.CHAIN_AFFINITY, 1)
+            H.applyCustomTimedEffect(attacker, EFFECT_AZURE_CATALYST, cur + 1, 20, attacker, 0, xi.overlords.getStatusIcon(EFFECT_AZURE_CATALYST), 1)
         end
     end)
 
@@ -586,7 +586,7 @@ end)
 
 m:addOverride('xi.actions.abilities.osmotic_conduit.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_OSMOTIC_CONDUIT, 10, 12, player, 0, xi.effect.DIFFUSION, 1)
+        H.applyCustomTimedEffect(member, EFFECT_OSMOTIC_CONDUIT, 10, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_OSMOTIC_CONDUIT), 1)
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_OSMOTIC_CONDUIT

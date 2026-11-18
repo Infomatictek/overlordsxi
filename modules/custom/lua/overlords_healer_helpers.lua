@@ -68,13 +68,14 @@ function H.applyCustomTimedEffect(target, effectId, power, durationSec, origin, 
     if target.delStatusEffectSilent then
         target:delStatusEffectSilent(effectId)
     end
+    local resolvedIcon = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId
     return target:addStatusEffect(effectId,
     {
         power    = power or 1,
         duration = durationSec or 10,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = iconId or effectId,
+        icon     = resolvedIcon,
         tier     = tier or 1,
     })
 end
