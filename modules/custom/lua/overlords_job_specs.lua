@@ -246,10 +246,10 @@ spec.JOB_SPECS =
 local KEY_ALIASES =
 {
     gladiator      = 'spartan',
-    aegistemplar   = 'templar',
+    aegistemplar   = 'defender',
     alphawarden    = 'soulbeast',
     vanguard       = 'marionettist',
-    miragesentinel = 'vampire',
+    miragesentinel = 'freelancer',
     caller         = 'celestial',
 }
 
