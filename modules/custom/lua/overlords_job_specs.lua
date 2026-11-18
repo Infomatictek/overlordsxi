@@ -270,9 +270,10 @@ spec.JOB_SPECS =
     },
     DNC =
     {
-        { id = 'freelancer', name = 'Freelancer', abr = 'FRL', role = 'Support' },
-        { id = 'vampire',    name = 'Vampire',    abr = 'VMP', role = 'Healer' },
-        { id = 'bladewheel', name = 'Bladewheel', abr = 'BLW', role = 'Damage' },
+        { id = 'freelancer',     name = 'Freelancer',      abr = 'FRL', role = 'Support' },
+        { id = 'vampire',        name = 'Vampire',         abr = 'VMP', role = 'Healer' },
+        { id = 'bladewheel',     name = 'Bladewheel',      abr = 'BLW', role = 'Damage' },
+        { id = 'miragesentinel', name = 'Mirage Sentinel', abr = 'MRS', role = 'Tank' },
     },
     SCH =
     {
@@ -319,7 +320,6 @@ local KEY_ALIASES =
     alphawarden    = 'alphawarden',
     soulbeast      = 'alphawarden',
     vanguard       = 'marionettist',
-    miragesentinel = 'freelancer',
     caller         = 'celestial',
 }
 

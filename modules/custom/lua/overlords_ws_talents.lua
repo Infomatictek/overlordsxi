@@ -401,6 +401,10 @@ local SPEC_KEY_TO_CATEGORY =
     animist        = 'animist',
     verdant        = 'verdant',
     wyvernheart    = 'wyvernheart',
+    miragesentinel = 'miragesentinel',
+    flintlock      = 'flintlock',
+    buccaneer      = 'buccaneer',
+    gambler        = 'gambler',
     tank           = 'inquisitor',
     healer         = 'lifebinder',
 }

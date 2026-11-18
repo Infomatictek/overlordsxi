@@ -43,6 +43,10 @@ P.ALL_SPECS =
     'animist',
     'verdant',
     'wyvernheart',
+    'miragesentinel',
+    'flintlock',
+    'buccaneer',
+    'gambler',
 }
 
 local STAT_UP =
@@ -273,6 +277,26 @@ local STANCE_DEFS =
         petAlive = true,
         effects  = { xi.effect.SPIRIT_SURGE, xi.effect.FLY_HIGH, 874, 875 },
     },
+    miragesentinel = {
+        label    = 'Fan/Pirouette',
+        jobSpec  = 'miragesentinel',
+        effects  = { xi.effect.FAN_DANCE, xi.effect.ISSEKIGAN, xi.effect.TRANCE },
+    },
+    flintlock = {
+        label    = 'Deadeye/Trigger',
+        jobSpec  = 'flintlock',
+        effects  = { xi.effect.CORSAIRS_ROLL, xi.effect.TRIPLE_SHOT },
+    },
+    buccaneer = {
+        label    = 'Galleon/Hull',
+        jobSpec  = 'buccaneer',
+        effects  = { xi.effect.GALLANTS_ROLL },
+    },
+    gambler = {
+        label    = 'Advantage/Roll',
+        jobSpec  = 'gambler',
+        effects  = { 884, xi.effect.CORSAIRS_ROLL, xi.effect.SAMURAI_ROLL, xi.effect.CHAOS_ROLL },
+    },
 }
 
 local SPEC_META =
@@ -303,6 +327,10 @@ local SPEC_META =
     animist        = { pfx = 'anm', pref = 'mnd', role = 'healer', tag = 'Aether',   col2 = 'Clockwork',t1c3 = 'Repair',      rmea = 'Overhaul',     col1 = { 'Fiber',    'Pulse',     'Chassis'   }, pet = true, noMp = true },
     verdant        = { pfx = 'vrd', pref = 'mnd', role = 'healer', tag = 'Sylvan',   col2 = 'Luopan',   t1c3 = 'Bloom',       rmea = 'Canopy',       col1 = { 'Barkskin', 'Renewal',   'Grove'     }, pet = true },
     wyvernheart    = { pfx = 'wyv', pref = 'mnd', role = 'healer', tag = 'Wyrm',     col2 = 'Breath',   t1c3 = 'Scale',       rmea = 'Wyrmblood',    col1 = { 'Link',     'Jump',      'Sanctuary' }, pet = true },
+    miragesentinel = { pfx = 'mrs', pref = 'vit', role = 'tank',   tag = 'Mirage',   col2 = 'Waltz',    t1c3 = 'Cadence',     rmea = 'Pirouette',    col1 = { 'Step',     'Flourish',  'Aegis'     } },
+    flintlock      = { pfx = 'flt', pref = 'agi', role = 'dps',    tag = 'Deadeye',  col2 = 'Powder',   t1c3 = 'Trigger',     rmea = 'Broadside',    col1 = { 'Chamber',  'Salvo',     'Detonate'  } },
+    buccaneer      = { pfx = 'buc', pref = 'vit', role = 'tank',   tag = 'Galleon',  col2 = 'Pistol',   t1c3 = 'Grapeshot',   rmea = 'Ironhull',     col1 = { 'Board',    'Saltward',  'Broadside' } },
+    gambler        = { pfx = 'gmb', pref = 'chr', role = 'support',tag = 'Fortune',  col2 = 'Ante',     t1c3 = 'Deal',        rmea = 'Jackpot',      col1 = { 'Wager',    'DoubleUp',  'Highroll'  } },
     generic        = { pfx = 'gen', pref = nil,   role = 'dps',    tag = 'Edge',     col2 = 'Force',    t1c3 = 'Focus',     rmea = 'Echo',        col1 = { 'Surge',     'Strike',    'Apex'      } },
 }
 
@@ -2718,10 +2746,21 @@ local NO_SPIKE_SPECS =
     vampire      = true,
     celestial    = true,
     animist      = true,
-    verdant      = true,
-    wyvernheart  = true,
-    tank         = true,
-    healer       = true,
+    verdant        = true,
+    wyvernheart    = true,
+    miragesentinel = true,
+    buccaneer      = true,
+    gambler        = true,
+    tank           = true,
+    healer         = true,
+}
+
+local SINGLE_TARGET_ONLY_SPECS =
+{
+    miragesentinel = true,
+    flintlock      = true,
+    buccaneer      = true,
+    gambler        = true,
 }
 
 local PET_SPECS =
@@ -2760,6 +2799,25 @@ local function sanitizeSpecNode(node, specKey, ctx)
     if not PET_SPECS[specKey] then
         eff.eosHeal = nil
         eff.petTp   = nil
+    end
+
+    -- 2b. Enforce 100% single-target rule (replace pack* / scaleWithPack hooks)
+    if SINGLE_TARGET_ONLY_SPECS[specKey] then
+        if eff.packWsdPerMob ~= nil then
+            eff.wsd = eff.wsd or eff.packWsdPerMob
+            eff.packWsdPerMob = nil
+        end
+        if eff.packEnmityPerMob ~= nil then
+            eff.enmity = eff.enmity or eff.packEnmityPerMob
+            eff.packEnmityPerMob = nil
+        end
+        if eff.packPartyTpPerMob ~= nil then
+            eff.partyTp = eff.partyTp or eff.packPartyTpPerMob
+            eff.packPartyTpPerMob = nil
+        end
+        if type(eff.elemFollow) == 'table' then
+            eff.elemFollow.scaleWithPack = nil
+        end
     end
 
     -- 3. Strip physical stats on magic/utility WSs
@@ -2909,6 +2967,10 @@ P.ALLOWED_SKILLS_BY_SPEC =
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
     alphawarden    = { [S.AXE or 5] = true },
+    miragesentinel = { [S.DAGGER or 2] = true },
+    flintlock      = { [S.MARKSMANSHIP or 26] = true },
+    buccaneer      = { [S.SWORD or 3] = true },
+    gambler        = { [S.MARKSMANSHIP or 26] = true, [S.DAGGER or 2] = true },
 }
 
 function P.isSpecAllowedForSkill(specKey, skillId)

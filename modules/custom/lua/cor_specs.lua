@@ -1,10 +1,14 @@
 -----------------------------------
--- OverlordsXI Corsair Crystal Spec: Gambler (GMB | Tier 3 Pure Support)
--- Unlocks @ Lv. 10 (!spec set gambler)
+-- OverlordsXI Corsair Crystal Specs:
+--   1. Flintlock (FLT | Tier 1 Pure Damage)
+--   2. Gambler   (GMB | Tier 3 Pure Support)
+--   3. Buccaneer (BUC | Tier 6 Pure Tank)
+-- Unlocks @ Lv. 10
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
 require('modules/custom/lua/overlords_shared_slots')
+require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/corsair')
 require('scripts/globals/player')
 -----------------------------------
@@ -13,10 +17,18 @@ local m = Module:new('overlords_cor_specs')
 local spec  = xi.overlords.spec
 local slots = xi.overlords.slots
 
-local GAMBLER_KEY = 'gambler'
+local FLINTLOCK_KEY = 'flintlock'
+local GAMBLER_KEY   = 'gambler'
+local BUCCANEER_KEY = 'buccaneer'
 
--- Custom Trait ID (177; High-Roller Stakes; < MAX_TRAIT_ID = 256)
+-- Custom Trait IDs (< MAX_TRAIT_ID = 256)
 local TRAIT_HIGH_ROLLER_STAKES = 177
+local TRAIT_FLINTLOCK_DEADEYE  = 178
+local TRAIT_BUCCANEER_BULWARK  = 179
+
+-- Starter Gun & Bullet for Lv.10+ COR auto-provision
+local STARTER_GUN_ID    = 19221 -- Firefly (Lv.5 Gun)
+local STARTER_BULLET_ID = 17343 -- Bronze Bullet (Lv.1 Ammo)
 
 -- Native COR Ability IDs
 local ABIL_WILD_CARD    = 96
@@ -34,9 +46,13 @@ local ABIL_RANDOM_DEAL  = 133
 local ABIL_SNAKE_EYE    = 177
 local ABIL_FOLD         = 178
 
--- Custom Gambler Ability IDs (472-473; recastIds 168-169)
-local ABIL_HOUSE_ADVANTAGE = 472
-local ABIL_ACE_IN_THE_HOLE = 473
+-- Custom COR Ability IDs (472-477; recastIds 168-173)
+local ABIL_HOUSE_ADVANTAGE     = 472
+local ABIL_DEAD_MANS_HAND      = 473
+local ABIL_HAIR_TRIGGER        = 474
+local ABIL_BROADSIDE_SALVO     = 475
+local ABIL_GRAPESHOT_BROADSIDE = 476
+local ABIL_IRON_HULL           = 477
 
 -- Custom Gambler Status Effect IDs (882-884; registered in patch 0032)
 local EFFECT_HOUSE_DEBT      = 882
@@ -47,8 +63,12 @@ local CARD_COUNT_FIRE_LIGHT = 1 -- Next Double-Up: 3-6
 local CARD_COUNT_ICE_WATER  = 2 -- Next Double-Up: 1-3
 
 xi.jobAbility = xi.jobAbility or {}
-xi.jobAbility.HOUSE_ADVANTAGE = ABIL_HOUSE_ADVANTAGE
-xi.jobAbility.ACE_IN_THE_HOLE = ABIL_ACE_IN_THE_HOLE
+xi.jobAbility.HOUSE_ADVANTAGE     = ABIL_HOUSE_ADVANTAGE
+xi.jobAbility.DEAD_MANS_HAND      = ABIL_DEAD_MANS_HAND
+xi.jobAbility.HAIR_TRIGGER        = ABIL_HAIR_TRIGGER
+xi.jobAbility.BROADSIDE_SALVO     = ABIL_BROADSIDE_SALVO
+xi.jobAbility.GRAPESHOT_BROADSIDE = ABIL_GRAPESHOT_BROADSIDE
+xi.jobAbility.IRON_HULL           = ABIL_IRON_HULL
 
 xi.effect = xi.effect or {}
 xi.effect.HOUSE_DEBT      = EFFECT_HOUSE_DEBT
@@ -57,8 +77,12 @@ xi.effect.HOUSE_ADVANTAGE = EFFECT_HOUSE_ADVANTAGE
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
-xi.actions.abilities.house_advantage = xi.actions.abilities.house_advantage or {}
-xi.actions.abilities.ace_in_the_hole = xi.actions.abilities.ace_in_the_hole or {}
+xi.actions.abilities.house_advantage     = xi.actions.abilities.house_advantage or {}
+xi.actions.abilities.dead_mans_hand      = xi.actions.abilities.dead_mans_hand or {}
+xi.actions.abilities.hair_trigger        = xi.actions.abilities.hair_trigger or {}
+xi.actions.abilities.broadside_salvo     = xi.actions.abilities.broadside_salvo or {}
+xi.actions.abilities.grapeshot_broadside = xi.actions.abilities.grapeshot_broadside or {}
+xi.actions.abilities.iron_hull           = xi.actions.abilities.iron_hull or {}
 
 xi.effects = xi.effects or {}
 xi.effects.house_debt      = xi.effects.house_debt or {}
@@ -105,18 +129,91 @@ local LUCKY_ROLL_BY_ABILITY =
 local anteByCharRoll    = {}
 local rollLockUntilById = {}
 
-local function isGambler(entity)
+local function getCorSpecKey(entity)
     if entity == nil or (entity.isPC and not entity:isPC()) then
-        return false
-    end
-    local active = spec.get(entity, xi.job.COR)
-    if active == nil or active.key ~= GAMBLER_KEY then
-        return false
+        return nil
     end
     if entity.getMainJob and entity:getMainJob() ~= xi.job.COR then
+        return nil
+    end
+    local active = spec.get(entity, xi.job.COR)
+    if active == nil then
+        return nil
+    end
+    if (entity.getMainLvl and entity:getMainLvl() or 1) < (active.reqLevel or 10) then
+        return nil
+    end
+    return active.key
+end
+
+local function isGambler(entity)
+    return getCorSpecKey(entity) == GAMBLER_KEY
+end
+
+local function isFlintlock(entity)
+    return getCorSpecKey(entity) == FLINTLOCK_KEY
+end
+
+local function isBuccaneer(entity)
+    return getCorSpecKey(entity) == BUCCANEER_KEY
+end
+
+local function isAnyCorSpec(entity)
+    local key = getCorSpecKey(entity)
+    return key == FLINTLOCK_KEY or key == GAMBLER_KEY or key == BUCCANEER_KEY
+end
+
+local function scaleTier(lvl, low, mid, high, cap75)
+    local l = lvl or 1
+    if l >= 70 then
+        return cap75 or high
+    elseif l >= 50 then
+        return high
+    elseif l >= 30 then
+        return mid
+    end
+    return low
+end
+
+local function hasGunEquipped(player)
+    if player == nil or not player.getEquippedItem then
         return false
     end
-    return (entity.getMainLvl and entity:getMainLvl() or 1) >= (active.reqLevel or 10)
+    local ranged = player:getEquippedItem(xi.slot.RANGED)
+    return ranged ~= nil and ranged.getSkillType and ranged:getSkillType() == xi.skill.MARKSMANSHIP
+end
+
+local function isBuccaneerLoadout(player)
+    if not isBuccaneer(player) or not player.getEquippedItem then
+        return false
+    end
+    local mainItem = player:getEquippedItem(xi.slot.MAIN)
+    local ranged   = player:getEquippedItem(xi.slot.RANGED)
+    local hasSword = mainItem ~= nil and mainItem.getSkillType and mainItem:getSkillType() == xi.skill.SWORD
+    local hasGun   = ranged ~= nil and ranged.getSkillType and ranged:getSkillType() == xi.skill.MARKSMANSHIP
+    return hasSword and hasGun
+end
+
+local function ensureCorStarterGear(player)
+    if not isAnyCorSpec(player) or not player.getEquippedItem then
+        return
+    end
+    if player:getEquippedItem(xi.slot.RANGED) == nil then
+        if not player:hasItem(STARTER_GUN_ID) and player.addItem then
+            player:addItem(STARTER_GUN_ID, 1)
+        end
+        if player.equipItem then
+            player:equipItem(STARTER_GUN_ID, xi.slot.RANGED)
+        end
+    end
+    if player:getEquippedItem(xi.slot.AMMO) == nil then
+        if not player:hasItem(STARTER_BULLET_ID) and player.addItem then
+            player:addItem(STARTER_BULLET_ID, 99)
+        end
+        if player.equipItem then
+            player:equipItem(STARTER_BULLET_ID, xi.slot.AMMO)
+        end
+    end
 end
 
 local function getLuckyRoll(abilityId)
@@ -323,6 +420,14 @@ end)
 -----------------------------------
 
 m:addOverride('xi.job_utils.corsair.onRollAbilityCheck', function(player, target, ability)
+    if isFlintlock(player) then
+        ability:setRecast(15)
+        return 0, 0
+    end
+    if isBuccaneer(player) then
+        ability:setRecast(20)
+        return 0, 0
+    end
     if not isGambler(player) then
         return super(player, target, ability)
     end
@@ -365,6 +470,67 @@ m:addOverride('xi.job_utils.corsair.checkDoubleUp', function(player, target, abi
 end)
 
 m:addOverride('xi.job_utils.corsair.onRollUseAbility', function(caster, target, ability, action)
+    if isFlintlock(caster) then
+        if action and action.setRecast then
+            action:setRecast(15)
+        end
+        if caster:getID() == target:getID() then
+            local roll = math.randomInt(1, 6)
+            caster:setLocalVar('corsairRollTotal', roll)
+            local wsBonus = scaleTier(caster:getMainLvl(), 15, 20, 25, 30)
+            caster:delStatusEffectSilent(xi.effect.CORSAIRS_ROLL)
+            caster:addStatusEffect(xi.effect.CORSAIRS_ROLL, {
+                power    = wsBonus,
+                duration = 30,
+                origin   = caster,
+            })
+            caster:addMod(xi.mod.ALL_WSDMG_ALL_HITS, wsBonus)
+            if xi.mod.RANGED_CRIT_DMG_INC then
+                caster:addMod(xi.mod.RANGED_CRIT_DMG_INC, 15)
+            end
+            caster:timer(30000, function(mobArg)
+                if mobArg and mobArg.delMod then
+                    mobArg:delMod(xi.mod.ALL_WSDMG_ALL_HITS, wsBonus)
+                    if xi.mod.RANGED_CRIT_DMG_INC then
+                        mobArg:delMod(xi.mod.RANGED_CRIT_DMG_INC, 15)
+                    end
+                end
+            end)
+            ability:setMsg(xi.msg.basic.USES_JA)
+            return roll
+        end
+        ability:setMsg(xi.msg.basic.NO_EFFECT)
+        return 0
+    end
+
+    if isBuccaneer(caster) then
+        if action and action.setRecast then
+            action:setRecast(20)
+        end
+        if caster:getID() == target:getID() then
+            caster:delStatusEffectSilent(xi.effect.GALLANTS_ROLL)
+            caster:addStatusEffect(xi.effect.GALLANTS_ROLL, {
+                power    = 12,
+                duration = 60,
+                origin   = caster,
+            })
+            caster:addMod(xi.mod.DMG, -1200)
+            caster:addMod(xi.mod.DEFP, 20)
+            caster:addMod(xi.mod.ENMITY, 25)
+            caster:timer(60000, function(mobArg)
+                if mobArg and mobArg.delMod then
+                    mobArg:delMod(xi.mod.DMG, -1200)
+                    mobArg:delMod(xi.mod.DEFP, 20)
+                    mobArg:delMod(xi.mod.ENMITY, 25)
+                end
+            end)
+            ability:setMsg(xi.msg.basic.USES_JA)
+            return 1
+        end
+        ability:setMsg(xi.msg.basic.NO_EFFECT)
+        return 0
+    end
+
     if not isGambler(caster) then
         return super(caster, target, ability, action)
     end
@@ -701,34 +867,102 @@ m:addOverride('xi.job_utils.corsair.useSnakeEye', function(player, action)
     return xi.effect.SNAKE_EYE
 end)
 
+m:addOverride('xi.job_utils.corsair.checkQuickDraw', function(player, target, ability)
+    if isAnyCorSpec(player) then
+        if target == nil or not target.isAlive or not target:isAlive() then
+            return xi.msg.basic.CANNOT_PERFORM, 0
+        end
+        return 0, 0
+    end
+    return super(player, target, ability)
+end)
+
 m:addOverride('xi.job_utils.corsair.useElementalShot', function(actor, target, ability, action)
-    if not isGambler(actor) then
+    if not isAnyCorSpec(actor) then
         return super(actor, target, ability, action)
     end
 
     local abilityId = ability:getID()
     local data      = xi.job_utils.corsair.quickDrawDataTable[abilityId]
 
-    -- Track card to enforce 100% Card recycle
+    -- Track card to enforce 100% Card recycle (and bypass missing Trump Cards)
     local consumedCardId = nil
+    local addedTempCard  = false
     if data then
         if actor:hasItem(data.cardAmmo, xi.inventoryLocation.INVENTORY) then
             consumedCardId = data.cardAmmo
         elseif actor:hasItem(xi.item.TRUMP_CARD, xi.inventoryLocation.INVENTORY) then
             consumedCardId = xi.item.TRUMP_CARD
+        elseif actor.addItem then
+            actor:addItem(xi.item.TRUMP_CARD, 1)
+            consumedCardId = xi.item.TRUMP_CARD
+            addedTempCard  = true
         end
     end
 
     local result = super(actor, target, ability, action)
 
     -- Restore consumed card (100% Card recycle)
-    if consumedCardId ~= nil then
+    if consumedCardId ~= nil and not addedTempCard then
         actor:addItem(consumedCardId, 1)
     end
 
-    -- Enforce 12s charge recast
+    if isFlintlock(actor) then
+        if action and action.setRecast then
+            action:setRecast(10)
+        end
+        if target ~= nil and target.isAlive and target:isAlive() then
+            target:setLocalVar('OX_COR_POWDER_MARK', os.time() + 10)
+            target:setLocalVar('OX_COR_POWDER_BY', actor:getID())
+            target:setLocalVar('OX_COR_POWDER_ELEM', data and data.element or xi.element.FIRE)
+        end
+        return result
+    end
+
+    if isBuccaneer(actor) then
+        if action and action.setRecast then
+            action:setRecast(12)
+        end
+        if target ~= nil and target.isAlive and target:isAlive() then
+            if target.addEnmity then
+                target:addEnmity(actor, 450, 1800)
+            end
+            local stacks = math.min(3, actor:getLocalVar('OX_COR_GRAPESHOT') or 0)
+            if stacks > 0 and (actor:getLocalVar('OX_COR_GRAPESHOT_EXP') or 0) >= os.time() then
+                actor:setLocalVar('OX_COR_GRAPESHOT', 0)
+                local shield = math.max(1, math.floor((actor:getMaxHP() or 0) * 0.06 * stacks))
+                actor:setLocalVar('OX_COR_SALTSPRAY', shield)
+                actor:setLocalVar('OX_COR_SALTSPRAY_EXP', os.time() + 12)
+            end
+            if abilityId == ABIL_EARTH_SHOT or abilityId == ABIL_WATER_SHOT then
+                slots.applySlot(target, slots.EFF_OX_DEB_CRIPPLE, 15, 15, actor,
+                {
+                    { xi.mod.ATTP, -15 },
+                    { xi.mod.MATT, -15 },
+                    { xi.mod.ACC,  -20 },
+                }, slots.EFF_OX_DEB_CRIPPLE)
+            elseif abilityId == ABIL_ICE_SHOT then
+                target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = actor })
+            elseif abilityId == ABIL_LIGHT_SHOT or abilityId == ABIL_DARK_SHOT then
+                if target.dispelStatusEffect then
+                    target:dispelStatusEffect()
+                end
+            end
+        end
+        return result
+    end
+
+    -- Gambler: 12s charge recast, -3s Random Deal shave, Expose, Card Counting
     if action and action.setRecast then
         action:setRecast(12)
+    end
+    if actor.reduceAbilityRecasts then
+        -- Shave Random Deal / standard JAs by 3s on Quick Draw
+        local rdRecast = actor:getRecast(xi.recast.ABILITY, 193) or 0
+        if rdRecast > 0 and actor.resetRecast then
+            -- Fallback: reduceAbilityRecasts shaves standard JAs
+            actor:reduceAbilityRecasts(3)
+        end
     end
 
     -- Apply shared EFF_OX_DEB_EXPOSE (-15% Critical Hit Evasion, -30 MEVA, 15s)
@@ -791,6 +1025,25 @@ m:addOverride('xi.actions.abilities.random_deal.onUseAbility', function(caster, 
 end)
 
 m:addOverride('xi.job_utils.corsair.useWildCard', function(caster, target, ability, action)
+    if isFlintlock(caster) then
+        if action and action.setRecast then
+            action:setRecast(180)
+        end
+        if caster:getID() == target:getID() then
+            if caster.resetStandardAbilities then
+                caster:resetStandardAbilities()
+            end
+            if caster.restoreAbilityCharge then
+                caster:restoreAbilityCharge(xi.recast.ABILITY, xi.recast.Quickdraw or 195, 2)
+            end
+            if caster.addTP then
+                caster:addTP(1000)
+            end
+        end
+        ability:setMsg(xi.msg.basic.USES_JA)
+        return 6
+    end
+
     if not isGambler(caster) then
         return super(caster, target, ability, action)
     end
@@ -874,7 +1127,7 @@ m:addOverride('xi.actions.abilities.house_advantage.onUseAbility', function(cast
     return 0
 end)
 
-m:addOverride('xi.actions.abilities.ace_in_the_hole.onAbilityCheck', function(player, target, _ability)
+m:addOverride('xi.actions.abilities.dead_mans_hand.onAbilityCheck', function(player, target, _ability)
     if not isGambler(player) or target == nil or not target.isAlive or not target:isAlive() then
         return xi.msg.basic.CANNOT_PERFORM, 0
     end
@@ -884,15 +1137,16 @@ m:addOverride('xi.actions.abilities.ace_in_the_hole.onAbilityCheck', function(pl
     return 0, 0
 end)
 
-m:addOverride('xi.actions.abilities.ace_in_the_hole.onUseAbility', function(caster, target, ability, action)
+m:addOverride('xi.actions.abilities.dead_mans_hand.onUseAbility', function(caster, target, ability, action)
     if not isGambler(caster) then
         return 0
     end
 
     if action and action.setRecast then
-        action:setRecast(25)
+        action:setRecast(35)
     end
 
+    -- Strictly single-target enemy dispel + Breach
     if target ~= nil and target.isAlive and target:isAlive() then
         if target.dispelStatusEffect then
             target:dispelStatusEffect()
@@ -906,9 +1160,13 @@ m:addOverride('xi.actions.abilities.ace_in_the_hole.onUseAbility', function(cast
         }, slots.EFF_OX_DEB_BREACH)
     end
 
+    local hasLuckyOrEleven = caster:getLocalVar('OX_GMB_LUCKY_ACTIVE') == 1
     forEachPartyMemberInRange(caster, 15, function(member)
-        if member.addTP then
-            member:addTP(250)
+        if member.reduceAbilityRecasts then
+            member:reduceAbilityRecasts(10)
+        end
+        if hasLuckyOrEleven and member.addTP then
+            member:addTP(200)
         end
     end)
 
@@ -916,10 +1174,288 @@ m:addOverride('xi.actions.abilities.ace_in_the_hole.onUseAbility', function(cast
     return 0
 end)
 
+-- Flintlock Crystal JAs: Hair Trigger (474) & Broadside Salvo (475)
+m:addOverride('xi.actions.abilities.hair_trigger.onAbilityCheck', function(player, _target, _ability)
+    if not isFlintlock(player) then
+        return xi.msg.basic.CANNOT_PERFORM, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.hair_trigger.onUseAbility', function(caster, _target, ability, action)
+    if not isFlintlock(caster) then
+        return 0
+    end
+    if action and action.setRecast then
+        action:setRecast(30)
+    end
+    caster:setLocalVar('OX_COR_HAIR_TRIGGER_EXP', os.time() + 10)
+    caster:delStatusEffectSilent(xi.effect.TRIPLE_SHOT)
+    caster:addStatusEffect(xi.effect.TRIPLE_SHOT, { power = 30, duration = 10, origin = caster })
+    caster:addMod(xi.mod.SNAPSHOT, 30)
+    caster:addMod(xi.mod.ALL_WSDMG_ALL_HITS, 25)
+    caster:addMod(xi.mod.DEFP, -15)
+    caster:timer(10000, function(mobArg)
+        if mobArg and mobArg.delMod then
+            mobArg:delMod(xi.mod.SNAPSHOT, 30)
+            mobArg:delMod(xi.mod.ALL_WSDMG_ALL_HITS, 25)
+            mobArg:delMod(xi.mod.DEFP, -15)
+        end
+    end)
+    ability:setMsg(xi.msg.basic.USES_JA)
+    return 0
+end)
+
+m:addOverride('xi.actions.abilities.broadside_salvo.onAbilityCheck', function(player, target, _ability)
+    if not isFlintlock(player) or not hasGunEquipped(player) or target == nil or not target.isAlive or not target:isAlive() then
+        return xi.msg.basic.CANNOT_PERFORM, 0
+    end
+    if player.checkDistance and player:checkDistance(target) > 20 then
+        return xi.msg.basic.TOO_FAR_AWAY, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.broadside_salvo.onUseAbility', function(caster, target, ability, action)
+    if not isFlintlock(caster) or target == nil or not target:isAlive() then
+        return 0
+    end
+    if action and action.setRecast then
+        action:setRecast(22)
+    end
+    local gunDmg = math.max(10, caster:getRangedDmg())
+    local agi    = caster:getStat(xi.mod.AGI)
+    local mult   = 2.0 + math.min(1.2, (caster:getMainLvl() - 10) / 65 * 1.2)
+    local dmg    = math.max(1, math.floor((gunDmg + agi) * mult))
+    dmg = utils.handleStoneskin(target, dmg, xi.attackType.RANGED)
+    target:takeDamage(dmg, caster, xi.attackType.RANGED, xi.damageType.PIERCING)
+    target:updateEnmityFromDamage(caster, dmg)
+    if caster.addTP then
+        caster:addTP(250)
+    end
+    if caster.restoreAbilityCharge then
+        caster:restoreAbilityCharge(xi.recast.ABILITY, xi.recast.Quickdraw or 195, 1)
+    end
+    ability:setMsg(xi.msg.basic.JA_DAMAGE)
+    return dmg
+end)
+
+-- Buccaneer Crystal JAs: Grapeshot Broadside (476, Single-Target Enemy 12y) & Iron Hull (477, Self 12s)
+m:addOverride('xi.actions.abilities.grapeshot_broadside.onAbilityCheck', function(player, target, _ability)
+    if not isBuccaneerLoadout(player) or target == nil or not target.isAlive or not target:isAlive() then
+        return xi.msg.basic.CANNOT_PERFORM, 0
+    end
+    if player.checkDistance and player:checkDistance(target) > 12 then
+        return xi.msg.basic.TOO_FAR_AWAY, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.grapeshot_broadside.onUseAbility', function(caster, target, ability, action)
+    if not isBuccaneer(caster) or target == nil or not target:isAlive() then
+        return 0
+    end
+    if action and action.setRecast then
+        action:setRecast(25)
+    end
+    if target.addEnmity then
+        target:addEnmity(caster, 450, 1600)
+    end
+    target:addStatusEffect(xi.effect.BLINDNESS, { power = 20, duration = 12, origin = caster })
+    target:addStatusEffect(xi.effect.SLOW, { power = 2000, duration = 12, origin = caster })
+    local stacks = math.min(3, (caster:getLocalVar('OX_COR_GRAPESHOT') or 0) + 2)
+    caster:setLocalVar('OX_COR_GRAPESHOT', stacks)
+    caster:setLocalVar('OX_COR_GRAPESHOT_EXP', os.time() + 30)
+    ability:setMsg(xi.msg.basic.USES_JA)
+    return 0
+end)
+
+m:addOverride('xi.actions.abilities.iron_hull.onAbilityCheck', function(player, _target, _ability)
+    if not isBuccaneer(player) then
+        return xi.msg.basic.CANNOT_PERFORM, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.iron_hull.onUseAbility', function(caster, _target, ability, action)
+    if not isBuccaneer(caster) then
+        return 0
+    end
+    if action and action.setRecast then
+        action:setRecast(45)
+    end
+    local maxHp = caster:getMaxHP() or 0
+    local heal  = math.max(1, math.floor(maxHp * 0.20))
+    local missing = math.max(0, maxHp - (caster:getHP() or 0))
+    if missing > 0 then
+        caster:restoreHP(math.min(heal, missing))
+    end
+    if caster.eraseStatusEffect then
+        caster:eraseStatusEffect()
+    end
+    caster:addMod(xi.mod.DMG, -1800)
+    caster:addMod(xi.mod.KNOCKBACK_REDUCTION, 100)
+    caster:timer(12000, function(mobArg)
+        if mobArg and mobArg.delMod then
+            mobArg:delMod(xi.mod.DMG, -1800)
+            mobArg:delMod(xi.mod.KNOCKBACK_REDUCTION, 100)
+        end
+    end)
+    ability:setMsg(xi.msg.basic.USES_JA)
+    return 0
+end)
+
 -----------------------------------
--- Job Crystal Registration (COR - Gambler)
+-- Global C++ Hook & WS Listeners (Flintlock Powder Mark & Buccaneer Point-Blank Pistol)
+-----------------------------------
+xi.overlords = xi.overlords or {}
+
+local prevCorPreTakeDamage = xi.overlords.onPreTakeDamage
+xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
+    if prevCorPreTakeDamage then
+        amount = prevCorPreTakeDamage(defender, amount, attacker, attackType, damageType)
+    end
+
+    if defender == nil or amount <= 0 or not isBuccaneerLoadout(defender) then
+        return amount
+    end
+
+    -- 12% virtual Pistol-Guard block fallback when SUB is empty
+    if defender.getEquippedItem and defender:getEquippedItem(xi.slot.SUB) == nil then
+        if attackType == xi.attackType.PHYSICAL and math.random(1, 100) <= 12 then
+            amount = math.max(1, math.floor(amount * 0.65))
+        end
+    end
+
+    -- Salt-Spray Stoneskin absorption
+    if defender.getLocalVar then
+        local shield = defender:getLocalVar('OX_COR_SALTSPRAY') or 0
+        local exp    = defender:getLocalVar('OX_COR_SALTSPRAY_EXP') or 0
+        if shield > 0 and exp >= os.time() then
+            local absorbed = math.min(amount, shield)
+            defender:setLocalVar('OX_COR_SALTSPRAY', shield - absorbed)
+            amount = amount - absorbed
+        elseif shield > 0 then
+            defender:setLocalVar('OX_COR_SALTSPRAY', 0)
+        end
+    end
+
+    return amount
+end
+
+m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
+    super(player, firstLogin, zoning)
+    if player == nil or not player:isPC() then
+        return
+    end
+
+    ensureCorStarterGear(player)
+
+    player:removeListener('OX_COR_WS')
+    player:addListener('WEAPONSKILL_USE', 'OX_COR_WS', function(actor, target, wsId)
+        if actor == nil or target == nil or not target.isAlive or not target:isAlive() then
+            return
+        end
+
+        local wsEntry = xi.data and xi.data.weaponskill and xi.data.weaponskill[wsId]
+
+        -- Flintlock: Marksmanship WS consumes Powder Mark for +20% elemental bonus dmg + 150 TP (single-target)
+        if isFlintlock(actor) and hasGunEquipped(actor) then
+            local isMarksmanshipWs = (wsEntry ~= nil and wsEntry.skill == xi.skill.MARKSMANSHIP) or (wsEntry == nil and wsId >= 208 and wsId <= 223)
+            if isMarksmanshipWs then
+                local exp = target:getLocalVar('OX_COR_POWDER_MARK') or 0
+                local by  = target:getLocalVar('OX_COR_POWDER_BY') or 0
+                if exp >= os.time() and by == actor:getID() then
+                    target:setLocalVar('OX_COR_POWDER_MARK', 0)
+                    local bonusDmg = math.max(1, math.floor((actor:getRangedDmg() + actor:getStat(xi.mod.AGI)) * 1.25))
+                    target:takeDamage(bonusDmg, actor, xi.attackType.MAGICAL, xi.damageType.FIRE)
+                    if actor.addTP then
+                        actor:addTP(150)
+                    end
+                end
+            end
+            return
+        end
+
+        -- Buccaneer: 1H Sword WS fires strictly single-target Point-Blank Pistol blast + heal + Grapeshot
+        if isBuccaneerLoadout(actor) then
+            local isSwordWs = (wsEntry ~= nil and wsEntry.skill == xi.skill.SWORD) or (wsEntry == nil and wsId >= 32 and wsId <= 47)
+            if isSwordWs then
+                if target.addEnmity then
+                    target:addEnmity(actor, 320, 1200)
+                end
+                local pct   = scaleTier(actor:getMainLvl(), 8, 10, 12, 14)
+                local maxHp = actor:getMaxHP() or 0
+                local heal  = math.max(1, math.floor(maxHp * pct / 100))
+                local miss  = math.max(0, maxHp - (actor:getHP() or 0))
+                if miss > 0 then
+                    actor:restoreHP(math.min(heal, miss))
+                end
+                local stacks = math.min(3, (actor:getLocalVar('OX_COR_GRAPESHOT') or 0) + 1)
+                actor:setLocalVar('OX_COR_GRAPESHOT', stacks)
+                actor:setLocalVar('OX_COR_GRAPESHOT_EXP', os.time() + 30)
+            end
+        end
+    end)
+end)
+
+-----------------------------------
+-- Job Crystal Registration (COR - Flintlock, Gambler, Buccaneer)
 -----------------------------------
 if xi.job and xi.job.COR then
+    spec.registerCrystal(xi.job.COR,
+    {
+        id             = 1,
+        key            = FLINTLOCK_KEY,
+        name           = 'Flintlock',
+        abr            = 'FLT',
+        role           = 'Damage',
+        icon           = 'flintlock',
+        reqLevel       = 10,
+        extraTraits    = { TRAIT_FLINTLOCK_DEADEYE },
+        extraAbilities =
+        {
+            ABIL_PHANTOM_ROLL,
+            ABIL_FIRE_SHOT,
+            ABIL_ICE_SHOT,
+            ABIL_WIND_SHOT,
+            ABIL_EARTH_SHOT,
+            ABIL_THUNDER_SHOT,
+            ABIL_WATER_SHOT,
+            ABIL_LIGHT_SHOT,
+            ABIL_DARK_SHOT,
+            ABIL_HAIR_TRIGGER,
+            ABIL_BROADSIDE_SALVO,
+        },
+        description    = 'Tier 1 Pure Damage Corsair spec (Lv10+): Deadeye Chamber, Powder Mark Quick Draw detonations, zero self-healing, and 100% Bullet/Card recycle.',
+        highlights     =
+        {
+            'Passives (Lv10/30/50/70+, Gun): +15/22/30/40% R.Atk & M.Atk, +20/30/40/50% Snapshot & Rapid Shot, +10/14/18/22% Ranged Crit, +15/25/35/50 Marksmanship, -15/20/25/35 Enmity.',
+            'Deadeye Chamber (Phantom Roll, 15s CD, self-only): +15/20/25/30% Ranged/Magic WS DMG & +15% Ranged Crit DMG for 30s.',
+            'Powder Mark (Quick Draw, 10s charge, 2 charges): marks target for 10s; Marksmanship WS detonates +20% elemental dmg & refunds +150 TP.',
+            'Crystal JAs: Hair Trigger (30s CD, +30% Snapshot & +25% WS DMG / -15% DEF), Broadside Salvo (22s CD, 20y single-target 2.0-3.2x shot, +250 TP, +1 QD charge).',
+        },
+        mods = function(player, lvl)
+            local mods =
+            {
+                { xi.mod.RECYCLE, 100 },
+                { xi.mod.ENMITY,  -scaleTier(lvl, 15, 20, 25, 35) },
+            }
+            if hasGunEquipped(player) then
+                table.insert(mods, { xi.mod.RATTP,        scaleTier(lvl, 15, 22, 30, 40) })
+                table.insert(mods, { xi.mod.MATT,         scaleTier(lvl, 15, 22, 30, 40) })
+                table.insert(mods, { xi.mod.SNAPSHOT,     scaleTier(lvl, 20, 30, 40, 50) })
+                table.insert(mods, { xi.mod.RAPID_SHOT,   scaleTier(lvl, 20, 30, 40, 50) })
+                table.insert(mods, { xi.mod.CRITHITRATE,  scaleTier(lvl, 10, 14, 18, 22) })
+                table.insert(mods, { xi.mod.MARKSMANSHIP, scaleTier(lvl, 15, 25, 35, 50) })
+            end
+            return mods
+        end,
+        onApply = function(player)
+            ensureCorStarterGear(player)
+        end,
+    })
+
     spec.registerCrystal(xi.job.COR,
     {
         id             = 2,
@@ -944,23 +1480,33 @@ if xi.job and xi.job.COR then
             ABIL_SNAKE_EYE,
             ABIL_FOLD,
             ABIL_HOUSE_ADVANTAGE,
-            ABIL_ACE_IN_THE_HOLE,
+            ABIL_DEAD_MANS_HAND,
         },
-        description    = 'Tier 3 Pure Support Corsair spec (Lv10+): High-Roller Stakes with Safe Standing (Roll 8-9 floor), 150% Overdrive on Lucky/XI, 3 active rolls, Double-Up Ante jackpots, Card Counting Quick Draw, and 100% Bullet/Card recycle.',
+        description    = 'Tier 3 Pure Support Corsair spec (Lv10+): High-Roller Stakes with Safe Standing (Roll 8-9 floor), 150% Overdrive on Lucky/XI, 3 active rolls, Card Counting Quick Draw, and 100% Bullet/Card recycle.',
         highlights     =
         {
-            'Core Identity: Tier 3 Pure Support (-40% DMG dealt, 0.35x WS scaling, 3 active Phantom Rolls, 100% Bullet/Card recycle).',
-            'High-Roller Stakes: Rolls 1-10 have Roll 8-9 Safe Standing; Lucky & XI trigger 150% Overdrive; Busts never remove party buffs but trigger Debt Collector (-25% HP backlash, 12s House Debt, 15s roll lock).',
-            'Card Counting (12s CD, 2 charges): Fire/Light Shot sets next Double-Up to 3-6; Ice/Water Shot sets 1-3; applies shared Expose (-15% Crit Evasion, -30 MEVA).',
-            'Crystal JAs: House Advantage (30s CD, forced XI + 15y +18% ATTP/RATTP/MATT), Ace in the Hole (25s CD, 2x Dispel, -20% DEFP/MDEF Breach, +250 party TP), Wild Card (180s CD, 30% MP, +400 TP, JA reset, 5-6 Chain +30%).',
+            'Passives (Lv10/30/50/70+): +12/16/20/25% HP/MP, +12/18/24/32 AGI/CHR, +25/35/45/55% Roll Potency & +50% Duration, 3 active rolls, -20/25/30/40 Enmity.',
+            'High-Roller Stakes: Rolls 1-10 have Roll 8-9 Safe Standing; Lucky & XI clear Bust and pulse +150 TP & +8% MP (15y).',
+            'Random Deal (35s CD, 15y) shaves -12s off standard party JAs (excludes 1hrs/Wild Card/Random Deal/Dead Man\'s Hand); Quick Draw shaves -3s & applies Expose.',
+            'Crystal JAs: House Advantage (30s CD, forced XI + 15y Offense), Dead Man\'s Hand (35s CD, single-target 2x Dispel + Breach, -10s party JAs, +200 TP on Lucky/XI).',
         },
-        mods = function(_player, _lvl)
+        mods = function(_player, lvl)
+            local stat = scaleTier(lvl, 12, 18, 24, 32)
+            local hpMp = scaleTier(lvl, 12, 16, 20, 25)
             return
             {
-                { xi.mod.RECYCLE, 100 },
+                { xi.mod.RECYCLE,      100 },
+                { xi.mod.HPP,          hpMp },
+                { xi.mod.MPP,          hpMp },
+                { xi.mod.AGI,          stat },
+                { xi.mod.CHR,          stat },
+                { xi.mod.ENMITY,       -scaleTier(lvl, 20, 25, 30, 40) },
+                { xi.mod.MARKSMANSHIP, scaleTier(lvl, 15, 25, 35, 50) },
+                { xi.mod.DAGGER,       scaleTier(lvl, 15, 25, 35, 50) },
             }
         end,
         onApply = function(player)
+            ensureCorStarterGear(player)
             if player ~= nil and player.setLocalVar then
                 player:setLocalVar('OX_COR_GAMBLER', 1)
             end
@@ -980,6 +1526,74 @@ if xi.job and xi.job.COR then
                 player:delStatusEffectSilent(EFFECT_HOUSE_DEBT)
                 player:delStatusEffectSilent(EFFECT_CARD_COUNTING)
                 player:delStatusEffectSilent(EFFECT_HOUSE_ADVANTAGE)
+            end
+        end,
+    })
+
+    spec.registerCrystal(xi.job.COR,
+    {
+        id             = 3,
+        key            = BUCCANEER_KEY,
+        name           = 'Buccaneer',
+        abr            = 'BUC',
+        role           = 'Tank',
+        icon           = 'buccaneer',
+        reqLevel       = 10,
+        extraTraits    = { TRAIT_BUCCANEER_BULWARK },
+        extraAbilities =
+        {
+            ABIL_PHANTOM_ROLL,
+            ABIL_FIRE_SHOT,
+            ABIL_ICE_SHOT,
+            ABIL_WIND_SHOT,
+            ABIL_EARTH_SHOT,
+            ABIL_THUNDER_SHOT,
+            ABIL_WATER_SHOT,
+            ABIL_LIGHT_SHOT,
+            ABIL_DARK_SHOT,
+            ABIL_GRAPESHOT_BROADSIDE,
+            ABIL_IRON_HULL,
+        },
+        description    = 'Tier 6 Pure Tank Corsair spec (Lv10+): requires 1H Sword + Gun (optional Buckler or 12% Pistol-Guard block), single-target Point-Blank Pistol WSs, Salt-Spray Stoneskin, and 100% Bullet/Card recycle.',
+        highlights     =
+        {
+            'Passives (Lv10/30/50/70+): +14/18/22/26% Max HP, +8/14/20/26 VIT/AGI, +12/18/24/30% DEF, -8/11/14/18% DT, +12/16/20/24% Parry, +60/80/100/120 Enmity & +25..60% Retention.',
+            'Galleon\'s Roll (20s CD, self-only): -12% DT, +20% DEF, +25 Enmity for 60s.',
+            'Point-Blank Pistol (1H Sword WS): strictly single-target enmity blast, heals 8/10/12/14% Max HP, +1 Grapeshot (max 3); Quick Draw consumes Grapeshot for 6%/stack Stoneskin + utility.',
+            'Crystal JAs: Grapeshot Broadside (25s CD, single-target 12y enmity + Blind + Slow + 2 Grapeshot), Iron Hull (45s CD, -18% DT, Knockback Immunity, 20% heal + cleanse).',
+        },
+        mods = function(player, lvl)
+            local stat = scaleTier(lvl, 8, 14, 20, 26)
+            local mods =
+            {
+                { xi.mod.RECYCLE,               100 },
+                { xi.mod.HPP,                   scaleTier(lvl, 14, 18, 22, 26) },
+                { xi.mod.VIT,                   stat },
+                { xi.mod.AGI,                   stat },
+                { xi.mod.DEFP,                  scaleTier(lvl, 12, 18, 24, 30) },
+                { xi.mod.DMG,                   scaleTier(lvl, -800, -1100, -1400, -1800) },
+                { xi.mod.INQUARTATA,            scaleTier(lvl, 12, 16, 20, 24) },
+                { xi.mod.ENMITY,                scaleTier(lvl, 60, 80, 100, 120) },
+                { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
+            }
+            if xi.mod.RANGED_DMG_DEALT then
+                table.insert(mods, { xi.mod.RANGED_DMG_DEALT, -60 })
+            end
+            if isBuccaneerLoadout(player) then
+                table.insert(mods, { xi.mod.SWORD,        scaleTier(lvl, 15, 25, 35, 50) })
+                table.insert(mods, { xi.mod.MARKSMANSHIP, scaleTier(lvl, 15, 25, 35, 50) })
+            end
+            return mods
+        end,
+        onApply = function(player)
+            ensureCorStarterGear(player)
+        end,
+        onRemove = function(player)
+            if player ~= nil and player.setLocalVar then
+                player:setLocalVar('OX_COR_GRAPESHOT', 0)
+                player:setLocalVar('OX_COR_GRAPESHOT_EXP', 0)
+                player:setLocalVar('OX_COR_SALTSPRAY', 0)
+                player:setLocalVar('OX_COR_SALTSPRAY_EXP', 0)
             end
         end,
     })
