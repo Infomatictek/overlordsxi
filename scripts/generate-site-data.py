@@ -32,6 +32,35 @@ GUIDES_DIR = ROOT_DIR / "docs" / "guides"
 SITE_DIR = ROOT_DIR / "site"
 
 
+def discover_soul_spec_files() -> list[Path]:
+    """Follow server module load order, including registrations outside *_specs.lua.
+
+    Legacy *_specs.lua modules must remain in discovery even when their
+    registration is dynamic or they augment centrally registered Souls.
+    """
+    init = ROOT_DIR / "modules" / "init.append.txt"
+    if not init.is_file():
+        raise RuntimeError(f"Missing server module inventory: {init}")
+    found: list[Path] = []
+    seen: set[str] = set()
+    for raw in init.read_text(encoding="utf-8-sig").splitlines():
+        rel = raw.split("--", 1)[0].strip()
+        if not rel.startswith("custom/lua/") or not rel.endswith(".lua"):
+            continue
+        fpath = ROOT_DIR / "modules" / rel
+        if fpath.name == "overlords_job_specs.lua" or not fpath.is_file():
+            continue
+        if fpath.name.endswith("_specs.lua"):
+            relevant = True
+        else:
+            text = fpath.read_text(encoding="utf-8-sig", errors="replace")
+            relevant = bool(re.search(r"\\bspec\\s*\\.\\s*register(?:Job|Crystal)\\s*\\(", text))
+        if relevant and str(fpath) not in seen:
+            seen.add(str(fpath))
+            found.append(fpath)
+    return found
+
+
 def run_git(args):
     try:
         res = subprocess.run(
@@ -670,7 +699,7 @@ def parse_lua_metadata() -> dict:
     ability_names = {}
     ability_comments = {}
 
-    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
+    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + discover_soul_spec_files()
     seen = set()
     for fpath in spec_files:
         if not fpath.exists() or fpath.name in seen:
@@ -1007,7 +1036,7 @@ def parse_job_specs(sql_abils: dict | None = None, lua_meta: dict | None = None)
     if lua_meta is None:
         lua_meta = parse_lua_metadata()
 
-    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
+    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + discover_soul_spec_files()
     seen_files = set()
     jobs_out = {}
 
@@ -2284,7 +2313,7 @@ def run_lua_exporter(lua_bin: str, strict: bool = True) -> dict | None:
             raise RuntimeError(msg)
         print(f"[warn] {msg}", file=sys.stderr)
         return None
-    spec_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("*_specs.lua"))]
+    spec_mods = [f"modules/custom/lua/{p.stem}" for p in discover_soul_spec_files()]
     tree_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))]
     cmd = [lua_bin, str(exporter), str(ROOT_DIR)] + spec_mods + tree_mods
     try:
