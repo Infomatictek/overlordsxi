@@ -309,19 +309,22 @@ end
 
 -- Discover files via command-line arguments:
 -- arg[1] = ROOT_DIR
--- arg[2..] = list of *_specs.lua and overlords_ws_trees_*.lua files
+-- arg[2..] = enabled Soul modules (in server init order) plus WS tree modules
 local specFiles = {}
 local treeFiles = {}
 for i = 2, #(arg or {}) do
     local p = arg[i]
-    if p:match('_specs$') or p:match('_specs%.lua$') then
-        table.insert(specFiles, p)
-    elseif p:match('overlords_ws_trees_') then
+    if p:match('overlords_ws_trees_') then
         table.insert(treeFiles, p)
+    else
+        -- Python passes only enabled Soul registration modules here.
+        -- New isolated Souls (blm_astromancer, whm_zealot, etc.) do not
+        -- have *_specs.lua filenames, but must be exported for the wiki.
+        table.insert(specFiles, p)
     end
 end
 
--- 1. Load Job Crystal / Spec Registry + ALL *_specs.lua
+-- 1. Load Job Crystal / Spec Registry + ALL enabled Soul registration modules
 local spec = require('modules/custom/lua/overlords_job_specs')
 for _, sf in ipairs(specFiles) do
     local ok, err = pcall(require, sf)
