@@ -12,7 +12,7 @@ MOBs. Each clone:
 
 - snapshots the owner's visible race, face, size, armor and all three weapon
   slots before the entity is inserted into the zone;
-- has exactly 1 HP, a separately randomized 6–10 second lifetime, a staggered
+- has 25% of the owner's maximum HP (minimum 100, maximum 750), a randomized 25–30 second lifetime, a staggered
   engagement request, native pathing and a native attack timer;
 - can engage only the enemy the owner was fighting at summon time;
 - makes at most three bounded engagement requests and is reported inactive if
@@ -39,7 +39,7 @@ fresh login clears stale Lua userdata. Each clone also carries a generic
 `dynamicOwnerId`; `patches/0040-kurogane-owner-attribution-cleanup.patch`
 despawns matching dynamic entities from `DecreaseZoneCounter` when their owner
 zones or logs out, without occupying the engine's single-pet slot. The
-clone-owned 6–10 second expiry remains a final backstop. Zone, logout and
+clone-owned 25–30 second expiry remains a final backstop. Zone, logout and
 reconnect behavior must still be exercised in the target multi-process
 deployment.
 
@@ -140,14 +140,14 @@ These steps are a test plan, not a record of completed in-game validation.
    seconds, and repeat before the last clone expires.
 5. Confirm three visible character models, `Look 3/3`, staggered transitions
    from `start` to `eng`, exact target ID, non-synchronized attack timing and
-   independently spaced disappearances within 6–10 seconds. Capture the full
+   independently spaced disappearances within 25–30 seconds. Capture the full
    status line if any clone becomes inactive or wrong-target.
 6. Repeat after equipping visibly distinct head, body, hands, legs, feet, main,
    sub and ranged models. Repeat with lockstyle enabled and with head display
    hidden. Existing clones must retain their spawn snapshot; new clones must
    match the new visible look.
-7. Use a controlled enemy AoE. Confirm clones have 1 HP, can be hit by the
-   normal AoE path and disappear on any positive damage. Confirm they do not
+7. Use a controlled enemy AoE. Confirm clones have their configured HP pool, can be hit by the
+   normal AoE path and disappear when damage depletes that HP. Check that normal spikes do not immediately kill a healthy clone. Confirm they do not
    intercept single-target hate, become the top-hate tank, heal, buff, drop
    items or spawn further clones.
 8. On a fresh disposable target, record claim and hate before spawning. Confirm
