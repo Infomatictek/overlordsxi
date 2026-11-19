@@ -20,11 +20,14 @@ K.ENABLE_EXPERIMENTAL_COMBAT = K.ENABLE_EXPERIMENTAL_COMBAT == true
 K.MAX_ACTIVE = 5
 K.LIFETIME_MIN = 25
 K.LIFETIME_MAX = 30
--- Disposable attackers, not tanks: enough HP to survive incidental spikes,
--- but ordinary damage and enemy AoE can still kill them.
-K.HP_OWNER_RATIO = 0.25
-K.HP_MIN = 100
-K.HP_MAX = 750
+-- Glass-cannon baseline: a few small spikes are survivable, but heavy
+-- direct attacks and enemy AoE should still kill shadows quickly.
+-- Do not derive shadow HP from the owner's HP/gear: that made tank builds
+-- create disproportionately durable clones.
+K.HP_BASE = 20
+K.HP_PER_LEVEL = 2
+K.HP_MIN = 40
+K.HP_MAX = 200
 K.MAX_ENGAGE_ATTEMPTS = 3
 K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = -95
 K._owners = K._owners or {}
@@ -567,9 +570,9 @@ local function makeClone(owner, target, index)
         if xi.mod.MATT then mob:setMod(xi.mod.MATT, -100) end
     end
     if mob.setDelay then mob:setDelay(math.random(210, 270)) end
-    local ownerMaxHP = owner.getMaxHP and tonumber(owner:getMaxHP()) or 0
+    local ownerLevel = owner.getMainLvl and tonumber(owner:getMainLvl()) or 1
     local cloneHP = math.max(K.HP_MIN, math.min(K.HP_MAX,
-        math.floor(ownerMaxHP * K.HP_OWNER_RATIO + 0.5)))
+        K.HP_BASE + math.floor(ownerLevel * K.HP_PER_LEVEL)))
     if mob.setMaxHP then mob:setMaxHP(cloneHP) end
     if mob.setHP then mob:setHP(cloneHP) end
     if not mob.getHP or mob:getHP() ~= cloneHP then
