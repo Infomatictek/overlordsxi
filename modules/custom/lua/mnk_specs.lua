@@ -745,11 +745,13 @@ function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
     if swingNum <= 1 then
         local maMod     = player.getMod and (player:getMod(xi.mod.MARTIAL_ARTS) or 0) or 0
         local baseDelay = math.max(210, 460 - math.floor(lvl * 1.8) - maMod)
-        local hMagic    = utils.clamp((player:getMod(xi.mod.HASTE_MAGIC) or 0) / 10000.0, -1.0, 0.4375)
-        local hAbil     = utils.clamp((player:getMod(xi.mod.HASTE_ABILITY) or 0) / 10000.0, -0.25, 0.25)
-        local hGear     = math.min((player:getMod(xi.mod.HASTE_GEAR) or 0) / 10000.0, 0.25)
-        local hasteMult = utils.clamp(1.0 - hMagic - hAbil - hGear, 0.20, 2.0)
-        local delayMs   = math.floor((baseDelay * 6.0) * hasteMult)
+        -- Mirror the unified C++ melee attack-rate formula. The innate 15%
+        -- haste is stored in the magic slot; it no longer consumes gear haste.
+        local hOther    = ((player:getMod(xi.mod.HASTE_MAGIC) or 0) + (player:getMod(xi.mod.HASTE_ABILITY) or 0)) / 10000.0
+        local hGear     = (player:getMod(xi.mod.HASTE_GEAR) or 0) / 10000.0
+        local otherRate = hOther >= 0 and (1.0 + (5.0 / 3.0) * hOther / (1.0 + hOther)) or (1.0 / (1.0 - hOther))
+        local gearRate  = hGear >= 0 and (1.0 + 1.5 * hGear) or (1.0 / (1.0 - 1.5 * hGear))
+        local delayMs   = math.floor((baseDelay * 6.0) / (otherRate * gearRate))
         if player.hasStatusEffect and player:hasStatusEffect(xi.effect.HUNDRED_FISTS) then
             delayMs = math.floor(delayMs * 0.50)
         end
