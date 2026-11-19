@@ -970,6 +970,8 @@ if xi.job and xi.job.RNG then
             key         = HUNTSMAN_KEY,
             name        = 'Huntsman',
             role        = 'Modal Beastmaster Ranger',
+            -- Gear engine reads this from the equipped Soul; no separate Soul gear table.
+            gearHints   = { ranged = 'crossbow', ammo = 'bolt', role = 'ranged' },
             icon        = 'huntsman',
             reqLevel    = 10,
             description = 'Modal Pet-Tank & Pack Ranger who bonds with Glacial Tuskers (Wild Raaz / Cehuetzi) to anchor bosses or Volcanic Saurians (Stalker Raptor / Gabbrath) to empower party offense.',
