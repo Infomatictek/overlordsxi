@@ -3895,6 +3895,21 @@ function testGear.buildLoadout(player, opts)
 
     local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
     profile = testGear.applyCanonicalSoulRole(player, profile, player:getMainJob())
+    -- Soul-authored hints stay alongside the Soul's implementation, instead
+    -- of duplicating Soul choices in !gear. Ignore unsupported weapon hints.
+    local hints = profile.specEntry and profile.specEntry.gearHints or nil
+    if type(hints) == 'table' then
+        if hints.role and testGear.ROLE_GEAR[hints.role] then
+            profile.role = hints.role
+        end
+        if hints.ranged and testGear.RANGED[hints.ranged] and testGear.isWeaponAllowedForJob(player, hints.ranged) then
+            profile.ranged = hints.ranged
+            profile.ammo = hints.ammo or profile.ammo
+        end
+        if hints.weapon and testGear.isWeaponAllowedForJob(player, hints.weapon) then
+            profile.weapon = hints.weapon
+        end
+    end
     local originalPick = testGear.pickFromPool
     local function pick(pool, options)
         options = options or {}
