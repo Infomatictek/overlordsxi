@@ -392,10 +392,13 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
     local ftpNode = tree and tree.byKey and tree.byKey.ftp
     if ftpNode == nil and tree and tree.nodes then
         for _, n in ipairs(tree.nodes) do
-            if n.ftpCurve ~= nil then
-                ftpNode = n
-                ftpRank = ranks[n.key] or 0
-                break
+            if n.ftpCurve ~= nil or (type(n.effect) == 'table' and n.effect.ftpCurve ~= nil) then
+                local candidateRank = ranks[n.key] or 0
+                if candidateRank > 0 then
+                    ftpNode = n
+                    ftpRank = candidateRank
+                    break
+                end
             end
         end
     end
@@ -2091,6 +2094,11 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
         if baseDmg > 0 then
             if hpDrainPct > 0 and (target == nil or not target:isUndead()) then
                 local amt = math.floor(baseDmg * (hpDrainPct / 100))
+                -- Sustain is independent from damage for the Sanguine evolution.
+                -- Caps apply only to the EXTRA talent heal, not the native WS heal.
+                if wsID == 47 and tree and tree.evolution then
+                    amt = math.min(amt, math.floor(attacker:getMaxHP() * 0.12))
+                end
                 if amt > 0 then
                     local healed = attacker:addHP(amt)
                     if healed > 0 then
@@ -2100,6 +2108,9 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             end
             if mpDrainPct > 0 then
                 local amt = math.floor(baseDmg * (mpDrainPct / 100))
+                if wsID == 47 and tree and tree.evolution then
+                    amt = math.min(amt, math.floor(attacker:getMaxMP() * 0.15))
+                end
                 if amt > 0 then
                     attacker:addMP(amt)
                 end
