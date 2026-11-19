@@ -71,6 +71,12 @@ local STAT_ORDER = { 'str', 'dex', 'vit', 'agi', 'int', 'mnd', 'chr' }
 talents.STAT_ORDER = STAT_ORDER
 
 talents.MAX_WS_POINTS = 56
+-- Evolution WS use five one-rank selections; legacy WS remain untouched.
+talents.EVOLUTION_WS = { [1] = true, [47] = true }
+talents.EVOLUTION_MAX_CHOICES = 5
+local EV_PREFIX = 'OX_EVO1_'
+local EV2_PREFIX = 'OX_EVO2_'
+local EV_SC_PREFIX = 'OX_EVOSC_'
 
 talents.TIER_GATES =
 {
@@ -112,6 +118,9 @@ local RANK_LEVEL_TABLES =
 function talents.getRankReqLevel(node, targetRank)
     if node == nil then
         return 1
+    end
+    if node.evolution and node.reqLevel then
+        return node.reqLevel
     end
     local r = math.max(1, math.min(targetRank or 1, node.maxRank or 1))
     if type(node.rankLevels) == 'table' and node.rankLevels[r] ~= nil then
@@ -450,14 +459,23 @@ function talents.getScVarPrefix(jobId, player, specIdOverride)
 end
 
 function talents.getVarName(jobId, wsId, player, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        return string.format('%s%s%s_%u', EV_PREFIX, talents.getJobKey(jobId), talents.getSpecToken(player, jobId, specIdOverride), wsId)
+    end
     return string.format('%s%u', talents.getVarPrefix(jobId, player, specIdOverride), wsId)
 end
 
 function talents.getVar2Name(jobId, wsId, player, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        return string.format('%s%s%s_%u', EV2_PREFIX, talents.getJobKey(jobId), talents.getSpecToken(player, jobId, specIdOverride), wsId)
+    end
     return string.format('%s%u', talents.getVar2Prefix(jobId, player, specIdOverride), wsId)
 end
 
 function talents.getScVarName(jobId, wsId, player, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        return string.format('%s%s%s_%u', EV_SC_PREFIX, talents.getJobKey(jobId), talents.getSpecToken(player, jobId, specIdOverride), wsId)
+    end
     return string.format('%s%u', talents.getScVarPrefix(jobId, player, specIdOverride), wsId)
 end
 
@@ -502,6 +520,11 @@ local function writeSlotRank(player, jobId, wsId, slot, rank, specIdOverride)
 end
 
 function talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        if player == nil then return 0 end
+        local raw = unpack4(player:getCharVar(talents.getScVarName(jobId, wsId, player, specIdOverride)), scTier)
+        return isValidChoiceForTier(scTier, raw) and raw or 0
+    end
     local ws = catalog.byId[wsId]
     if player ~= nil then
         local packed = player:getCharVar(talents.getScVarName(jobId, wsId, player, specIdOverride))
@@ -514,8 +537,14 @@ function talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
 end
 
 function talents.setSCChoice(player, jobId, wsId, scTier, scId, specIdOverride)
-    if player == nil or not isValidChoiceForTier(scTier, scId) then
+    if player == nil or not (isValidChoiceForTier(scTier, scId) or (talents.EVOLUTION_WS[wsId] and scId == 0)) then
         return false, 'Invalid skillchain choice for this tier.'
+    end
+    if talents.EVOLUTION_WS[wsId] then
+        local requiredLevel = ({1, 5, 10, 15})[scTier] or 75
+        if player:getJobLevel(jobId) < requiredLevel or talents.getWSSpent(player, jobId, wsId, specIdOverride) < scTier then
+            return false, 'Unlock the matching evolution stage first.'
+        end
     end
     local vn = talents.getScVarName(jobId, wsId, player, specIdOverride)
     local packed = player:getCharVar(vn)
@@ -525,6 +554,11 @@ end
 
 function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
     local list = SC_CHOICES[scTier]
+    if talents.EVOLUTION_WS[wsId] and list then
+        local withOff = { 0 }
+        for _, value in ipairs(list) do withOff[#withOff + 1] = value end
+        list = withOff
+    end
     if list == nil or #list == 0 then
         return false, 'No skillchain choices for this tier.'
     end
@@ -542,6 +576,29 @@ function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
 end
 
 function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride, specIdOverride)
+    -- Evolution skillchains are entirely optional. The default is NONE.
+    -- Each purchased stage allows one configurable property, following the
+    -- familiar T1/T2 Lv1, T3 Lv2, T4 Lv3 progression. No damage tax.
+    if talents.EVOLUTION_WS[wsId] then
+        local ranks = ranksOverride
+        if ranks == nil then ranks = talents.getWSRanks(player, jobId, wsId, specIdOverride) end
+        local spent = 0
+        for key, rank in pairs(ranks) do
+            if key:sub(1, 2) == 'e_' then spent = spent + rank end
+        end
+        local chosen, seen = {}, {}
+        for _, tier in ipairs({ 4, 3, 1, 2 }) do
+            if spent >= tier then
+                local id = talents.getSCChoice(player, jobId, wsId, tier, specIdOverride)
+                if id > 0 and not seen[id] and #chosen < 3 then
+                    seen[id] = true
+                    chosen[#chosen + 1] = id
+                end
+            end
+        end
+        return { sc1 = chosen[1] or 0, sc2 = chosen[2] or 0,
+                 sc3 = chosen[3] or 0, scBonus = 0, ids = chosen }
+    end
     local ranks = ranksOverride
     if ranks == nil then
         ranks = talents.getWSRanks(player, jobId, wsId, specIdOverride)
@@ -1500,6 +1557,9 @@ if treeHelpers and treeHelpers.upgradeExistingCustomRange then
     treeHelpers.upgradeExistingCustomRange(1, 15)
 end
 
+-- Apply evolution registrations AFTER the legacy helper synthesizes spec trees.
+require('modules/custom/lua/overlords_ws_evolution')
+
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
 -----------------------------------
@@ -1516,7 +1576,7 @@ end
 
 local function finalizeTree(ws, archetype, rawNodes, opts)
     local nodes = {}
-    local grid = { {}, {}, {}, {} }
+    local grid = { {}, {}, {}, {}, {} }
 
     for _, origNode in ipairs(rawNodes) do
         local n = shallowCopyNode(origNode)
@@ -1527,7 +1587,7 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
     end
 
     -- Add Skillchain Augment selector node on Col 4 in EVERY tier (1..4)
-    for scTier = 1, 4 do
+    for scTier = 1, ((opts and opts.evolution) and 0 or 4) do
         local scNode = makeSCTierNode(ws, scTier, 4)
         grid[scTier][4] = scNode
         table.insert(nodes, scNode)
@@ -1547,7 +1607,7 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
         node.slot = idx
         local gate = talents.TIER_GATES[node.tier] or talents.TIER_GATES[1]
         node.reqWsPoints = node.reqWsPoints ~= nil and node.reqWsPoints or gate.reqWsPoints
-        if node.requires == nil and (node.tier or 1) >= 2 and (node.col or 1) <= 3 then
+        if not node.noAutoRequires and node.requires == nil and (node.tier or 1) >= 2 and (node.col or 1) <= 3 then
             local prevColNode = grid[node.tier - 1] and grid[node.tier - 1][node.col]
             if prevColNode == nil and grid[1] then
                 prevColNode = grid[1][node.col] or grid[1][1]
@@ -1556,6 +1616,7 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
                 node.requires = { key = prevColNode.key, rank = 1 }
             end
         end
+        node.evolution = (opts and opts.evolution) == true
         node.reqLevel = talents.getRankReqLevel(node, 1)
         byKey[node.key] = node
     end
@@ -1565,6 +1626,7 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
         ws          = ws,
         archetype   = archetype,
         useBaseline = opts and opts.useBaseline == true or false,
+        evolution   = opts and opts.evolution == true or false,
         nodes       = nodes,
         byKey       = byKey,
     }
@@ -2029,7 +2091,7 @@ local function buildTreeForWS(ws, specCat)
         for _, n in ipairs(srcNodes or {}) do
             table.insert(copied, shallowCopyNode(n))
         end
-        return finalizeTree(ws, custom.archetype, copied, { useBaseline = custom.useBaseline })
+        return finalizeTree(ws, custom.archetype, copied, { useBaseline = custom.useBaseline, evolution = custom.evolution })
     end
     return buildGenericTreeForWS(ws)
 end
@@ -2160,6 +2222,8 @@ function talents.getTotalSpent(player, jobId, specIdOverride)
 
     scanPrefix(talents.getVarPrefix(jid, player, specIdOverride))
     scanPrefix(talents.getVar2Prefix(jid, player, specIdOverride))
+    scanPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_')
+    scanPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_')
 
     return total, perWs
 end
@@ -2189,7 +2253,33 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
     end
 
     local ranks, wsSpent = talents.getWSRanks(player, jid, wsId)
-    if wsSpent >= (talents.MAX_WS_POINTS or 56) then
+    if tree.evolution then
+        if wsSpent >= talents.EVOLUTION_MAX_CHOICES then
+            return false, 'Evolution already has five choices.'
+        end
+        local total, perWs = talents.getTotalSpent(player, jid)
+        local count = 0
+        for wid, pts in pairs(perWs) do
+            if pts > 0 and wid ~= wsId then count = count + 1 end
+        end
+        if wsSpent == 0 and count >= 4 then
+            return false, 'Four weaponskills already invested for this spec.'
+        end
+        for _, other in ipairs(tree.nodes) do
+            if other.exclusiveGroup == node.exclusiveGroup and other.key ~= node.key and (ranks[other.key] or 0) > 0 then
+                return false, 'Choose only one evolution per stage.'
+            end
+        end
+        if node.allowedSpecs or node.allowedJobs then
+            local _, specKey = talents.getActiveSpec(player, jid)
+            local normSpecKey = string.lower(tostring(specKey or ''))
+            local category = talents.resolveSpecCategory(player, jid)
+            local allowed = (node.allowedJobs and node.allowedJobs[jid]) or
+                (node.allowedSpecs and (node.allowedSpecs[normSpecKey] or node.allowedSpecs[category]))
+            if not allowed then return false, 'This evolution is not available for your Soul/spec.' end
+        end
+    end
+    if wsSpent >= (tree.evolution and talents.EVOLUTION_MAX_CHOICES or (talents.MAX_WS_POINTS or 56)) then
         return false, string.format('Weaponskill point cap reached (%d/%d).', wsSpent, talents.MAX_WS_POINTS or 56)
     end
     local curRank = ranks[nodeKey] or 0
@@ -2281,6 +2371,20 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         end
     end
 
+    if tree.evolution then
+        local ownedStages = {}
+        for _, other in ipairs(tree.nodes) do
+            if (newRanks[other.key] or 0) > 0 and other.stage then
+                ownedStages[other.stage] = true
+            end
+        end
+        for stage = 2, 5 do
+            if ownedStages[stage] and not ownedStages[stage - 1] then
+                return false, 'Refund later evolution stages first.'
+            end
+        end
+    end
+
     local wasUnlocked = talents.isWSUnlocked(player, wsId, jid)
     writeSlotRank(player, jid, wsId, node.slot, curRank - 1)
     if wasUnlocked and not talents.isWSUnlocked(player, wsId, jid) then
@@ -2311,19 +2415,25 @@ function talents.resetAll(player, jobId)
     local jid = jobId or player:getMainJob()
     local count = 0
 
-    local function clearPrefix(prefix)
+    local function clearPrefix(prefix, skipEvolutionWs)
         local vars = player:getCharVarsWithPrefix(prefix)
         for varName, val in pairs(vars) do
             if val ~= 0 and string.sub(varName, 1, #prefix) == prefix then
-                player:setCharVar(varName, 0)
-                count = count + 1
+                local wsId = tonumber(string.sub(varName, #prefix + 1))
+                if not (skipEvolutionWs and wsId ~= nil and talents.EVOLUTION_WS[wsId]) then
+                    player:setCharVar(varName, 0)
+                    count = count + 1
+                end
             end
         end
     end
 
-    clearPrefix(talents.getVarPrefix(jid, player))
-    clearPrefix(talents.getVar2Prefix(jid, player))
-    clearPrefix(talents.getScVarPrefix(jid, player))
+    clearPrefix(talents.getVarPrefix(jid, player), true)
+    clearPrefix(talents.getVar2Prefix(jid, player), true)
+    clearPrefix(talents.getScVarPrefix(jid, player), true)
+    clearPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
+    clearPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
+    clearPrefix(EV_SC_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
 
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
@@ -2351,6 +2461,9 @@ function talents.formatActiveSummary(player, jobId, ws, ranks)
     local scBonusText = scData.scBonus > 0 and string.format(' (+%d%%)', scData.scBonus) or ''
     local unlocked = talents.isWSUnlocked(player, ws.id, jid)
     local lockTag = unlocked and 'UNLOCKED' or 'LOCKED (Rank 1 Tier 1 to unlock)'
+    if tree and tree.evolution then
+        return string.format('%s | WS Evolution | %d/%d choices', lockTag, talents.getWSSpent(player, jid, ws.id), talents.EVOLUTION_MAX_CHOICES)
+    end
     return string.format('%s | SC: %s%s | Max: %d pts', lockTag, scText, scBonusText, maxPts)
 end
 
@@ -2472,6 +2585,18 @@ function talents.sendWSDetail(player, wsId)
         ))
     end
 
+    -- Compatibility: expose optional SC property controls as read-only NODE
+    -- records. The client uses OP_CYCLE_SC to change them; no talent ranks.
+    if tree.evolution then
+        local labels = { 'Primary SC', 'Secondary SC', 'Advanced SC', 'Final SC' }
+        for tier = 1, 4 do
+            local id = talents.getSCChoice(player, jobId, wsId, tier)
+            local name = (id > 0 and (SC_SHORT[id] or SC_NAMES[id])) or 'None'
+            sendProto(player, string.format('NODE|%u|evsc_t%u|%u|3|0|0|0|0||0|%s|Optional skillchain property|%u|%u|%u|%s|0',
+                ws.id, tier, tier, labels[tier], ({1, 5, 10, 15})[tier], tier, id, sanitizeField(name)))
+        end
+    end
+
     local wsUnlocked = talents.isWSUnlocked(player, ws.id, jobId) and 1 or 0
     sendProto(player, string.format('WS_END|%u|%u|%u', ws.id, avail, wsUnlocked))
 end
@@ -2545,7 +2670,7 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
         end
     elseif op == 6 then
         local scTier = a1
-        local dir = (a2 == 2) and -1 or 1
+        local dir = (a2 == 2 or a2 == 255) and -1 or 1
         if wid > 0 and scTier >= 1 and scTier <= 4 then
             local ok, res = talents.cycleSCChoice(player, jobId, wid, scTier, dir)
             if not ok then
