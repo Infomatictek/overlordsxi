@@ -192,6 +192,43 @@ function hud.registerProvider(soulKey, collectorFn)
     end
 end
 
+local IDENTITY_LEGACY_KEYS =
+{
+    kurogane = 'shinobi',
+}
+
+-- Authoritative, minimal nearby-caster Soul identity for OXSI.
+-- Unlike the local HUD packet, this intentionally excludes private meters,
+-- status effects, equipment, and other Soul resource details.
+function hud.buildIdentityData(player)
+    if player == nil or not player:isPC() then
+        return { jobId = 0, branch = 0, soulKey = '' }
+    end
+
+    local jobId = tonumber(player:getMainJob()) or 0
+    if jobId < 1 or jobId > 22 then
+        return { jobId = 0, branch = 0, soulKey = '' }
+    end
+
+    local active = spec.get(player, jobId)
+    if not active or not spec.isLevelEligible(player, jobId, active) then
+        return { jobId = jobId, branch = 0, soulKey = '' }
+    end
+
+    local branch = tonumber(active.id) or 0
+    local rawKey = tostring(active.canonicalKey or active.key or ''):lower()
+    local key = IDENTITY_LEGACY_KEYS[rawKey] or rawKey
+    if branch < 1 or branch > 3 or #key < 2 or #key > 64 or not key:match('^[%w_%-]+$') then
+        return { jobId = jobId, branch = 0, soulKey = '' }
+    end
+
+    return {
+        jobId   = jobId,
+        branch  = branch,
+        soulKey = key,
+    }
+end
+
 function hud.buildPacketData(player)
     if player == nil or not player:isPC() then
         return { jobId = 0, soulKey = '', unlocked = 0, kv = '' }
