@@ -19,7 +19,10 @@ K.ENABLE_EXPERIMENTAL_CLONES = K.ENABLE_EXPERIMENTAL_CLONES == true
 K.MAX_ACTIVE = 5
 K.LIFETIME_MIN = 6
 K.LIFETIME_MAX = 10
-K.DAMAGE_ENABLED = false -- visual/targeting validation first; no fake DPS
+-- A second explicit GM gate is required before clones may receive attack enmity.
+-- Native mob auto-attacks are not owner-credited yet; never enable on production.
+K.ENABLE_EXPERIMENTAL_COMBAT = false
+K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = -95
 K._owners = K._owners or {}
 K._serial = K._serial or 0
 
@@ -109,12 +112,19 @@ local function tickOwner(owner, state)
             -- Never auto-acquire an unrelated enemy.
             removeAt(state, i)
         elseif now >= rec.nextActionAt then
-            -- Each clone decides independently; actual combat damage deliberately
-            -- disabled until owner credit, animations and boss AoE are proven.
-            local choice = math.random(1, 100)
-            rec.action = choice <= 55 and 1 or (choice <= 75 and 2 or (choice <= 92 and 3 or 4))
+            -- Staggered native MOB engagement. The clone gets enmity toward ONLY
+            -- the owner's current target and LSB handles pathing/auto-attacks.
+            -- No scripted WS, Ninjutsu or fake damage: those need owner attribution.
             rec.nextActionAt = now + (0.7 + math.random() * 1.2)
-            if rec.mob.lookAt then pcall(function() rec.mob:lookAt(target:getPos()) end) end
+            if K.ENABLE_EXPERIMENTAL_COMBAT and not rec.engaged then
+                if rec.mob.updateEnmity then
+                    local ok = pcall(function() rec.mob:updateEnmity(target) end)
+                    rec.engaged = ok
+                    rec.action = ok and 1 or 0
+                end
+            elseif rec.mob.lookAt and not K.ENABLE_EXPERIMENTAL_COMBAT then
+                pcall(function() rec.mob:lookAt(target:getPos()) end)
+            end
         end
     end
     setCount(owner, state)
@@ -171,8 +181,18 @@ local function makeClone(owner, target, index)
     end
     if mob.setDropID then mob:setDropID(0) end
     mob:spawn()
+    -- Set offense to minimal test values. Real damage budgeting and ownership
+    -- cannot be implemented faithfully using native allied-MOB melee alone.
+    if mob.addMod and xi.mod and xi.mod.PHYS_DMG_DEALT then
+        mob:addMod(xi.mod.PHYS_DMG_DEALT, K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY)
+    end
+    if mob.setMod and xi.mod and xi.mod.ATTP then mob:setMod(xi.mod.ATTP, -90) end
+    if mob.setMod and xi.mod and xi.mod.MACC then mob:setMod(xi.mod.MACC, -500) end
+    if mob.setMod and xi.mod and xi.mod.MATT then mob:setMod(xi.mod.MATT, -100) end
     mob:setMaxHP(1)
     mob:setHP(1)
+    -- Native AI shouldn't move/engage until its independent startup delay.
+    if mob.stun then mob:stun(300 + math.random(250, 950)) end
     return mob
 end
 
