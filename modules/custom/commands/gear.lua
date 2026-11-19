@@ -52,8 +52,8 @@ local function delaySendMenu(player, menuBuilder)
 end
 
 local function printUsage(player)
-    tell(player, 'Usage: !gear | !gear tp | !gear ws | !gear menu | !gear <level> [weapon] | !gear <weapon> [level]')
-    tell(player, '       !gear role <tp|ws|tank|ranged|caster> | !gear level <1-99> | !gear info | !gear bag')
+    tell(player, 'Usage: !gear | !gear best | !gear tp | !gear ws | !gear menu | !gear <level> [weapon]')
+    tell(player, '       !gear role <tp|ws|tank|ranged|caster> | !gear level <1-75> | !gear info | !gear bag')
     tell(player, 'Weapons: h2h, dagger, sword, gs, axe, gaxe, scythe, polearm, katana, gk, club, staff, bow, crossbow, gun, throwing, chakram')
 end
 
@@ -94,12 +94,7 @@ end
 
 local function executeEquip(player, opts)
     opts = opts or {}
-    -- If a target level higher than current main level is requested, automatically raise player level
-    local reqLvl = tonumber(opts.level)
-    if reqLvl ~= nil and player:getMainLvl() < reqLvl then
-        opts.setLevel = true
-    end
-
+    -- Only '!gear level' changes player level; ordinary gear requests do not.
     local loadout, err = testGear.equipLoadout(player, opts)
     if loadout == nil then
         tell(player, err or 'Unable to equip test gear loadout.')
@@ -338,6 +333,12 @@ openRootMenu = function(player)
             end,
         },
         {
+            string.format('Equip Best-Pool Gear (Lv.%d)', lvl),
+            function(p)
+                executeEquip(p, { accessibility = 'best' })
+            end,
+        },
+        {
             string.format('Equip TP Set (Lv.%d)', lvl),
             function(p)
                 executeEquip(p, { role = 'tp' })
@@ -433,6 +434,11 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
     local cmd = arg1 and string.lower(arg1) or nil
 
     -- 1. Default (!gear, !gear auto, !gear equip): immediately grant & equip recommended loadout
+    if cmd == 'best' then
+        executeEquip(player, { accessibility = 'best' })
+        return
+    end
+
     if cmd == nil or cmd == 'auto' or cmd == 'equip' then
         local opts, err = parseExtraOpts(arg2, arg3, {})
         if opts == nil then
@@ -491,8 +497,8 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
     -- 6. Explicit Level Change + Gear (!gear level <1-99> [weapon|role])
     if cmd == 'level' or cmd == 'lvl' or cmd == 'lv' then
         local targetLvl = tonumber(arg2)
-        if targetLvl == nil or targetLvl < 1 or targetLvl > 99 then
-            tell(player, 'Usage: !gear level <1-99> [weapon|role]')
+        if targetLvl == nil or targetLvl < 1 or targetLvl > 75 then
+            tell(player, 'Usage: !gear level <1-75> [weapon|role]')
             return
         end
         local opts, err = parseExtraOpts(arg3, nil, { level = targetLvl, setLevel = true })
@@ -546,8 +552,8 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
     local opts = {}
     local num1 = tonumber(arg1)
     if num1 ~= nil then
-        if num1 < 1 or num1 > 99 then
-            tell(player, 'Level must be between 1 and 99.')
+        if num1 < 1 or num1 > 75 then
+            tell(player, 'Level must be between 1 and 75.')
             return
         end
         opts.level = num1
