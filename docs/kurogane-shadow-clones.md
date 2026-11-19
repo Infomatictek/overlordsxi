@@ -27,7 +27,7 @@
 
 ## Status of this branch
 
-The Soul's registry entry, Tier-1 passive mods, and Katana WS profile are implemented. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
+The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-1 passive mods, and Katana WS profile are implemented. The existing `nin_specs.lua` module is already included in `modules/init.append.txt`, so no second NIN module registration is needed. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
 
 ## Engine integration requirements (must be completed before release)
 
@@ -38,6 +38,7 @@ The Soul's registry entry, Tier-1 passive mods, and Katana WS profile are implem
 5. Implement immediate cleanup on expiry, death, owner death, zoning, logout, unsocket, job/level changes, despawn and server reset. Repeated casting must respect the per-owner cap.
 6. Define and register two new NIN custom JA IDs/recasts in SQL and client ability data; **do not reuse 443/444**, which belong to Kagemusha.
 7. Implement Kurogane WS talent bridge and tests (NPC cap, 1-HP AoE death, targeting, gear snapshot, logout/zone cleanup, Kagemusha nonregression, owner-wide DPS attribution).
-8. Run full LSB C++ compilation, Lua integration checks, database migration checks and in-game validation before merging.
+8. Optionally expose live clone count/remaining lifetimes through `xi.overlords.hud.registerProvider('kurogane', collectorFn)` once a real backend supplies authoritative values.
+9. Run full LSB C++ compilation, Lua integration checks, database migration checks and in-game validation before merging.
 
 This is a development specification and registry scaffold, **not a finished playable clone feature**.
