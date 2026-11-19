@@ -10,7 +10,7 @@ This is a deliberately limited first prototype for **Combo (WS #1)** and **Sangu
 - Combo offers a follow-up WS opener or TP-flow identity. Later stages provide alternate forms of follow-up pressure and precision instead of mandatory rotation steps.
 - Sanguine Blade offers magical offense for compatible Souls/specs and controlled sustain for supported specs. Offense and additional sustain have separate controls.
 - Old packed character variables (`OX_WST_*` and `OX_WST2_*`) are **not overwritten**. Evolution ranks use `OX_EVO1_*` and `OX_EVO2_*`; spec identifiers remain part of the variable name.
-- Optional skillchain tuning uses the existing spec-specific `OX_WSSC_*` storage: the default for evolution WSs is **NONE**, and each unlocked stage 1-4 offers a configurable property. Tiers 1-2 allow level-1 properties, tier 3 level-2, and tier 4 Light/Darkness. The setting can remain OFF at every tier. Up to three unique properties can be active, and choosing them costs no WS evolution points.
+- Optional skillchain tuning uses separate spec-specific `OX_EVOSC_*` storage (leaving old `OX_WSSC_*` selections untouched): the default for evolution WSs is **NONE**, and each unlocked stage 1-4 offers a configurable property. Tiers 1-2 allow level-1 properties, tier 3 level-2, and tier 4 Light/Darkness. The setting can remain OFF at every tier. Up to three unique properties can be active, and choosing them costs no WS evolution points.
 - Existing non-evolution WS trees remain in place.
 
 ## Installation
