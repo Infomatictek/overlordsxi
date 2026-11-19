@@ -1,4 +1,4 @@
-# Royaltactician (RDM) — Playstyle Guide
+# Royal Tactician (RDM) — Playstyle Guide
 
 ## At a Glance
 **Enfeeble-to-order strategist.** Royal Tactician turns meaningful enfeebling casts into a targeted ally's next tactical benefit.
