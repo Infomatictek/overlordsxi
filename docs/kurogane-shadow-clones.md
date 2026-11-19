@@ -27,7 +27,21 @@
 
 ## Status of this branch
 
-The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-1 passive mods, and Katana WS profile are implemented. The existing `nin_specs.lua` module is already included in `modules/init.append.txt`, so no second NIN module registration is needed. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
+The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-1 passive mods, Katana WS profile, and opt-in **GM-only dynamic entity spawn probe** are implemented. The existing `nin_specs.lua` module is already included in `modules/init.append.txt`, so no second NIN module registration is needed. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
+
+## First playable test: GM-only visual clone probe
+
+The server branch now includes `modules/custom/lua/kurogane_clones.lua` and a GM-only `!kurogane` command. This is a **real dynamic-MOB spawn experiment**, not a complete playable DPS Soul. It is disabled by default and never modifies normal Utsusemi.
+
+1. Deploy updated Lua modules/commands to a development LandSandBoat checkout and restart `xi_map`.
+2. Use a GM character (permission 5), set NIN Lv10+, and enter `!spec set kurogane`.
+3. Engage and select a disposable test mob in an isolated zone.
+4. Enter `!kurogane enable`, then `!kurogane spawn 3`.
+5. Inspect whether copies appear, look like the player, have exactly 1 HP, and disappear independently after 6–10 seconds. Use `!kurogane status` to verify counts and earliest expiration; `!kurogane dismiss` to clean up.
+6. Test target loss, zoning, Soul switch, repeated summons, and boss AoE in a safe environment. End with `!kurogane disable`.
+7. **Do not test in a populated zone.** Native dynamic MOB faction/AoE behavior, character-model look serialization and despawn lifecycle are unverified on the target LSB build.
+
+Damage is hard-disabled; current action decisions are **visual/telemetry placeholders** rather than real clone swings, casts, or weaponskills. This is deliberate: owner-attributed damaging actions, target-safe autonomous engagement and correct AoE targeting are still engine-level acceptance criteria. Do not enable this probe on production.
 
 ## Engine integration requirements (must be completed before release)
 
