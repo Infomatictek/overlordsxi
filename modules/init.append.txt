@@ -84,6 +84,17 @@ custom/lua/rng_specs.lua
 custom/sql/rng_specs.sql
 
 custom/lua/overlords_soul_hud.lua
+custom/lua/whm_valkyrie.lua
+custom/lua/blm_channeler.lua
+custom/lua/rdm_royal_tactician.lua
+custom/lua/drk_scourge.lua
+custom/lua/rng_arcane_archer.lua
+custom/lua/nin_nightblade.lua
+custom/lua/drg_skyborn.lua
+custom/lua/sch_archivist.lua
+custom/lua/bst_beastspeaker.lua
+custom/lua/smn_herald.lua
+custom/lua/geo_diviner.lua
 custom/commands/soulhud.lua
 
 custom/cpp/overlords_soulhud_sync.cpp
