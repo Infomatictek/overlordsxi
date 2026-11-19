@@ -17,15 +17,15 @@ diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
 +    // the authoritative source before allocating/assigning a dynamic entity ID so
 +    // an invalid source fails without leaking a target slot.
 +    CCharEntity* PLookSource = nullptr;
-+    if (table["lookSource"].get_type() != sol::type::nil)
++    if (const sol::object lookSourceObj = table.get<sol::object>("lookSource"); lookSourceObj.valid())
 +    {
-+        if (!table["lookSource"].is<CLuaBaseEntity*>())
++        if (!lookSourceObj.is<CLuaBaseEntity*>())
 +        {
 +            ShowWarning("luautils::GenerateDynamicEntity: lookSource is not an entity.");
 +            return nullptr;
 +        }
 +
-+        auto* PLuaLookSource = table["lookSource"].get<CLuaBaseEntity*>();
++        auto* PLuaLookSource = lookSourceObj.as<CLuaBaseEntity*>();
 +        PLookSource          = PLuaLookSource ? dynamic_cast<CCharEntity*>(PLuaLookSource->GetBaseEntity()) : nullptr;
 +        if (PLookSource == nullptr)
 +        {
