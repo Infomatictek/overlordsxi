@@ -1,14 +1,23 @@
 -- OverlordsXI RNG Huntsman Spec Data
--- Custom Job Abilities (480-486), Modal Beast Pets (134-137), Mob Pools (6026-6029),
+-- Custom Job Abilities (480-486, 489-490), Beast Companions (134-137), Mob Pools (6026-6029),
 -- and 100% Single-Target Mob Skill Lists (6026-6027).
+--
+-- Note on recastIds:
+--   Packet 0x119 (GP_SERV_COMMAND_ABIL_RECAST) transmits TimerId as uint8_t (1..254).
+--   Huntsman uses recastIds 245-250 (vanilla GEO Lv.40-90 slots, unreachable as subjob at Lv.75 cap).
+--
+-- Note on client DATs:
+--   New custom Job Abilities (489 predators_feint, 490 guardians_call) require client DAT string
+--   entries in addition to this SQL import before the FFXI client displays their names natively.
 
 -- ---------------------------------------------------------------------------
 -- 1. Custom Job Abilities (Level 255 so they stay hidden unless unlocked by spec)
 -- ---------------------------------------------------------------------------
-DELETE FROM `abilities` WHERE `abilityId` IN (480, 481, 482, 483, 484, 485, 486)
+DELETE FROM `abilities` WHERE `abilityId` IN (480, 481, 482, 483, 484, 485, 486, 489, 490)
     OR `name` IN (
         'call_wild_raaz', 'call_stalker_raptor', 'rimetusk_gore',
-        'saurian_rend', 'primeval_takedown', 'call_cehuetzi', 'call_gabbrath'
+        'saurian_rend', 'primeval_takedown', 'call_cehuetzi', 'call_gabbrath',
+        'predators_feint', 'guardians_call'
     );
 
 INSERT INTO `abilities`
@@ -16,20 +25,24 @@ INSERT INTO `abilities`
      `animation`, `animationTime`, `castTime`, `actionType`, `range`, `isAOE`, `radius`, `CE`, `VE`,
      `meritModID`, `addType`, `content_tag`)
 VALUES
-    -- Call Wild Raaz (Lv.10+ Huntsman, 60s recast, shared summon recastId 256)
-    (480, 'call_wild_raaz',      11, 255, 1, 60, 256, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,   1,   80, 0, 0, NULL),
-    -- Call Stalker Raptor (Lv.10+ Huntsman, 60s recast, shared summon recastId 256)
-    (481, 'call_stalker_raptor', 11, 255, 1, 60, 256, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,   1,   80, 0, 0, NULL),
-    -- Rimetusk Gore (Lv.10+ Huntsman, 30s recast, Single-Target Enemy 20y, recastId 257)
-    (482, 'rimetusk_gore',       11, 255, 4, 30, 257, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 900, 2700, 0, 0, NULL),
-    -- Saurian Rend (Lv.10+ Huntsman, 30s recast, Single-Target Enemy 20y, recastId 258)
-    (483, 'saurian_rend',        11, 255, 4, 30, 258, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 150,  400, 0, 0, NULL),
-    -- Primeval Takedown (Lv.10+ Huntsman, 45s recast, Single-Target Enemy 20y, recastId 259)
-    (484, 'primeval_takedown',   11, 255, 4, 45, 259, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 400, 1200, 0, 0, NULL),
-    -- Call Cehuetzi (Lv.75+ Huntsman, 60s recast, shared summon recastId 256)
-    (485, 'call_cehuetzi',       11, 255, 1, 60, 256, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,   1,   80, 0, 0, NULL),
-    -- Call Gabbrath (Lv.75+ Huntsman, 60s recast, shared summon recastId 256)
-    (486, 'call_gabbrath',       11, 255, 1, 60, 256, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0,   1,   80, 0, 0, NULL);
+    -- Call Wild Raaz (Lv.10+ Huntsman, 60s recast, shared summon recastId 245)
+    (480, 'call_wild_raaz',      11, 255, 1, 60, 245, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Call Stalker Raptor (Lv.10+ Huntsman, 60s recast, shared summon recastId 245)
+    (481, 'call_stalker_raptor', 11, 255, 1, 60, 245, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Rimetusk Gore (Lv.10+ Huntsman, 30s recast, Single-Target Enemy 20y, recastId 246; threat applied to pet in Lua)
+    (482, 'rimetusk_gore',       11, 255, 4, 30, 246, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Saurian Rend (Lv.10+ Huntsman, 30s recast, Single-Target Enemy 20y, recastId 247; threat applied to pet in Lua)
+    (483, 'saurian_rend',        11, 255, 4, 30, 247, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Primeval Takedown (Lv.10+ Huntsman, 45s recast, Single-Target Enemy 20y, recastId 248; threat applied to pet in Lua)
+    (484, 'primeval_takedown',   11, 255, 4, 45, 248, 0, 0, 201, 1500, 0, 6, 20.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Call Cehuetzi (Lv.75+ Huntsman, 60s recast, shared summon recastId 245)
+    (485, 'call_cehuetzi',       11, 255, 1, 60, 245, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Call Gabbrath (Lv.75+ Huntsman, 60s recast, shared summon recastId 245)
+    (486, 'call_gabbrath',       11, 255, 1, 60, 245, 0, 0, 171, 2000, 0, 6,  0.0, 0, 0, 1,  1, 0, 0, NULL),
+    -- Predator's Feint (Lv.10+ Huntsman, 45s recast, Self, recastId 249; 3s evasion + ST threat transfer to pet)
+    (489, 'predators_feint',     11, 255, 1, 45, 249, 0, 0, 211, 1200, 0, 6,  0.0, 0, 0, 0,  0, 0, 0, NULL),
+    -- Guardian's Call (Lv.10+ Huntsman, 60s recast, Self, recastId 250; arms 1-hit ST interception by pet)
+    (490, 'guardians_call',      11, 255, 1, 60, 250, 0, 0, 207, 1500, 0, 6,  0.0, 0, 0, 1,  1, 0, 0, NULL);
 
 -- ---------------------------------------------------------------------------
 -- 2. Huntsman Beast Pets (Pet IDs 134-137 require patches/0035-rng-huntsman-pets.patch)

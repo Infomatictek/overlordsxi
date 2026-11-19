@@ -363,19 +363,6 @@ spec.MODAL_TIER_RESOLVERS = spec.MODAL_TIER_RESOLVERS or
         end
         return 'HybridSupport'
     end,
-    huntsman = function(player)
-        if player ~= nil and player.hasPet and player:hasPet() and player.getPet then
-            local pet = player:getPet()
-            if pet ~= nil and (not pet.isAlive or pet:isAlive()) then
-                local pid  = pet.getPetID and pet:getPetID() or 0
-                local hKey = pet.getLocalVar and pet:getLocalVar('OX_HUNTSMAN_PET_KEY') or 0
-                if pid == 134 or pid == 136 or hKey == 1 or hKey == 3 then
-                    return 'Tank'
-                end
-            end
-        end
-        return 'HybridSupport'
-    end,
 }
 
 local CANONICAL_ROLE_BY_KEY = {}
@@ -777,6 +764,7 @@ local DUAL_WIELD_SPEC_KEYS =
     adventurer   = true,
     nightblade   = true,
     freelancer   = true,
+    huntsman     = true,
 }
 
 function spec.getExtraTraits(player)
@@ -867,7 +855,7 @@ function spec.evaluateMods(player, entry)
         if tierCfg.magDmgDealt ~= 0 and xi.mod.MAG_DMG_DEALT then
             upsertMod(out, xi.mod.MAG_DMG_DEALT, tierCfg.magDmgDealt)
         end
-        if tierName == 'Tank' and xi.mod.ENMITY then
+        if tierName == 'Tank' and xi.mod.ENMITY and not entry.petTankEnmity then
             local tankEnmity = (lvl >= 70 and 120) or (lvl >= 50 and 100) or (lvl >= 30 and 80) or 60
             local found = false
             for _, item in ipairs(out) do

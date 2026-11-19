@@ -7,7 +7,7 @@ index 682027aadb..51a89b0323 100644
      this->BattleHistory.lastHitTaken_atkType = attackType;
  
 +    if (amount > 0 && !isSkillchainDamage &&
-+        (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Magical) &&
++        (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Magical || attackType == xi::AttackType::Ranged) &&
 +        (this->objtype == TYPE_PC || this->objtype == TYPE_TRUST || this->objtype == TYPE_PET))
 +    {
 +        static thread_local bool inPreTakeDamage = false;

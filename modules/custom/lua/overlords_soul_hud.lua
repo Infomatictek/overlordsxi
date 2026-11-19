@@ -629,11 +629,21 @@ hud.registerProvider('huntsman', function(player)
     elseif petKey == 2 or petKey == 4 then
         mode = 'saurian'
     end
-    return {
+    local out =
+    {
         pet_id   = petKey,
         pet_mode = mode,
         pet_hpp  = petKey > 0 and hpp or 0,
     }
+    if xi.overlords and xi.overlords.huntsman and xi.overlords.huntsman.getHudState then
+        local extra = xi.overlords.huntsman.getHudState(player)
+        if type(extra) == 'table' then
+            for k, v in pairs(extra) do
+                out[k] = v
+            end
+        end
+    end
+    return out
 end)
 
 -----------------------------------
