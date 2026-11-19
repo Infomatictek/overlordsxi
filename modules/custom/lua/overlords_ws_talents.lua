@@ -1521,13 +1521,14 @@ require('modules/custom/lua/overlords_ws_trees_club')
 require('modules/custom/lua/overlords_ws_trees_staff')
 require('modules/custom/lua/overlords_ws_trees_ranged')
 require('modules/custom/lua/overlords_ws_trees_throwing')
--- Test definitions intentionally override only Combo and Sanguine Blade.
-require('modules/custom/lua/overlords_ws_evolution')
 
 local treeHelpers = require('modules/custom/lua/overlords_ws_tree_helpers')
 if treeHelpers and treeHelpers.upgradeExistingCustomRange then
     treeHelpers.upgradeExistingCustomRange(1, 15)
 end
+
+-- Apply evolution registrations AFTER the legacy helper synthesizes spec trees.
+require('modules/custom/lua/overlords_ws_evolution')
 
 -----------------------------------
 -- Dynamic Tree Builder (Custom + Generic 4-Tier Fallback for #16+)
