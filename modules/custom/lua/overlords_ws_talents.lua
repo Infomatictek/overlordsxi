@@ -76,6 +76,7 @@ talents.EVOLUTION_WS = { [1] = true, [47] = true }
 talents.EVOLUTION_MAX_CHOICES = 5
 local EV_PREFIX = 'OX_EVO1_'
 local EV2_PREFIX = 'OX_EVO2_'
+local EV_SC_PREFIX = 'OX_EVOSC_'
 
 talents.TIER_GATES =
 {
@@ -472,6 +473,9 @@ function talents.getVar2Name(jobId, wsId, player, specIdOverride)
 end
 
 function talents.getScVarName(jobId, wsId, player, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        return string.format('%s%s%s_%u', EV_SC_PREFIX, talents.getJobKey(jobId), talents.getSpecToken(player, jobId, specIdOverride), wsId)
+    end
     return string.format('%s%u', talents.getScVarPrefix(jobId, player, specIdOverride), wsId)
 end
 
@@ -2423,6 +2427,7 @@ function talents.resetAll(player, jobId)
     clearPrefix(talents.getScVarPrefix(jid, player))
     clearPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
     clearPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
+    clearPrefix(EV_SC_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
 
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
