@@ -3751,7 +3751,22 @@ function testGear.isWeaponAllowedForJob(player, wKey)
     local allowedSkills = getSoulWeaponMap(player)
     local weaponMeta = testGear.WEAPON_INFO[wKey]
     if allowedSkills ~= nil and weaponMeta ~= nil then
-        return allowedSkills[weaponMeta.skill] == true
+        -- ALLOWED_SKILLS_BY_SPEC is a *weapon-skill* whitelist, not a ban
+        -- on carrying weapons. Ranged-only Souls (Flintlock, Huntsman)
+        -- still need legal main-hand equipment for stats and survivability.
+        -- If the Soul explicitly lists at least one melee WS family, keep
+        -- restricting its melee weapon choices to those families.
+        local anyMeleeSkill = false
+        for _, info in pairs(testGear.WEAPON_INFO) do
+            if not info.isRanged and allowedSkills[info.skill] == true then
+                anyMeleeSkill = true
+                break
+            end
+        end
+        if weaponMeta.isRanged or anyMeleeSkill then
+            return allowedSkills[weaponMeta.skill] == true
+        end
+        -- Ranged-only WS whitelist: fall through to native mainhand legality.
     end
     local blmJob = (xi.job and xi.job.BLM) or 4
     if (wKey == 'scythe' or wKey == 'scythe_blm') and jobId == blmJob then
