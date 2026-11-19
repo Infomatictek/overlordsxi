@@ -29,6 +29,15 @@
 
 The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-1 passive mods, Katana WS profile, and opt-in **GM-only dynamic entity spawn probe** are implemented. The existing `nin_specs.lua` module is already included in `modules/init.append.txt`, so no second NIN module registration is needed. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
 
+## Follow-up: clone gear and idle behavior (November 18, 2026)
+
+In-game: three clones spawned and combat partially worked, but equipment appearances did not match and some copies stood idle.
+
+- The appearance encoder now tries the existing engine's complete PC look string if available, otherwise supports named equipment model fields and numeric equipment/look-slot tables. It checks for empty/undecodable models rather than silently sending all-zero gear. The GM spawn message shows whether a native look or a decoded model table was used.
+- Combat no longer treats a successful `pcall(updateEnmity)` as proof of engagement. A clone independently retries until `isEngaged()` confirms it is attacking. `!kurogane status` exposes live engaged/waiting counts and attempt totals.
+- **The appearance copy is still not proven exact** on this LSB build. If the engine only exposes some slots, a proper full-look C++ binding will be required. In that case the spawn command reports which source fields were available, rather than claiming equipment was mirrored.
+- Update the map server from `main`, restart `xi_map`, then repeat an engaged-target test and capture the spawn message and `!kurogane status` before the 6–10-second clones expire.
+
 ## Clone visibility fix (November 18, 2026)
 
 LandSandBoat requires a complete equipped look **before** `insertDynamicEntity` inserts a MOB into its zone, otherwise it can remain invisible. Kurogane previously supplied the player's numeric `getModelId()` and then called `setLook()` on a MOB; `setLook()` is NPC-only and cannot reconstruct the player look. The test probe now serializes a 20-byte PC appearance using `getRace()`, `getFace()`, and `getEquipmentModelIds()` into the initial `look` field.

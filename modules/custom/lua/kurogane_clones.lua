@@ -116,13 +116,24 @@ local function tickOwner(owner, state)
             -- the owner's current target and LSB handles pathing/auto-attacks.
             -- No scripted WS, Ninjutsu or fake damage: those need owner attribution.
             rec.nextActionAt = now + (0.7 + math.random() * 1.2)
-            if K.ENABLE_EXPERIMENTAL_COMBAT and not rec.engaged then
-                if rec.mob.updateEnmity then
+            if K.ENABLE_EXPERIMENTAL_COMBAT then
+                -- pcall only tells us the API did not throw; it DOES NOT mean
+                -- native AI entered combat. Reattempt until the engine itself
+                -- confirms engagement. This fixes intermittent idle copies.
+                local engaged = rec.mob.isEngaged and rec.mob:isEngaged() or false
+                if not engaged and rec.mob.updateEnmity then
                     local ok = pcall(function() rec.mob:updateEnmity(target) end)
-                    rec.engaged = ok
                     rec.action = ok and 1 or 0
+                    rec.attempts = (rec.attempts or 0) + 1
+                    if rec.mob.lookAt and target.getPos then
+                        pcall(function() rec.mob:lookAt(target:getPos()) end)
+                    end
+                    -- Retry at the next independent AI interval.
+                    rec.nextActionAt = now + (0.35 + math.random() * 0.45)
+                else
+                    rec.action = 1
                 end
-            elseif rec.mob.lookAt and not K.ENABLE_EXPERIMENTAL_COMBAT then
+            elseif rec.mob.lookAt then
                 pcall(function() rec.mob:lookAt(target:getPos()) end)
             end
         end
@@ -148,29 +159,88 @@ local function lookWord(value)
     return string.format('%02X%02X', n % 256, math.floor(n / 256))
 end
 
+-- Native look data varies by binding. Read named, 0-based and 1-based
+-- model tables; do NOT silently encode every piece as 0 for unsupported keys.
+local LOOK_SLOTS = { 'head', 'body', 'hands', 'legs', 'feet', 'main', 'sub', 'ranged' }
+local LOOK_EQUIP_INDEX = { 4, 5, 6, 7, 8, 0, 1, 2 }
+
+local function getModel(models, key, index, preferZeroBased)
+    if type(models) ~= 'table' and type(models) ~= 'userdata' then return nil end
+    local ok, direct = pcall(function()
+        return models[key] or models[string.upper(key)]
+    end)
+    if not ok then direct = nil end
+    if direct ~= nil then return tonumber(direct) end
+    -- Some LSB bindings return values by equipment index (MAIN=0, HEAD=4),
+    -- others return an ordered array of look slots.
+    local okSlots, slots = pcall(function()
+        return models.slots or models.equipment or models.models
+    end)
+    if not okSlots then slots = nil end
+    if type(slots) == 'table' then
+        return getModel(slots, key, index, preferZeroBased)
+    end
+    local slotIndex = LOOK_EQUIP_INDEX[index]
+    local okNumeric, numeric = pcall(function()
+        if preferZeroBased and models[0] ~= nil and models[4] ~= nil then
+            return models[slotIndex]
+        end
+        if models[1] ~= nil and models[8] ~= nil then
+            return models[index]
+        end
+        return models[slotIndex]
+    end)
+    return okNumeric and tonumber(numeric) or nil
+end
+
 local function getOwnerLook(owner)
+    -- If the map exposes its own complete PC look string, that is always
+    -- preferable to reconstructing it from per-slot values.
+    if owner.getLook then
+        local ok, look = pcall(function() return owner:getLook() end)
+        if ok and type(look) == 'string' and #look == 42
+            and look:match('^0[xX]%x+$') then
+            return look, 'native'
+        end
+    end
+
     if not (owner.getRace and owner.getFace and owner.getEquipmentModelIds) then
         return nil, 'player appearance API unavailable'
     end
-    local models = owner:getEquipmentModelIds()
-    if not models then return nil, 'equipment appearance unavailable' end
+    local ok, models = pcall(function() return owner:getEquipmentModelIds() end)
+    if not ok or (type(models) ~= 'table' and type(models) ~= 'userdata') then
+        return nil, 'equipment appearance missing or unexpected type'
+    end
     local race = math.floor(tonumber(owner:getRace()) or 0)
     local face = math.floor(tonumber(owner:getFace()) or 0)
     if race < 1 or race > 8 or face < 0 or face > 255 then
         return nil, 'invalid player race/face'
     end
-    -- The Lua binding exposes five equipped model IDs, but not legs/feet/ranged.
-    -- Use the equipped-model slot's plain starter appearance for those until
-    -- the C++ binding can expose all eight model IDs. These placeholders are
-    -- intentionally visible, but will not exactly copy leg/foot equipment.
-    local legs = 0x4008
-    local feet = 0x5008
+
     local look = string.format('0x0100%02X%02X', face, race)
-        .. lookWord(models.head) .. lookWord(models.body) .. lookWord(models.hands)
-        .. lookWord(legs) .. lookWord(feet)
-        .. lookWord(models.main) .. lookWord(models.sub) .. lookWord(0)
+    local found, pieces = 0, {}
+    local okZero, firstZero = pcall(function() return models[0] end)
+    local zeroIndexed = okZero and firstZero ~= nil
+    for i, name in ipairs(LOOK_SLOTS) do
+        local value = getModel(models, name, i, zeroIndexed)
+        if value ~= nil and value > 0 then found = found + 1 end
+        pieces[i] = value or 0
+        look = look .. lookWord(pieces[i])
+    end
     if #look ~= 42 then return nil, 'invalid equipped look length' end
-    return look
+
+    -- Do not mistake a table with unknown field names for naked/no-equipment.
+    -- A completely blank look would conceal the real reason gear isn't copied.
+    if found == 0 then
+        local keys = {}
+        if type(models) == 'table' then
+            for k in pairs(models) do
+                if #keys < 12 then keys[#keys + 1] = tostring(k) end
+            end
+        end
+        return nil, 'no equipment models decoded; model keys=' .. table.concat(keys, ',')
+    end
+    return look, ('decoded %d/8 models'):format(found)
 end
 
 local function makeClone(owner, target, index)
@@ -185,8 +255,8 @@ local function makeClone(owner, target, index)
     local theta = index * 2.399963 + math.random() * 0.3
     local x = owner:getXPos() + math.cos(theta) * 1.4
     local z = owner:getZPos() + math.sin(theta) * 1.4
-    local look, lookErr = getOwnerLook(owner)
-    if not look then return nil, lookErr end
+    local look, lookInfo = getOwnerLook(owner)
+    if not look then return nil, lookInfo end
     local mob = zone:insertDynamicEntity({
         objtype = xi.objType.MOB,
         allegiance = xi.allegiance and xi.allegiance.PLAYER or nil,
@@ -230,7 +300,7 @@ local function makeClone(owner, target, index)
     end
     -- Native AI shouldn't move/engage until its independent startup delay.
     if mob.stun then mob:stun(300 + math.random(250, 950)) end
-    return mob
+    return mob, lookInfo
 end
 
 function K.spawn(owner, count)
@@ -272,8 +342,8 @@ function K.spawn(owner, count)
         if spawned == 1 then
             local mobStatus = mobOrErr.getStatus and mobOrErr:getStatus() or -1
             state.lastSpawnInfo = string.format(
-                'entity=%s status=%s look=equipped-20B zone=%s',
-                tostring(mobOrErr:getID()), tostring(mobStatus), tostring(zoneId(mobOrErr)))
+                'entity=%s status=%s look=%s zone=%s',
+                tostring(mobOrErr:getID()), tostring(mobStatus), tostring(err or 'unknown'), tostring(zoneId(mobOrErr)))
         end
     end
     setCount(owner, state)
@@ -296,14 +366,25 @@ function K.getSnapshot(owner)
         return { clones = 0, next_exp = 0 }
     end
     local now, count, nextExp = xi.overlords.nowSec(), 0, 0
+    local engaged, waiting, attempts = 0, 0, 0
     for _, record in ipairs(state.clones) do
         if record.mob and record.mob:isAlive() and record.expiresAt > now then
             count = count + 1
+            if record.mob.isEngaged and record.mob:isEngaged() then
+                engaged = engaged + 1
+            else
+                waiting = waiting + 1
+            end
+            attempts = attempts + (record.attempts or 0)
             local remaining = record.expiresAt - now
             if nextExp == 0 or remaining < nextExp then nextExp = remaining end
         end
     end
-    return { clones = count, next_exp = math.ceil(nextExp), diagnostic = state.lastSpawnInfo or '' }
+    return {
+        clones = count, next_exp = math.ceil(nextExp),
+        engaged = engaged, waiting = waiting, attempts = attempts,
+        diagnostic = state.lastSpawnInfo or '',
+    }
 end
 
 return K
