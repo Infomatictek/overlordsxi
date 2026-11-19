@@ -84,6 +84,13 @@ custom/lua/rng_specs.lua
 custom/sql/rng_specs.sql
 
 custom/lua/overlords_soul_hud.lua
+custom/lua/pld_oathbreaker.lua
+custom/lua/drk_reaper.lua
+custom/lua/rng_sniper.lua
+custom/lua/drg_lancer.lua
+custom/lua/blu_warmage.lua
+custom/lua/smn_primalist.lua
+custom/lua/geo_terramancer.lua
 custom/commands/soulhud.lua
 
 custom/cpp/overlords_soulhud_sync.cpp
