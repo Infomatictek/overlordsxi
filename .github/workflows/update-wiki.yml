@@ -16,6 +16,7 @@ on:
       - 'scripts/generate-site-data.py'
       - 'scripts/export_lua_wiki_data.lua'
       - 'tests/test_ci_tooling.py'
+      - 'tools/audit_soul_wiki_guides.py'
       - '.github/workflows/update-wiki.yml'
   pull_request:
     branches:
@@ -29,6 +30,7 @@ on:
       - 'scripts/generate-site-data.py'
       - 'scripts/export_lua_wiki_data.lua'
       - 'tests/test_ci_tooling.py'
+      - 'tools/audit_soul_wiki_guides.py'
       - '.github/workflows/update-wiki.yml'
   workflow_dispatch:
 
@@ -58,6 +60,16 @@ jobs:
 
       - name: Run CI tooling unit tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Report missing or incomplete Soul guides
+        run: python tools/audit_soul_wiki_guides.py . --csv soul-guide-coverage.csv
+
+      - name: Upload Soul guide coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: soul-guide-coverage
+          path: soul-guide-coverage.csv
+          retention-days: 14
 
       - name: Generate and validate site/data.json and site/data.js
         run: |
