@@ -20,6 +20,7 @@ custom/lua/brd_specs.lua
 custom/lua/sam_specs.lua
 custom/lua/bst_specs.lua
 custom/lua/pld_specs.lua
+custom/lua/kurogane_clones.lua
 custom/lua/nin_specs.lua
 custom/lua/blu_specs.lua
 custom/lua/pup_specs.lua
@@ -47,6 +48,7 @@ custom/sql/pld_specs.sql
 custom/sql/nin_specs.sql
 custom/sql/blu_specs.sql
 custom/sql/pup_specs.sql
+custom/commands/kurogane.lua
 custom/commands/spec.lua
 custom/commands/eos.lua
 custom/commands/talent.lua

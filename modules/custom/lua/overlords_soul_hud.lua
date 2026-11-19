@@ -675,6 +675,22 @@ hud.registerProvider('warlord', function(player)
 end)
 
 -----------------------------------
+-- Kurogane NIN: experimental dynamic clone preview telemetry
+-----------------------------------
+hud.registerProvider('kurogane', function(player)
+    local api = xi.overlords and xi.overlords.kurogane
+    if api and api.getSnapshot then
+        local snapshot = api.getSnapshot(player)
+        return {
+            clones = snapshot.clones or 0,
+            clone_exp = snapshot.next_exp or 0,
+            clone_test = api.ENABLE_EXPERIMENTAL_CLONES and 1 or 0,
+        }
+    end
+    return { clones = 0, clone_exp = 0, clone_test = 0 }
+end)
+
+-----------------------------------
 -- 12. NIN Soul: kagemusha
 -----------------------------------
 hud.registerProvider('kagemusha', function(player)
