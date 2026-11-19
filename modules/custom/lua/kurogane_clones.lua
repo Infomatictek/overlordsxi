@@ -116,13 +116,24 @@ local function tickOwner(owner, state)
             -- the owner's current target and LSB handles pathing/auto-attacks.
             -- No scripted WS, Ninjutsu or fake damage: those need owner attribution.
             rec.nextActionAt = now + (0.7 + math.random() * 1.2)
-            if K.ENABLE_EXPERIMENTAL_COMBAT and not rec.engaged then
-                if rec.mob.updateEnmity then
+            if K.ENABLE_EXPERIMENTAL_COMBAT then
+                -- pcall only tells us the API did not throw; it DOES NOT mean
+                -- native AI entered combat. Reattempt until the engine itself
+                -- confirms engagement. This fixes intermittent idle copies.
+                local engaged = rec.mob.isEngaged and rec.mob:isEngaged() or false
+                if not engaged and rec.mob.updateEnmity then
                     local ok = pcall(function() rec.mob:updateEnmity(target) end)
-                    rec.engaged = ok
                     rec.action = ok and 1 or 0
+                    rec.attempts = (rec.attempts or 0) + 1
+                    if rec.mob.lookAt and target.getPos then
+                        pcall(function() rec.mob:lookAt(target:getPos()) end)
+                    end
+                    -- Retry at the next independent AI interval.
+                    rec.nextActionAt = now + (0.35 + math.random() * 0.45)
+                else
+                    rec.action = 1
                 end
-            elseif rec.mob.lookAt and not K.ENABLE_EXPERIMENTAL_COMBAT then
+            elseif rec.mob.lookAt then
                 pcall(function() rec.mob:lookAt(target:getPos()) end)
             end
         end
@@ -342,14 +353,25 @@ function K.getSnapshot(owner)
         return { clones = 0, next_exp = 0 }
     end
     local now, count, nextExp = xi.overlords.nowSec(), 0, 0
+    local engaged, waiting, attempts = 0, 0, 0
     for _, record in ipairs(state.clones) do
         if record.mob and record.mob:isAlive() and record.expiresAt > now then
             count = count + 1
+            if record.mob.isEngaged and record.mob:isEngaged() then
+                engaged = engaged + 1
+            else
+                waiting = waiting + 1
+            end
+            attempts = attempts + (record.attempts or 0)
             local remaining = record.expiresAt - now
             if nextExp == 0 or remaining < nextExp then nextExp = remaining end
         end
     end
-    return { clones = count, next_exp = math.ceil(nextExp), diagnostic = state.lastSpawnInfo or '' }
+    return {
+        clones = count, next_exp = math.ceil(nextExp),
+        engaged = engaged, waiting = waiting, attempts = attempts,
+        diagnostic = state.lastSpawnInfo or '',
+    }
 end
 
 return K
