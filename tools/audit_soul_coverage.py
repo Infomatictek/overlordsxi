@@ -15,7 +15,7 @@ from pathlib import Path
 CATALOG = Path('modules/custom/lua/overlords_job_specs.lua')
 JOB_OPEN = re.compile(r'^\s*([A-Z]{3})\s*=\s*$')
 ID = re.compile(r"\bid\s*=\s*['\"]([a-z][a-z0-9_]*)['\"]")
-LUA_STRING = re.compile(r"['\"]([a-z][a-z0-9_]*)['\"]")
+KEY_ASSIGNMENT = re.compile(r"\\bkey\\s*=\\s*(?:['\\\"]([a-z][a-z0-9_]*)['\\\"]|([A-Z][A-Z_0-9]*))")
 CONST = re.compile(r"\blocal\s+(\w+)\s*=\s*['\"]([a-z][a-z0-9_]*)['\"]")
 REGISTRATION = re.compile(r'\bspec\s*\.\s*(?:registerCrystal|registerJob)\s*\(')
 
@@ -42,6 +42,33 @@ def catalog_entries(source: str) -> list[tuple[str, str]]:
     return result
 
 
+def extract_registration_args(source: str, start: int) -> str:
+    """Read one balanced call, skipping quoted strings and line comments."""
+    depth = 1
+    i = start
+    quote = None
+    while i < len(source) and depth:
+        char = source[i]
+        if quote is not None:
+            if char == '\\\\':
+                i += 2
+                continue
+            if char == quote:
+                quote = None
+        elif source.startswith('--', i):
+            newline = source.find('\\n', i)
+            i = len(source) if newline < 0 else newline + 1
+            continue
+        elif char in ("'", '"'):
+            quote = char
+        elif char == '(':
+            depth += 1
+        elif char == ')':
+            depth -= 1
+        i += 1
+    return source[start:i - 1] if depth == 0 else ''
+
+
 def analyze(root: Path) -> list[dict[str, str]]:
     path = root / CATALOG
     if not path.is_file():
@@ -53,13 +80,14 @@ def analyze(root: Path) -> list[dict[str, str]]:
     for file in files:
         data = file.read_text(encoding='utf-8-sig', errors='replace')
         constants = dict(CONST.findall(data))
-        registrations = []
+        registrations = set()
         for hit in REGISTRATION.finditer(data):
-            snippet = data[max(0, hit.start()-350): hit.start()+850]
-            literal_keys = set(LUA_STRING.findall(snippet))
-            literal_keys.update(value for key, value in constants.items()
-                                if re.search(r'\b'+re.escape(key)+r'\b', snippet))
-            registrations.append(literal_keys)
+            args = extract_registration_args(data, hit.end())
+            for match in KEY_ASSIGNMENT.finditer(args):
+                literal, variable = match.groups()
+                key = literal or constants.get(variable)
+                if key:
+                    registrations.add(key)
         indexed.append((file.relative_to(root).as_posix(), data, registrations))
     rows = []
     for job, key in souls:
@@ -68,7 +96,7 @@ def analyze(root: Path) -> list[dict[str, str]]:
         for file, data, regs in indexed:
             if pattern.search(data):
                 references.append(file)
-                if any(key in candidates for candidates in regs):
+                if key in regs:
                     registrations.append(file)
         status = ('registration-evidence' if registrations else
                   'referenced-only' if references else 'catalog-only')
