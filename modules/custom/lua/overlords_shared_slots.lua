@@ -54,21 +54,35 @@ for effId, effName in pairs(SLOT_EFFECT_NAMES) do
         local mods = pendingSlotMods[key]
         pendingSlotMods[key] = nil
 
-        if type(mods) == 'table' then
-            for _, pair in ipairs(mods) do
-                local modId = pair[1]
-                local val   = pair[2]
-                if effId == S.EFF_OX_SUP_WARD then
-                    if modId == xi.mod.DMG then
-                        val = math.max(-1500, math.min(0, val))
-                    elseif modId == xi.mod.MEVA then
-                        val = math.min(35, math.max(0, val))
-                    end
-                end
-                if modId ~= nil and val ~= nil and val ~= 0 then
-                    effect:addMod(modId, val)
+        local function applyClampedMod(modId, val)
+            if modId == nil or val == nil or val == 0 then
+                return
+            end
+            if effId == S.EFF_OX_SUP_WARD then
+                if modId == xi.mod.DMG then
+                    val = math.max(-1500, math.min(0, val))
+                elseif modId == xi.mod.MEVA then
+                    val = math.min(35, math.max(0, val))
                 end
             end
+            if val ~= 0 then
+                effect:addMod(modId, val)
+            end
+        end
+
+        if type(mods) == 'table' then
+            for _, pair in ipairs(mods) do
+                applyClampedMod(pair[1], pair[2])
+            end
+        elseif type(mods) == 'function' then
+            local proxy =
+            {
+                addMod = function(_self, modId, val)
+                    applyClampedMod(modId, val)
+                end,
+            }
+            setmetatable(proxy, { __index = effect })
+            mods(proxy)
         end
     end)
 
@@ -82,9 +96,19 @@ function S.applySlot(target, effectId, power, duration, origin, modsTable, iconI
     end
 
     local pwr = math.max(1, math.floor(power or 1))
+    local dur = duration or 12
     local existing = target.getStatusEffect and target:getStatusEffect(effectId) or nil
-    if existing ~= nil and (existing:getPower() or 0) > pwr then
-        return false
+    if existing ~= nil then
+        local existingPow = existing:getPower() or 0
+        if existingPow > pwr then
+            return false
+        end
+        if existingPow == pwr and existing.getTimeRemaining then
+            local remSec = (existing:getTimeRemaining() or 0) / 1000
+            if remSec > dur then
+                return false
+            end
+        end
     end
 
     if target.delStatusEffectSilent then
@@ -97,7 +121,7 @@ function S.applySlot(target, effectId, power, duration, origin, modsTable, iconI
     local ok = target:addStatusEffect(effectId,
     {
         power    = pwr,
-        duration = duration or 12,
+        duration = dur,
         origin   = origin or target,
         icon     = resolvedIcon,
         tier     = 1,

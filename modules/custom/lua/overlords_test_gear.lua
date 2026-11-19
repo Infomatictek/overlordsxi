@@ -3521,6 +3521,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.BRD or 10) then
         return { role = 'caster', weapon = 'dagger', offhand = 'shield', ranged = 'instrument', ammo = 'none', label = 'Bard (Dagger & Instrument)' }
     elseif jobId == (j.RNG or 11) then
+        if specKey == 'huntsman' then
+            return { role = 'tp', weapon = 'axe', offhand = 'dagger', ranged = 'none', ammo = 'ammo_tp', label = 'RNG Huntsman (1H Axe & Beast Warden)', specEntry = specEntry }
+        end
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'bow', ammo = 'arrow', label = 'Ranger (Dagger & Bow)' }
     elseif jobId == (j.SAM or 12) then
         if specKey == 'ronin' then
@@ -3666,6 +3669,13 @@ function testGear.isWeaponAllowedForJob(player, wKey)
             return false
         end
     end
+    local rngJob = (xi.job and xi.job.RNG) or 11
+    if jobId == rngJob then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'huntsman' then
+            return wKey == 'axe' or wKey == 'dagger'
+        end
+    end
     local allowedList = testGear.JOB_WEAPONS[jobId]
     if allowedList == nil then
         return true
@@ -3702,6 +3712,11 @@ function testGear.applyWeaponOverride(profile, weaponOverride, player)
                 return false, 'MNK Black Belt can only wield Hand-to-Hand weapons.'
             elseif activeSpec == 'chiweaver' then
                 return false, 'MNK Chi Weaver fights unarmed and cannot equip weapons.'
+            end
+        elseif player:getMainJob() == ((xi.job and xi.job.RNG) or 11) then
+            local activeSpec = testGear.getActiveSpecKey(player, player:getMainJob())
+            if activeSpec == 'huntsman' then
+                return false, 'RNG Huntsman fights with a 1H Axe (and optional offhand Dagger).'
             end
         end
         return false, string.format('%s cannot use %s weapons.', spec and spec.getJobName(player:getMainJob()) or 'Your job', info.label)
@@ -3850,11 +3865,17 @@ function testGear.buildLoadout(player, opts)
             local gripPool = testGear.SUBS[profile.offhand] or testGear.SUBS.grip_melee
             subItem = testGear.pickFromPool(player, gripPool, targetLevel)
         elseif wInfo and not wInfo.isH2H then
-            if profile.offhand == 'auto' and hasDualWield(player) then
-                subItem = testGear.pickFromPool(player, weaponPool, targetLevel, { excludeId = mainItem.id, weaponKey = profile.weapon })
-            end
-            if subItem == nil then
-                subItem = testGear.pickFromPool(player, testGear.SUBS.shield, targetLevel)
+            if profile.offhand == 'dagger' then
+                if hasDualWield(player) then
+                    subItem = testGear.pickFromPool(player, testGear.WEAPONS.dagger, targetLevel, { excludeId = mainItem.id, weaponKey = 'dagger' })
+                end
+            else
+                if profile.offhand == 'auto' and hasDualWield(player) then
+                    subItem = testGear.pickFromPool(player, weaponPool, targetLevel, { excludeId = mainItem.id, weaponKey = profile.weapon })
+                end
+                if subItem == nil then
+                    subItem = testGear.pickFromPool(player, testGear.SUBS.shield, targetLevel)
+                end
             end
         end
     end
