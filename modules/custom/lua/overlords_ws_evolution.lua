@@ -6,7 +6,7 @@ local talents = xi.overlords and xi.overlords.wsTalents
 if not talents then return end
 
 local function node(key, name, stage, col, description, effect, extra)
-    local tier = math.min(stage, 4)
+    local tier = stage
     local n =
     {
         key = key, name = name, tier = tier, col = col,
@@ -23,10 +23,7 @@ local function node(key, name, stage, col, description, effect, extra)
     return n
 end
 
--- The old 4x4 UI protocol permits one node per grid location. Stage five uses
--- the fourth tier's remaining column; the SC selectors keep column 4.
--- Stage alternatives share a tier but have distinct slots and are laid out
--- on separate columns to preserve backwards-compatible server packet fields.
+-- Five stages with two choices each; the client renders all five rows.
 talents.registerCustomWS(1,
 {
     archetype = 'utility',
@@ -77,7 +74,7 @@ talents.registerCustomWS(47,
         node('e_sg_arcane', 'Arcane Reaver', 1, 1,
              'Magical strike: spellblade-scaled Dark damage, +50 MAB, +35 MACC.',
              { matt = 50, macc = 35, wsc = { int = 0.35, mnd = 0.25 } },
-             { allowedSpecs = { spellblade = true, magus = true, vampire = true, rdm = true } }),
+             { allowedSpecs = { spellblade = true, magus = true, vampire = true }, allowedJobs = { [xi.job.RDM] = true } }),
         node('e_sg_blood', 'Blood Discipline', 1, 2,
              'Controlled sustain identity: +8% HP recovery from WS damage.',
              { hpDrain = 8 }, { allowedSpecs = { vampire = true, lifebinder = true, aegistemplar = true, templar = true } }),
@@ -102,7 +99,7 @@ talents.registerCustomWS(47,
         node('e_sg_eclipse', 'Eclipse Reaver', 5, 1,
              'Mastery: powerful magical damage scaling, +65 MAB, +20% potency.',
              { matt = 65, wsd = 20 },
-             { allowedSpecs = { spellblade = true, magus = true, vampire = true, rdm = true } }),
+             { allowedSpecs = { spellblade = true, magus = true, vampire = true }, allowedJobs = { [xi.job.RDM] = true } }),
         node('e_sg_hunger', 'Measured Hunger', 5, 2,
              'Mastery: controlled recovery +6% HP and +8% MP from damage.',
              { hpDrain = 6, mpDrain = 8 },
