@@ -38,10 +38,11 @@ The server branch now includes `modules/custom/lua/kurogane_clones.lua` and a GM
 3. Engage and select a disposable test mob in an isolated zone.
 4. Enter `!kurogane enable`, then `!kurogane spawn 3`.
 5. Inspect whether copies appear, look like the player, have exactly 1 HP, and disappear independently after 6–10 seconds. Use `!kurogane status` to verify counts and earliest expiration; `!kurogane dismiss` to clean up.
-6. Test target loss, zoning, Soul switch, repeated summons, and boss AoE in a safe environment. End with `!kurogane disable`.
-7. **Do not test in a populated zone.** Native dynamic MOB faction/AoE behavior, character-model look serialization and despawn lifecycle are unverified on the target LSB build.
+6. **Optional, isolated-zone GM-only melee test:** On a disposable target, use `!kurogane combat on` and then `!kurogane spawn 3`. Observe whether the server's native allied-MOB AI actually engages the selected monster with staggered starts, and whether the target can attack them. Damage is deliberately reduced, but it is **not owner-attributed and the real effective damage is unverified**. Stop with `!kurogane combat off`.
+7. Test target loss, zoning, Soul switch, repeated summons, and boss AoE in a safe environment. End with `!kurogane disable`.
+8. **Do not test in a populated zone.** Native dynamic MOB faction/AoE behavior, character-model look serialization and despawn lifecycle are unverified on the target LSB build.
 
-Damage is hard-disabled; current action decisions are **visual/telemetry placeholders** rather than real clone swings, casts, or weaponskills. This is deliberate: owner-attributed damaging actions, target-safe autonomous engagement and correct AoE targeting are still engine-level acceptance criteria. Do not enable this probe on production.
+By default, combat is OFF: the initial probe is visual-only. The separate `combat on` switch makes clones request **native melee combat** using `updateEnmity` on the owner's current selected enemy. Native mob AI may attack without owner kill/EXP credit, and there are no scripted Ninjutsu or WS attacks yet. `PHYS_DMG_DEALT` and Attack penalties are test safeguards, **not an authoritative damage cap**. Confirm behavior in isolation before expanding the feature. Do not enable this probe on production.
 
 ## Engine integration requirements (must be completed before release)
 
