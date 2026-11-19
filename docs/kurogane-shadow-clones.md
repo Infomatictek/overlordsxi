@@ -1,0 +1,43 @@
+# Kurogane (NIN Soul Crystal — Abr: KRG | Tier-1 Pure Damage)
+
+- **Command:** `!spec set kurogane` (Unlocks at Lv. 10)
+- **Allowed Weapons (`ALLOWED_SKILLS_BY_SPEC`):** `xi.skill.KATANA`
+- **Playstyle Loop:** Utsusemi summons multiple fragile, short-lived copies of the Ninja. Each copy independently selects attacks against its owner's target; the player times recasts around enemy AoE and chooses Katana WS talents that affect the clones' offensive decisions.
+- **Passives (Lv10/30/50/70+):**
+  - +10/16/22/28 STR and DEX
+  - +15/25/35/50 Katana skill
+  - +8/12/16/20% Attack, +5/8/12/16% WS Damage
+  - +5/8/11/14 Double Attack, +5/10/15/20 Store TP
+  - -20/-25/-30/-40 Enmity
+  - Tier-1 role scaling: `PHYS_DMG_DEALT = 0`, `MAG_DMG_DEALT = 0`.
+  - All values are initial tuning targets, not measured DPS.
+- **Unique Mechanics:**
+  - **Independent Shadow Clones:** Utsusemi: Ichi creates up to three real NPC clones, Ni creates up to four. Owner-wide normal cap five; replacement at cap replaces the oldest. Each clone's lifetime is 6–10 seconds, HP exactly 1, and offensive stats are snapshotted on spawn, scaled to an owner-wide damage budget.
+  - **Independent Decision-Making:** Every clone has a distinct time offset, attack cooldown, and weighted choice between melee, shuriken, offensive Ninjutsu, and occasional WS. Choices and timings are independent, including when two clones pick the same behavior. Clones target only the owner's current valid engaged enemy; no autonomous target acquisition, AoE pulls or independent loot/TP.
+  - **AoE Fragility:** Any valid damaging enemy attack, including AoE, can instantly kill a clone. Death/expiry produces smoke. No clone-death buffs, no damage retaliation, no healing, no absorbed player damage. Clone AI cannot spawn more clones.
+  - **Clone Damage:** owner + all clones combined calibrated to Tier-1 DPS (~8x tank baseline), under actual boss AoE cadence. Clones do not use default offensive coefficients unscaled; every damage action respects owner-wide clone damage cap. Clone WS do not create uncontrolled skillchains.
+  - **JA Enhancements:** Kurogane Utsusemi creates NPC clones rather than `COPY_IMAGE`/defensive shadows. Kagemusha's original Utsusemi and Kage Bunshin remain entirely unchanged.
+- **Custom Job Abilities (2), proposed and not active:**
+  1. **Shadow Legion** (CD: 90s, Self): Spawns a rapid wave of up to eight clones in staggered batches; active pool is bounded. No defensive effects or group utility.
+  2. **Phantom Assault** (CD: 30s, current enemy within 20y): For 5s, surviving clones choose offensive actions more aggressively and with shorter independent decision windows. Does not synchronize their animation or reward deaths.
+- **WS Talent Profile (`overlords_ws_spec_profiles.lua`):**
+  - `SPEC_META`: `pref = 'dex'`, `role = 'dps'`, `pfx = 'krg'`
+  - `STANCE_DEFS`: Innin, Futae, Sange (offensive contexts only)
+  - `Col 1 / Col 2 / Col 3 Hooks`: Existing bespoke WS builders currently apply the Kurogane profile. Dedicated clone behavior hooks **not yet implemented**. Proposed future bridges: clone action weighting (Col 1), clone WS action selection (Col 2), cadence/targeting within DPS budget (Col 3).
+
+## Status of this branch
+
+The Soul's registry entry, Tier-1 passive mods, and Katana WS profile are implemented. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
+
+## Engine integration requirements (must be completed before release)
+
+1. Add a server-managed multi-entity clone system; LandSandBoat's normal single-pet slot is unsuitable for 3–8 simultaneous copies.
+2. Replicate the owner's character look and equipped weapons in spawned clones, with a unique owner association, full defensive vulnerability and exactly 1 HP. Restrict clone target acquisition to the owner's engaged enemy.
+3. Hook Kurogane-only Utsusemi completion *before* vanilla `COPY_IMAGE` effect application. On success, spawn Ichi/Ni copies **without** granting the owner any protective Utsusemi shadow effect. Preserve Kagemusha-specific spell overrides untouched.
+4. Implement independent clone schedules (staggered jitter/weighted choices) in the real entity combat system; implement safe owner-attributed damage and prevention of recursive triggers/skillchain side effects.
+5. Implement immediate cleanup on expiry, death, owner death, zoning, logout, unsocket, job/level changes, despawn and server reset. Repeated casting must respect the per-owner cap.
+6. Define and register two new NIN custom JA IDs/recasts in SQL and client ability data; **do not reuse 443/444**, which belong to Kagemusha.
+7. Implement Kurogane WS talent bridge and tests (NPC cap, 1-HP AoE death, targeting, gear snapshot, logout/zone cleanup, Kagemusha nonregression, owner-wide DPS attribution).
+8. Run full LSB C++ compilation, Lua integration checks, database migration checks and in-game validation before merging.
+
+This is a development specification and registry scaffold, **not a finished playable clone feature**.
