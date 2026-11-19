@@ -1,0 +1,69 @@
+diff --git a/src/map/packets/entity_update.cpp b/src/map/packets/entity_update.cpp
+index 3669f94efe..63eae286b8 100644
+--- a/src/map/packets/entity_update.cpp
++++ b/src/map/packets/entity_update.cpp
+@@ -577,17 +577,21 @@ void CEntityUpdatePacket::updateWith(CBaseEntity* PEntity, ENTITYUPDATE type, ui
+ 
+         std::memcpy(buffer_.data() + 0x30, &PEntity->look, sizeof(look_t));
+ 
+-        auto name       = PEntity->packetName;
+-        auto nameOffset = 0x44;
+-        auto maxLength  = std::min<size_t>(name.size(), PacketNameLength);
++        auto   name       = PEntity->packetName;
++        size_t nameOffset = 0x44;
++        auto   maxLength  = std::min<size_t>(name.size(), PacketNameLength);
+ 
+         // Make sure to zero-out the existing name area of the packet
+-        auto start = buffer_.data() + nameOffset;
+-        auto size  = this->getSize();
+-        std::memset(start, 0U, size);
++        auto         start = buffer_.data() + nameOffset;
++        const size_t size  = this->getSize();
++        if (size > nameOffset)
++        {
++            const size_t remaining = size - nameOffset;
++            std::memset(start, 0U, remaining);
+ 
+-        // Copy in name
+-        std::memcpy(start, name.c_str(), maxLength);
++            // Copy in name
++            std::memcpy(start, name.c_str(), std::min<size_t>(maxLength, remaining));
++        }
+     }
+     // If the entity has been renamed, we have to re-send the name during every update.
+     // Otherwise it will revert to it's default name (if applicable).
+@@ -598,9 +602,9 @@ void CEntityUpdatePacket::updateWith(CBaseEntity* PEntity, ENTITYUPDATE type, ui
+ 
+         this->setSize(0x48);
+ 
+-        auto name       = PEntity->packetName;
+-        auto nameOffset = 0x34;
+-        auto maxLength  = std::min<size_t>(name.size(), PacketNameLength);
++        auto   name       = PEntity->packetName;
++        size_t nameOffset = 0x34;
++        auto   maxLength  = std::min<size_t>(name.size(), PacketNameLength);
+ 
+         // Mobs and NPC's targid's live in the range 0-1023
+         if (PEntity->targid < 1024)
+@@ -610,12 +614,16 @@ void CEntityUpdatePacket::updateWith(CBaseEntity* PEntity, ENTITYUPDATE type, ui
+         }
+ 
+         // Make sure to zero-out the existing name area of the packet
+-        auto start = buffer_.data() + nameOffset;
+-        auto size  = this->getSize();
+-        std::memset(start, 0U, size);
++        auto         start = buffer_.data() + nameOffset;
++        const size_t size  = this->getSize();
++        if (size > nameOffset)
++        {
++            const size_t remaining = size - nameOffset;
++            std::memset(start, 0U, remaining);
+ 
+-        // Copy in name
+-        std::memcpy(start, name.c_str(), maxLength);
++            // Copy in name
++            std::memcpy(start, name.c_str(), std::min<size_t>(maxLength, remaining));
++        }
+     }
+ 
+     //  Don't overwrite data for model size and hitbox size from look string on NPCs
