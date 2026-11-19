@@ -60,8 +60,8 @@ local function clearPetMods(pet)
     if not pet or not pet.getID then return end
     local id = pet:getID()
     local prev = petModsByID[id]
-    if prev and pet.delMod then
-        for _, bonus in ipairs(prev) do
+    if prev and prev.entity == pet and pet.delMod then
+        for _, bonus in ipairs(prev.bonuses) do
             pet:delMod(bonus[1], bonus[2])
         end
     end
@@ -83,10 +83,10 @@ local function syncPetMods(master, pet)
     }
     local id = pet:getID()
     local prev = petModsByID[id]
-    local changed = prev == nil or #prev ~= #desired
+    local changed = prev == nil or prev.entity ~= pet or #prev.bonuses ~= #desired
     if not changed then
         for index, bonus in ipairs(desired) do
-            if prev[index][1] ~= bonus[1] or prev[index][2] ~= bonus[2] then
+            if prev.bonuses[index][1] ~= bonus[1] or prev.bonuses[index][2] ~= bonus[2] then
                 changed = true
                 break
             end
@@ -97,7 +97,7 @@ local function syncPetMods(master, pet)
     for _, bonus in ipairs(desired) do
         pet:addMod(bonus[1], bonus[2])
     end
-    petModsByID[id] = desired
+    petModsByID[id] = { entity = pet, bonuses = desired }
 end
 
 local function detach(master)
