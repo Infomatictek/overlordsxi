@@ -15,6 +15,13 @@
 - Lore hooks below are *inspirations* based on FFXI jobs and themes, not claims of canonical historical backstory. Full lore sessions are deferred.
 - Existing role tiers (Damage, HybridSupport, Support, CombatHealer, Healer, Tank), including modal pet-role changes, must remain intentional.
 
+
+## Verification update — 2026-11-19
+- **MNK Sensei, Black Belt and Chi Weaver are already registered in `mnk_specs.lua`.** Chi Weaver currently has a Chi Boost stack/pulse loop. Do not rewrite it into a Yin/Yang spec without a separate playtest decision.
+- WAR, BRD, SAM and RUN also each register all three canonical Souls in their main job modules.
+- Priority has shifted toward **THF and other Souls without verified runtime registration**, not the first design rows in this document. These rows remain optional design inspiration only.
+- Registration is not equivalent to client completeness or playability; use `tools/audit_soul_coverage.py` to identify evidence, then confirm installed modules, SQL, ability DATs and in-game behavior.
+
 ## Candidate designs pending runtime implementation verification
 
 | Soul | Dominant decisions, no default meter | Advantage | Limitation | FFXI lore/ability hook |
