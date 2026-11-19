@@ -18,8 +18,13 @@ local spec = xi.overlords.spec
 K.ENABLE_EXPERIMENTAL_CLONES = K.ENABLE_EXPERIMENTAL_CLONES == true
 K.ENABLE_EXPERIMENTAL_COMBAT = K.ENABLE_EXPERIMENTAL_COMBAT == true
 K.MAX_ACTIVE = 5
-K.LIFETIME_MIN = 6
-K.LIFETIME_MAX = 10
+K.LIFETIME_MIN = 25
+K.LIFETIME_MAX = 30
+-- Disposable attackers, not tanks: enough HP to survive incidental spikes,
+-- but ordinary damage and enemy AoE can still kill them.
+K.HP_OWNER_RATIO = 0.25
+K.HP_MIN = 100
+K.HP_MAX = 750
 K.MAX_ENGAGE_ATTEMPTS = 3
 K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = -95
 K._owners = K._owners or {}
@@ -555,7 +560,6 @@ local function makeClone(owner, target, index)
         if xi.mod.DOUBLE_ATTACK then mob:addMod(xi.mod.DOUBLE_ATTACK, -100) end
         if xi.mod.TRIPLE_ATTACK then mob:addMod(xi.mod.TRIPLE_ATTACK, -100) end
         if xi.mod.QUAD_ATTACK then mob:addMod(xi.mod.QUAD_ATTACK, -100) end
-        if xi.mod.DESPAWN_TIME_REDUCTION then mob:addMod(xi.mod.DESPAWN_TIME_REDUCTION, 15) end
     end
     if mob.setMod and xi.mod then
         if xi.mod.ATTP then mob:setMod(xi.mod.ATTP, -90) end
@@ -563,11 +567,14 @@ local function makeClone(owner, target, index)
         if xi.mod.MATT then mob:setMod(xi.mod.MATT, -100) end
     end
     if mob.setDelay then mob:setDelay(math.random(210, 270)) end
-    if mob.setMaxHP then mob:setMaxHP(1) end
-    if mob.setHP then mob:setHP(1) end
-    if not mob.getHP or mob:getHP() ~= 1 then
+    local ownerMaxHP = owner.getMaxHP and tonumber(owner:getMaxHP()) or 0
+    local cloneHP = math.max(K.HP_MIN, math.min(K.HP_MAX,
+        math.floor(ownerMaxHP * K.HP_OWNER_RATIO + 0.5)))
+    if mob.setMaxHP then mob:setMaxHP(cloneHP) end
+    if mob.setHP then mob:setHP(cloneHP) end
+    if not mob.getHP or mob:getHP() ~= cloneHP then
         dismissMob({ mob = mob })
-        return nil, 'cannot enforce 1 HP on dynamic clone'
+        return nil, 'cannot enforce shadow HP on dynamic clone'
     end
 
     -- Zero threat makes the clone eligible for enemy AoE selection. Its
