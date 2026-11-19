@@ -194,8 +194,33 @@ local function isBuccaneerLoadout(player)
     return hasSword and hasGun
 end
 
+local EQUIP_CONTAINERS =
+{
+    0,  -- xi.inv.INVENTORY
+    8,  -- xi.inv.WARDROBE
+    10, -- xi.inv.WARDROBE2
+    11, -- xi.inv.WARDROBE3
+    12, -- xi.inv.WARDROBE4
+    13, -- xi.inv.WARDROBE5
+    14, -- xi.inv.WARDROBE6
+    15, -- xi.inv.WARDROBE7
+    16, -- xi.inv.WARDROBE8
+}
+
+local function findOwnedContainer(player, itemId)
+    if player == nil or not player.hasItem then
+        return nil
+    end
+    for _, containerId in ipairs(EQUIP_CONTAINERS) do
+        if player:hasItem(itemId, containerId) then
+            return containerId
+        end
+    end
+    return nil
+end
+
 local function ensureCorStarterGear(player)
-    if not isAnyCorSpec(player) or not player.getEquippedItem then
+    if player == nil or not player.getEquippedItem or (player.getMainLvl and player:getMainLvl() < 10) then
         return
     end
 
@@ -207,15 +232,17 @@ local function ensureCorStarterGear(player)
         if not player.hasItem or not player.equipItem then
             return
         end
-        if not player:hasItem(itemId, inventory) then
+        if player.canEquipItem and not player:canEquipItem(itemId, true) then
+            return
+        end
+        local containerId = findOwnedContainer(player, itemId)
+        if containerId == nil then
             if not player.addItem or not player:addItem(itemId, quantity, true) then
                 return
             end
+            containerId = inventory
         end
-        if player.canEquipItem and not player:canEquipItem(itemId, false) then
-            return
-        end
-        player:equipItem(itemId, inventory, slotId)
+        player:equipItem(itemId, containerId, slotId)
     end
 
     equipStarter(STARTER_GUN_ID, xi.slot.RANGED, 1)
@@ -1433,21 +1460,23 @@ if xi.job and xi.job.COR then
             ABIL_HAIR_TRIGGER,
             ABIL_BROADSIDE_SALVO,
         },
-        description    = 'Tier 1 Pure Damage Corsair spec (Lv10+): Deadeye Chamber, Powder Mark Quick Draw detonations, zero self-healing, and 100% Bullet/Card recycle.',
+        description    = 'Tier 1 Pure Damage Corsair spec (Lv10+): Deadeye Chamber, Powder Mark Quick Draw detonations, zero self-healing, starter Gun & Bullets if empty, and 100% Bullet/Card recycle.',
+        gearHints      = { ranged = 'gun', ammo = 'bullet', role = 'ranged' },
         highlights     =
         {
-            'Passives (Lv10/30/50/70+, Gun): +15/22/30/40% R.Atk & M.Atk, +20/30/40/50% Snapshot & Rapid Shot, +10/14/18/22% Ranged Crit, +15/25/35/50 Marksmanship, -15/20/25/35 Enmity.',
+            'Passives (Lv10/30/50/70+, Gun): Auto-equips starter Gun & Bullets if empty; +15/22/30/40% R.Atk & M.Atk, +20/30/40/50% Snapshot & Rapid Shot, +10/14/18/22% Ranged Crit, +15/25/35/50 Marksmanship, -15/20/25/35 Enmity.',
             'Deadeye Chamber (Phantom Roll, 15s CD, self-only): +15/20/25/30% Ranged/Magic WS DMG & +15% Ranged Crit DMG for 30s.',
             'Powder Mark (Quick Draw, 10s charge, 2 charges): marks target for 10s; Marksmanship WS detonates +20% elemental dmg & refunds +150 TP.',
             'Crystal JAs: Hair Trigger (30s CD, +30% Snapshot & +25% WS DMG / -15% DEF), Broadside Salvo (22s CD, 20y single-target 2.0-3.2x shot, +250 TP, +1 QD charge).',
         },
         mods = function(player, lvl)
+            local isWiki = (player == nil) or (not player.getEquippedItem)
             local mods =
             {
                 { xi.mod.RECYCLE, 100 },
                 { xi.mod.ENMITY,  -scaleTier(lvl, 15, 20, 25, 35) },
             }
-            if hasGunEquipped(player) then
+            if isWiki or hasGunEquipped(player) then
                 table.insert(mods, { xi.mod.RATTP,        scaleTier(lvl, 15, 22, 30, 40) })
                 table.insert(mods, { xi.mod.MATT,         scaleTier(lvl, 15, 22, 30, 40) })
                 table.insert(mods, { xi.mod.SNAPSHOT,     scaleTier(lvl, 20, 30, 40, 50) })
@@ -1560,7 +1589,8 @@ if xi.job and xi.job.COR then
             ABIL_GRAPESHOT_BROADSIDE,
             ABIL_IRON_HULL,
         },
-        description    = 'Tier 6 Pure Tank Corsair spec (Lv10+): requires 1H Sword + Gun (optional Buckler or 12% Pistol-Guard block), single-target Point-Blank Pistol WSs, Salt-Spray Stoneskin, and 100% Bullet/Card recycle.',
+        description    = 'Tier 6 Pure Tank Corsair spec (Lv10+): requires 1H Sword + Gun (optional Buckler or 12% Pistol-Guard block), auto-equips starter Gun & Bullets if empty, single-target Point-Blank Pistol WSs, Salt-Spray Stoneskin, and 100% Bullet/Card recycle.',
+        gearHints      = { weapon = 'sword', ranged = 'gun', ammo = 'bullet', role = 'tank' },
         highlights     =
         {
             'Passives (Lv10/30/50/70+): +14/18/22/26% Max HP, +8/14/20/26 VIT/AGI, +12/18/24/30% DEF, -8/11/14/18% DT, +12/16/20/24% Parry, +60/80/100/120 Enmity & +25..60% Retention.',
@@ -1569,6 +1599,7 @@ if xi.job and xi.job.COR then
             'Crystal JAs: Grapeshot Broadside (25s CD, single-target 12y enmity + Blind + Slow + 2 Grapeshot), Iron Hull (45s CD, -18% DT, Knockback Immunity, 20% heal + cleanse).',
         },
         mods = function(player, lvl)
+            local isWiki = (player == nil) or (not player.getEquippedItem)
             local stat = scaleTier(lvl, 8, 14, 20, 26)
             local mods =
             {
@@ -1585,7 +1616,7 @@ if xi.job and xi.job.COR then
             if xi.mod.RANGED_DMG_DEALT then
                 table.insert(mods, { xi.mod.RANGED_DMG_DEALT, -60 })
             end
-            if isBuccaneerLoadout(player) then
+            if isWiki or isBuccaneerLoadout(player) then
                 table.insert(mods, { xi.mod.SWORD,        scaleTier(lvl, 15, 25, 35, 50) })
                 table.insert(mods, { xi.mod.MARKSMANSHIP, scaleTier(lvl, 15, 25, 35, 50) })
             end

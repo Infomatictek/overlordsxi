@@ -210,6 +210,31 @@ local function isRangedWs(actor, skill)
     return false
 end
 
+local EQUIP_CONTAINERS =
+{
+    0,  -- xi.inv.INVENTORY
+    8,  -- xi.inv.WARDROBE
+    10, -- xi.inv.WARDROBE2
+    11, -- xi.inv.WARDROBE3
+    12, -- xi.inv.WARDROBE4
+    13, -- xi.inv.WARDROBE5
+    14, -- xi.inv.WARDROBE6
+    15, -- xi.inv.WARDROBE7
+    16, -- xi.inv.WARDROBE8
+}
+
+local function findOwnedContainer(player, itemId)
+    if player == nil or not player.hasItem then
+        return nil
+    end
+    for _, containerId in ipairs(EQUIP_CONTAINERS) do
+        if player:hasItem(itemId, containerId) then
+            return containerId
+        end
+    end
+    return nil
+end
+
 local function provisionStarterRanged(player)
     -- Called by Soul onApply; avoid a recursive spec.ensureUpToDate check.
     if player == nil or player:getMainLvl() < 10 then
@@ -226,11 +251,14 @@ local function provisionStarterRanged(player)
         if not player.hasItem or not player.equipItem then
             return
         end
+        if player.canEquipItem and not player:canEquipItem(itemId, true) then
+            return
+        end
 
-        -- The native API requires an explicit container ID and slot ID.
-        -- Do not try to equip the item when inventory is full or the grant
-        -- failed. Only auto-equip an item into an otherwise empty slot.
-        if not player:hasItem(itemId, inventory) then
+        -- Check INVENTORY and Wardrobes before granting so existing items
+        -- are equipped instead of failing on full inventory or Rare flags.
+        local containerId = findOwnedContainer(player, itemId)
+        if containerId == nil then
             if not player.addItem then
                 return
             end
@@ -239,12 +267,10 @@ local function provisionStarterRanged(player)
                 tell(player, 'Huntsman starter gear could not be granted: inventory full.')
                 return
             end
+            containerId = inventory
         end
 
-        if player.canEquipItem and not player:canEquipItem(itemId, false) then
-            return
-        end
-        player:equipItem(itemId, inventory, slotId)
+        player:equipItem(itemId, containerId, slotId)
     end
 
     ensureEquipped(STARTER_XBOW_ID, slots.RANGED, 1)

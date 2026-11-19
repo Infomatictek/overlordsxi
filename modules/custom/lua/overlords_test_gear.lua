@@ -5,6 +5,7 @@
 -- Ranged, Caster), and weapon type.
 -----------------------------------
 require('modules/custom/lua/overlords_job_specs')
+local gearResolver = require('modules/custom/lua/overlords_gear_resolver')
 -----------------------------------
 xi = xi or {}
 xi.overlords = xi.overlords or {}
@@ -3704,23 +3705,21 @@ function testGear.pickFromPool(player, pool, targetLevel, opts)
     end
     opts = opts or {}
     opts.targetLevel = targetLevel
-    local best, bestScore = nil, -math.huge
-    for _, entry in ipairs(pool) do
-        if isItemEquippable(player, entry, targetLevel, opts) then
-            local level = tonumber(entry.lvl) or 1
-            -- For leveling, equipment near the character level is a useful
-            -- baseline when actual item modifiers are not available here.
-            -- Never grant level-99 gear for this level-75 server.
-            local score = level
-            if opts.accessibility ~= 'best' and isPrestigeItem(entry) then
-                score = score - 100
-            end
-            if score > bestScore then
-                best, bestScore = entry, score
-            end
-        end
+    local jobId = player and player.getMainJob and player:getMainJob() or 1
+    local weights = opts.weights
+    if weights == nil then
+        local profile = testGear.getDefaultProfile(player, jobId, targetLevel)
+        profile = testGear.applyCanonicalSoulRole(player, profile, jobId)
+        weights = gearResolver.deriveCombatWeights(player, jobId, targetLevel, profile, opts)
     end
-    return best
+    local slotId = opts.slotId or 0
+    local ignoreJobMask = (opts.weaponKey == 'scythe_blm' or opts.weaponKey == 'scythe') and jobId == ((xi.job and xi.job.BLM) or 4)
+    return gearResolver.pickBestForSlot(player, slotId, jobId, targetLevel, weights, {
+        accessibility = opts.accessibility,
+        excludeId     = opts.excludeId,
+        ignoreJobMask = ignoreJobMask,
+        defaultQty    = opts.defaultQty,
+    }, pool)
 end
 
 -- Use the existing WS/Soul weapon whitelist as the authoritative source.
@@ -3742,6 +3741,13 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    local activeSpec, activeEntry = testGear.getActiveSpecKey(player, jobId)
+
+    -- Unarmed Souls (e.g. MNK Chi Weaver) can never equip weapons in MAIN/SUB/RANGED.
+    if activeSpec == 'chiweaver' or (activeEntry ~= nil and activeEntry.chiRanged ~= nil) then
+        return false
+    end
+
     local allowedSkills = getSoulWeaponMap(player)
     local weaponMeta = testGear.WEAPON_INFO[wKey]
     if allowedSkills ~= nil and weaponMeta ~= nil then
@@ -3749,17 +3755,13 @@ function testGear.isWeaponAllowedForJob(player, wKey)
     end
     local blmJob = (xi.job and xi.job.BLM) or 4
     if (wKey == 'scythe' or wKey == 'scythe_blm') and jobId == blmJob then
-        local activeSpec = testGear.getActiveSpecKey(player, jobId)
         local stored = spec and spec.get(player, jobId) or nil
         return activeSpec == 'necromancer' or (stored ~= nil and stored.key == 'necromancer')
     end
     local mnkJob = (xi.job and xi.job.MNK) or 2
     if jobId == mnkJob then
-        local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'blackbelt' then
             return wKey == 'h2h'
-        elseif activeSpec == 'chiweaver' then
-            return false
         end
     end
     local allowedList = testGear.JOB_WEAPONS[jobId]
@@ -3893,8 +3895,9 @@ function testGear.buildLoadout(player, opts)
     end
     targetLevel = math.max(1, math.min(75, math.floor(targetLevel)))
 
-    local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
-    profile = testGear.applyCanonicalSoulRole(player, profile, player:getMainJob())
+    local jobId = player:getMainJob()
+    local profile = testGear.getDefaultProfile(player, jobId, targetLevel)
+    profile = testGear.applyCanonicalSoulRole(player, profile, jobId)
     -- Soul-authored hints stay alongside the Soul's implementation, instead
     -- of duplicating Soul choices in !gear. Ignore unsupported weapon hints.
     local hints = profile.specEntry and profile.specEntry.gearHints or nil
@@ -3910,12 +3913,6 @@ function testGear.buildLoadout(player, opts)
             profile.weapon = hints.weapon
         end
     end
-    local originalPick = testGear.pickFromPool
-    local function pick(pool, options)
-        options = options or {}
-        options.accessibility = opts.accessibility
-        return originalPick(player, pool, targetLevel, options)
-    end
 
     -- Preserve an intentionally equipped ranged weapon type when it is
     -- permitted for the active Soul; this prevents !gear replacing Huntsman's
@@ -3923,18 +3920,35 @@ function testGear.buildLoadout(player, opts)
     if opts.weapon == nil and player.getEquipID then
         local equippedRanged = player:getEquipID((xi.slot and xi.slot.RANGED) or 2)
         if equippedRanged and equippedRanged > 0 then
-            for _, key in ipairs({ 'crossbow', 'bow', 'gun' }) do
-                if testGear.isWeaponAllowedForJob(player, key) then
-                    for _, candidate in ipairs(testGear.RANGED[key] or {}) do
-                        if candidate.id == equippedRanged then
-                            profile.ranged = key
-                            profile.ammo = ({ crossbow = 'bolt', bow = 'arrow', gun = 'bullet' })[key]
-                            break
-                        end
+            local detectedKey = nil
+            local catalog = xi.overlords and xi.overlords.itemCatalog
+            if catalog and catalog.isAvailable and catalog.isAvailable() and catalog.getItem then
+                local eqItem = catalog.getItem(equippedRanged)
+                if eqItem ~= nil then
+                    if eqItem.skill == 25 then
+                        detectedKey = 'bow'
+                    elseif eqItem.skill == 26 then
+                        detectedKey = (eqItem.subskill == gearResolver.SUBSKILL.GUN) and 'gun' or 'crossbow'
                     end
                 end
-                if profile.ranged == key then
-                    break
+            end
+            if detectedKey ~= nil and testGear.isWeaponAllowedForJob(player, detectedKey) then
+                profile.ranged = detectedKey
+                profile.ammo = ({ crossbow = 'bolt', bow = 'arrow', gun = 'bullet' })[detectedKey]
+            else
+                for _, key in ipairs({ 'crossbow', 'bow', 'gun' }) do
+                    if testGear.isWeaponAllowedForJob(player, key) then
+                        for _, candidate in ipairs(testGear.RANGED[key] or {}) do
+                            if candidate.id == equippedRanged then
+                                profile.ranged = key
+                                profile.ammo = ({ crossbow = 'bolt', bow = 'arrow', gun = 'bullet' })[key]
+                                break
+                            end
+                        end
+                    end
+                    if profile.ranged == key then
+                        break
+                    end
                 end
             end
         end
@@ -3963,7 +3977,13 @@ function testGear.buildLoadout(player, opts)
             local info = testGear.WEAPON_INFO[key]
             if info ~= nil and not info.isRanged and testGear.isWeaponAllowedForJob(player, key) then
                 profile.weapon = key
-                profile.offhand = info.twoHand and 'grip_melee' or (info.isH2H and 'none' or 'auto')
+                if info.isH2H then
+                    profile.offhand = 'none'
+                elseif info.twoHand then
+                    profile.offhand = (profile.role == 'tank') and 'grip_tank' or ((profile.role == 'caster') and 'grip_caster' or 'grip_melee')
+                else
+                    profile.offhand = (profile.role == 'tank') and 'shield' or 'auto'
+                end
                 break
             end
         end
@@ -3976,6 +3996,11 @@ function testGear.buildLoadout(player, opts)
         end
     end
 
+    -- Derive dynamic Soul-aware stat weights from actual Soul abilities, passives, and role
+    local weights, soulMeta = gearResolver.deriveCombatWeights(player, jobId, targetLevel, profile, opts)
+    profile.weights = weights
+    profile.soulMeta = soulMeta
+
     local slots = {}
     local slotEnum = xi.slot or
     {
@@ -3985,19 +4010,47 @@ function testGear.buildLoadout(player, opts)
         RING1 = 13, RING2 = 14, BACK = 15,
     }
 
+    local function resolveSlot(slotId, queryOpts, fallbackPool)
+        queryOpts = queryOpts or {}
+        queryOpts.accessibility = opts.accessibility
+        return gearResolver.pickBestForSlot(player, slotId, jobId, targetLevel, weights, queryOpts, fallbackPool)
+    end
+
+    local function pickMainWeapon(wKey)
+        if wKey == nil or wKey == 'none' then
+            return nil
+        end
+        local info = testGear.WEAPON_INFO[wKey]
+        if info == nil then
+            return nil
+        end
+        local qOpts =
+        {
+            isWeapon = true,
+            skill    = info.skill,
+        }
+        if wKey == 'scythe_blm' then
+            qOpts.ignoreJobMask = true
+            qOpts.customFilter = function(it)
+                -- Allow shared zaghnals / BLM scythes, never DRK-exclusive (jobs == 128)
+                return it.jobs ~= 128
+            end
+        end
+        return resolveSlot(slotEnum.MAIN, qOpts, testGear.WEAPONS[wKey])
+    end
+
     -- 1. Mainhand Weapon
-    local weaponPool = testGear.WEAPONS[profile.weapon]
-    local mainItem = pick(weaponPool, { weaponKey = profile.weapon })
+    local mainItem = pickMainWeapon(profile.weapon)
     if mainItem == nil and profile.weapon == 'club_mage' then
-        mainItem = pick(testGear.WEAPONS.club, { weaponKey = 'club' })
+        mainItem = pickMainWeapon('club')
     elseif mainItem == nil and profile.weapon == 'staff_mage' then
-        mainItem = pick(testGear.WEAPONS.staff, { weaponKey = 'staff' })
+        mainItem = pickMainWeapon('staff')
     elseif mainItem == nil and profile.weapon == 'gaxe' and testGear.isWeaponAllowedForJob(player, 'axe') then
-        mainItem = pick(testGear.WEAPONS.axe, { weaponKey = 'axe' })
+        mainItem = pickMainWeapon('axe')
     elseif mainItem == nil and profile.weapon == 'gsword' and testGear.isWeaponAllowedForJob(player, 'sword') then
-        mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
+        mainItem = pickMainWeapon('sword')
     elseif mainItem == nil and profile.weapon == 'gkatana' and testGear.isWeaponAllowedForJob(player, 'sword') then
-        mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
+        mainItem = pickMainWeapon('sword')
     end
     slots[slotEnum.MAIN] = mainItem
 
@@ -4007,13 +4060,17 @@ function testGear.buildLoadout(player, opts)
     if mainItem ~= nil and profile.offhand ~= 'none' then
         if wInfo and wInfo.twoHand then
             local gripPool = testGear.SUBS[profile.offhand] or testGear.SUBS.grip_melee
-            subItem = pick(gripPool)
+            subItem = resolveSlot(slotEnum.SUB, { isWeapon = false, isShield = false }, gripPool)
         elseif wInfo and not wInfo.isH2H then
             if profile.offhand == 'auto' and hasDualWield(player) then
-                subItem = pick(weaponPool, { excludeId = mainItem.id, weaponKey = profile.weapon })
+                subItem = resolveSlot(slotEnum.SUB, {
+                    isWeapon  = true,
+                    skill     = wInfo.skill,
+                    excludeId = mainItem.id,
+                }, testGear.WEAPONS[profile.weapon])
             end
             if subItem == nil then
-                subItem = pick(testGear.SUBS.shield)
+                subItem = resolveSlot(slotEnum.SUB, { isShield = true }, testGear.SUBS.shield)
             end
         end
     end
@@ -4022,62 +4079,155 @@ function testGear.buildLoadout(player, opts)
     -- 3. Ranged & Ammo Slots
     local rangedItem = nil
     local ammoItem   = nil
-    if profile.ranged ~= nil and profile.ranged ~= 'none' then
-        local rPool = testGear.RANGED[profile.ranged]
-        rangedItem = pick(rPool)
-        if rangedItem == nil and profile.ranged == 'chakram_dnc' then
-            rangedItem = pick(testGear.RANGED.throwing)
+    local rKey = profile.ranged
+    if rKey ~= nil and rKey ~= 'none' then
+        local rPool = testGear.RANGED[rKey]
+        if rKey == 'bow' then
+            rangedItem = resolveSlot(slotEnum.RANGED, { isWeapon = true, skill = 25 }, rPool)
+        elseif rKey == 'crossbow' then
+            rangedItem = resolveSlot(slotEnum.RANGED, {
+                isWeapon = true,
+                skill    = 26,
+                subskill = gearResolver.SUBSKILL.XBOW_SHORTBOW,
+            }, rPool)
+        elseif rKey == 'gun' then
+            rangedItem = resolveSlot(slotEnum.RANGED, {
+                isWeapon = true,
+                skill    = 26,
+                subskill = gearResolver.SUBSKILL.GUN,
+            }, rPool)
+        elseif rKey == 'throwing' or rKey == 'chakram' or rKey == 'chakram_dnc' then
+            rangedItem = resolveSlot(slotEnum.RANGED, {
+                isWeapon        = true,
+                skill           = 27,
+                excludeSubskill = gearResolver.SUBSKILL.SHURIKEN,
+            }, rPool)
+            if rangedItem == nil and rKey == 'chakram_dnc' then
+                rangedItem = resolveSlot(slotEnum.RANGED, {
+                    isWeapon        = true,
+                    skill           = 27,
+                    excludeSubskill = gearResolver.SUBSKILL.SHURIKEN,
+                }, testGear.RANGED.throwing)
+            end
+        elseif rKey == 'instrument' then
+            rangedItem = resolveSlot(slotEnum.RANGED, {
+                customFilter = function(it) return it.skill == 41 or it.skill == 42 end,
+            }, rPool)
+        elseif rKey == 'handbell' then
+            rangedItem = resolveSlot(slotEnum.RANGED, { skill = 45 }, rPool)
+        elseif rKey == 'animator' then
+            rangedItem = resolveSlot(slotEnum.RANGED, {
+                customFilter = function(it) return it.subskill == 10 or it.subskill == 11 end,
+            }, rPool)
+        else
+            rangedItem = resolveSlot(slotEnum.RANGED, {}, rPool)
         end
     end
 
     if rangedItem ~= nil then
         slots[slotEnum.RANGED] = rangedItem
-        if profile.ammo ~= nil and profile.ammo ~= 'none' then
-            ammoItem = pick(testGear.AMMO[profile.ammo])
+        local aKey = profile.ammo
+        if aKey == 'arrow' then
+            ammoItem = resolveSlot(slotEnum.AMMO, {
+                isWeapon         = true,
+                skill            = 25,
+                isProjectileAmmo = true,
+                defaultQty       = 99,
+            }, testGear.AMMO.arrow)
+        elseif aKey == 'bolt' then
+            ammoItem = resolveSlot(slotEnum.AMMO, {
+                isWeapon         = true,
+                skill            = 26,
+                subskill         = gearResolver.SUBSKILL.XBOW_SHORTBOW,
+                isProjectileAmmo = true,
+                defaultQty       = 99,
+            }, testGear.AMMO.bolt)
+        elseif aKey == 'bullet' then
+            ammoItem = resolveSlot(slotEnum.AMMO, {
+                isWeapon         = true,
+                skill            = 26,
+                subskill         = gearResolver.SUBSKILL.GUN,
+                isProjectileAmmo = true,
+                defaultQty       = 99,
+            }, testGear.AMMO.bullet)
+        elseif aKey == 'oil' then
+            -- Automaton Oils are usable items, not ITEM_EQUIPMENT
+            ammoItem = testGear.pickFromPool(player, testGear.AMMO.oil, targetLevel, {
+                slotId        = slotEnum.AMMO,
+                weights       = weights,
+                accessibility = opts.accessibility,
+                defaultQty    = 12,
+            })
+        elseif aKey ~= nil and aKey ~= 'none' then
+            ammoItem = resolveSlot(slotEnum.AMMO, { defaultQty = 99 }, testGear.AMMO[aKey])
         end
         slots[slotEnum.AMMO] = ammoItem
     else
         slots[slotEnum.RANGED] = nil
         local ammoKey = profile.ammo
-        if ammoKey == nil or ammoKey == 'none' or ammoKey == 'arrow' or ammoKey == 'bolt' or ammoKey == 'bullet' or ammoKey == 'ammo_melee' then
-            if profile.role == 'caster' then
-                ammoKey = 'ammo_caster'
-            elseif profile.role == 'tank' then
-                ammoKey = 'ammo_tank'
-            elseif profile.role == 'ws' then
-                ammoKey = 'ammo_ws'
-            else
-                ammoKey = 'ammo_tp'
+        if ammoKey == 'shuriken' then
+            ammoItem = resolveSlot(slotEnum.AMMO, {
+                isWeapon         = true,
+                skill            = 27,
+                subskill         = gearResolver.SUBSKILL.SHURIKEN,
+                allowRemoveSlot  = true,
+                isProjectileAmmo = true,
+                defaultQty       = 99,
+            }, testGear.AMMO.shuriken)
+        elseif ammoKey == 'orphic_egg' then
+            -- SCH Medic/Sage Eos & Titania refresh scales directly with Orphic Egg
+            ammoItem = testGear.pickFromPool(player, testGear.AMMO.orphic_egg, targetLevel, {
+                slotId        = slotEnum.AMMO,
+                weights       = weights,
+                accessibility = opts.accessibility,
+            })
+        else
+            if ammoKey == nil or ammoKey == 'none' or ammoKey == 'arrow' or ammoKey == 'bolt' or ammoKey == 'bullet' or ammoKey == 'ammo_melee' then
+                if profile.role == 'caster' then
+                    ammoKey = 'ammo_caster'
+                elseif profile.role == 'tank' then
+                    ammoKey = 'ammo_tank'
+                elseif profile.role == 'ws' then
+                    ammoKey = 'ammo_ws'
+                else
+                    ammoKey = 'ammo_tp'
+                end
             end
-        end
-        ammoItem = pick(testGear.AMMO[ammoKey])
-        if ammoItem == nil and ammoKey == 'orphic_egg' then
-            ammoItem = pick(testGear.AMMO.ammo_caster)
-        end
-        if ammoItem == nil and ammoKey == 'ammo_ws' then
-            ammoItem = pick(testGear.AMMO.ammo_tp)
+            ammoItem = resolveSlot(slotEnum.AMMO, {
+                allowRemoveSlot = true,
+                customFilter    = function(it)
+                    -- Exclude loose arrows/bolts/bullets/shurikens when no ranged weapon is equipped
+                    if it.skill == 25 or it.skill == 26 then
+                        return false
+                    end
+                    if it.skill == 27 and it.subskill == gearResolver.SUBSKILL.SHURIKEN then
+                        return false
+                    end
+                    return true
+                end,
+            }, testGear.AMMO[ammoKey] or testGear.AMMO.ammo_tp)
         end
         slots[slotEnum.AMMO] = ammoItem
     end
 
-    -- 4. 5-Piece Armor + 7 Accessories
+    -- 4. 5-Piece Armor + 7 Accessories (scored dynamically from authoritative item stats)
     local roleGear = testGear.ROLE_GEAR[profile.role] or testGear.ROLE_GEAR.tp
-    slots[slotEnum.HEAD]  = pick(roleGear.HEAD)
-    slots[slotEnum.BODY]  = pick(roleGear.BODY)
-    slots[slotEnum.HANDS] = pick(roleGear.HANDS)
-    slots[slotEnum.LEGS]  = pick(roleGear.LEGS)
-    slots[slotEnum.FEET]  = pick(roleGear.FEET)
-    slots[slotEnum.NECK]  = pick(roleGear.NECK)
-    slots[slotEnum.WAIST] = pick(roleGear.WAIST)
-    slots[slotEnum.BACK]  = pick(roleGear.BACK)
+    slots[slotEnum.HEAD]  = resolveSlot(slotEnum.HEAD,  {}, roleGear.HEAD)
+    slots[slotEnum.BODY]  = resolveSlot(slotEnum.BODY,  {}, roleGear.BODY)
+    slots[slotEnum.HANDS] = resolveSlot(slotEnum.HANDS, {}, roleGear.HANDS)
+    slots[slotEnum.LEGS]  = resolveSlot(slotEnum.LEGS,  {}, roleGear.LEGS)
+    slots[slotEnum.FEET]  = resolveSlot(slotEnum.FEET,  {}, roleGear.FEET)
+    slots[slotEnum.NECK]  = resolveSlot(slotEnum.NECK,  {}, roleGear.NECK)
+    slots[slotEnum.WAIST] = resolveSlot(slotEnum.WAIST, {}, roleGear.WAIST)
+    slots[slotEnum.BACK]  = resolveSlot(slotEnum.BACK,  {}, roleGear.BACK)
 
-    local ear1 = pick(roleGear.EAR)
-    local ear2 = pick(roleGear.EAR, { excludeId = ear1 and ear1.id or nil })
+    local ear1 = resolveSlot(slotEnum.EAR1, {}, roleGear.EAR)
+    local ear2 = resolveSlot(slotEnum.EAR2, { excludeId = ear1 and ear1.id or nil }, roleGear.EAR)
     slots[slotEnum.EAR1] = ear1
     slots[slotEnum.EAR2] = ear2
 
-    local ring1 = pick(roleGear.RING)
-    local ring2 = pick(roleGear.RING, { excludeId = ring1 and ring1.id or nil })
+    local ring1 = resolveSlot(slotEnum.RING1, {}, roleGear.RING)
+    local ring2 = resolveSlot(slotEnum.RING2, { excludeId = ring1 and ring1.id or nil }, roleGear.RING)
     slots[slotEnum.RING1] = ring1
     slots[slotEnum.RING2] = ring2
 

@@ -4,6 +4,7 @@
 --       the player's main job, active OverlordsXI crystal spec, role, and weapon.
 -----------------------------------
 require('modules/custom/lua/overlords_job_specs')
+package.loaded['modules/custom/lua/overlords_gear_resolver'] = nil
 package.loaded['modules/custom/lua/overlords_test_gear'] = nil
 require('modules/custom/lua/overlords_test_gear')
 -----------------------------------
@@ -411,9 +412,12 @@ local function parseExtraOpts(a, b, opts)
     opts = opts or {}
     for _, token in ipairs({ a, b }) do
         if token ~= nil and token ~= '' then
+            local lower = string.lower(tostring(token))
             local num = tonumber(token)
             if num ~= nil then
                 opts.level = num
+            elseif lower == 'best' then
+                opts.accessibility = 'best'
             elseif testGear.resolveRoleKey(token) ~= nil then
                 opts.role = testGear.resolveRoleKey(token)
             elseif testGear.resolveWeaponKey(token) ~= nil then
@@ -435,7 +439,13 @@ commandObj.onTrigger = function(player, arg1, arg2, arg3)
 
     -- 1. Default (!gear, !gear auto, !gear equip): immediately grant & equip recommended loadout
     if cmd == 'best' then
-        executeEquip(player, { accessibility = 'best' })
+        local opts, err = parseExtraOpts(arg2, arg3, { accessibility = 'best' })
+        if opts == nil then
+            tell(player, err)
+            printUsage(player)
+            return
+        end
+        executeEquip(player, opts)
         return
     end
 
