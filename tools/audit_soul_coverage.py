@@ -36,6 +36,21 @@ CONST_STR_RE = re.compile(r"\blocal\s+(\w+)\s*=\s*['\"]([a-zA-Z0-9_]+)['\"]")
 LOCAL_TABLE_RE = re.compile(r"\blocal\s+(\w+)\s*=\s*\{")
 REQUIRE_CUSTOM_RE = re.compile(r"\brequire\s*\(\s*['\"](modules/custom/[^'\"]+)['\"]\s*\)")
 REGISTRATION_CALL_RE = re.compile(r"\bspec\s*\.\s*(registerJob|registerCrystal)\s*\(")
+REGISTRATION = REGISTRATION_CALL_RE
+KEY_ASSIGNMENT = re.compile(r"\bkey\s*=\s*(?:['\"]([a-zA-Z0-9_]+)['\"]|(\w+))")
+
+
+def extract_registration_args(source: str, start_idx: int) -> str:
+    """Return the argument slice inside a spec.registerJob/registerCrystal(...) call."""
+    paren_open = start_idx - 1
+    if paren_open < 0 or source[paren_open] != "(":
+        paren_open = source.find("(", max(0, start_idx - 1))
+    if paren_open < 0:
+        return ""
+    end_idx = find_balanced(source, paren_open, "(", ")")
+    if end_idx < 0:
+        return source[start_idx:]
+    return source[start_idx:end_idx]
 
 
 def strip_lua_comments(src: str) -> str:

@@ -14,6 +14,7 @@ on:
       - 'tools/audit_soul_coverage.py'
       - 'tools/soul_coverage_baseline.json'
       - 'tests/test_ci_tooling.py'
+      - 'tests/test_soul_coverage.py'
       - '.github/workflows/soul-coverage.yml'
   pull_request:
     branches:
@@ -25,6 +26,7 @@ on:
       - 'tools/audit_soul_coverage.py'
       - 'tools/soul_coverage_baseline.json'
       - 'tests/test_ci_tooling.py'
+      - 'tests/test_soul_coverage.py'
       - '.github/workflows/soul-coverage.yml'
   workflow_dispatch:
 
