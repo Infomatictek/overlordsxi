@@ -13,7 +13,7 @@ xi.overlords.testGear = xi.overlords.testGear or {}
 local testGear = xi.overlords.testGear
 local spec     = xi.overlords.spec
 
-testGear.LEVEL_BRACKETS = { 1, 10, 20, 30, 40, 50, 60, 70, 75, 99 }
+testGear.LEVEL_BRACKETS = { 1, 10, 20, 30, 40, 50, 60, 70, 75 }
 
 -- Equippable containers checked before adding new items to INVENTORY
 local EQUIP_CONTAINERS =
