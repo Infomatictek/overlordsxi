@@ -47,6 +47,14 @@ commandObj.onTrigger = function(player, sub, amount)
         else
             tell(player, 'Spawn failed: ' .. tostring(result))
         end
+    elseif sub == 'look' then
+        local result, err = K.getLookDiagnostics(player)
+        if not result then
+            tell(player, 'Appearance diagnostics unavailable: ' .. tostring(err))
+        else
+            tell(player, 'OWNER: ' .. result.owner)
+            tell(player, 'CLONE: ' .. result.clone)
+        end
     elseif sub == 'dismiss' then
         K.dismissAll(player)
         tell(player, 'Your copies dismissed.')
@@ -61,7 +69,7 @@ commandObj.onTrigger = function(player, sub, amount)
             snap.attributed_hits or 0, snap.attempts or 0, snap.next_exp,
             K.ENABLE_EXPERIMENTAL_COMBAT and 'ON' or 'OFF', errorText))
     else
-        tell(player, 'Usage: !kurogane enable|disable|combat on|off|spawn [1-5]|dismiss|status')
+        tell(player, 'Usage: !kurogane enable|disable|combat on|off|spawn [1-5]|look|dismiss|status')
     end
 end
 
