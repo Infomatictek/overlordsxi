@@ -9,7 +9,7 @@ diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state
  #include "action/action.h"
  #include "entities/battle_entity.h"
  #include "status_effect_container.h"
-@@ -141,9 +142,11 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+@@ -141,7 +142,9 @@ auto CAttackState::Update(timer::time_point tick) -> bool
                      const float hasteMagic        = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_MAGIC) / 10000.0f, -1.0f, 0.4375f);
                      const float hasteAbility      = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_ABILITY) / 10000.0f, -0.25f, 0.25f);
                      const float hasteGear         = std::min<float>(PChar->getMod(xi::Mod::HASTE_GEAR) / 10000.0f, 0.25f);
