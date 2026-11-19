@@ -1,4 +1,4 @@
-# Arcanearcher (RNG) — Playstyle Guide
+# Arcane Archer (RNG) — Playstyle Guide
 
 ## At a Glance
 **Elemental arrow coordinator.** Arcane Archer uses a Bow to mark an enemy for one matching elemental ally follow-up, not personal bow-and-katana weaving.
