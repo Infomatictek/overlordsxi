@@ -75,10 +75,17 @@ def analyze(root: Path) -> list[dict[str, str]]:
         raise FileNotFoundError(f'Could not read {path}')
     souls = catalog_entries(path.read_text(encoding='utf-8-sig'))
     lua_root = root / 'modules/custom/lua'
-    files = [p for p in lua_root.rglob('*.lua') if p != path]
+    files = list(lua_root.rglob('*.lua'))
     indexed = []
     for file in files:
         data = file.read_text(encoding='utf-8-sig', errors='replace')
+        if file == path:
+            # The canonical table is not runtime registration evidence.
+            # Later in this same file, SCH does register Medic and Sage.
+            boundary = data.find('local KEY_ALIASES')
+            if boundary < 0:
+                raise ValueError('Catalog boundary moved; review parser')
+            data = data[boundary:]
         constants = dict(CONST.findall(data))
         registrations = set()
         for hit in REGISTRATION.finditer(data):
