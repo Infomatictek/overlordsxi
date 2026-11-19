@@ -119,6 +119,7 @@ local function tickOwner(owner, state)
     end
     setCount(owner, state)
     if #state.clones == 0 then
+        state.timerRunning = false
         K._owners[owner:getID()] = nil
     elseif owner.timer then
         owner:timer(350, function(actor)
@@ -130,6 +131,9 @@ local function tickOwner(owner, state)
 end
 
 local function makeClone(owner, target, index)
+    if not (xi.allegiance and xi.allegiance.PLAYER) then
+        return nil, 'PLAYER allegiance unavailable; refusing hostile MOB spawn'
+    end
     local zone = owner.getInstance and owner:getInstance() or nil
     if not zone then zone = owner:getZone() end
     if not zone or not zone.insertDynamicEntity then return nil, 'dynamic entities unavailable' end
@@ -210,7 +214,8 @@ function K.spawn(owner, count)
         spawned = spawned + 1
     end
     setCount(owner, state)
-    if spawned > 0 and owner.timer then
+    if spawned > 0 and owner.timer and not state.timerRunning then
+        state.timerRunning = true
         owner:timer(350, function(actor)
             if actor and K._owners[actor:getID()] == state then
                 tickOwner(actor, state)
