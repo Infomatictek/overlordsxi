@@ -180,9 +180,9 @@ class WikiGeneratorValidationTests(unittest.TestCase):
                 "generatedAt": "2026-11-19T00:00:00Z",
                 "repo": "Infomatictek/overlordsxi",
                 "launcherRepo": "Infomatictek/overlordsxi-launcher",
-                "stats": {"totalCrystalSpecs": 1, "totalWeaponskills": 1},
+                "stats": {"totalCrystalSpecs": 66, "totalWeaponskills": 1},
                 "serverRules": {},
-                "jobSpecs": [{"jobKey": "WAR", "crystals": [{"key": "commander"}]}],
+                "jobSpecs": [{"jobKey": f"JOB{i}", "crystals": [{"key": f"soul{i}"}]} for i in range(66)],
                 "weaponskills": [{"id": 1, "name": "Fast Blade"}],
                 "commands": [],
                 "patches": [],
@@ -194,7 +194,20 @@ class WikiGeneratorValidationTests(unittest.TestCase):
             jp.write_text(jtxt, encoding="utf-8")
             jsp.write_text(f"window.OVERLORDS_DATA = {jtxt};\n", encoding="utf-8")
             parsed = wiki_mod.validate_generated_wiki_files(jp, jsp)
-            self.assertEqual(parsed["stats"]["totalCrystalSpecs"], 1)
+            self.assertEqual(parsed["stats"]["totalCrystalSpecs"], 66)
+
+    def test_discovery_includes_new_isolated_soul_modules(self):
+        names = {path.name for path in wiki_mod.discover_soul_spec_files()}
+        for name in ("blm_astromancer.lua", "whm_zealot.lua", "bst_beastspeaker.lua", "sch_archivist.lua"):
+            self.assertIn(name, names)
+        self.assertNotIn("overlords_job_specs.lua", names)
+
+    def test_new_soul_guides_are_complete(self):
+        guide_script = REPO_ROOT / "tools" / "audit_soul_wiki_guides.py"
+        guides_mod = _load_module("audit_soul_wiki_guides", guide_script)
+        statuses = {r["soul"]: r["status"] for r in guides_mod.audit(REPO_ROOT)}
+        for key in ("astromancer", "zealot", "channeler", "untamed", "beastspeaker", "archivist"):
+            self.assertEqual(statuses[key], "complete")
 
     def test_validate_generated_wiki_files_rejects_corrupt_json_and_js(self):
         with tempfile.TemporaryDirectory() as td:
