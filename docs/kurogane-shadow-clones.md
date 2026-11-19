@@ -29,6 +29,14 @@
 
 The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-1 passive mods, Katana WS profile, and opt-in **GM-only dynamic entity spawn probe** are implemented. The existing `nin_specs.lua` module is already included in `modules/init.append.txt`, so no second NIN module registration is needed. **The central feature—real independently acting clone NPCs—is not implemented yet.** Do not deploy this branch expecting Utsusemi to produce clones. The existing Kagemusha-only Utsusemi override remains unchanged; Kurogane would currently use ordinary Ninja behavior.
 
+## Clone visibility fix (November 18, 2026)
+
+LandSandBoat requires a complete equipped look **before** `insertDynamicEntity` inserts a MOB into its zone, otherwise it can remain invisible. Kurogane previously supplied the player's numeric `getModelId()` and then called `setLook()` on a MOB; `setLook()` is NPC-only and cannot reconstruct the player look. The test probe now serializes a 20-byte PC appearance using `getRace()`, `getFace()`, and `getEquipmentModelIds()` into the initial `look` field.
+
+**Limitation:** The existing player Lua binding exposes only five equipment appearance fields. Leg/foot visuals currently use basic starter defaults; exact full equipment mirroring still requires extending the engine binding or a C++ helper. The mob's visibility and combat still need in-game confirmation.
+
+Successful test output now includes the first clone's entity ID, status and zone in addition to count. If nothing appears, capture that output immediately after spawning.
+
 ## First playable test: GM-only visual clone probe
 
 The server branch now includes `modules/custom/lua/kurogane_clones.lua` and a GM-only `!kurogane` command. This is a **real dynamic-MOB spawn experiment**, not a complete playable DPS Soul. It is disabled by default and never modifies normal Utsusemi.
