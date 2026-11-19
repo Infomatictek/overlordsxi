@@ -26,7 +26,6 @@ custom/lua/blu_specs.lua
 custom/lua/pup_specs.lua
 custom/lua/overlords_job_spec_runtime.lua
 custom/lua/overlords_test_gear.lua
-custom/lua/overlords_regen_potency.lua
 custom/lua/overlords_regen_scaling.lua
 custom/lua/overlords_shared_slots.lua
 custom/cpp/eos_companion.cpp

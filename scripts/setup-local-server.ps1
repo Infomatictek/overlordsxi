@@ -502,7 +502,8 @@ try {
     $staleInitLines = @(
         'custom/sql/ws_strip_skillchains.sql',
         'custom/sql/war_specs.sql',
-        'custom/sql/mnk_specs.sql'
+        'custom/sql/mnk_specs.sql',
+        'custom/lua/overlords_regen_potency.lua'
     )
     $existingLines = [System.Collections.Generic.List[string]]::new()
     $removedStale = $false
