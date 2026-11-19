@@ -25,6 +25,7 @@ xi.overlords          = xi.overlords or {}
 xi.overlords.ninSpecs = xi.overlords.ninSpecs or {}
 
 local KAGEMUSHA_KEY = 'kagemusha'
+local KUROGANE_KEY  = 'kurogane'
 
 -- Custom Trait ID (161)
 local TRAIT_KAGEMUSHA_PHANTOM = 161
@@ -787,6 +788,37 @@ end)
 if xi.job and xi.job.NIN then
     spec.registerJob(xi.job.NIN, 'NIN',
     {
+        {
+            id          = 2,
+            key         = KUROGANE_KEY,
+            name        = 'Kurogane',
+            role        = 'Independent Shadow Clone DPS',
+            icon        = 'onyx_tome',
+            reqLevel    = 10,
+            description = 'Tier 1 Pure Damage Ninja: fragile independent shadow-clone fighters, Katana weapon skills and offensive Ninjutsu. Real multi-NPC clones require the Kurogane server entity backend; defensive Utsusemi replacement is disabled until that backend exists.',
+            highlights  =
+            {
+                'Tier 1 Damage: PHYS_DMG_DEALT and MAG_DMG_DEALT remain at 0 (the global Damage tier applies no penalty).',
+                'Katana focus: +10/16/22/28 STR and DEX, +15/25/35/50 Katana skill, +8/12/16/20% Attack, +5/8/12/16% WS damage.',
+                'Offensive flow: +5/8/11/14 Double Attack, +5/10/15/20 Store TP; -20/-25/-30/-40 Enmity.',
+                'Planned: Utsusemi Ichi/Ni create independent, 1-HP NPCs for 6-10s; they use asynchronous melee, shuriken, Ninjutsu and occasional WS, have an owner-wide damage budget and disappear on AoE.',
+                'Planned JAs: Shadow Legion (temporary large clone wave) and Phantom Assault (brief offensive clone action burst); neither grants defenses, buffs to allies, or rewards for clone deaths.',
+            },
+            mods = function(_player, lvl)
+                local l = lvl or 10
+                return
+                {
+                    { xi.mod.STR, scaleTier(l, 10, 16, 22, 28) },
+                    { xi.mod.DEX, scaleTier(l, 10, 16, 22, 28) },
+                    { xi.mod.KATANA, scaleTier(l, 15, 25, 35, 50) },
+                    { xi.mod.ATTP, scaleTier(l, 8, 12, 16, 20) },
+                    { xi.mod.ALL_WSDMG_ALL_HITS, scaleTier(l, 5, 8, 12, 16) },
+                    { xi.mod.DOUBLE_ATTACK, scaleTier(l, 5, 8, 11, 14) },
+                    { xi.mod.STORETP, scaleTier(l, 5, 10, 15, 20) },
+                    { xi.mod.ENMITY, scaleTier(l, -20, -25, -30, -40) },
+                }
+            end,
+        },
         {
             id             = 1,
             key            = KAGEMUSHA_KEY,
