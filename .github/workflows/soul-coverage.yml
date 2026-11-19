@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   coverage:
@@ -28,6 +29,24 @@ jobs:
           awk -F '\t' 'NR>1 && $3=="referenced-only" {print $1 "\t" $2 "\t" $3}' soul-coverage.tsv
           echo "=== Evidence counts ==="
           cut -f3 soul-coverage.tsv | sort | uniq -c
+      - name: Post unresolved Soul evidence to audit issue
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          {
+            echo "### Automated Soul coverage evidence — ${GITHUB_SHA:0:8}"
+            echo
+            echo "Static registrations do not prove a Soul is playable. Missing static evidence is a review candidate."
+            echo
+            echo '~~~'
+            awk -F '\t' 'NR>1 && $3!="registration-evidence" {printf "%s/%s: %s\\n", $1,$2,$3}' soul-coverage.tsv
+            echo '~~~'
+            echo
+            echo "Full CSV available as the workflow artifact."
+          } > soul-coverage-comment.md
+          gh issue comment 20 --repo "$GITHUB_REPOSITORY" --body-file soul-coverage-comment.md
       - name: Upload evidence matrix
         uses: actions/upload-artifact@v4
         with:
