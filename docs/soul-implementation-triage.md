@@ -72,3 +72,6 @@
 - `modules/custom/lua/overlords_healer_helpers.lua`: existing shared healer primitives, do not create a competing utility layer
 
 These design sketches require comparison to all currently registered Soul runtime modules before code generation. Do not overwrite extant mechanics solely to match this page.
+
+## User-confirmed Zealot direction — replaces preliminary caster concept
+**Zealot (WHM damage)**: **Staff melee → MP recovery → large Holy/divine damage → staff reengagement**. This is an MP-management melee battlemage, not a generic distant holy nuker or a new custom builder/spender. Low-level divine offense and MP recovery must work at Lv10; heavy Holy burst can develop later. Keep Bishop's healing/barrier specialization distinct; don't copy RUN Spellblade's rune conduction. Main liability is boss melee access. See whole-roster-soul-gap-reconciliation.md for continuation.
