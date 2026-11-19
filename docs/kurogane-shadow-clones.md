@@ -1,6 +1,6 @@
-# Kurogane Shadow Clone Engine
+# Shinobi Shadow Clone Engine (legacy Kurogane internals)
 
-Kurogane is the canonical Ninja branch 1 (`KRG`); Kagemusha is branch 2. The
+Shinobi is the player-facing name for Ninja branch 1 (`KRG`, internal key `kurogane`); Kagemusha is branch 2. The
 current implementation provides a GM-gated, native-MOB clone engine for repair
 and balance testing. It is not yet connected to Utsusemi or exposed as a player
 ability.
