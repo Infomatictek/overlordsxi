@@ -2364,6 +2364,20 @@ function talents.refundNode(player, jobId, wsId, nodeKey)
         end
     end
 
+    if tree.evolution then
+        local ownedStages = {}
+        for _, other in ipairs(tree.nodes) do
+            if (newRanks[other.key] or 0) > 0 and other.stage then
+                ownedStages[other.stage] = true
+            end
+        end
+        for stage = 2, 5 do
+            if ownedStages[stage] and not ownedStages[stage - 1] then
+                return false, 'Refund later evolution stages first.'
+            end
+        end
+    end
+
     local wasUnlocked = talents.isWSUnlocked(player, wsId, jid)
     writeSlotRank(player, jid, wsId, node.slot, curRank - 1)
     if wasUnlocked and not talents.isWSUnlocked(player, wsId, jid) then
@@ -2407,6 +2421,8 @@ function talents.resetAll(player, jobId)
     clearPrefix(talents.getVarPrefix(jid, player))
     clearPrefix(talents.getVar2Prefix(jid, player))
     clearPrefix(talents.getScVarPrefix(jid, player))
+    clearPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
+    clearPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
 
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
