@@ -3902,6 +3902,29 @@ function testGear.buildLoadout(player, opts)
         return originalPick(player, pool, targetLevel, options)
     end
 
+    -- Preserve an intentionally equipped ranged weapon type when it is
+    -- permitted for the active Soul; this prevents !gear replacing Huntsman's
+    -- starter crossbow with the Ranger's generic bow profile.
+    if opts.weapon == nil and player.getEquipID then
+        local equippedRanged = player:getEquipID((xi.slot and xi.slot.RANGED) or 2)
+        if equippedRanged and equippedRanged > 0 then
+            for _, key in ipairs({ 'crossbow', 'bow', 'gun' }) do
+                if testGear.isWeaponAllowedForJob(player, key) then
+                    for _, candidate in ipairs(testGear.RANGED[key] or {}) do
+                        if candidate.id == equippedRanged then
+                            profile.ranged = key
+                            profile.ammo = ({ crossbow = 'bolt', bow = 'arrow', gun = 'bullet' })[key]
+                            break
+                        end
+                    end
+                end
+                if profile.ranged == key then
+                    break
+                end
+            end
+        end
+    end
+
     if opts.role ~= nil then
         local rKey = testGear.resolveRoleKey(opts.role)
         if rKey == nil then
