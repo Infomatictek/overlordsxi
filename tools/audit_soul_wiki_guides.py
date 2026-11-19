@@ -19,10 +19,10 @@ ENTRY = re.compile(r"\bid\s*=\s*['\"]([a-z][a-z0-9_]*)['\"]")
 RETIRED = {("DNC", "freelancer")}
 HEADINGS = {
     "at a glance": "Overview",
-    "setup & gear": "Setup & Gear",
-    "how to play (step-by-step)": "How to Play",
-    "key mechanics & stacks": "Key Mechanics",
-    "common mistakes (don't do this)": "Common Mistakes",
+    "setup": "Setup & Gear",
+    "how to play": "How to Play",
+    "key mechanics": "Key Mechanics",
+    "common mistakes": "Common Mistakes",
 }
 
 
@@ -67,11 +67,11 @@ def audit(root: Path) -> list[dict[str, str]]:
                     sections[heading].append(line.strip())
 
             for key_heading, friendly in HEADINGS.items():
-                lines = sections.get(key_heading, [])
+                lines = [line for title, group in sections.items() if title.startswith(key_heading) for line in group]
                 meaningful = [line for line in lines if line and not line.startswith("<!--")]
                 if not meaningful:
                     missing.append(friendly)
-            steps = sections.get("how to play (step-by-step)", [])
+            steps = [line for title, group in sections.items() if title.startswith("how to play") for line in group]
             if sum(bool(re.match(r"\d+\.\s+", line)) for line in steps) < 2:
                 missing.append("At least two numbered play steps")
             state = "complete" if not missing else "thin"
