@@ -5,7 +5,7 @@
 require('modules/custom/lua/kurogane_clones')
 local K = xi.overlords.kurogane
 local commandObj = {}
-commandObj.cmdprops = { permission = 5, parameters = 'ss' }
+commandObj.cmdprops = { permission = 4, parameters = 'ss' }
 
 local function tell(player, msg)
     player:printToPlayer('[Kurogane] ' .. msg, xi.msg.channel.SYSTEM_3, '')
