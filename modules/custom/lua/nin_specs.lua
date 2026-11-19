@@ -893,7 +893,7 @@ if xi.job and xi.job.NIN then
                     player:setLocalVar('OX_KRG_CLONE_COUNT', 0)
                 end
             end,
-        }
+        })
 end
 
 return m
