@@ -1,0 +1,658 @@
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -6476,14 +6476,23 @@
+     // entity packet's modelSize field.
+     if (PLookSource != nullptr)
+     {
++        auto encodeEquippedSlot = [](uint16 modelId, uint16 slotOffset) -> uint16
++        {
++            return (modelId & 0xF000) == slotOffset ? modelId : static_cast<uint16>((modelId & 0x0FFF) | slotOffset);
++        };
++
+         const auto& visibleLook = PLookSource->getStyleLocked() ? PLookSource->mainlook : PLookSource->look;
+         PEntity->look           = visibleLook;
+         PEntity->look.size      = MODEL_EQUIPPED;
++        PEntity->look.head      = PLookSource->playerConfig.DisplayHeadOffFlg ? 0x0000 : encodeEquippedSlot(visibleLook.head, 0x1000);
++        PEntity->look.body      = encodeEquippedSlot(visibleLook.body, 0x2000);
++        PEntity->look.hands     = encodeEquippedSlot(visibleLook.hands, 0x3000);
++        PEntity->look.legs      = encodeEquippedSlot(visibleLook.legs, 0x4000);
++        PEntity->look.feet      = encodeEquippedSlot(visibleLook.feet, 0x5000);
++        PEntity->look.main      = encodeEquippedSlot(visibleLook.main, 0x6000);
++        PEntity->look.sub       = encodeEquippedSlot(visibleLook.sub, 0x7000);
++        PEntity->look.ranged    = encodeEquippedSlot(visibleLook.ranged, 0x8000);
+         PEntity->modelSize      = static_cast<uint8>(std::min<uint16>(PLookSource->look.size, 3));
+-        if (PLookSource->playerConfig.DisplayHeadOffFlg)
+-        {
+-            PEntity->look.head = 0;
+-        }
+     }
+     else if (table["look"].get_type() == sol::type::number)
+     {
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -6286,29 +6286,41 @@
+ {
+     auto table = lua.create_table();
+ 
+-    const look_t* PLook     = &m_PBaseEntity->look;
+-    uint8         modelSize = m_PBaseEntity->modelSize;
+-    bool          hideHead  = false;
++    const look_t* PLook       = &m_PBaseEntity->look;
++    uint8         modelSize   = m_PBaseEntity->modelSize;
++    bool          hideHead    = false;
++    bool          isEncodedEq = m_PBaseEntity->objtype != TYPE_PC && PLook->size == MODEL_EQUIPPED;
+ 
+     if (auto* PChar = dynamic_cast<CCharEntity*>(m_PBaseEntity))
+     {
+-        PLook     = PChar->getStyleLocked() ? &PChar->mainlook : &PChar->look;
+-        modelSize = static_cast<uint8>(std::min<uint16>(PChar->look.size, 3));
+-        hideHead  = PChar->playerConfig.DisplayHeadOffFlg;
+-    }
++        PLook       = PChar->getStyleLocked() ? &PChar->mainlook : &PChar->look;
++        modelSize   = static_cast<uint8>(std::min<uint16>(PChar->look.size, 3));
++        hideHead    = PChar->playerConfig.DisplayHeadOffFlg;
++        isEncodedEq = false;
++    }
++
++    auto normalizeSlot = [isEncodedEq](uint16 value, uint16 slotOffset) -> uint16
++    {
++        if (isEncodedEq && (value & 0xF000) == slotOffset)
++        {
++            return static_cast<uint16>(value & 0x0FFF);
++        }
++
++        return value;
++    };
+ 
+     table["lookType"]  = PLook->size;
+     table["modelSize"] = modelSize;
+     table["face"]      = PLook->face;
+     table["race"]      = PLook->race;
+-    table["head"]      = hideHead ? 0 : PLook->head;
+-    table["body"]      = PLook->body;
+-    table["hands"]     = PLook->hands;
+-    table["legs"]      = PLook->legs;
+-    table["feet"]      = PLook->feet;
+-    table["main"]      = PLook->main;
+-    table["sub"]       = PLook->sub;
+-    table["ranged"]    = PLook->ranged;
++    table["head"]      = hideHead ? 0 : normalizeSlot(PLook->head, 0x1000);
++    table["body"]      = normalizeSlot(PLook->body, 0x2000);
++    table["hands"]     = normalizeSlot(PLook->hands, 0x3000);
++    table["legs"]      = normalizeSlot(PLook->legs, 0x4000);
++    table["feet"]      = normalizeSlot(PLook->feet, 0x5000);
++    table["main"]      = normalizeSlot(PLook->main, 0x6000);
++    table["sub"]       = normalizeSlot(PLook->sub, 0x7000);
++    table["ranged"]    = normalizeSlot(PLook->ranged, 0x8000);
+ 
+     return table;
+ }
+diff --git a/src/map/packets/entity_update.cpp b/src/map/packets/entity_update.cpp
+--- a/src/map/packets/entity_update.cpp
++++ b/src/map/packets/entity_update.cpp
+@@ -566,14 +566,27 @@
+         }
+     }
+ 
+-    // Slightly bigger packet to encompass both name and model on first spawn, and only for dynamic entities.
+-    if (type == ENTITY_SPAWN && PEntity->isRenamed && PEntity->look.size == MODEL_EQUIPPED && PEntity->targid >= 0x700)
++    // Slightly bigger packet to encompass both name and model for renamed dynamic equipped entities.
++    // Apply on initial spawn as well as subsequent/coalesced updates so packetName (at 0x44) never
++    // overwrites the 20-byte equipped look_t at 0x30..0x43.
++    const bool isDynamicRenamedEquipped = PEntity->isRenamed && PEntity->look.size == MODEL_EQUIPPED && PEntity->targid >= 0x700;
++    if (isDynamicRenamedEquipped && type != ENTITY_DESPAWN)
+     {
+         this->setSize(0x56);
+ 
+-        // Temporarily override UpdateFlags (0x0A) to perform black magic:
+-        ref<uint8>(0x0A) = 0x57; // Carefully chosen bits to make FUNC_Packet_Incoming_0x000E behave (Same type as first 0x00E Fellow packet)
+-        ref<uint8>(0x18) = 0x01; // Copy longer name in FUNC_Packet_Incoming_0x000E
++        if (type == ENTITY_SPAWN)
++        {
++            // Temporarily override UpdateFlags (0x0A) to perform black magic:
++            ref<uint8>(0x0A) = 0x57; // Carefully chosen bits to make FUNC_Packet_Incoming_0x000E behave (Same type as first 0x00E Fellow packet)
++            ref<uint8>(0x18) = 0x01; // Copy longer name in FUNC_Packet_Incoming_0x000E
++        }
++        else
++        {
++            // Keep Name2 (0x40) + Model (0x10) and clear Name (0x08) so the client reads the name
++            // from offset 0x44 instead of 0x34, preserving all eight equipment slots at 0x34..0x43.
++            ref<uint8>(0x0A) = static_cast<uint8>((ref<uint8>(0x0A) & ~UPDATE_NAME) | UPDATE_LOOK | 0x40);
++            ref<uint8>(0x18) |= 0x01;
++        }
+ 
+         std::memcpy(buffer_.data() + 0x30, &PEntity->look, sizeof(look_t));
+ 
+@@ -595,7 +608,7 @@
+     }
+     // If the entity has been renamed, we have to re-send the name during every update.
+     // Otherwise it will revert to it's default name (if applicable).
+-    else if (PEntity->isRenamed)
++    else if (PEntity->isRenamed && !isDynamicRenamedEquipped)
+     {
+         updatemask |= UPDATE_NAME;
+         ref<uint8>(0x0A) |= updatemask;
+diff --git a/src/test/CMakeLists.txt b/src/test/CMakeLists.txt
+--- a/src/test/CMakeLists.txt
++++ b/src/test/CMakeLists.txt
+@@ -52,6 +52,7 @@
+ # Catch2 test TUs live in the executable, the only target that links Catch2.
+ xi_add_executable(xi_test testserver.rc
+     ${CMAKE_CURRENT_SOURCE_DIR}/tests/crystal_socket_tests.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kurogane_packet_tests.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/tests/bitset_tests.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/tests/char_points_queries_tests.cpp
+diff --git a/src/test/tests/kurogane_packet_tests.cpp b/src/test/tests/kurogane_packet_tests.cpp
+new file mode 100644
+--- /dev/null
++++ b/src/test/tests/kurogane_packet_tests.cpp
+@@ -0,0 +1,141 @@
++/*
++===========================================================================
++
++  Copyright (c) 2026 LandSandBoat Dev Teams
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see http://www.gnu.org/licenses/
++
++===========================================================================
++*/
++
++#include "map/entities/mob_entity.h"
++#include "map/packets/entity_update.h"
++
++#include <catch2/catch_test_macros.hpp>
++#include <cstring>
++#include <memory>
++#include <string>
++
++namespace
++{
++
++auto makeRenamedEquippedClone(const std::string& displayName) -> std::unique_ptr<CMobEntity>
++{
++    auto mob            = std::make_unique<CMobEntity>();
++    mob->id             = 0x01067701;
++    mob->targid         = 0x0701;
++    mob->objtype        = TYPE_MOB;
++    mob->allegiance     = xi::Allegiance::Player;
++    mob->name           = "KRG_1_1";
++    mob->packetName     = displayName;
++    mob->isRenamed      = true;
++    mob->modelSize      = 1;
++    mob->look.size      = MODEL_EQUIPPED;
++    mob->look.face      = 0x05;
++    mob->look.race      = 0x02;
++    mob->look.head      = 0x1101;
++    mob->look.body      = 0x2076;
++    mob->look.hands     = 0x3048;
++    mob->look.legs      = 0x4052;
++    mob->look.feet      = 0x5031;
++    mob->look.main      = 0x60B7;
++    mob->look.sub       = 0x70C4;
++    mob->look.ranged    = 0x8019;
++    mob->health.maxhp   = 1;
++    mob->health.hp      = 1;
++    return mob;
++}
++
++auto readPacketNameAt(const CEntityUpdatePacket& pkt, const std::size_t offset, const std::size_t maxLen) -> std::string
++{
++    std::string out;
++    for (std::size_t i = 0; i < maxLen; ++i)
++    {
++        const uint8 ch = pkt.ref<uint8>(offset + i);
++        if (ch == 0)
++        {
++            break;
++        }
++        out.push_back(static_cast<char>(ch));
++    }
++    return out;
++}
++
++void checkEquippedClonePacket(const CEntityUpdatePacket& pkt, const std::string& expectedName, const uint16 expectedHead)
++{
++    const uint8 flags = pkt.ref<uint8>(0x0A);
++    CHECK((flags & UPDATE_LOOK) != 0);
++    CHECK((flags & 0x40) != 0); // Name2
++    CHECK((flags & UPDATE_NAME) == 0);
++
++    CHECK(pkt.ref<uint16>(0x30) == MODEL_EQUIPPED);
++    CHECK(pkt.ref<uint8>(0x32) == 0x05);
++    CHECK(pkt.ref<uint8>(0x33) == 0x02);
++    CHECK(pkt.ref<uint16>(0x34) == expectedHead);
++    CHECK(pkt.ref<uint16>(0x36) == 0x2076);
++    CHECK(pkt.ref<uint16>(0x38) == 0x3048);
++    CHECK(pkt.ref<uint16>(0x3A) == 0x4052);
++    CHECK(pkt.ref<uint16>(0x3C) == 0x5031);
++    CHECK(pkt.ref<uint16>(0x3E) == 0x60B7);
++    CHECK(pkt.ref<uint16>(0x40) == 0x70C4);
++    CHECK(pkt.ref<uint16>(0x42) == 0x8019);
++    CHECK(readPacketNameAt(pkt, 0x44, 18) == expectedName);
++}
++
++} // namespace
++
++TEST_CASE("Kurogane 0x00E packet preserves encoded equipment and name without overlap", "[kurogane][packets]")
++{
++    const std::string displayName = "Rin's Shadow";
++    auto              mob         = makeRenamedEquippedClone(displayName);
++
++    SECTION("initial ENTITY_SPAWN encodes all eight slots and writes packetName at 0x44")
++    {
++        CEntityUpdatePacket pkt(mob.get(), ENTITY_SPAWN, UPDATE_ALL_MOB);
++        CHECK(pkt.getSize() == 0x58);
++        CHECK(pkt.ref<uint8>(0x0A) == 0x57);
++        checkEquippedClonePacket(pkt, displayName, 0x1101);
++    }
++
++    SECTION("coalesced ENTITY_UPDATE into pending ENTITY_SPAWN preserves equipment bytes")
++    {
++        CEntityUpdatePacket pkt(mob.get(), ENTITY_SPAWN, UPDATE_ALL_MOB);
++        pkt.updateWith(mob.get(), ENTITY_UPDATE, UPDATE_HP | UPDATE_POS);
++        CHECK(pkt.getSize() == 0x58);
++        checkEquippedClonePacket(pkt, displayName, 0x1101);
++    }
++
++    SECTION("standalone subsequent ENTITY_UPDATE never writes packetName over 0x34..0x43")
++    {
++        CEntityUpdatePacket pkt(mob.get(), ENTITY_UPDATE, UPDATE_ALL_MOB);
++        CHECK(pkt.getSize() == 0x58);
++        checkEquippedClonePacket(pkt, displayName, 0x1101);
++    }
++
++    SECTION("hidden head (0x0000) is preserved at 0x34 across spawn and update")
++    {
++        mob->look.head = 0x0000;
++        CEntityUpdatePacket pkt(mob.get(), ENTITY_SPAWN, UPDATE_ALL_MOB);
++        checkEquippedClonePacket(pkt, displayName, 0x0000);
++        pkt.updateWith(mob.get(), ENTITY_UPDATE, UPDATE_HP);
++        checkEquippedClonePacket(pkt, displayName, 0x0000);
++    }
++
++    SECTION("ENTITY_DESPAWN keeps despawn flags without overwriting 0x34 with packetName")
++    {
++        CEntityUpdatePacket pkt(mob.get(), ENTITY_DESPAWN, UPDATE_ALL_MOB);
++        CHECK(pkt.ref<uint8>(0x0A) == 0x30);
++        CHECK(pkt.ref<uint16>(0x36) == 0x2076);
++    }
++}
+diff --git a/scripts/tests/custom/kurogane.lua b/scripts/tests/custom/kurogane.lua
+--- a/scripts/tests/custom/kurogane.lua
++++ b/scripts/tests/custom/kurogane.lua
+@@ -1,5 +1,45 @@
+-local spec = xi.overlords.spec
+-local K    = xi.overlords.kurogane
++local ffi          = require('ffi')
++local packetReader = require('scripts/tests/helpers/packet_reader')
++local spec         = xi.overlords.spec
++local K            = xi.overlords.kurogane
++
++pcall(ffi.cdef, [[
++    typedef struct {
++        uint16_t id : 9;
++        uint16_t size : 7;
++        uint16_t sync;
++    } KRG_CLI_HEADER;
++
++    typedef struct {
++        uint8_t  ItemIndex;
++        uint8_t  EquipKind;
++        uint8_t  Category;
++        uint8_t  padding00;
++        uint16_t ItemNo;
++        uint16_t padding01;
++    } KRG_LOCKSTYLE_ITEM;
++
++    typedef struct {
++        KRG_CLI_HEADER     header;
++        uint8_t            Count;
++        uint8_t            Mode;
++        uint8_t            Flags;
++        uint8_t            padding00;
++        KRG_LOCKSTYLE_ITEM Items[16];
++    } KRG_CLI_LOCKSTYLE;
++
++    typedef struct {
++        KRG_CLI_HEADER header;
++        uint8_t        flags0;
++        uint8_t        flags1;
++        uint8_t        flags2;
++        uint8_t        flags3;
++        uint32_t       unused00;
++        uint32_t       unused01;
++        uint8_t        SetFlg;
++        uint8_t        padding00[3];
++    } KRG_CLI_CONFIG;
++]])
+ 
+ local lookFields =
+ {
+@@ -27,7 +67,68 @@
+     end
+ end
+ 
+-local function insertLookClone(player, name)
++local function readCString(data, offset, maxLen)
++    local chars = {}
++    for i = 0, maxLen - 1 do
++        local b = data[offset + i]
++        if not b or b == 0 then
++            break
++        end
++        chars[#chars + 1] = string.char(b)
++    end
++    return table.concat(chars)
++end
++
++local function findLastEntityPacket(player, entityId)
++    local found = nil
++    for _, packet in ipairs(player.packets:getIncoming()) do
++        if packet.type == 0x00E and packetReader.readU32(packet.data, 0x04) == entityId then
++            found = packet
++        end
++    end
++    return found
++end
++
++local function assertEquippedPacket(packet, expectedLook, expectedName, context)
++    assert(packet, context .. ': no outgoing 0x00E packet captured')
++
++    local flags = packet.data[0x0A]
++    assert(bit.band(flags, 0x10) ~= 0, string.format('%s: Model flag (0x10) missing in 0x0A=0x%02X', context, flags))
++    assert(bit.band(flags, 0x40) ~= 0, string.format('%s: Name2 flag (0x40) missing in 0x0A=0x%02X', context, flags))
++    assert(bit.band(flags, 0x08) == 0, string.format('%s: UPDATE_NAME (0x08) unexpectedly set in 0x0A=0x%02X', context, flags))
++
++    local modelType = packetReader.readU16(packet.data, 0x30)
++    assert(modelType == 1, string.format('%s: expected MODEL_EQUIPPED (1) at 0x30, got 0x%04X', context, modelType))
++
++    local faceRace = packetReader.readU16(packet.data, 0x32)
++    local expectedFaceRace = expectedLook.face + expectedLook.race * 0x100
++    assert(faceRace == expectedFaceRace, string.format(
++        '%s: face/race at 0x32 mismatch (expected 0x%04X, got 0x%04X)', context, expectedFaceRace, faceRace))
++
++    local expectedSlots =
++    {
++        { offset = 0x34, name = 'head',   value = expectedLook.head },
++        { offset = 0x36, name = 'body',   value = expectedLook.body },
++        { offset = 0x38, name = 'hands',  value = expectedLook.hands },
++        { offset = 0x3A, name = 'legs',   value = expectedLook.legs },
++        { offset = 0x3C, name = 'feet',   value = expectedLook.feet },
++        { offset = 0x3E, name = 'main',   value = expectedLook.main },
++        { offset = 0x40, name = 'sub',    value = expectedLook.sub },
++        { offset = 0x42, name = 'ranged', value = expectedLook.ranged },
++    }
++    for _, slot in ipairs(expectedSlots) do
++        local actual = packetReader.readU16(packet.data, slot.offset)
++        assert(actual == slot.value, string.format(
++            '%s: %s at 0x%02X mismatch (expected 0x%04X, got 0x%04X)',
++            context, slot.name, slot.offset, slot.value, actual))
++    end
++
++    local actualName = readCString(packet.data, 0x44, 18)
++    assert(actualName == expectedName, string.format(
++        '%s: packetName at 0x44 mismatch (expected %q, got %q)', context, expectedName, actualName))
++end
++
++local function insertLookClone(player, name, packetName)
+     local zone = GetZone(player:getZoneID())
+     assert(zone, 'player zone is unavailable')
+ 
+@@ -35,7 +136,7 @@
+         objtype              = xi.objType.MOB,
+         allegiance           = xi.allegiance.PLAYER,
+         name                 = name,
+-        packetName           = name,
++        packetName           = packetName or name,
+         x                    = player:getXPos(),
+         y                    = player:getYPos(),
+         z                    = player:getZPos(),
+@@ -67,7 +168,7 @@
+         assert(kagemushaById and kagemushaById.key == 'kagemusha', 'NIN branch 2 did not resolve to kagemusha')
+     end)
+ 
+-    describe('authoritative player appearance', function()
++    describe('authoritative player appearance and 0x00E packet serialization', function()
+         local dynamicMobs
+ 
+         before_each(function()
+@@ -82,7 +183,7 @@
+             end
+         end)
+ 
+-        it('copies every visible slot once before the clone becomes visible', function()
++        it('encodes all eight slots in 0x00E on spawn and preserves gear across subsequent updates', function()
+             local player = xi.test.world:spawnPlayer({
+                 zone  = xi.zone.WEST_RONFAURE,
+                 job   = xi.job.NIN,
+@@ -91,34 +192,138 @@
+ 
+             local models =
+             {
+-                { xi.slot.HEAD,   0x2101 },
+-                { xi.slot.BODY,   0x2202 },
+-                { xi.slot.HANDS,  0x2303 },
+-                { xi.slot.LEGS,   0x2404 },
+-                { xi.slot.FEET,   0x2505 },
+-                { xi.slot.MAIN,   0x2606 },
+-                { xi.slot.SUB,    0x2707 },
+-                { xi.slot.RANGED, 0x2808 },
++                { xi.slot.HEAD,   0x0101 },
++                { xi.slot.BODY,   0x0076 },
++                { xi.slot.HANDS,  0x0048 },
++                { xi.slot.LEGS,   0x0052 },
++                { xi.slot.FEET,   0x0031 },
++                { xi.slot.MAIN,   0x00B7 },
++                { xi.slot.SUB,    0x00C4 },
++                { xi.slot.RANGED, 0x0019 },
+             }
+             for _, entry in ipairs(models) do
+                 player:setModelId(entry[2], entry[1])
+             end
+ 
+             local ownerLookA = player:getLookSnapshot()
+-            local cloneA     = insertLookClone(player, 'Kurogane_Look_A')
++            assert(ownerLookA.body == 0x0076, 'owner snapshot should keep raw body model ID 0x0076')
++
++            local expectedEncoded =
++            {
++                face   = ownerLookA.face,
++                race   = ownerLookA.race,
++                head   = 0x1101,
++                body   = 0x2076,
++                hands  = 0x3048,
++                legs   = 0x4052,
++                feet   = 0x5031,
++                main   = 0x60B7,
++                sub    = 0x70C4,
++                ranged = 0x8019,
++            }
++
++            player.packets:clear()
++            local displayName = "Rin's Shadow"
++            local cloneA      = insertLookClone(player, 'KRG_Test_A', displayName)
+             dynamicMobs[#dynamicMobs + 1] = cloneA
+-            local cloneLookA = cloneA:getLookSnapshot()
+-            assertLookEquals(ownerLookA, cloneLookA, 'first clone')
+-
+-            local firstLegs = cloneLookA.legs
+-            player:setModelId(0x2A0A, xi.slot.LEGS)
++            -- Coalesced HP update in the same tick as spawn (mirrors makeClone).
++            cloneA:setMaxHP(1)
++            cloneA:setHP(1)
++            xi.test.world:tickEntity(cloneA)
++            xi.test.world:tickEntity(player)
++
++            assertLookEquals(ownerLookA, cloneA:getLookSnapshot(), 'first clone snapshot')
++            local spawnPkt = findLastEntityPacket(player, cloneA:getID())
++            assertEquippedPacket(spawnPkt, expectedEncoded, displayName, 'initial spawn 0x00E')
++
++            -- Subsequent entity update (position + HP) must not clobber 0x34..0x43 with packetName.
++            player.packets:clear()
++            cloneA:setPos(player:getXPos() + 0.5, player:getYPos(), player:getZPos() + 0.5, player:getRotPos())
++            cloneA:setHP(1)
++            cloneA:updateEntity()
++            xi.test.world:tickEntity(cloneA)
++            xi.test.world:tickEntity(player)
++
++            local updatePkt = findLastEntityPacket(player, cloneA:getID())
++            assertEquippedPacket(updatePkt, expectedEncoded, displayName, 'subsequent update 0x00E')
++
++            -- Mutating owner later does not affect existing clone, and new clone gets updated encoding.
++            local firstLegs = cloneA:getLookSnapshot().legs
++            player:setModelId(0x00AA, xi.slot.LEGS)
+             local ownerLookB = player:getLookSnapshot()
+-            assert(ownerLookB.legs ~= firstLegs, 'appearance mutation did not change the owner snapshot')
+-
+-            local cloneB = insertLookClone(player, 'Kurogane_Look_B')
++            assert(ownerLookB.legs == 0x00AA and ownerLookB.legs ~= firstLegs, 'owner legs mutation failed')
++
++            player.packets:clear()
++            local cloneB = insertLookClone(player, 'KRG_Test_B', 'Shadow B')
+             dynamicMobs[#dynamicMobs + 1] = cloneB
+-            assertLookEquals(ownerLookB, cloneB:getLookSnapshot(), 'second clone')
++            xi.test.world:tickEntity(cloneB)
++            xi.test.world:tickEntity(player)
++
++            assertLookEquals(ownerLookB, cloneB:getLookSnapshot(), 'second clone snapshot')
+             assert(cloneA:getLookSnapshot().legs == firstLegs, 'first clone appearance changed with its owner')
++
++            local expectedEncodedB =
++            {
++                face   = ownerLookB.face,
++                race   = ownerLookB.race,
++                head   = 0x1101,
++                body   = 0x2076,
++                hands  = 0x3048,
++                legs   = 0x40AA,
++                feet   = 0x5031,
++                main   = 0x60B7,
++                sub    = 0x70C4,
++                ranged = 0x8019,
++            }
++            local spawnPktB = findLastEntityPacket(player, cloneB:getID())
++            assertEquippedPacket(spawnPktB, expectedEncodedB, 'Shadow B', 'second clone 0x00E')
++        end)
++
++        it('respects lockstyle and hidden-head in outgoing 0x00E packets', function()
++            local player = xi.test.world:spawnPlayer({
++                zone  = xi.zone.WEST_RONFAURE,
++                job   = xi.job.NIN,
++                level = 75,
++            })
++
++            player:setModelId(0x0105, xi.slot.HEAD)
++            player:setModelId(0x0076, xi.slot.BODY)
++            player:setModelId(0x00B7, xi.slot.MAIN)
++
++            -- Lock current style (Mode = 3 Set with Count = 0 locks current look into mainlook).
++            local lockPkt = ffi.new('KRG_CLI_LOCKSTYLE')
++            lockPkt.Count = 0
++            lockPkt.Mode  = 3
++            player.packets:send(0x053, lockPkt, ffi.sizeof(lockPkt))
++
++            -- Change underlying body after locking style; clone must still render locked 0x2076.
++            player:setModelId(0x0099, xi.slot.BODY)
++
++            -- Enable DisplayHeadOffFlg (hidden head) via 0x0DC config packet.
++            local cfgPkt = ffi.new('KRG_CLI_CONFIG')
++            cfgPkt.flags3 = 0x08 -- DisplayHeadOffFlg bit
++            cfgPkt.SetFlg = 1    -- On
++            player.packets:send(0x0DC, cfgPkt, ffi.sizeof(cfgPkt))
++
++            local ownerLook = player:getLookSnapshot()
++            assert(ownerLook.body == 0x0076, string.format('lockstyle body mismatch: got 0x%04X', ownerLook.body))
++            assert(ownerLook.head == 0, string.format('hidden head snapshot mismatch: got 0x%04X', ownerLook.head))
++
++            player.packets:clear()
++            local clone = insertLookClone(player, 'KRG_Lock_Hide', 'Locked Shadow')
++            dynamicMobs[#dynamicMobs + 1] = clone
++            xi.test.world:tickEntity(clone)
++            xi.test.world:tickEntity(player)
++
++            local pkt = findLastEntityPacket(player, clone:getID())
++            assert(pkt, 'no 0x00E packet captured for lockstyle/hidden-head clone')
++            assert(packetReader.readU16(pkt.data, 0x34) == 0x0000, string.format(
++                'hidden head should encode 0x0000 at 0x34, got 0x%04X', packetReader.readU16(pkt.data, 0x34)))
++            assert(packetReader.readU16(pkt.data, 0x36) == 0x2076, string.format(
++                'lockstyle body should encode 0x2076 at 0x36, got 0x%04X', packetReader.readU16(pkt.data, 0x36)))
++            assert(packetReader.readU16(pkt.data, 0x3E) == 0x60B7, string.format(
++                'lockstyle main should encode 0x60B7 at 0x3E, got 0x%04X', packetReader.readU16(pkt.data, 0x3E)))
++            assert(readCString(pkt.data, 0x44, 18) == 'Locked Shadow', 'packetName at 0x44 mismatch')
+         end)
+     end)
+ 
+@@ -171,5 +376,59 @@
+             xi.test.world:tickEntity(player)
+             assert(K.getSnapshot(player).clones == 0, 'disengage did not dismiss every clone')
+         end)
++
++        it('preserves all five existing clones when replacement creation fails', function()
++            local ok, spawned = K.spawn(player, K.MAX_ACTIVE)
++            assert(ok and spawned == K.MAX_ACTIVE, 'failed to spawn initial five clones')
++
++            local state = K._owners[player:getID()]
++            assert(state and #state.clones == K.MAX_ACTIVE, 'expected five tracked clones')
++
++            local originalIds = {}
++            for i, record in ipairs(state.clones) do
++                originalIds[i] = record.mobId
++            end
++
++            -- Simulate dynamic-entity allocation failure during replacement.
++            local realZone = player:getZone()
++            local fakeZone = setmetatable({
++                getID = function()
++                    return realZone:getID()
++                end,
++                isNavigablePoint = function(_, pos)
++                    return realZone:isNavigablePoint(pos)
++                end,
++                insertDynamicEntity = function()
++                    return nil
++                end,
++            }, {})
++
++            local realGetZone = player.getZone
++            player.getZone = function()
++                return fakeZone
++            end
++
++            local repOk, repErr = pcall(function()
++                return K.spawn(player, 1)
++            end)
++            player.getZone = realGetZone
++
++            -- pcall succeeded (K.spawn returned false, reason) rather than throwing.
++            assert(repOk, 'K.spawn threw an unexpected error: ' .. tostring(repErr))
++
++            local afterState = K._owners[player:getID()]
++            assert(afterState and #afterState.clones == K.MAX_ACTIVE,
++                string.format('expected all %d clones preserved after failed replacement, got %d',
++                    K.MAX_ACTIVE, afterState and #afterState.clones or 0))
++
++            for i, expectedId in ipairs(originalIds) do
++                assert(afterState.clones[i].mobId == expectedId,
++                    string.format('clone slot %d changed ID after failed replacement', i))
++                assert(afterState.clones[i].mob:isAlive(),
++                    string.format('clone slot %d was despawned on failed replacement', i))
++            end
++
++            assert(K.getSnapshot(player).clones == K.MAX_ACTIVE, 'snapshot did not report all five clones alive')
++        end)
+     end)
+ end)

@@ -634,27 +634,22 @@ function K.spawn(owner, count)
     end
 
     attachOwnerListeners(owner)
-    local spawned = 0
-    local createdIds = {}
     local wanted = math.min(K.MAX_ACTIVE, math.max(0, math.floor(tonumber(count) or 0)))
     if wanted == 0 then
         clearStateIfEmpty(ownerId, state)
         return false, 'clone count must be between 1 and 5'
     end
-    for index = 1, wanted do
-        while #state.clones >= K.MAX_ACTIVE do
-            removeAt(state, 1, true)
-        end
 
+    -- Transactional staging: create and validate every replacement clone BEFORE
+    -- evicting any pre-existing clone so a failure (including dynamic-entity
+    -- allocation cap) never loses an active clone.
+    local staged = {}
+    for index = 1, wanted do
         local ok, mobOrError, lookInfo, posInfo = pcall(makeClone, owner, target, index)
         if not ok or not mobOrError then
             state.lastError = ok and tostring(lookInfo or 'unknown spawn failure') or tostring(mobOrError)
-            -- Roll back only this request's entities. Pre-existing clones stay
-            -- alive; a partial dynamic-entity allocation never leaks.
-            for recordIndex = #state.clones, 1, -1 do
-                if createdIds[state.clones[recordIndex].mobId] then
-                    removeAt(state, recordIndex, true)
-                end
+            for stagedIndex = #staged, 1, -1 do
+                dismissMob(staged[stagedIndex])
             end
             setCount(owner, state)
             clearStateIfEmpty(ownerId, state)
@@ -663,11 +658,12 @@ function K.spawn(owner, count)
 
         local now = xi.overlords.nowSec()
         local lifetime = math.random(K.LIFETIME_MIN, K.LIFETIME_MAX)
-        local record = {
+        staged[#staged + 1] = {
             mob = mobOrError,
             mobId = mobOrError:getID(),
             targetId = targetId,
             expiresAt = now + lifetime,
+            lifetime = lifetime,
             nextEngageAt = now + math.randomFloat(0.25, 1.4),
             attempts = 0,
             action = 0,
@@ -677,14 +673,26 @@ function K.spawn(owner, count)
             attributedHits = 0,
             attributedDamage = 0,
         }
+    end
+
+    -- All replacements succeeded; now evict only the oldest clones needed to
+    -- stay at or below K.MAX_ACTIVE, then commit the staged clones.
+    local toEvict = math.max(0, (#state.clones + #staged) - K.MAX_ACTIVE)
+    for _ = 1, toEvict do
+        removeAt(state, 1, true)
+    end
+
+    local spawned = 0
+    for _, record in ipairs(staged) do
+        local lifetime = record.lifetime
+        record.lifetime = nil
         state.clones[#state.clones + 1] = record
-        createdIds[record.mobId] = true
-        installCloneListeners(mobOrError, ownerId, targetId)
+        installCloneListeners(record.mob, ownerId, targetId)
 
         -- The entity owns expiry, so logout cannot strand it when the player's
         -- timer queue disappears.
-        if mobOrError.timer then
-            mobOrError:timer(lifetime * 1000, function(actor)
+        if record.mob.timer then
+            record.mob:timer(lifetime * 1000, function(actor)
                 if actor and type(DespawnMob) == 'function' then
                     pcall(DespawnMob, actor:getID())
                 end
