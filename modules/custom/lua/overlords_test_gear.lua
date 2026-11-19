@@ -3572,6 +3572,50 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
 end
 
 -----------------------------------
+-- Derive the equipped Soul's broad equipment role from its canonical
+-- crystal metadata.  This is a fallback for the Souls not individually
+-- covered by the old default profiles, not a second Soul database.
+-----------------------------------
+function testGear.applyCanonicalSoulRole(player, profile, jobId)
+    if player == nil or profile == nil then
+        return profile
+    end
+
+    local key, entry = testGear.getActiveSpecKey(player, jobId)
+    if key == nil or entry == nil then
+        return profile
+    end
+
+    local role = string.lower(tostring(entry.role or ''))
+    local desired = nil
+    if string.find(role, 'healer', 1, true) or string.find(role, 'healing', 1, true) then
+        desired = 'caster'
+    elseif string.find(role, 'tank', 1, true) then
+        desired = 'tank'
+    elseif string.find(role, 'damage', 1, true) then
+        -- Preserve the original weapon-oriented caster/ranged identity.
+        -- A damage Soul on a normally tanking job must not inherit tank gear.
+        if profile.role == 'tank' then
+            desired = 'tp'
+        else
+            desired = profile.role
+        end
+    end
+
+    -- Specific profiles may describe a special gameplay loop (e.g. a
+    -- weaponless healer); preserve their equipment/weapon configuration.
+    profile.specEntry = entry
+    profile.specKey = key
+    if desired ~= nil then
+        profile.role = desired
+    end
+    if not string.find(profile.label or '', entry.name or key, 1, true) then
+        profile.label = tostring(entry.name or key) .. ' (' .. tostring(profile.label or 'Gear') .. ')'
+    end
+    return profile
+end
+
+-----------------------------------
 -- Candidate Eligibility & Slot Resolution
 -----------------------------------
 local function hasJobBit(jobsMask, jobId)
@@ -3795,6 +3839,7 @@ function testGear.buildLoadout(player, opts)
     targetLevel = math.max(1, math.min(99, math.floor(targetLevel)))
 
     local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
+    profile = testGear.applyCanonicalSoulRole(player, profile, player:getMainJob())
 
     if opts.role ~= nil then
         local rKey = testGear.resolveRoleKey(opts.role)
