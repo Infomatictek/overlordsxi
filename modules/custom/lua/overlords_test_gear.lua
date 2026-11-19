@@ -3888,6 +3888,9 @@ function testGear.buildLoadout(player, opts)
 
     local mainLvl = player.getMainLvl and player:getMainLvl() or 1
     local targetLevel = tonumber(opts.level) or mainLvl
+    if targetLevel > mainLvl and not opts.setLevel then
+        return nil, 'Cannot equip gear above current level. Use !gear level <level> to change level explicitly.'
+    end
     targetLevel = math.max(1, math.min(75, math.floor(targetLevel)))
 
     local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
@@ -3916,7 +3919,7 @@ function testGear.buildLoadout(player, opts)
     -- A Soul's allowed skills take precedence over vanilla job defaults.
     -- If no melee weapon is whitelisted, a ranged Soul may remain unarmed in
     -- MAIN while retaining its ranged weapon and ammunition.
-    if not testGear.isWeaponAllowedForJob(player, profile.weapon) then
+    if profile.weapon ~= 'none' and not testGear.isWeaponAllowedForJob(player, profile.weapon) then
         profile.weapon, profile.offhand = 'none', 'none'
         for _, key in ipairs(testGear.WEAPON_ORDER) do
             local info = testGear.WEAPON_INFO[key]
