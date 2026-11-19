@@ -12,7 +12,7 @@ MOBs. Each clone:
 
 - snapshots the owner's visible race, face, size, armor and all three weapon
   slots before the entity is inserted into the zone;
-- has level-scaled HP (20 + 2 × Ninja level, clamped to 40–200 HP), a randomized 25–30 second lifetime, a staggered
+- has level-scaled HP (20 + 2 × Ninja level, clamped to 40–170 HP), a randomized 25–30 second lifetime, a staggered
   engagement request, native pathing and a native attack timer;
 - can engage only the enemy the owner was fighting at summon time;
 - makes at most three bounded engagement requests and is reported inactive if
@@ -147,7 +147,7 @@ These steps are a test plan, not a record of completed in-game validation.
    hidden. Existing clones must retain their spawn snapshot; new clones must
    match the new visible look.
 7. Use a controlled enemy AoE. Confirm clones have their configured HP pool, can be hit by the
-   normal AoE path and disappear when damage depletes that HP. At level 75, expect 170 HP; at level 99, expect 200 HP. Check that minor spikes do not immediately kill a healthy clone, while strong direct hits and AoE still kill it. Confirm they do not
+   normal AoE path and disappear when damage depletes that HP. At the server level cap of 75, expect 170 HP (the maximum). Check that minor spikes do not immediately kill a healthy clone, while strong direct hits and AoE still kill it. Confirm they do not
    intercept single-target hate, become the top-hate tank, heal, buff, drop
    items or spawn further clones.
 8. On a fresh disposable target, record claim and hate before spawning. Confirm

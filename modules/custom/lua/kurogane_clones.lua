@@ -23,11 +23,11 @@ K.LIFETIME_MAX = 30
 -- Glass-cannon baseline: a few small spikes are survivable, but heavy
 -- direct attacks and enemy AoE should still kill shadows quickly.
 -- Do not derive shadow HP from the owner's HP/gear: that made tank builds
--- create disproportionately durable clones.
+-- create disproportionately durable clones. Level 75 is the server cap.
 K.HP_BASE = 20
 K.HP_PER_LEVEL = 2
 K.HP_MIN = 40
-K.HP_MAX = 200
+K.HP_MAX = 170
 K.MAX_ENGAGE_ATTEMPTS = 3
 K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = -95
 K._owners = K._owners or {}
