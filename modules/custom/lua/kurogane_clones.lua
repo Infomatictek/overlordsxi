@@ -31,11 +31,18 @@ local function isKurogane(player)
     return spec.is(player, xi.job.NIN, 'kurogane')
 end
 
+local function zoneId(entity)
+    if not entity then return nil end
+    if entity.getZoneID then return entity:getZoneID() end
+    local zone = entity.getZone and entity:getZone() or nil
+    return zone and zone.getID and zone:getID() or nil
+end
+
 local function isValidTarget(owner, target)
-    return owner and target and owner.isAlive and owner:isAlive()
+    local ownerZone = zoneId(owner)
+    return owner and target and ownerZone ~= nil and owner.isAlive and owner:isAlive()
         and target.isMob and target:isMob() and target.isAlive and target:isAlive()
-        and owner.getZone and target.getZone
-        and owner:getZone() == target:getZone()
+        and ownerZone == zoneId(target)
 end
 
 local function setCount(owner, state)
@@ -82,7 +89,7 @@ function K.dismissAll(owner)
 end
 
 local function validForState(owner, state)
-    return state.owner == owner and state.zone == owner:getZone()
+    return state.ownerId == owner:getID() and state.zoneId == zoneId(owner)
         and isKurogane(owner) and owner.isAlive and owner:isAlive()
 end
 
@@ -169,16 +176,18 @@ function K.spawn(owner, count)
     if not K.ENABLE_EXPERIMENTAL_CLONES then return false, 'experimental clone entities disabled' end
     if not isKurogane(owner) then return false, 'Kurogane required' end
     local target = owner.getTarget and owner:getTarget() or nil
-    if not isValidTarget(owner, target) then return false, 'engage a valid mob first' end
+    if not isValidTarget(owner, target) or (owner.isEngaged and not owner:isEngaged()) then
+        return false, 'engage and select a valid mob first'
+    end
 
     local id = owner:getID()
     local state = K._owners[id]
-    if state and state.zone ~= owner:getZone() then
+    if state and state.zoneId ~= zoneId(owner) then
         K.dismissAll(owner)
         state = nil
     end
     if not state then
-        state = { owner = owner, zone = owner:getZone(), clones = {} }
+        state = { ownerId = owner:getID(), zoneId = zoneId(owner), clones = {} }
         K._owners[id] = state
     end
     local spawned = 0
