@@ -57,6 +57,7 @@ Peer fetch(CCharEntity* player)
     Peer peer{};
     peer.entity = player;
     peer.actor = player->id;
+    peer.job = static_cast<uint8>(player->GetMJob());
     peer.name = player->name;
     if (!valid(peer.name, true)) return peer;
 
@@ -73,7 +74,7 @@ Peer fetch(CCharEntity* player)
     sol::object object = result.get<sol::object>();
     if (!object.valid() || object.get_type() != sol::type::table) return peer;
     auto tbl = object.as<sol::table>();
-    peer.job = tbl.get_or<uint8>("jobId", 0);
+    peer.job = tbl.get_or<uint8>("jobId", peer.job);
     peer.branch = tbl.get_or<uint8>("branch", 0);
     peer.key = tbl.get_or<std::string>("soulKey", "");
     if (peer.job < 1 || peer.job > 22 || peer.branch < 1 || peer.branch > 3 ||
@@ -105,6 +106,8 @@ auto makePacket(const Peer& peer, bool remove) -> std::unique_ptr<CBasicPacket>
     p->ref<uint8>(0x15) = static_cast<uint8>(k);
     std::memcpy(&p->ref<uint8>(0x16), peer.name.data(), n);
     if (k) std::memcpy(&p->ref<uint8>(0x16 + n), peer.key.data(), k);
+    const auto tail = padded - (22u + n + k);
+    if (tail) std::memset(&p->ref<uint8>(0x16 + n + k), 0, tail);
     return p;
 }
 
