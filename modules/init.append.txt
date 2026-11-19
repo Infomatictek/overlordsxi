@@ -86,6 +86,9 @@ custom/sql/rng_specs.sql
 custom/lua/overlords_soul_hud.lua
 custom/lua/thf_specs.lua
 custom/lua/bst_untamed.lua
+custom/lua/whm_zealot.lua
+custom/lua/blm_astromancer.lua
+custom/lua/rdm_scarlet_weaver.lua
 custom/commands/soulhud.lua
 
 custom/cpp/overlords_soulhud_sync.cpp
