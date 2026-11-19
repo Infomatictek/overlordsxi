@@ -516,6 +516,11 @@ local function writeSlotRank(player, jobId, wsId, slot, rank, specIdOverride)
 end
 
 function talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
+    if talents.EVOLUTION_WS[wsId] then
+        if player == nil then return 0 end
+        local raw = unpack4(player:getCharVar(talents.getScVarName(jobId, wsId, player, specIdOverride)), scTier)
+        return isValidChoiceForTier(scTier, raw) and raw or 0
+    end
     local ws = catalog.byId[wsId]
     if player ~= nil then
         local packed = player:getCharVar(talents.getScVarName(jobId, wsId, player, specIdOverride))
@@ -528,8 +533,14 @@ function talents.getSCChoice(player, jobId, wsId, scTier, specIdOverride)
 end
 
 function talents.setSCChoice(player, jobId, wsId, scTier, scId, specIdOverride)
-    if player == nil or not isValidChoiceForTier(scTier, scId) then
+    if player == nil or not (isValidChoiceForTier(scTier, scId) or (talents.EVOLUTION_WS[wsId] and scId == 0)) then
         return false, 'Invalid skillchain choice for this tier.'
+    end
+    if talents.EVOLUTION_WS[wsId] then
+        local requiredLevel = ({1, 5, 10, 15})[scTier] or 75
+        if player:getJobLevel(jobId) < requiredLevel or talents.getWSSpent(player, jobId, wsId) < scTier then
+            return false, 'Unlock the matching evolution stage first.'
+        end
     end
     local vn = talents.getScVarName(jobId, wsId, player, specIdOverride)
     local packed = player:getCharVar(vn)
@@ -539,6 +550,11 @@ end
 
 function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
     local list = SC_CHOICES[scTier]
+    if talents.EVOLUTION_WS[wsId] and list then
+        local withOff = { 0 }
+        for _, value in ipairs(list) do withOff[#withOff + 1] = value end
+        list = withOff
+    end
     if list == nil or #list == 0 then
         return false, 'No skillchain choices for this tier.'
     end
@@ -556,15 +572,25 @@ function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
 end
 
 function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride, specIdOverride)
-    -- Evolution prototypes retain their original weapon-skill skillchain
-    -- properties without forcing a skillchain talent purchase.
+    -- Evolution skillchains are entirely optional. The default is NONE.
+    -- Each purchased stage allows one configurable property, following the
+    -- familiar T1/T2 Lv1, T3 Lv2, T4 Lv3 progression. No damage tax.
     if talents.EVOLUTION_WS[wsId] then
-        local ws = catalog.byId[wsId]
-        local original = (ws and ws.orig and ws.orig.skillchain) or {}
-        local chosen = {}
-        for _, name in ipairs(original) do
-            local id = SC_IDS[name]
-            if id and #chosen < 3 then table.insert(chosen, id) end
+        local ranks = ranksOverride
+        if ranks == nil then ranks = talents.getWSRanks(player, jobId, wsId, specIdOverride) end
+        local spent = 0
+        for key, rank in pairs(ranks) do
+            if key:sub(1, 2) == 'e_' then spent = spent + rank end
+        end
+        local chosen, seen = {}, {}
+        for _, tier in ipairs({ 4, 3, 1, 2 }) do
+            if spent >= tier then
+                local id = talents.getSCChoice(player, jobId, wsId, tier, specIdOverride)
+                if id > 0 and not seen[id] and #chosen < 3 then
+                    seen[id] = true
+                    chosen[#chosen + 1] = id
+                end
+            end
         end
         return { sc1 = chosen[1] or 0, sc2 = chosen[2] or 0,
                  sc3 = chosen[3] or 0, scBonus = 0, ids = chosen }
@@ -2530,6 +2556,18 @@ function talents.sendWSDetail(player, wsId)
             scName,
             node.slot or 0
         ))
+    end
+
+    -- Compatibility: expose optional SC property controls as read-only NODE
+    -- records. The client uses OP_CYCLE_SC to change them; no talent ranks.
+    if tree.evolution then
+        local labels = { 'Primary SC', 'Secondary SC', 'Advanced SC', 'Final SC' }
+        for tier = 1, 4 do
+            local id = talents.getSCChoice(player, jobId, wsId, tier)
+            local name = (id > 0 and (SC_SHORT[id] or SC_NAMES[id])) or 'None'
+            sendProto(player, string.format('NODE|%u|evsc_t%u|%u|3|0|0|0|0||0|%s|Optional skillchain property|%u|%u|%u|%s|0',
+                ws.id, tier, tier, labels[tier], ({1, 5, 10, 15})[tier], tier, id, sanitizeField(name)))
+        end
     end
 
     local wsUnlocked = talents.isWSUnlocked(player, ws.id, jobId) and 1 or 0
