@@ -140,6 +140,39 @@ local function tickOwner(owner, state)
     end
 end
 
+-- LandSandBoat needs the complete 20-byte equipped look *at insertion time*.
+-- getModelId() is only a 16-bit model ID, not a player appearance; setLook()
+-- after insertion cannot repair a Mob that the client already sees as invisible.
+local function lookWord(value)
+    local n = math.max(0, math.min(65535, math.floor(tonumber(value) or 0)))
+    return string.format('%02X%02X', n % 256, math.floor(n / 256))
+end
+
+local function getOwnerLook(owner)
+    if not (owner.getRace and owner.getFace and owner.getEquipmentModelIds) then
+        return nil, 'player appearance API unavailable'
+    end
+    local models = owner:getEquipmentModelIds()
+    if not models then return nil, 'equipment appearance unavailable' end
+    local race = math.floor(tonumber(owner:getRace()) or 0)
+    local face = math.floor(tonumber(owner:getFace()) or 0)
+    if race < 1 or race > 8 or face < 0 or face > 255 then
+        return nil, 'invalid player race/face'
+    end
+    -- The Lua binding exposes five equipped model IDs, but not legs/feet/ranged.
+    -- Use the equipped-model slot's plain starter appearance for those until
+    -- the C++ binding can expose all eight model IDs. These placeholders are
+    -- intentionally visible, but will not exactly copy leg/foot equipment.
+    local legs = 0x4008
+    local feet = 0x5008
+    local look = string.format('0x0100%02X%02X', face, race)
+        .. lookWord(models.head) .. lookWord(models.body) .. lookWord(models.hands)
+        .. lookWord(legs) .. lookWord(feet)
+        .. lookWord(models.main) .. lookWord(models.sub) .. lookWord(0)
+    if #look ~= 42 then return nil, 'invalid equipped look length' end
+    return look
+end
+
 local function makeClone(owner, target, index)
     if not (xi.allegiance and xi.allegiance.PLAYER) then
         return nil, 'PLAYER allegiance unavailable; refusing hostile MOB spawn'
@@ -152,7 +185,8 @@ local function makeClone(owner, target, index)
     local theta = index * 2.399963 + math.random() * 0.3
     local x = owner:getXPos() + math.cos(theta) * 1.4
     local z = owner:getZPos() + math.sin(theta) * 1.4
-    local model = owner.getModelId and owner:getModelId() or 0
+    local look, lookErr = getOwnerLook(owner)
+    if not look then return nil, lookErr end
     local mob = zone:insertDynamicEntity({
         objtype = xi.objType.MOB,
         allegiance = xi.allegiance and xi.allegiance.PLAYER or nil,
@@ -160,7 +194,7 @@ local function makeClone(owner, target, index)
         packetName = owner:getName() .. "'s Shadow",
         x = x, y = owner:getYPos(), z = z,
         rotation = owner:getRotPos(),
-        look = model,
+        look = look,
         minLevel = owner:getMainLvl(),
         maxLevel = owner:getMainLvl(),
         dropId = 0,
@@ -170,17 +204,15 @@ local function makeClone(owner, target, index)
     })
     if not mob then return nil, 'dynamic MOB creation failed' end
 
-    -- The Lua binding supplies equipment look data, but whether a dynamic
-    -- MOB can display a full player look must be checked on the target client.
-    if owner.getEquipmentModelIds and mob.setLook then
-        pcall(function() mob:setLook(owner:getEquipmentModelIds()) end)
-    end
+    -- Model is already set before insertion; setLook() only supports NPC
+    -- entities and must not be called on dynamic MOB clones.
     if mob.setMobMod and xi.mobMod then
         if xi.mobMod.NO_DROPS then mob:setMobMod(xi.mobMod.NO_DROPS, 1) end
         if xi.mobMod.NO_EXP then mob:setMobMod(xi.mobMod.NO_EXP, 1) end
         if xi.mobMod.NO_DESPAWN then mob:setMobMod(xi.mobMod.NO_DESPAWN, 1) end
     end
     if mob.setDropID then mob:setDropID(0) end
+    if mob.setSpawn then mob:setSpawn(x, owner:getYPos(), z, owner:getRotPos()) end
     mob:spawn()
     -- Set offense to minimal test values. Real damage budgeting and ownership
     -- cannot be implemented faithfully using native allied-MOB melee alone.
@@ -237,6 +269,12 @@ function K.spawn(owner, count)
             action = 0,
         }
         spawned = spawned + 1
+        if spawned == 1 then
+            local mobStatus = mobOrErr.getStatus and mobOrErr:getStatus() or -1
+            state.lastSpawnInfo = string.format(
+                'entity=%s status=%s look=equipped-20B zone=%s',
+                tostring(mobOrErr:getID()), tostring(mobStatus), tostring(zoneId(mobOrErr)))
+        end
     end
     setCount(owner, state)
     if spawned > 0 and owner.timer and not state.timerRunning then
@@ -265,7 +303,7 @@ function K.getSnapshot(owner)
             if nextExp == 0 or remaining < nextExp then nextExp = remaining end
         end
     end
-    return { clones = count, next_exp = math.ceil(nextExp) }
+    return { clones = count, next_exp = math.ceil(nextExp), diagnostic = state.lastSpawnInfo or '' }
 end
 
 return K

@@ -39,7 +39,12 @@ commandObj.onTrigger = function(player, sub, amount)
         end
     elseif sub == 'spawn' then
         local ok, result = K.spawn(player, tonumber(amount) or 3)
-        tell(player, ok and ('Spawn request created ' .. tostring(result) .. ' copies.') or ('Spawn failed: ' .. tostring(result)))
+        if ok then
+            local snap = K.getSnapshot(player)
+            tell(player, ('Spawned %d copies, currently alive: %d. %s'):format(result, snap.clones, snap.diagnostic or ''))
+        else
+            tell(player, 'Spawn failed: ' .. tostring(result))
+        end
     elseif sub == 'dismiss' then
         K.dismissAll(player)
         tell(player, 'Your copies dismissed.')
