@@ -15,7 +15,7 @@ That leaves **25 active review candidates** in this specific audit (27 - Freelan
 
 | Job | Soul | Role | Preliminary differentiator to validate |
 |---|---|---|---|
-| WHM | Zealot | Damage | Divine conviction: Banish/Holy offense, but not Bishop's barrier-to-Curaga healing loop |
+| WHM | Zealot | Damage | **Staff Holy Battlemage**: sustained melee staff hits restore MP for large divine-magic hits; not Bishop's barrier-to-Curaga healing loop |
 | WHM | Valkyrie | Support | Polearm protector with an intervention decision; not Defender interception or Bishop/Aegis Templar barriers |
 | BLM | Astromancer | Damage | Elemental forecasting and committed spell timing; not Sage Helix attrition or Musician offensive songs |
 | BLM | Channeler | Support | Direct magical throughput or magic-burst preparation for allies; avoid Musician Threnodies and Herald accord duplication |
@@ -44,3 +44,6 @@ All **22 jobs**, not merely 13 pending concepts, must be checked. Already regist
 3. Reserve concept entries for all **25 candidate** active Souls, and make a compact same-role comparison for each. Each must have *how it plays*, *why choose it*, *weakness*, Lv10 loop, Lv75 payoff, FFXI ability/lore hook, and overlap exclusions.
 4. All 66 active Souls must ultimately receive a standardized completion status: concept / registration / JAs / runtime / client/DAT / gear / Lv10 testing / Lv75 testing.
 5. Leave Flintlock's friend-owned dual-pistol subsystem alone and keep the existing playable Souls intact.
+
+## Zealot design correction (user-owned vision)
+**WHM Zealot is a staff-wielding Holy magic DPS who restores MP through melee.** The melee phase is vital, not a cosmetic staff requirement; high-damage Holy/Banish-family casts are the payoff. Prefer existing MP over an added soul resource meter. At Lv10, basic staff-hit MP recovery and an appropriately accessible low-level divine offensive spell must make the loop playable; avoid assuming endgame Holy access. As it levels, improve magic potency and recovery efficiency without turning it into a primary healer. Compare explicitly to Bishop's barrier/cure gameplay, Astromancer ranged magic burst, and RUN Spellblade rune conduction. Its tradeoff is having to approach dangerous boss melee ranges for sustain. Exact MP refunds, damage budget, staff skill whitelist and spell unlock timing require balance/runtime validation.
