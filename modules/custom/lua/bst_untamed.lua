@@ -16,6 +16,7 @@ local MASTER_WS_LISTENER = 'OX_UNTAMED_MASTER_WS'
 local PET_WS_LISTENER = 'OX_UNTAMED_PET_WS'
 local PET_TP_MARKER = 'OX_UNTAMED_PET_REACTION'
 local MASTER_TP_MARKER = 'OX_UNTAMED_MASTER_REACTION'
+local petModsByID = {}
 
 local function tier(level, low, mid, high, cap)
     if level >= 70 then return cap end
@@ -55,16 +56,62 @@ local function ready(entity, marker, cooldown)
     return true
 end
 
+local function clearPetMods(pet)
+    if not pet or not pet.getID then return end
+    local id = pet:getID()
+    local prev = petModsByID[id]
+    if prev and pet.delMod then
+        for _, bonus in ipairs(prev) do
+            pet:delMod(bonus[1], bonus[2])
+        end
+    end
+    petModsByID[id] = nil
+end
+
+local function syncPetMods(master, pet)
+    if not pet or not pet.getID or not pet.addMod then return end
+    if not isUntamed(master) then clearPetMods(pet); return end
+
+    -- Offensive pet identity only; never grant the guardian's defensive
+    -- immunity, HP, damage-split, or extra enmity.
+    local level = master:getMainLvl()
+    local desired =
+    {
+        { xi.mod.ACC, tier(level, 10, 18, 28, 40) },
+        { xi.mod.ATT, tier(level, 15, 28, 42, 60) },
+        { xi.mod.DOUBLE_ATTACK, tier(level, 3, 5, 7, 10) },
+    }
+    local id = pet:getID()
+    local prev = petModsByID[id]
+    local changed = prev == nil or #prev ~= #desired
+    if not changed then
+        for index, bonus in ipairs(desired) do
+            if prev[index][1] ~= bonus[1] or prev[index][2] ~= bonus[2] then
+                changed = true
+                break
+            end
+        end
+    end
+    if not changed then return end
+    clearPetMods(pet)
+    for _, bonus in ipairs(desired) do
+        pet:addMod(bonus[1], bonus[2])
+    end
+    petModsByID[id] = desired
+end
+
 local function detach(master)
     if not master then return end
     if master.removeListener then master:removeListener(MASTER_WS_LISTENER) end
     local pet = master.getPet and master:getPet() or nil
     if pet and pet.removeListener then pet:removeListener(PET_WS_LISTENER) end
+    if pet then clearPetMods(pet) end
 end
 
 local function attachPet(master, pet)
     if not isUntamed(master) or not pet or not pet.addListener then return end
     if pet.removeListener then pet:removeListener(PET_WS_LISTENER) end
+    syncPetMods(master, pet)
     pet:addListener('WEAPONSKILL_STATE_EXIT', PET_WS_LISTENER,
     function(actor, _skill, completed)
         if not completed or not actor or not actor.getMaster then return end
