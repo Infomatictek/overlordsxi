@@ -211,25 +211,44 @@ local function isRangedWs(actor, skill)
 end
 
 local function provisionStarterRanged(player)
-    if not isHuntsman(player) or player:getMainLvl() < 10 then
+    -- Called by Soul onApply; avoid a recursive spec.ensureUpToDate check.
+    if player == nil or player:getMainLvl() < 10 then
         return
     end
-    if player.getEquippedItem and player:getEquippedItem(xi.slot.RANGED) == nil then
-        if player.hasItem and not player:hasItem(STARTER_XBOW_ID) and player.addItem then
-            player:addItem(STARTER_XBOW_ID, 1)
+
+    local inventory = (xi.inv and xi.inv.INVENTORY) or 0
+    local slots = xi.slot or { RANGED = 2, AMMO = 3 }
+
+    local function ensureEquipped(itemId, slotId, quantity)
+        if player.getEquippedItem and player:getEquippedItem(slotId) ~= nil then
+            return
         end
-        if player.equipItem then
-            player:equipItem(STARTER_XBOW_ID, xi.slot.RANGED)
+        if not player.hasItem or not player.equipItem then
+            return
         end
+
+        -- The native API requires an explicit container ID and slot ID.
+        -- Do not try to equip the item when inventory is full or the grant
+        -- failed. Only auto-equip an item into an otherwise empty slot.
+        if not player:hasItem(itemId, inventory) then
+            if not player.addItem then
+                return
+            end
+            local added = player:addItem(itemId, quantity, true)
+            if not added then
+                tell(player, 'Huntsman starter gear could not be granted: inventory full.')
+                return
+            end
+        end
+
+        if player.canEquipItem and not player:canEquipItem(itemId, false) then
+            return
+        end
+        player:equipItem(itemId, inventory, slotId)
     end
-    if player.getEquippedItem and player:getEquippedItem(xi.slot.AMMO) == nil then
-        if player.hasItem and not player:hasItem(STARTER_BOLT_ID) and player.addItem then
-            player:addItem(STARTER_BOLT_ID, 99)
-        end
-        if player.equipItem then
-            player:equipItem(STARTER_BOLT_ID, xi.slot.AMMO)
-        end
-    end
+
+    ensureEquipped(STARTER_XBOW_ID, slots.RANGED, 1)
+    ensureEquipped(STARTER_BOLT_ID, slots.AMMO, 99)
 end
 
 -----------------------------------
