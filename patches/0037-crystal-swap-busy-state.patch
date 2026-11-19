@@ -1,7 +1,7 @@
 diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
 --- a/src/map/packets/c2s/0x11f_crystal_socket.cpp
 +++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
-@@ -68,7 +68,6 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
+@@ -82,7 +82,6 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
              const PacketValidationResult state = PacketValidator(PChar).blockedBy({
                  BlockedState::Dead,
                  BlockedState::InEvent,
@@ -9,23 +9,45 @@ diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/
                  BlockedState::AbnormalStatus,
                  BlockedState::PreventAction,
                  BlockedState::Crafting,
-@@ -86,16 +85,15 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
+@@ -95,16 +94,17 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
                  BlockedState::Monstrosity,
              });
  
 -            // Conservatively forbid battlefield changes and active/queued actions.
-+            // An idle player always owns an AI state, so IsStateStackEmpty() is
-+            // not a valid busy test. Combat policy belongs to spec.canSwap().
++            // An idle player always owns an AI state (so IsStateStackEmpty() is
++            // not a valid busy test) and recurring Lua player:timer() hooks live
++            // in PAI->ActionQueue's timerQueue (so QueueEmpty() is also false
++            // while specs such as WAR Spartan are active). Combat policy belongs
++            // to spec.canSwap().
              const bool busy = !PSession->hasLoadedZone() ||
                                PSession->shuttingDown ||
                                PSession->zone_type != GP_GAME_LOGOUT_STATE::NONE ||
                                !state.valid() ||
                                !PChar->loc.zone ||
-                               PChar->PBattlefield ||
+-                              PChar->PBattlefield ||
 -                              !PChar->PAI->IsStateStackEmpty() ||
 -                              !PChar->PAI->QueueEmpty() ||
 -                              PChar->hasEnmityEXPENSIVE();
-+                              !PChar->PAI->QueueEmpty();
++                              PChar->PBattlefield;
  
              const auto specTable = crystal::getSpecTable(lua);
              if (specTable)
+@@ -126,6 +126,18 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
+                     }
+                 }
+             }
++
++            if (result != crystal::Result::Success)
++            {
++                ShowWarningFmt("crystal_socket: Select rejected for {} (job={}, mjob={}, branch={}, result={}, busy={}, state='{}')",
++                               PChar->getName(),
++                               job,
++                               static_cast<uint8_t>(PChar->GetMJob()),
++                               branch,
++                               std::to_underlying(result),
++                               busy,
++                               state.errorString());
++            }
+         }
+     }
+ 
