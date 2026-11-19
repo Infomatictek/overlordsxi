@@ -6,17 +6,41 @@ on:
       - main
       - feat/**
       - feature/**
-    paths-ignore:
-      - 'site/data.json'
-      - 'site/data.js'
-      - 'logs/**'
+      - fix/**
+    paths:
+      - 'modules/custom/lua/**'
+      - 'modules/custom/commands/**'
+      - 'modules/custom/sql/**'
+      - 'patches/**'
+      - 'docs/guides/**'
+      - 'scripts/generate-site-data.py'
+      - 'scripts/export_lua_wiki_data.lua'
+      - 'tests/test_ci_tooling.py'
+      - '.github/workflows/update-wiki.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'modules/custom/lua/**'
+      - 'modules/custom/commands/**'
+      - 'modules/custom/sql/**'
+      - 'patches/**'
+      - 'docs/guides/**'
+      - 'scripts/generate-site-data.py'
+      - 'scripts/export_lua_wiki_data.lua'
+      - 'tests/test_ci_tooling.py'
+      - '.github/workflows/update-wiki.yml'
   workflow_dispatch:
 
+concurrency:
+  group: update-wiki-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-wiki-data:
+  validate-wiki-data:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,23 +48,108 @@ jobs:
         with:
           fetch-depth: 100
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install Lua 5.3 for exact Lua module evaluation
         run: sudo apt-get update && sudo apt-get install -y lua5.3
+
+      - name: Run CI tooling unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Generate and validate site/data.json and site/data.js
+        run: |
+          python scripts/generate-site-data.py --require-lua
+          node --check site/data.js
+
+      - name: Upload validated wiki data for main publication
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-wiki-data
+          path: |
+            site/data.json
+            site/data.js
+          retention-days: 1
+
+  publish-wiki-data:
+    needs: validate-wiki-data
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 100
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Generate site/data.json and site/data.js from Lua & SQL modules
-        run: python scripts/generate-site-data.py
+      - name: Download validated wiki data
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-wiki-data
+          path: site
 
-      - name: Commit updated wiki data if changed
+      - name: Safely commit and push updated wiki data to main
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/data.json site/data.js
-          if ! git diff --cached --quiet; then
+
+          lua_installed=false
+          ensure_lua() {
+            if [ "$lua_installed" = false ]; then
+              sudo apt-get update
+              sudo apt-get install -y lua5.3
+              lua_installed=true
+            fi
+          }
+
+          regenerate_fresh() {
+            ensure_lua
+            python scripts/generate-site-data.py --require-lua
+            node --check site/data.js
+          }
+
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            git fetch origin main
+            local_head="$(git rev-parse HEAD)"
+            remote_head="$(git rev-parse origin/main)"
+
+            if [ "$local_head" != "$remote_head" ]; then
+              echo "origin/main advanced ($local_head -> $remote_head); resetting and regenerating fresh wiki data (attempt $attempt/$max_attempts)..."
+              git reset --hard origin/main
+              regenerate_fresh
+            fi
+
+            if git diff --quiet -- site/data.json site/data.js; then
+              echo "No wiki data changes to commit."
+              exit 0
+            fi
+
+            git add site/data.json site/data.js
             git commit -m "chore(wiki): auto-update site/data.json from latest server modules [skip ci]"
-            git push
-          fi
+
+            if git push origin HEAD:refs/heads/main; then
+              echo "Published updated wiki data to main."
+              exit 0
+            fi
+
+            echo "Push rejected on attempt $attempt/$max_attempts due to concurrent update; retrying cleanly without force-push..."
+            git fetch origin main
+            git reset --hard origin/main
+            regenerate_fresh
+          done
+
+          echo "Failed to push wiki data after $max_attempts attempts due to concurrent updates." >&2
+          exit 1

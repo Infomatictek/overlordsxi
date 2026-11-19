@@ -12,12 +12,15 @@ directly from the repository and emits:
 Runs automatically via GitHub Actions on every push (or locally via `python scripts/generate-site-data.py`).
 """
 
+import argparse
 import copy
 import datetime
 import json
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -2272,10 +2275,14 @@ def format_evaluated_mod(mod_code: str, values: list) -> dict:
     return {"mod": mod_code, "label": label, "value": val_str, "bracket": "Lv.10 / 30 / 50 / 70+"}
 
 
-def run_lua_exporter(lua_bin: str) -> dict | None:
+def run_lua_exporter(lua_bin: str, strict: bool = True) -> dict | None:
     """Execute scripts/export_lua_wiki_data.lua via real Lua for 100% ground-truth data."""
     exporter = ROOT_DIR / "scripts" / "export_lua_wiki_data.lua"
     if not exporter.exists():
+        msg = f"Lua exporter script not found: {exporter}"
+        if strict:
+            raise RuntimeError(msg)
+        print(f"[warn] {msg}", file=sys.stderr)
         return None
     spec_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("*_specs.lua"))]
     tree_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))]
@@ -2288,15 +2295,93 @@ def run_lua_exporter(lua_bin: str) -> dict | None:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=30,
+            timeout=60,
         )
-        if res.returncode != 0:
-            print(f"[warn] Lua exporter exited {res.returncode}: {res.stderr.strip()}")
-            return None
-        return json.loads(res.stdout)
     except Exception as exc:
-        print(f"[warn] Lua exporter failed ({exc}), falling back to Python parser.")
+        msg = f"Lua exporter execution failed: {exc}"
+        if strict:
+            raise RuntimeError(msg) from exc
+        print(f"[warn] {msg}, falling back to Python parser.", file=sys.stderr)
         return None
+
+    if res.returncode != 0:
+        msg = f"Lua exporter exited {res.returncode}: {res.stderr.strip()}"
+        if strict:
+            raise RuntimeError(msg)
+        print(f"[warn] {msg}", file=sys.stderr)
+        return None
+
+    try:
+        data = json.loads(res.stdout, parse_constant=_reject_json_constant)
+    except Exception as exc:
+        msg = f"Lua exporter produced invalid JSON: {exc}"
+        if strict:
+            raise RuntimeError(msg) from exc
+        print(f"[warn] {msg}, falling back to Python parser.", file=sys.stderr)
+        return None
+
+    if not isinstance(data, dict) or not data.get("jobSpecs") or not data.get("weaponskills"):
+        msg = "Lua exporter returned incomplete payload (missing jobSpecs or weaponskills)."
+        if strict:
+            raise RuntimeError(msg)
+        print(f"[warn] {msg}", file=sys.stderr)
+        return None
+
+    return data
+
+
+def _reject_json_constant(token: str):
+    raise ValueError(f"Invalid JSON constant: {token}")
+
+
+def validate_generated_wiki_files(json_path: Path, js_path: Path) -> dict:
+    """Validate generated site/data.json and site/data.js before publication."""
+    if not json_path.is_file():
+        raise ValueError(f"Missing generated JSON file: {json_path}")
+    if not js_path.is_file():
+        raise ValueError(f"Missing generated JS file: {js_path}")
+
+    json_text = json_path.read_text(encoding="utf-8")
+    data = json.loads(json_text, parse_constant=_reject_json_constant)
+    if not isinstance(data, dict):
+        raise ValueError("Generated data.json root must be a JSON object")
+
+    required_keys = (
+        "generatedAt",
+        "repo",
+        "launcherRepo",
+        "stats",
+        "serverRules",
+        "jobSpecs",
+        "weaponskills",
+        "commands",
+        "patches",
+        "commits",
+    )
+    missing = [k for k in required_keys if k not in data]
+    if missing:
+        raise ValueError(f"Generated data.json missing required keys: {', '.join(missing)}")
+
+    if not isinstance(data["jobSpecs"], list) or len(data["jobSpecs"]) == 0:
+        raise ValueError("Generated data.json has empty jobSpecs")
+    if not isinstance(data["weaponskills"], list) or len(data["weaponskills"]) == 0:
+        raise ValueError("Generated data.json has empty weaponskills")
+    stats = data["stats"]
+    if not isinstance(stats, dict) or stats.get("totalCrystalSpecs", 0) <= 0:
+        raise ValueError("Generated data.json reports 0 Crystal Specs")
+    if stats.get("totalWeaponskills", 0) <= 0:
+        raise ValueError("Generated data.json reports 0 Weaponskills")
+
+    js_text = js_path.read_text(encoding="utf-8")
+    prefix = "window.OVERLORDS_DATA = "
+    if not js_text.startswith(prefix) or not js_text.rstrip().endswith(";"):
+        raise ValueError("Generated data.js does not match expected 'window.OVERLORDS_DATA = <json>;' format")
+    js_payload = js_text[len(prefix):].rstrip()[:-1]
+    js_data = json.loads(js_payload, parse_constant=_reject_json_constant)
+    if js_data != data:
+        raise ValueError("Generated data.js payload does not match data.json")
+
+    return data
 
 
 def parse_spec_guides() -> dict[str, dict]:
@@ -2551,13 +2636,52 @@ def parse_git_commits(limit: int = 50) -> list[dict]:
     return commits
 
 
-def main():
-    SITE_DIR.mkdir(parents=True, exist_ok=True)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate and validate OverlordsXI wiki data files.")
+    parser.add_argument(
+        "--require-lua",
+        action="store_true",
+        help="Fail if a Lua runtime is unavailable or if scripts/export_lua_wiki_data.lua fails.",
+    )
+    parser.add_argument(
+        "--allow-fallback",
+        action="store_true",
+        help="Allow falling back to the Python parser if the Lua exporter fails (ignored when --require-lua is set).",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Directory to write data.json and data.js (defaults to site/).",
+    )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Generate into a temporary directory and validate JSON/JS output without modifying site/.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
 
     sql_abils = parse_sql_custom_abilities()
     lua_meta = parse_lua_metadata()
     lua_bin = find_lua_binary()
-    lua_data = run_lua_exporter(lua_bin) if lua_bin else None
+
+    if args.require_lua and not lua_bin:
+        print(
+            "[error] --require-lua was specified, but no Lua runtime (lua5.3/lua5.4/luajit/lua) was found on PATH.",
+            file=sys.stderr,
+        )
+        return 1
+
+    strict_lua = args.require_lua or not args.allow_fallback
+    try:
+        lua_data = run_lua_exporter(lua_bin, strict=strict_lua) if lua_bin else None
+    except RuntimeError as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
 
     if lua_data:
         print(f"Using real Lua runtime ({lua_bin}) for exact module evaluation.")
@@ -2684,21 +2808,60 @@ def main():
         "commits": commits,
     }
 
-    json_path = SITE_DIR / "data.json"
-    js_path = SITE_DIR / "data.js"
+    json_text = json.dumps(data, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+    js_text = f"window.OVERLORDS_DATA = {json_text};\n"
 
-    json_text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+    if args.validate_only:
+        with tempfile.TemporaryDirectory(prefix="overlords-wiki-validate-") as tmpdir:
+            out_dir = Path(tmpdir)
+            json_path = out_dir / "data.json"
+            js_path = out_dir / "data.js"
+            json_path.write_text(json_text, encoding="utf-8")
+            js_path.write_text(js_text, encoding="utf-8")
+            try:
+                validate_generated_wiki_files(json_path, js_path)
+            except ValueError as exc:
+                print(f"[error] Wiki data validation failed: {exc}", file=sys.stderr)
+                return 1
+        print(
+            f"Validated wiki data (dry-run): "
+            f"{data['stats']['totalCrystalSpecs']} Crystal Specs ({total_custom_jas} Custom JAs, {data['stats']['totalCustomTraits']} Traits), "
+            f"{data['stats']['totalWeaponskills']} Weaponskill Trees (5-spec adaptive), "
+            f"{data['stats']['totalPatches']} Engine Patches, "
+            f"{data['stats']['totalRecentCommits']} Git Commits."
+        )
+        return 0
+
+    out_dir = args.output_dir.resolve() if args.output_dir else SITE_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    json_path = out_dir / "data.json"
+    js_path = out_dir / "data.js"
+
     json_path.write_text(json_text, encoding="utf-8")
-    js_path.write_text(f"window.OVERLORDS_DATA = {json_text};\n", encoding="utf-8")
+    js_path.write_text(js_text, encoding="utf-8")
+
+    try:
+        validate_generated_wiki_files(json_path, js_path)
+    except ValueError as exc:
+        print(f"[error] Wiki data validation failed: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        rel_json = json_path.relative_to(ROOT_DIR)
+        rel_js = js_path.relative_to(ROOT_DIR)
+    except ValueError:
+        rel_json = json_path
+        rel_js = js_path
 
     print(
-        f"Generated {json_path.relative_to(ROOT_DIR)} and {js_path.relative_to(ROOT_DIR)}: "
+        f"Generated & validated {rel_json} and {rel_js}: "
         f"{data['stats']['totalCrystalSpecs']} Crystal Specs ({total_custom_jas} Custom JAs, {data['stats']['totalCustomTraits']} Traits), "
         f"{data['stats']['totalWeaponskills']} Weaponskill Trees (5-spec adaptive), "
         f"{data['stats']['totalPatches']} Engine Patches, "
         f"{data['stats']['totalRecentCommits']} Git Commits."
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

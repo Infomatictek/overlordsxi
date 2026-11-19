@@ -2,10 +2,35 @@ name: Soul coverage audit
 
 on:
   push:
+    branches:
+      - main
+      - feat/**
+      - feature/**
+      - fix/**
     paths:
+      - 'modules/custom/lua/**'
+      - 'modules/custom/sql/**'
+      - 'modules/init.append.txt'
       - 'tools/audit_soul_coverage.py'
+      - 'tools/soul_coverage_baseline.json'
+      - 'tests/test_ci_tooling.py'
+      - '.github/workflows/soul-coverage.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'modules/custom/lua/**'
+      - 'modules/custom/sql/**'
+      - 'modules/init.append.txt'
+      - 'tools/audit_soul_coverage.py'
+      - 'tools/soul_coverage_baseline.json'
+      - 'tests/test_ci_tooling.py'
       - '.github/workflows/soul-coverage.yml'
   workflow_dispatch:
+
+concurrency:
+  group: soul-coverage-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -14,21 +39,44 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check static Soul registration evidence
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Soul audit unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Run strict Soul coverage and regression audit
         shell: bash
         run: |
-          python3 tools/audit_soul_coverage.py . --csv soul-coverage.csv > soul-coverage.tsv
-          echo "=== Catalog-only candidates (not proof of missing) ==="
-          awk -F '\t' 'NR==1 || $3=="catalog-only" {print $1 "\t" $2 "\t" $3}' soul-coverage.tsv
-          echo "=== Referenced-only candidates (inspect these) ==="
-          awk -F '\t' 'NR>1 && $3=="referenced-only" {print $1 "\t" $2 "\t" $3}' soul-coverage.tsv
-          echo "=== Evidence counts ==="
-          cut -f3 soul-coverage.tsv | sort | uniq -c
-      - name: Upload evidence matrix
+          set -euo pipefail
+          python tools/audit_soul_coverage.py . \
+            --strict \
+            --csv soul-coverage.csv \
+            --json soul-coverage.json \
+            --summary-md soul-coverage.md \
+            > soul-coverage.tsv
+
+      - name: Publish job summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f soul-coverage.md ]; then
+            cat soul-coverage.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Soul coverage artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: soul-coverage
+          retention-days: 14
           path: |
             soul-coverage.csv
             soul-coverage.tsv
+            soul-coverage.json
+            soul-coverage.md
