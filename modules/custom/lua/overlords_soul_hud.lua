@@ -194,7 +194,21 @@ end
 
 local IDENTITY_LEGACY_KEYS =
 {
-    kurogane = 'shinobi',
+    kurogane     = 'shinobi',
+    alphawarden  = 'soulbeast',
+    gladiator    = 'spartan',
+    aegistemplar = 'defender',
+    marionettist = 'vanguard',
+    caller       = 'celestial',
+}
+
+-- Canonical client/crystaljobs branch indices where spec.JOB_SPECS ordering
+-- differs from crystaljobs.dll (labels.h) and native_actions.lua.
+local IDENTITY_BRANCH_OVERRIDES =
+{
+    pugilist       = 2, -- PUP: crystaljobs branch 2 (spec.JOB_SPECS index 3)
+    animist        = 3, -- PUP: crystaljobs branch 3 (spec.JOB_SPECS index 2)
+    miragesentinel = 1, -- DNC: crystaljobs branch 1 (spec.JOB_SPECS index 4)
 }
 
 -- Authoritative, minimal nearby-caster Soul identity for OXSI.
@@ -215,9 +229,9 @@ function hud.buildIdentityData(player)
         return { jobId = jobId, branch = 0, soulKey = '' }
     end
 
-    local branch = tonumber(active.id) or 0
     local rawKey = tostring(active.canonicalKey or active.key or ''):lower()
     local key = IDENTITY_LEGACY_KEYS[rawKey] or rawKey
+    local branch = IDENTITY_BRANCH_OVERRIDES[key] or (tonumber(active.id) or 0)
     if branch < 1 or branch > 3 or #key < 2 or #key > 64 or not key:match('^[%w_%-]+$') then
         return { jobId = jobId, branch = 0, soulKey = '' }
     end

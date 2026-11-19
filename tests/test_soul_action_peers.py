@@ -208,7 +208,48 @@ class SoulActionPeersProtocolTests(unittest.TestCase):
         local id4 = hud.buildIdentityData(p4)
         assert(id4.jobId == 1 and id4.branch == 0 and id4.soulKey == '', 'Expected empty for no Soul')
 
-        -- 5. Existing OXHD buildPacketData remains compatible
+        -- 5. BST alphawarden, DNC miragesentinel, and PUP pugilist/animist match client pairs
+        local p5 = {{
+            isPC = function() return true end,
+            getMainJob = function() return 9 end,
+            _active = {{ id = 2, key = 'alphawarden', canonicalKey = 'alphawarden' }},
+            _eligible = true,
+        }}
+        local id5 = hud.buildIdentityData(p5)
+        assert(id5.jobId == 9 and id5.branch == 2 and id5.soulKey == 'soulbeast',
+            'Expected BST (9,2,soulbeast), got ' .. tostring(id5.branch) .. ',' .. tostring(id5.soulKey))
+
+        local p6 = {{
+            isPC = function() return true end,
+            getMainJob = function() return 19 end,
+            _active = {{ id = 4, key = 'miragesentinel', canonicalKey = 'miragesentinel' }},
+            _eligible = true,
+        }}
+        local id6 = hud.buildIdentityData(p6)
+        assert(id6.jobId == 19 and id6.branch == 1 and id6.soulKey == 'miragesentinel',
+            'Expected DNC (19,1,miragesentinel), got ' .. tostring(id6.branch) .. ',' .. tostring(id6.soulKey))
+
+        local p7 = {{
+            isPC = function() return true end,
+            getMainJob = function() return 18 end,
+            _active = {{ id = 3, key = 'pugilist', canonicalKey = 'pugilist' }},
+            _eligible = true,
+        }}
+        local id7 = hud.buildIdentityData(p7)
+        assert(id7.jobId == 18 and id7.branch == 2 and id7.soulKey == 'pugilist',
+            'Expected PUP (18,2,pugilist), got ' .. tostring(id7.branch) .. ',' .. tostring(id7.soulKey))
+
+        local p8 = {{
+            isPC = function() return true end,
+            getMainJob = function() return 18 end,
+            _active = {{ id = 2, key = 'animist', canonicalKey = 'animist' }},
+            _eligible = true,
+        }}
+        local id8 = hud.buildIdentityData(p8)
+        assert(id8.jobId == 18 and id8.branch == 3 and id8.soulKey == 'animist',
+            'Expected PUP (18,3,animist), got ' .. tostring(id8.branch) .. ',' .. tostring(id8.soulKey))
+
+        -- 6. Existing OXHD buildPacketData remains compatible
         local oxhd = hud.buildPacketData(p1)
         assert(oxhd.jobId == 13 and oxhd.unlocked == 1 and oxhd.soulKey == 'kurogane',
             'OXHD packet data regressed')
