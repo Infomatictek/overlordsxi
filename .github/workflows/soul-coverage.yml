@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'tools/audit_soul_coverage.py'
+      - 'tests/test_soul_coverage.py'
       - '.github/workflows/soul-coverage.yml'
   workflow_dispatch:
 
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test registration scanner
+        run: python3 -m unittest discover -s tests -p 'test_soul_coverage.py' -v
       - name: Check static Soul registration evidence
         shell: bash
         run: |
