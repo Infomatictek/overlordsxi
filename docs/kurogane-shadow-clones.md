@@ -34,7 +34,7 @@ The Soul's additive `spec.registerCrystal` entry (canonical NIN branch 1), Tier-
 The server branch now includes `modules/custom/lua/kurogane_clones.lua` and a GM-only `!kurogane` command. This is a **real dynamic-MOB spawn experiment**, not a complete playable DPS Soul. It is disabled by default and never modifies normal Utsusemi.
 
 1. Deploy updated Lua modules/commands to a development LandSandBoat checkout and restart `xi_map`.
-2. Use a GM character (permission 5), set NIN Lv10+, and enter `!spec set kurogane`.
+2. Use a GM character (permission 4+), set NIN Lv10+, and enter `!spec set kurogane`.
 3. Engage and select a disposable test mob in an isolated zone.
 4. Enter `!kurogane enable`, then `!kurogane spawn 3`.
 5. Inspect whether copies appear, look like the player, have exactly 1 HP, and disappear independently after 6–10 seconds. Use `!kurogane status` to verify counts and earliest expiration; `!kurogane dismiss` to clean up.
