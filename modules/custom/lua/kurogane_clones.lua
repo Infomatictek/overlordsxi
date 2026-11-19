@@ -165,23 +165,32 @@ local LOOK_SLOTS = { 'head', 'body', 'hands', 'legs', 'feet', 'main', 'sub', 'ra
 local LOOK_EQUIP_INDEX = { 4, 5, 6, 7, 8, 0, 1, 2 }
 
 local function getModel(models, key, index, preferZeroBased)
-    if type(models) ~= 'table' then return nil end
-    local direct = models[key] or models[string.upper(key)]
+    if type(models) ~= 'table' and type(models) ~= 'userdata' then return nil end
+    local ok, direct = pcall(function()
+        return models[key] or models[string.upper(key)]
+    end)
+    if not ok then direct = nil end
     if direct ~= nil then return tonumber(direct) end
     -- Some LSB bindings return values by equipment index (MAIN=0, HEAD=4),
     -- others return an ordered array of look slots.
-    local slots = models.slots or models.equipment or models.models
+    local okSlots, slots = pcall(function()
+        return models.slots or models.equipment or models.models
+    end)
+    if not okSlots then slots = nil end
     if type(slots) == 'table' then
         return getModel(slots, key, index, preferZeroBased)
     end
     local slotIndex = LOOK_EQUIP_INDEX[index]
-    if preferZeroBased and models[0] ~= nil and models[4] ~= nil then
-        return tonumber(models[slotIndex])
-    end
-    if models[1] ~= nil and models[8] ~= nil then
-        return tonumber(models[index])
-    end
-    return tonumber(models[slotIndex])
+    local okNumeric, numeric = pcall(function()
+        if preferZeroBased and models[0] ~= nil and models[4] ~= nil then
+            return models[slotIndex]
+        end
+        if models[1] ~= nil and models[8] ~= nil then
+            return models[index]
+        end
+        return models[slotIndex]
+    end)
+    return okNumeric and tonumber(numeric) or nil
 end
 
 local function getOwnerLook(owner)
@@ -199,7 +208,7 @@ local function getOwnerLook(owner)
         return nil, 'player appearance API unavailable'
     end
     local ok, models = pcall(function() return owner:getEquipmentModelIds() end)
-    if not ok or type(models) ~= 'table' then
+    if not ok or (type(models) ~= 'table' and type(models) ~= 'userdata') then
         return nil, 'equipment appearance missing or unexpected type'
     end
     local race = math.floor(tonumber(owner:getRace()) or 0)
@@ -210,8 +219,10 @@ local function getOwnerLook(owner)
 
     local look = string.format('0x0100%02X%02X', face, race)
     local found, pieces = 0, {}
+    local okZero, firstZero = pcall(function() return models[0] end)
+    local zeroIndexed = okZero and firstZero ~= nil
     for i, name in ipairs(LOOK_SLOTS) do
-        local value = getModel(models, name, i, models[0] ~= nil)
+        local value = getModel(models, name, i, zeroIndexed)
         if value ~= nil and value > 0 then found = found + 1 end
         pieces[i] = value or 0
         look = look .. lookWord(pieces[i])
@@ -222,8 +233,10 @@ local function getOwnerLook(owner)
     -- A completely blank look would conceal the real reason gear isn't copied.
     if found == 0 then
         local keys = {}
-        for k in pairs(models) do
-            if #keys < 12 then keys[#keys + 1] = tostring(k) end
+        if type(models) == 'table' then
+            for k in pairs(models) do
+                if #keys < 12 then keys[#keys + 1] = tostring(k) end
+            end
         end
         return nil, 'no equipment models decoded; model keys=' .. table.concat(keys, ',')
     end
