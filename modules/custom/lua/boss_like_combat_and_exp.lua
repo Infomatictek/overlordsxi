@@ -52,7 +52,7 @@ xi.customBossServer.config =
     -- it is granted via combatRegain ONLY while in verified active combat.
     playerCombatPace =
     {
-        { mod = xi.mod.HASTE_GEAR,    amount = 1500 }, -- +15% Gear Haste
+        { mod = xi.mod.HASTE_MAGIC,   amount = 1500 }, -- +15% innate baseline carried by magic-haste mod (not gear)
         { mod = xi.mod.HASTE_ABILITY, amount = 1000 }, -- +10% Ability Haste (25% total baseline Haste)
         { mod = xi.mod.STORETP,       amount = 25 },   -- +25 Store TP
         { mod = xi.mod.FASTCAST,      amount = 15 },   -- +15% Fast Cast
@@ -1375,6 +1375,7 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
     local cfg       = xi.customBossServer.config
     local paceCfg   = cfg.playerCombatPace or {}
     local isApplied = player:getLocalVar('[CustomBoss]PaceApplied') == 1
+    local paceV2    = player:getLocalVar('[CustomBoss]PaceHasteV2') == 1
     local prevHpp   = player:getLocalVar('[CustomBoss]PaceHpp')
     local prevFlat  = player:getLocalVar('[CustomBoss]PaceFlatHp')
     local prevBase  = player:getLocalVar('[CustomBoss]PaceBaseHp')
@@ -1396,6 +1397,7 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
                 player:delMod(entry.mod, entry.amount)
             end
             player:setLocalVar('[CustomBoss]PaceApplied', 0)
+            player:setLocalVar('[CustomBoss]PaceHasteV2', 0)
         end
         if prevBase > 0 then
             player:delMod(xi.mod.BASE_HP, prevBase)
@@ -1407,11 +1409,18 @@ xi.customBossServer.applyPlayerCombatPace = function(player, enable)
         return
     end
 
-    if not isApplied then
+    if isApplied and not paceV2 then
+        -- One-time live migration: old clients received innate 15% as gear haste.
+        -- Move only our known 1500 bps; do not disturb actual equipment haste.
+        player:delMod(xi.mod.HASTE_GEAR, 1500)
+        player:addMod(xi.mod.HASTE_MAGIC, 1500)
+        player:setLocalVar('[CustomBoss]PaceHasteV2', 1)
+    elseif not isApplied then
         for _, entry in ipairs(paceCfg) do
             player:addMod(entry.mod, entry.amount)
         end
         player:setLocalVar('[CustomBoss]PaceApplied', 1)
+        player:setLocalVar('[CustomBoss]PaceHasteV2', 1)
     end
 
     local lvl        = (player.getMainLvl and player:getMainLvl()) or 1
