@@ -19,21 +19,21 @@ commandObj.onTrigger = function(player, sub, amount)
     elseif sub == 'disable' then
         K.ENABLE_EXPERIMENTAL_CLONES = false
         K.ENABLE_EXPERIMENTAL_COMBAT = false
-        K.dismissAll(player)
-        tell(player, 'Experimental dynamic clones disabled; your copies dismissed.')
+        K.dismissAllOwners()
+        tell(player, 'Experimental dynamic clones disabled; all test copies dismissed.')
     elseif sub == 'combat' then
         local mode = tostring(amount or ''):lower()
         if mode == 'on' then
             if not K.ENABLE_EXPERIMENTAL_CLONES then
-                tell(player, 'Enable the prototype first. Combat is GM-only and has no owner damage credit.')
+                tell(player, 'Enable the prototype first.')
                 return
             end
             K.ENABLE_EXPERIMENTAL_COMBAT = true
-            tell(player, 'Native clone melee ENABLED for isolated GM tests only; XP/damage attribution is not implemented.')
+            tell(player, 'Native clone melee ENABLED. Claim/threat transfer is active; damage balance remains GM-test only.')
         elseif mode == 'off' then
             K.ENABLE_EXPERIMENTAL_COMBAT = false
-            K.dismissAll(player)
-            tell(player, 'Clone combat disabled; your active clones dismissed.')
+            K.dismissAllOwners()
+            tell(player, 'Clone combat disabled; all active test copies dismissed.')
         else
             tell(player, 'Usage: !kurogane combat on|off')
         end
@@ -41,8 +41,9 @@ commandObj.onTrigger = function(player, sub, amount)
         local ok, result = K.spawn(player, tonumber(amount) or 3)
         if ok then
             local snap = K.getSnapshot(player)
-            tell(player, ('Spawned %d, alive %d, engaged %d, waiting %d. %s'):format(
-                result, snap.clones, snap.engaged or 0, snap.waiting or 0, snap.diagnostic or ''))
+            tell(player, ('Spawned %d | Alive %d | Engaged %d | Startup %d | Inactive %d | Look %d/%d | Target %d. %s'):format(
+                result, snap.clones, snap.engaged or 0, snap.startup or 0, snap.inactive or 0,
+                snap.appearance_ok or 0, snap.clones, snap.target_id or 0, snap.diagnostic or ''))
         else
             tell(player, 'Spawn failed: ' .. tostring(result))
         end
@@ -51,8 +52,14 @@ commandObj.onTrigger = function(player, sub, amount)
         tell(player, 'Your copies dismissed.')
     elseif sub == 'status' then
         local snap = K.getSnapshot(player)
-        tell(player, string.format('Prototype: %s | Clones: %d | Engaged: %d | Waiting: %d | Attempts: %d | Next: %ds | Melee: %s',
-            K.ENABLE_EXPERIMENTAL_CLONES and 'ENABLED' or 'DISABLED', snap.clones, snap.engaged or 0, snap.waiting or 0, snap.attempts or 0, snap.next_exp, K.ENABLE_EXPERIMENTAL_COMBAT and 'GM TEST ONLY' or 'OFF'))
+        local errorText = snap.last_error ~= '' and (' | Error: ' .. snap.last_error) or ''
+        tell(player, string.format('Prototype %s | Clones %d (eng %d/start %d/inactive %d/wrong %d) | Look %d/%d | Target %d alive=%s ownerEng=%s | Hits %d attempts %d | Next %ds | Melee %s%s',
+            K.ENABLE_EXPERIMENTAL_CLONES and 'ON' or 'OFF', snap.clones, snap.engaged or 0,
+            snap.startup or 0, snap.inactive or 0, snap.wrong_target or 0,
+            snap.appearance_ok or 0, snap.clones, snap.target_id or 0,
+            tostring(snap.target_alive == true), tostring(snap.owner_engaged == true),
+            snap.attributed_hits or 0, snap.attempts or 0, snap.next_exp,
+            K.ENABLE_EXPERIMENTAL_COMBAT and 'ON' or 'OFF', errorText))
     else
         tell(player, 'Usage: !kurogane enable|disable|combat on|off|spawn [1-5]|dismiss|status')
     end
