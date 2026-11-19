@@ -2466,6 +2466,7 @@ def parse_patches() -> list[dict]:
         "0033-talent-packet-dispatch.patch": "Handles crystal socket change packet dispatch and instant Weaponskill talent sync updates.",
         "0034-talent-ws-gating.patch": "Enforces Tier-1 Weaponskill Talent gating cleanly in C++ battleutils when inspecting unlocked WSs.",
         "0035-rng-huntsman-pets.patch": "Configures custom Huntsman pet IDs and subjobs (Wild Raaz, Stalker Raptor, Cehuetzi, Gabbrath) in petutils.cpp for exact-level scaling.",
+        "0037-crystal-swap-busy-state.patch": "Allows idle Crystal Socket selections by removing the always-populated AI state stack from busy detection and defers combat-swap policy to the Lua spec system.",
     }
     desc_map.update({k: v for k, v in extra_descriptions.items() if k not in desc_map})
 

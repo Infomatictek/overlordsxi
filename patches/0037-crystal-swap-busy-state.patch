@@ -1,0 +1,31 @@
+diff --git a/src/map/packets/c2s/0x11f_crystal_socket.cpp b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+--- a/src/map/packets/c2s/0x11f_crystal_socket.cpp
++++ b/src/map/packets/c2s/0x11f_crystal_socket.cpp
+@@ -68,7 +68,6 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
+             const PacketValidationResult state = PacketValidator(PChar).blockedBy({
+                 BlockedState::Dead,
+                 BlockedState::InEvent,
+-                BlockedState::Engaged,
+                 BlockedState::AbnormalStatus,
+                 BlockedState::PreventAction,
+                 BlockedState::Crafting,
+@@ -86,16 +85,15 @@ void GP_CLI_COMMAND_CRYSTAL_SOCKET::process(MapSession* PSession, CCharEntity* P
+                 BlockedState::Monstrosity,
+             });
+ 
+-            // Conservatively forbid battlefield changes and active/queued actions.
++            // An idle player always owns an AI state, so IsStateStackEmpty() is
++            // not a valid busy test. Combat policy belongs to spec.canSwap().
+             const bool busy = !PSession->hasLoadedZone() ||
+                               PSession->shuttingDown ||
+                               PSession->zone_type != GP_GAME_LOGOUT_STATE::NONE ||
+                               !state.valid() ||
+                               !PChar->loc.zone ||
+                               PChar->PBattlefield ||
+-                              !PChar->PAI->IsStateStackEmpty() ||
+-                              !PChar->PAI->QueueEmpty() ||
+-                              PChar->hasEnmityEXPENSIVE();
++                              !PChar->PAI->QueueEmpty();
+ 
+             const auto specTable = crystal::getSpecTable(lua);
+             if (specTable)
