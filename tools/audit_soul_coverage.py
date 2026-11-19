@@ -50,13 +50,13 @@ def extract_registration_args(source: str, start: int) -> str:
     while i < len(source) and depth:
         char = source[i]
         if quote is not None:
-            if char == '\\\\':
+            if char == '\\':
                 i += 2
                 continue
             if char == quote:
                 quote = None
         elif source.startswith('--', i):
-            newline = source.find('\\n', i)
+            newline = source.find('\n', i)
             i = len(source) if newline < 0 else newline + 1
             continue
         elif char in ("'", '"'):
