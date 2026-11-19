@@ -30,9 +30,13 @@ local KUROGANE_KEY  = 'kurogane'
 -- Custom Trait ID (161)
 local TRAIT_KAGEMUSHA_PHANTOM = 161
 
--- Custom Ability IDs (443-444; recastIds 218-219)
-local ABIL_KAGE_BUNSHIN = 443
-local ABIL_SMOKE_LOTUS  = 444
+-- Custom Ability IDs
+-- Kagemusha (443-444; recastIds 218-219)
+local ABIL_KAGE_BUNSHIN    = 443
+local ABIL_SMOKE_LOTUS     = 444
+-- Shinobi (487-488; recastIds 238-239)
+local ABIL_SHADOW_LEGION   = 487
+local ABIL_PHANTOM_ASSAULT = 488
 
 -- Native NIN Ability IDs
 local ABIL_MIJIN_GAKURE = 28
@@ -59,8 +63,10 @@ local KAGEMUSHA_SPELLS =
 }
 
 xi.jobAbility = xi.jobAbility or {}
-xi.jobAbility.KAGE_BUNSHIN = ABIL_KAGE_BUNSHIN
-xi.jobAbility.SMOKE_LOTUS  = ABIL_SMOKE_LOTUS
+xi.jobAbility.KAGE_BUNSHIN    = ABIL_KAGE_BUNSHIN
+xi.jobAbility.SMOKE_LOTUS     = ABIL_SMOKE_LOTUS
+xi.jobAbility.SHADOW_LEGION   = ABIL_SHADOW_LEGION
+xi.jobAbility.PHANTOM_ASSAULT = ABIL_PHANTOM_ASSAULT
 
 xi.effect = xi.effect or {}
 xi.effect.KAGEMUSHA_SHADOW_SMOKE = EFFECT_SHADOW_SMOKE
@@ -68,8 +74,10 @@ xi.effect.KAGEMUSHA_BUNSHIN      = EFFECT_KAGE_BUNSHIN
 
 xi.actions = xi.actions or {}
 xi.actions.abilities = xi.actions.abilities or {}
-xi.actions.abilities.kage_bunshin = xi.actions.abilities.kage_bunshin or {}
-xi.actions.abilities.smoke_lotus  = xi.actions.abilities.smoke_lotus or {}
+xi.actions.abilities.kage_bunshin    = xi.actions.abilities.kage_bunshin or {}
+xi.actions.abilities.smoke_lotus     = xi.actions.abilities.smoke_lotus or {}
+xi.actions.abilities.shadow_legion   = xi.actions.abilities.shadow_legion or {}
+xi.actions.abilities.phantom_assault = xi.actions.abilities.phantom_assault or {}
 
 xi.effects = xi.effects or {}
 xi.effects.kagemusha_shadow_smoke = xi.effects.kagemusha_shadow_smoke or {}
@@ -107,6 +115,21 @@ local function isKagemusha(entity)
 
     spec.ensureUpToDate(entity)
     return spec.is(entity, xi.job.NIN, KAGEMUSHA_KEY)
+end
+
+local function isShinobi(entity)
+    if
+        entity == nil or
+        not entity.isPC or
+        not entity:isPC() or
+        entity:getMainJob() ~= xi.job.NIN or
+        entity:getMainLvl() < 10
+    then
+        return false
+    end
+
+    spec.ensureUpToDate(entity)
+    return spec.is(entity, xi.job.NIN, KUROGANE_KEY)
 end
 
 local function isKatanaItem(item)
@@ -420,6 +443,15 @@ for _, utsuName in ipairs({ 'utsusemi_ichi', 'utsusemi_ni' }) do
         if isKagemusha(caster) and spell ~= nil and spell.setCastTime then
             local castMs = (utsuName == 'utsusemi_ni') and 1200 or 1500
             spell:setCastTime(castMs)
+        elseif isShinobi(caster) then
+            local api = xi.overlords and xi.overlords.kurogane
+            if not api or not api.canSpawn then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
+            local okSpawn, _err = api.canSpawn(caster)
+            if not okSpawn then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
         end
         return super(caster, target, spell)
     end)
@@ -427,6 +459,35 @@ end
 
 m:addOverride('xi.spells.enhancing.useEnhancingNinjutsu', function(caster, target, spell)
     local spellId = spell:getID()
+    if
+        isShinobi(caster) and
+        (spellId == xi.magic.spell.UTSUSEMI_ICHI or spellId == xi.magic.spell.UTSUSEMI_NI)
+    then
+        -- Shinobi Offensive Utsusemi: summons independent offensive shadows
+        -- (Ichi = 2, Ni = 3, max 5) instead of defensive COPY_IMAGE shadows.
+        local count = (spellId == xi.magic.spell.UTSUSEMI_NI) and 3 or 2
+        local api   = xi.overlords and xi.overlords.kurogane
+        if api and api.spawn then
+            local ok, result = api.spawn(caster, count)
+            if ok then
+                spell:setMsg(xi.msg.basic.NONE)
+                if caster.printToPlayer then
+                    local snap = api.getSnapshot and api.getSnapshot(caster) or nil
+                    local total = snap and snap.clones or result
+                    caster:printToPlayer(
+                        string.format('[Shinobi] Summoned %d offensive %s (%d/5 active).',
+                            result, result == 1 and 'shadow' or 'shadows', total),
+                        xi.msg.channel.SYSTEM_3)
+                end
+            else
+                spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+            end
+        else
+            spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+        end
+        return 0
+    end
+
     if
         isKagemusha(caster) and
         (spellId == xi.magic.spell.UTSUSEMI_ICHI or spellId == xi.magic.spell.UTSUSEMI_NI)
@@ -707,6 +768,88 @@ m:addOverride('xi.actions.abilities.smoke_lotus.onUseAbility', function(player, 
 end)
 
 -----------------------------------
+-- Shinobi Custom Active Job Abilities (487-488)
+-----------------------------------
+m:addOverride('xi.actions.abilities.shadow_legion.onAbilityCheck', function(player, target, _ability)
+    if not isShinobi(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    local api = xi.overlords and xi.overlords.kurogane
+    if not api or not api.hasLivingClones then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    local count, _living, activeTarget = api.hasLivingClones(player)
+    if count <= 0 or activeTarget == nil then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    if target ~= nil and target.getID and target:getID() ~= activeTarget:getID() then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.shadow_legion.onUseAbility', function(player, target, ability)
+    local api = xi.overlords and xi.overlords.kurogane
+    if not api or not api.executeShadowLegion then
+        ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
+        return 0
+    end
+
+    local ok, count, estTotal = api.executeShadowLegion(player, target)
+    if not ok then
+        ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
+        return 0
+    end
+
+    ability:setMsg(xi.msg.basic.NONE)
+    if player.printToPlayer then
+        player:printToPlayer(
+            string.format('[Shinobi] Shadow Legion! %d %s launched a coordinated strike (~%d dmg).',
+                count, count == 1 and 'shadow' or 'shadows', estTotal or 0),
+            xi.msg.channel.SYSTEM_3)
+    end
+    return estTotal or 0
+end)
+
+m:addOverride('xi.actions.abilities.phantom_assault.onAbilityCheck', function(player, _target, _ability)
+    if not isShinobi(player) then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    local api = xi.overlords and xi.overlords.kurogane
+    if not api or not api.hasLivingClones then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    local count = api.hasLivingClones(player)
+    if count <= 0 then
+        return xi.msg.basic.UNABLE_TO_USE_JA, 0
+    end
+    return 0, 0
+end)
+
+m:addOverride('xi.actions.abilities.phantom_assault.onUseAbility', function(player, _target, ability)
+    local api = xi.overlords and xi.overlords.kurogane
+    if not api or not api.executePhantomAssault then
+        ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
+        return 0
+    end
+
+    local ok, boosted, dur = api.executePhantomAssault(player)
+    if not ok then
+        ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
+        return 0
+    end
+
+    ability:setMsg(xi.msg.basic.NONE)
+    if player.printToPlayer then
+        player:printToPlayer(
+            string.format('[Shinobi] Phantom Assault! %d living %s accelerated (-25%% attack interval) for %ds.',
+                boosted, boosted == 1 and 'shadow' or 'shadows', dur or 8),
+            xi.msg.channel.SYSTEM_3)
+    end
+    return 0
+end)
+
+-----------------------------------
 -- Listeners (Weapon Sync & Katana WS Shadow Engine)
 -----------------------------------
 local function onEquipmentChange(player)
@@ -852,20 +995,21 @@ if xi.job and xi.job.NIN then
     })
     -- Additive registration avoids replacing the existing Kagemusha tank entry.
     spec.registerCrystal(xi.job.NIN, {
-            id          = 1,
-            key         = KUROGANE_KEY,
-            name        = 'Shinobi',
-            role        = 'Damage',
-            icon        = 'kurogane',
-            reqLevel    = 10,
-            description = 'Pure-DPS Ninja focused on managing up to five offensive shadow clones. Build your shadow squad with Utsusemi, replace lost clones after dangerous attacks, and time coordinated burst and sustained pressure around the shadows still alive. Clone summoning and custom JAs are planned for production; current entity controls remain GM-only.',
-            highlights  =
+            id             = 1,
+            key            = KUROGANE_KEY,
+            name           = 'Shinobi',
+            role           = 'Damage',
+            icon           = 'kurogane',
+            reqLevel       = 10,
+            extraAbilities = { ABIL_SHADOW_LEGION, ABIL_PHANTOM_ASSAULT },
+            description    = 'Tier 1 Pure Physical DPS Ninja (Lv10+, Katana): shadow-clone commander that converts Utsusemi Ichi/Ni into up to 5 independent offensive shadow clones, commanding them with Shadow Legion and Phantom Assault.',
+            highlights     =
             {
-                'Tier 1 Damage: PHYS_DMG_DEALT and MAG_DMG_DEALT remain at 0 (the global Damage tier applies no penalty).',
-                'Katana focus: +10/16/22/28 STR and DEX, +15/25/35/50 Katana skill, +8/12/16/20% Attack, +5/8/12/16% WS damage.',
-                'Offensive flow: +5/8/11/14 Double Attack, +5/10/15/20 Store TP; -20/-25/-30/-40 Enmity.',
-                'Shadow management (planned production loop): Ichi creates 2 and Ni creates 3 offensive copies, up to 5 total. Maintain your squad without wasting summons at cap; restore losses after boss spikes or AoE. Current GM-tested copies have 40-170 HP and last 25-30s.',
-                'Planned JAs: Shadow Legion (90s, coordinated single-target burst from surviving clones) and Phantom Assault (30s, 8s faster attacks for current clones). Neither summons extra clones or turns them into tanks.',
+                'Tier 1 Damage: PHYS_DMG_DEALT, MAG_DMG_DEALT, and RANGED_DMG_DEALT remain at 0 (full DPS scaling).',
+                'Passives (Lv10/30/50/70+): +10/16/22/28 STR & DEX, +15/25/35/50 Katana skill, +8/12/16/20% Attack, +5/8/12/16% WS damage, +5/8/11/14 Double Attack, +5/10/15/20 Store TP, and -20/-25/-30/-40 Enmity.',
+                'Offensive Utsusemi (Shadow Squadron): Utsusemi: Ichi summons 2 offensive clones and Utsusemi: Ni summons 3 (max 5 active, 25-30s lifetime, up to 170 HP at Lv75); clones copy your look and attack your engaged target independently.',
+                'Shadow Legion (90s CD): Every surviving shadow launches a staggered single-target coordinated strike at your engaged enemy.',
+                'Phantom Assault (30s CD, 8s): Reduces the native autoattack interval of all currently living shadows by 25% (~33.3% faster attacks) for 8 seconds.',
             },
             mods = function(_player, lvl)
                 local l = lvl or 10

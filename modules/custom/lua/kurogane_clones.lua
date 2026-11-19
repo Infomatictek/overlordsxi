@@ -1,9 +1,8 @@
 -----------------------------------
--- OverlordsXI Kurogane — dynamic Shadow Clone test backend
+-- OverlordsXI Shinobi (internal key: kurogane) — dynamic Shadow Clone backend
 --
 -- Real dynamic MOB entities are used so every clone has its own native AI,
--- pathing, HP, attack timer, and AoE vulnerability. The feature remains
--- GM-gated until docs/kurogane-shadow-clones.md is verified in game.
+-- pathing, HP, independent attack timer, and AoE vulnerability.
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/overlords_job_specs')
@@ -15,21 +14,31 @@ xi.overlords.kurogane = xi.overlords.kurogane or {}
 local K = xi.overlords.kurogane
 local spec = xi.overlords.spec
 
-K.ENABLE_EXPERIMENTAL_CLONES = K.ENABLE_EXPERIMENTAL_CLONES == true
-K.ENABLE_EXPERIMENTAL_COMBAT = K.ENABLE_EXPERIMENTAL_COMBAT == true
+-- Production default: enabled unless explicitly toggled off by GM/tests.
+if K.ENABLE_EXPERIMENTAL_CLONES == nil then
+    K.ENABLE_EXPERIMENTAL_CLONES = true
+end
+if K.ENABLE_EXPERIMENTAL_COMBAT == nil then
+    K.ENABLE_EXPERIMENTAL_COMBAT = true
+end
 K.MAX_ACTIVE = 5
 K.LIFETIME_MIN = 25
 K.LIFETIME_MAX = 30
--- Glass-cannon baseline: a few small spikes are survivable, but heavy
--- direct attacks and enemy AoE should still kill shadows quickly.
--- Do not derive shadow HP from the owner's HP/gear: that made tank builds
--- create disproportionately durable clones. Level 75 is the server cap.
+-- Glass-cannon baseline: clamp(20 + (ownerLevel * 2), 40, 170) -> 170 HP at Lv.75.
+-- Survives minor spikes, dies to strong direct hits and boss AoE.
+-- Do not derive shadow HP from the owner's HP/gear. Level 75 is the server cap.
 K.HP_BASE = 20
 K.HP_PER_LEVEL = 2
 K.HP_MIN = 40
 K.HP_MAX = 170
 K.MAX_ENGAGE_ATTEMPTS = 3
-K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = -95
+-- Production Tier-1 shadow-clone melee tuning: 5 living clones collectively
+-- contribute ~30-40% of total Shinobi DPS without inheriting random monster
+-- damage bonuses or uncontrolled multi-hit procs.
+K.CLONE_PHYS_DMG_MOD = -60
+K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY = K.CLONE_PHYS_DMG_MOD
+K.PHANTOM_ASSAULT_DURATION = 8
+K.PHANTOM_ASSAULT_DELAY_MULT = 0.75 -- 25% shorter native autoattack interval (~33.3% higher frequency)
 K._owners = K._owners or {}
 K._serial = K._serial or 0
 
@@ -91,6 +100,7 @@ local function setCount(owner, state)
 
     owner:setLocalVar('OX_KRG_CLONE_COUNT', state and #state.clones or 0)
     local remaining = 0
+    local phantomRem = 0
     if state and #state.clones > 0 then
         local now = xi.overlords.nowSec()
         for _, record in ipairs(state.clones) do
@@ -98,10 +108,17 @@ local function setCount(owner, state)
             if remaining == 0 or left < remaining then
                 remaining = left
             end
+            if record.phantomActive and (record.phantomExpiresAt or 0) > now then
+                local pLeft = record.phantomExpiresAt - now
+                if pLeft > phantomRem then
+                    phantomRem = pLeft
+                end
+            end
         end
     end
 
     owner:setLocalVar('OX_KRG_NEXT_EXP', math.ceil(remaining))
+    owner:setLocalVar('OX_KRG_PHANTOM_REM', math.ceil(phantomRem))
 end
 
 local function removeOwnerListeners(owner)
@@ -111,11 +128,23 @@ local function removeOwnerListeners(owner)
     end
 end
 
+local function restoreCloneDelay(record)
+    if not record then
+        return
+    end
+    if record.phantomActive and record.mob and record.mob.setDelay and record.baseDelay then
+        pcall(function() record.mob:setDelay(record.baseDelay) end)
+    end
+    record.phantomActive = false
+    record.phantomExpiresAt = 0
+end
+
 local function dismissMob(record)
     if not record or not record.mob then
         return
     end
 
+    restoreCloneDelay(record)
     local mob = record.mob
     if mob.removeListener then
         pcall(function() mob:removeListener(ATTACK_LISTENER) end)
@@ -306,6 +335,9 @@ local function tickOwner(owner, state)
         if now >= record.expiresAt or not alive then
             removeAt(state, index, true)
         else
+            if record.phantomActive and now >= (record.phantomExpiresAt or 0) then
+                restoreCloneDelay(record)
+            end
             local engaged, actualId = hasExactEngagement(record)
             if engaged then
                 record.action = 1
@@ -533,9 +565,12 @@ local function makeClone(owner, target, index)
         if xi.mobMod.NO_DROPS then mob:setMobMod(xi.mobMod.NO_DROPS, 1) end
         if xi.mobMod.NO_EXP then mob:setMobMod(xi.mobMod.NO_EXP, 1) end
         if xi.mobMod.NO_DESPAWN then mob:setMobMod(xi.mobMod.NO_DESPAWN, 1) end
+        if xi.mobMod.NO_STANDBACK then mob:setMobMod(xi.mobMod.NO_STANDBACK, 1) end
         if xi.mobMod.MULTI_HIT then mob:setMobMod(xi.mobMod.MULTI_HIT, 0) end
     end
     if mob.setDropID then mob:setDropID(0) end
+    if mob.setMobAbilityEnabled then mob:setMobAbilityEnabled(false) end
+    if mob.setMagicCastingEnabled then mob:setMagicCastingEnabled(false) end
     if mob.setRoamFlags and xi.roamFlag and xi.roamFlag.SCRIPTED then
         mob:setRoamFlags(xi.roamFlag.SCRIPTED)
     end
@@ -557,20 +592,26 @@ local function makeClone(owner, target, index)
         pcall(function() mob:copyConfrontationEffect(owner:getTargID()) end)
     end
 
-    -- Conservative, single-hit native melee while ownership/balance is tested.
+    local ownerLevel = owner.getMainLvl and tonumber(owner:getMainLvl()) or 1
+    -- Production single-hit shadow melee: deterministic level-scaled weapon
+    -- damage and Tier-1 squad budget, no multi-hit procs or monster bonuses.
+    if mob.setDamage then
+        local baseDmg = math.max(8, math.floor(ownerLevel * 0.72 + 6))
+        pcall(function() mob:setDamage(baseDmg) end)
+    end
     if mob.addMod and xi.mod then
-        if xi.mod.PHYS_DMG_DEALT then mob:addMod(xi.mod.PHYS_DMG_DEALT, K.EXPERIMENTAL_PHYS_DAMAGE_PENALTY) end
+        if xi.mod.PHYS_DMG_DEALT then mob:addMod(xi.mod.PHYS_DMG_DEALT, K.CLONE_PHYS_DMG_MOD) end
         if xi.mod.DOUBLE_ATTACK then mob:addMod(xi.mod.DOUBLE_ATTACK, -100) end
         if xi.mod.TRIPLE_ATTACK then mob:addMod(xi.mod.TRIPLE_ATTACK, -100) end
         if xi.mod.QUAD_ATTACK then mob:addMod(xi.mod.QUAD_ATTACK, -100) end
+        if xi.mod.ENMITY then mob:addMod(xi.mod.ENMITY, -100) end
     end
     if mob.setMod and xi.mod then
-        if xi.mod.ATTP then mob:setMod(xi.mod.ATTP, -90) end
         if xi.mod.MACC then mob:setMod(xi.mod.MACC, -500) end
         if xi.mod.MATT then mob:setMod(xi.mod.MATT, -100) end
     end
-    if mob.setDelay then mob:setDelay(math.random(210, 270)) end
-    local ownerLevel = owner.getMainLvl and tonumber(owner:getMainLvl()) or 1
+    local baseDelay = math.random(210, 270)
+    if mob.setDelay then mob:setDelay(baseDelay) end
     local cloneHP = math.max(K.HP_MIN, math.min(K.HP_MAX,
         K.HP_BASE + math.floor(ownerLevel * K.HP_PER_LEVEL)))
     if mob.setMaxHP then mob:setMaxHP(cloneHP) end
@@ -594,7 +635,7 @@ local function makeClone(owner, target, index)
         return nil, lookInfo
     end
 
-    return mob, lookInfo, posInfo
+    return mob, lookInfo, posInfo, baseDelay
 end
 
 local function attachOwnerListeners(owner)
@@ -612,19 +653,52 @@ local function attachOwnerListeners(owner)
     end)
 end
 
-function K.spawn(owner, count)
+function K.canSpawn(owner)
     if not K.ENABLE_EXPERIMENTAL_CLONES then
-        return false, 'experimental clone entities disabled'
+        return false, 'shadow clone backend disabled'
     end
     if not isKurogane(owner) then
-        return false, 'Kurogane required'
+        return false, 'Shinobi required'
     end
 
     local target = owner.getTarget and owner:getTarget() or nil
     if not isValidTarget(owner, target, true) or not ownerStillFighting(owner, target and target:getID() or 0) then
-        return false, 'engage a valid mob first'
+        return false, 'engage a valid enemy first'
     end
 
+    return true, target
+end
+
+function K.hasLivingClones(owner)
+    if not owner or not owner.getID or not isKurogane(owner) then
+        return 0, nil
+    end
+    local state = K._owners[owner:getID()]
+    if not state or not validForState(owner, state) then
+        return 0, nil
+    end
+    local target = owner.getTarget and owner:getTarget() or nil
+    if not isValidTarget(owner, target, true) or not ownerStillFighting(owner, state.targetId) then
+        return 0, nil
+    end
+
+    local now = xi.overlords.nowSec()
+    local living = {}
+    for _, record in ipairs(state.clones) do
+        if record.mob and record.mob.isAlive and record.mob:isAlive() and record.expiresAt > now then
+            living[#living + 1] = record
+        end
+    end
+    return #living, living, target, state
+end
+
+function K.spawn(owner, count)
+    local okSpawn, targetOrErr = K.canSpawn(owner)
+    if not okSpawn then
+        return false, targetOrErr
+    end
+
+    local target = targetOrErr
     local ownerId = owner:getID()
     local targetId = target:getID()
     local state = K._owners[ownerId]
@@ -655,7 +729,7 @@ function K.spawn(owner, count)
     -- allocation cap) never loses an active clone.
     local staged = {}
     for index = 1, wanted do
-        local ok, mobOrError, lookInfo, posInfo = pcall(makeClone, owner, target, index)
+        local ok, mobOrError, lookInfo, posInfo, baseDelay = pcall(makeClone, owner, target, index)
         if not ok or not mobOrError then
             state.lastError = ok and tostring(lookInfo or 'unknown spawn failure') or tostring(mobOrError)
             for stagedIndex = #staged, 1, -1 do
@@ -674,6 +748,9 @@ function K.spawn(owner, count)
             targetId = targetId,
             expiresAt = now + lifetime,
             lifetime = lifetime,
+            baseDelay = baseDelay or 240,
+            phantomActive = false,
+            phantomExpiresAt = 0,
             nextEngageAt = now + math.randomFloat(0.25, 1.4),
             attempts = 0,
             action = 0,
@@ -730,12 +807,131 @@ function K.spawn(owner, count)
     return true, spawned
 end
 
+-- Signature JA 1: Shadow Legion (90s CD)
+-- Every surviving shadow launches one staggered single-target strike at the
+-- engaged enemy, attributed to the owner exactly once. At 5 clones, combined
+-- damage is tuned to roughly one comparable Katana weaponskill.
+function K.executeShadowLegion(owner, explicitTarget)
+    local count, living, activeTarget, state = K.hasLivingClones(owner)
+    if count <= 0 or not living or not activeTarget then
+        return false, 'requires at least one living shadow and an engaged target'
+    end
+
+    local target = explicitTarget
+    if not target or not target.getID or target:getID() ~= activeTarget:getID() then
+        target = activeTarget
+    end
+    if not isValidTarget(owner, target, true) then
+        return false, 'invalid target'
+    end
+
+    local ownerId  = owner:getID()
+    local targetId = target:getID()
+    local lvl      = owner.getMainLvl and tonumber(owner:getMainLvl()) or 10
+    local strStat  = owner.getStat and owner:getStat(xi.mod.STR) or lvl
+    local dexStat  = owner.getStat and owner:getStat(xi.mod.DEX) or lvl
+    local att      = owner.getStat and owner:getStat(xi.mod.ATT) or (lvl * 4)
+    local def      = target.getStat and target:getStat(xi.mod.DEF) or math.max(1, lvl * 3)
+    local ratio    = math.max(0.65, math.min(1.65, att / math.max(1, def)))
+    -- Per-clone baseline: ~125-185 at Lv.75 -> ~625-925 total at 5 clones.
+    local perCloneBase = math.floor((18 + lvl * 1.15 + (strStat + dexStat) * 0.25) * ratio)
+    local totalApplied = 0
+
+    local function strikeOnce(record)
+        local liveOwner = type(GetPlayerByID) == 'function' and GetPlayerByID(ownerId) or owner
+        if not liveOwner or not isKurogane(liveOwner) or not liveOwner.isAlive or not liveOwner:isAlive() then
+            return 0
+        end
+        if not ownerStillFighting(liveOwner, targetId) then
+            return 0
+        end
+        if not record.mob or not record.mob.isAlive or not record.mob:isAlive() then
+            return 0
+        end
+        if not isValidTarget(liveOwner, target, true) then
+            return 0
+        end
+
+        if record.mob.lookAt and target.getPos then
+            pcall(function() record.mob:lookAt(target:getPos()) end)
+        end
+
+        local variance = 0.92 + math.random() * 0.16
+        local dmg = math.max(1, math.floor(perCloneBase * variance))
+        -- Apply damage once with the owner as attacker: single-target, owner-
+        -- attributed exactly once, no skillchain, no clone threat, no extra TP.
+        if target.takeDamage then
+            pcall(function()
+                target:takeDamage(dmg, liveOwner, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+            end)
+        end
+        if target.resetEnmity then
+            pcall(function() target:resetEnmity(record.mob) end)
+        end
+        recordAttribution(ownerId, record.mobId, dmg, nil)
+        return dmg
+    end
+
+    for idx, record in ipairs(living) do
+        local delayMs = (idx - 1) * 120 -- 0.12s visual stagger
+        if delayMs == 0 or not owner.timer then
+            totalApplied = totalApplied + strikeOnce(record)
+        else
+            owner:timer(delayMs, function()
+                strikeOnce(record)
+            end)
+            totalApplied = totalApplied + perCloneBase
+        end
+    end
+
+    setCount(owner, state)
+    return true, count, totalApplied
+end
+
+-- Signature JA 2: Phantom Assault (30s CD, 8s duration)
+-- Grants currently living clones a 25% shorter native autoattack interval
+-- (~33.3% higher attack frequency) for 8 seconds. Does not stack recursively,
+-- does not apply to clones summoned afterward, and does not alter player haste.
+function K.executePhantomAssault(owner)
+    local count, living, _target, state = K.hasLivingClones(owner)
+    if count <= 0 or not living then
+        return false, 'requires at least one living shadow and an engaged target'
+    end
+
+    local now = xi.overlords.nowSec()
+    local expiresAt = now + K.PHANTOM_ASSAULT_DURATION
+    local boosted = 0
+
+    for _, record in ipairs(living) do
+        local baseDelay = record.baseDelay or 240
+        local boostedDelay = math.max(100, math.floor(baseDelay * K.PHANTOM_ASSAULT_DELAY_MULT + 0.5))
+        record.baseDelay = baseDelay
+        record.phantomActive = true
+        record.phantomExpiresAt = expiresAt
+        if record.mob and record.mob.setDelay then
+            pcall(function() record.mob:setDelay(boostedDelay) end)
+        end
+        if record.mob and record.mob.timer then
+            local tokenExp = expiresAt
+            record.mob:timer(K.PHANTOM_ASSAULT_DURATION * 1000, function()
+                if record.phantomActive and record.phantomExpiresAt == tokenExp then
+                    restoreCloneDelay(record)
+                end
+            end)
+        end
+        boosted = boosted + 1
+    end
+
+    setCount(owner, state)
+    return true, boosted, K.PHANTOM_ASSAULT_DURATION
+end
+
 function K.getSnapshot(owner)
     local state = owner and owner.getID and K._owners[owner:getID()] or nil
     if not state then
         return {
             clones = 0, engaged = 0, inactive = 0, startup = 0,
-            wrong_target = 0, appearance_ok = 0, next_exp = 0,
+            wrong_target = 0, appearance_ok = 0, next_exp = 0, phantom_rem = 0,
             target_id = 0, target_alive = false, owner_engaged = false,
             attributed_hits = 0, attempts = 0, diagnostic = '', last_error = '',
         }
@@ -749,7 +945,7 @@ function K.getSnapshot(owner)
     local now = xi.overlords.nowSec()
     local snapshot = {
         clones = 0, engaged = 0, inactive = 0, startup = 0,
-        wrong_target = 0, appearance_ok = 0, next_exp = 0,
+        wrong_target = 0, appearance_ok = 0, next_exp = 0, phantom_rem = 0,
         target_id = state.targetId, attributed_hits = 0, attempts = 0,
         diagnostic = state.lastSpawnInfo or '', last_error = state.lastError or '',
     }
@@ -765,6 +961,12 @@ function K.getSnapshot(owner)
             snapshot.attributed_hits = snapshot.attributed_hits + (record.attributedHits or 0)
             if record.appearanceCopied then
                 snapshot.appearance_ok = snapshot.appearance_ok + 1
+            end
+            if record.phantomActive and (record.phantomExpiresAt or 0) > now then
+                local pRem = record.phantomExpiresAt - now
+                if pRem > snapshot.phantom_rem then
+                    snapshot.phantom_rem = pRem
+                end
             end
 
             local engaged, actualId = hasExactEngagement(record)
@@ -794,6 +996,7 @@ function K.getSnapshot(owner)
     end
 
     snapshot.next_exp = math.ceil(snapshot.next_exp)
+    snapshot.phantom_rem = math.ceil(snapshot.phantom_rem)
     return snapshot
 end
 

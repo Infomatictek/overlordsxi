@@ -8,7 +8,7 @@ local commandObj = {}
 commandObj.cmdprops = { permission = 4, parameters = 'ss' }
 
 local function tell(player, msg)
-    player:printToPlayer('[Kurogane] ' .. msg, xi.msg.channel.SYSTEM_3, '')
+    player:printToPlayer('[Shinobi] ' .. msg, xi.msg.channel.SYSTEM_3, '')
 end
 
 commandObj.onTrigger = function(player, sub, amount)

@@ -322,6 +322,7 @@ local KEY_ALIASES =
     soulbeast      = 'alphawarden',
     marionettist   = 'vanguard',
     caller         = 'celestial',
+    shinobi        = 'kurogane',
 }
 
 spec.TIER_CONFIG =

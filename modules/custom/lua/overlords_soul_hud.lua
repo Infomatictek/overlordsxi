@@ -675,19 +675,35 @@ hud.registerProvider('warlord', function(player)
 end)
 
 -----------------------------------
--- Kurogane NIN: experimental dynamic clone preview telemetry
+-- Shinobi NIN (internal key: kurogane): shadow-clone squad & command telemetry
 -----------------------------------
 hud.registerProvider('kurogane', function(player)
+    local legionCd  = (player.getRecast and xi.recast and xi.recast.ABILITY) and (player:getRecast(xi.recast.ABILITY, 238) or 0) or 0
+    local phantomCd = (player.getRecast and xi.recast and xi.recast.ABILITY) and (player:getRecast(xi.recast.ABILITY, 239) or 0) or 0
     local api = xi.overlords and xi.overlords.kurogane
     if api and api.getSnapshot then
         local snapshot = api.getSnapshot(player)
         return {
-            clones = snapshot.clones or 0,
-            clone_exp = snapshot.next_exp or 0,
-            clone_test = api.ENABLE_EXPERIMENTAL_CLONES and 1 or 0,
+            clones      = snapshot.clones or 0,
+            clone_exp   = snapshot.next_exp or 0,
+            engaged     = snapshot.engaged or 0,
+            legion_cd   = math.max(0, math.ceil(legionCd)),
+            phantom_cd  = math.max(0, math.ceil(phantomCd)),
+            phantom_rem = snapshot.phantom_rem or 0,
+            clone_err   = (snapshot.last_error ~= nil and snapshot.last_error ~= '') and 1 or 0,
+            clone_test  = api.ENABLE_EXPERIMENTAL_CLONES and 1 or 0,
         }
     end
-    return { clones = 0, clone_exp = 0, clone_test = 0 }
+    return {
+        clones      = 0,
+        clone_exp   = 0,
+        engaged     = 0,
+        legion_cd   = math.max(0, math.ceil(legionCd)),
+        phantom_cd  = math.max(0, math.ceil(phantomCd)),
+        phantom_rem = 0,
+        clone_err   = 0,
+        clone_test  = 0,
+    }
 end)
 
 -----------------------------------
