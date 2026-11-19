@@ -1,0 +1,28 @@
+name: Untamed module verification
+
+on:
+  push:
+    branches:
+      - feature/bst-untamed-feral-sync
+    paths:
+      - 'modules/custom/lua/bst_untamed.lua'
+      - '.github/workflows/untamed-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lua-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua compiler
+        run: sudo apt-get update -qq && sudo apt-get install -y lua5.4
+      - name: Parse new module
+        run: luac5.4 -p modules/custom/lua/bst_untamed.lua
+      - name: Validate non-overlap boundaries
+        shell: bash
+        run: |
+          grep -q "Feral Synchronization" modules/custom/lua/bst_untamed.lua
+          ! grep -Eq "funnelPetEnmityToMaster|SOULLINK|ALPHA_PACK_INSTINCT" modules/custom/lua/bst_untamed.lua
