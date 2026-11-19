@@ -354,6 +354,30 @@ local function visibleLooksMatch(owner, mob)
     return true, 'engine authoritative 8/8 slots'
 end
 
+-- Read-only GM probe: server-side look equality can be true even when both
+-- source and clone contain zero/default armor models. Expose actual slot IDs.
+local function lookSummary(entity)
+    if not entity or not entity.getLookSnapshot then return 'snapshot unavailable' end
+    local ok, look = pcall(function() return entity:getLookSnapshot() end)
+    if not ok or type(look) ~= 'table' then return 'snapshot failed' end
+    local fields = { 'face', 'race', 'head', 'body', 'hands', 'legs', 'feet', 'main', 'sub', 'ranged', 'modelSize', 'lookType' }
+    local out = {}
+    for _, field in ipairs(fields) do
+        out[#out + 1] = field .. '=' .. tostring(look[field] or '?')
+    end
+    return table.concat(out, ' ')
+end
+
+function K.getLookDiagnostics(owner)
+    if not owner or not owner.getID then return nil, 'invalid owner' end
+    local state = K._owners[owner:getID()]
+    local clone = state and state.clones and state.clones[1] and state.clones[1].mob or nil
+    if not clone or not clone.isAlive or not clone:isAlive() then
+        return { owner = lookSummary(owner), clone = 'no active clone' }
+    end
+    return { owner = lookSummary(owner), clone = lookSummary(clone) }
+end
+
 local function chooseSpawnPosition(owner, navZone, index)
     local ownerPos = { x = owner:getXPos(), y = owner:getYPos(), z = owner:getZPos() }
     if not navZone or not navZone.isNavigablePoint then
