@@ -3607,7 +3607,7 @@ function testGear.applyCanonicalSoulRole(player, profile, jobId)
     local wasExplicit = profile.specEntry ~= nil
     profile.specEntry = entry
     profile.specKey = key
-    if desired ~= nil and not wasExplicit then
+    if desired ~= nil and (not wasExplicit or desired == 'tank' or desired == 'caster') then
         profile.role = desired
     end
     if not string.find(profile.label or '', entry.name or key, 1, true) then
