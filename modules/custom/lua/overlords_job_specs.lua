@@ -246,7 +246,7 @@ spec.JOB_SPECS =
     },
     NIN =
     {
-        { id = 'kurogane',   name = 'Kurogane',   abr = 'KRG', role = 'Damage' },
+        { id = 'kurogane',   name = 'Shinobi',    abr = 'KRG', role = 'Damage' },
         { id = 'kagemusha',  name = 'Kagemusha',  abr = 'KGM', role = 'Tank' },
         { id = 'nightblade', name = 'Nightblade', abr = 'NGB', role = 'Support' },
     },
@@ -315,6 +315,7 @@ spec.JOB_SPECS =
 
 local KEY_ALIASES =
 {
+    shinobi        = 'kurogane',
     gladiator      = 'spartan',
     aegistemplar   = 'defender',
     alphawarden    = 'alphawarden',
