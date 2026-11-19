@@ -1,4 +1,4 @@
-# Scarletweaver (RDM) — Playstyle Guide
+# Scarlet Weaver (RDM) — Playstyle Guide
 
 ## At a Glance
 **Yin/Yang sword-and-spell DPS.** Scarlet Weaver chooses a sword-centered Yang mode or an elemental-casting Yin mode; switching carries real combat downtime.
