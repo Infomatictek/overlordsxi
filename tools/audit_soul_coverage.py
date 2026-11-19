@@ -15,7 +15,7 @@ from pathlib import Path
 CATALOG = Path('modules/custom/lua/overlords_job_specs.lua')
 JOB_OPEN = re.compile(r'^\s*([A-Z]{3})\s*=\s*$')
 ID = re.compile(r"\bid\s*=\s*['\"]([a-z][a-z0-9_]*)['\"]")
-KEY_ASSIGNMENT = re.compile(r"\\bkey\\s*=\\s*(?:['\\\"]([a-z][a-z0-9_]*)['\\\"]|([A-Z][A-Z_0-9]*))")
+KEY_ASSIGNMENT = re.compile(r"\bkey\s*=\s*(?:['\"]([a-z][a-z0-9_]*)['\"]|([A-Z][A-Z_0-9]*))")
 CONST = re.compile(r"\blocal\s+(\w+)\s*=\s*['\"]([a-z][a-z0-9_]*)['\"]")
 REGISTRATION = re.compile(r'\bspec\s*\.\s*(?:registerCrystal|registerJob)\s*\(')
 
