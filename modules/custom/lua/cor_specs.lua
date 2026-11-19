@@ -198,22 +198,28 @@ local function ensureCorStarterGear(player)
     if not isAnyCorSpec(player) or not player.getEquippedItem then
         return
     end
-    if player:getEquippedItem(xi.slot.RANGED) == nil then
-        if not player:hasItem(STARTER_GUN_ID) and player.addItem then
-            player:addItem(STARTER_GUN_ID, 1)
+
+    local inventory = (xi.inv and xi.inv.INVENTORY) or 0
+    local function equipStarter(itemId, slotId, quantity)
+        if player:getEquippedItem(slotId) ~= nil then
+            return
         end
-        if player.equipItem then
-            player:equipItem(STARTER_GUN_ID, xi.slot.RANGED)
+        if not player.hasItem or not player.equipItem then
+            return
         end
+        if not player:hasItem(itemId, inventory) then
+            if not player.addItem or not player:addItem(itemId, quantity, true) then
+                return
+            end
+        end
+        if player.canEquipItem and not player:canEquipItem(itemId, false) then
+            return
+        end
+        player:equipItem(itemId, inventory, slotId)
     end
-    if player:getEquippedItem(xi.slot.AMMO) == nil then
-        if not player:hasItem(STARTER_BULLET_ID) and player.addItem then
-            player:addItem(STARTER_BULLET_ID, 99)
-        end
-        if player.equipItem then
-            player:equipItem(STARTER_BULLET_ID, xi.slot.AMMO)
-        end
-    end
+
+    equipStarter(STARTER_GUN_ID, xi.slot.RANGED, 1)
+    equipStarter(STARTER_BULLET_ID, xi.slot.AMMO, 99)
 end
 
 local function getLuckyRoll(abilityId)
