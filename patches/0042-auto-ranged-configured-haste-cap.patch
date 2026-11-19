@@ -1,0 +1,22 @@
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -20,6 +20,7 @@
+ 
+ #include "attack_state.h"
+ 
++#include "common/settings.h"
+ #include "action/action.h"
+ #include "entities/battle_entity.h"
+ #include "status_effect_container.h"
+@@ -141,7 +142,9 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+                     const float hasteMagic        = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_MAGIC) / 10000.0f, -1.0f, 0.4375f);
+                     const float hasteAbility      = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_ABILITY) / 10000.0f, -0.25f, 0.25f);
+                     const float hasteGear         = std::min<float>(PChar->getMod(xi::Mod::HASTE_GEAR) / 10000.0f, 0.25f);
+-                    const float hasteMult         = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, 0.20f, 2.0f);
++                    // Match melee's configurable delay-reduction cap; Snapshot remains ranged-specific.
++                    const float hasteCap          = 1.0f - settings::get<float>("main.DELAY_REDUCTION_CAP");
++                    const float hasteMult         = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, hasteCap, 2.0f);
+                     const int32 rangedDelay       = static_cast<int32>(static_cast<float>(baseDelay) * hasteMult);
+                     m_attackTime                  = std::chrono::milliseconds(std::max<int32>(rangedDelay, 600));
+                     return true;
