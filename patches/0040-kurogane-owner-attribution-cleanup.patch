@@ -1,0 +1,96 @@
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -714,6 +714,7 @@ public:
+     void updateEnmity(CLuaBaseEntity* PEntity);
+     void transferEnmity(CLuaBaseEntity* entity, uint8 percent, float range);
+     void updateEnmityFromDamage(CLuaBaseEntity* PEntity, int32 damage) const; // Adds Enmity to player for specified mob for the damage specified
++    auto attributeDamageTo(CLuaBaseEntity* PEntity, int32 damage) -> bool;
+     void updateEnmityFromCure(CLuaBaseEntity* PEntity, int32 amount, const sol::object& fixedCE, const sol::object& fixedVE);
+     void resetEnmity(CLuaBaseEntity* PEntity);
+     void setEnmityActive(CLuaBaseEntity* PEntity, bool active);
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -14260,8 +14260,38 @@ void CLuaBaseEntity::updateEnmityFromDamage(CLuaBaseEntity* PEntity, const int32
+             PBaseMob->PEnmityContainer->UpdateEnmityFromDamage(static_cast<CBattleEntity*>(PEntity->GetBaseEntity()), damage);
+         }
+     }
+ }
+ 
++/************************************************************************
++ *  Function: attributeDamageTo()
++ *  Purpose : Attributes damage already dealt by an ownerless allied entity.
++ *  Example : target:attributeDamageTo(player, damage)
++ *  Notes   : Does not apply HP damage or fire TAKE_DAMAGE a second time.
++ ************************************************************************/
++auto CLuaBaseEntity::attributeDamageTo(CLuaBaseEntity* PEntity, const int32 damage) -> bool
++{
++    auto* PMob   = dynamic_cast<CMobEntity*>(m_PBaseEntity);
++    auto* POwner = PEntity ? dynamic_cast<CCharEntity*>(PEntity->GetBaseEntity()) : nullptr;
++
++    if (PMob == nullptr || POwner == nullptr || damage <= 0 || !POwner->isAlive() ||
++        PMob->loc.zone != POwner->loc.zone || PMob->PInstance != POwner->PInstance ||
++        PMob->allegiance == POwner->allegiance)
++    {
++        ShowWarning("attributeDamageTo(): invalid target, owner, damage, or battle context.");
++        return false;
++    }
++
++    // Native damage has already changed HP. Transfer every ownership surface
++    // without replaying damage or its listeners: final attacker, reward claim,
++    // damage-derived threat, and the owner's Records of Eminence damage event.
++    PMob->lastAttackerId_ = EntityId(POwner);
++    battleutils::ClaimMob(PMob, POwner);
++    PMob->PEnmityContainer->UpdateEnmityFromDamage(POwner, damage);
++    roeutils::event(ROE_EVENT::ROE_DMGDEALT, POwner, RoeDatagram("dmg", damage));
++
++    return true;
++}
++
+ /************************************************************************
+  *  Function: updateEnmityFromCure()
+  *  Purpose : Generates Enmity from use of Cure spells/abilities
+@@ -21566,6 +21596,7 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("updateEnmity", CLuaBaseEntity::updateEnmity);
+     SOL_REGISTER("transferEnmity", CLuaBaseEntity::transferEnmity);
+     SOL_REGISTER("updateEnmityFromDamage", CLuaBaseEntity::updateEnmityFromDamage);
++    SOL_REGISTER("attributeDamageTo", CLuaBaseEntity::attributeDamageTo);
+     SOL_REGISTER("updateEnmityFromCure", CLuaBaseEntity::updateEnmityFromCure);
+     SOL_REGISTER("resetEnmity", CLuaBaseEntity::resetEnmity);
+     SOL_REGISTER("setEnmityActive", CLuaBaseEntity::setEnmityActive);
+diff --git a/src/map/zone_entities.cpp b/src/map/zone_entities.cpp
+--- a/src/map/zone_entities.cpp
++++ b/src/map/zone_entities.cpp
+@@ -611,6 +611,15 @@ void CZoneEntities::DecreaseZoneCounter(CCharEntity* PChar)
+ 
+     FOR_EACH_PAIR_CAST_SECOND(CMobEntity*, PCurrentMob, m_mobList)
+     {
++        // Dynamic entities can opt into owner lifecycle cleanup without using
++        // the single-pet PMaster/PPet relationship. This supports bounded
++        // multi-entity mechanics while preventing logout/zone leaks.
++        if (PCurrentMob->IsDynamicEntity() && PCurrentMob->GetLocalVar("dynamicOwnerId") == PChar->id)
++        {
++            PCurrentMob->SetLocalVar("dynamicOwnerId", 0);
++            PCurrentMob->PAI->Despawn();
++        }
++
+         PCurrentMob->PEnmityContainer->LogoutReset(PChar->id);
+         if (PCurrentMob->m_OwnerID.UniqueNo == PChar->id)
+         {
+diff --git a/scripts/specs/core/CBaseEntity.lua b/scripts/specs/core/CBaseEntity.lua
+--- a/scripts/specs/core/CBaseEntity.lua
++++ b/scripts/specs/core/CBaseEntity.lua
+@@ -2958,5 +2958,12 @@ function CBaseEntity:updateEnmityFromDamage(PEntity, damage)
+ end
+ 
++---Attribute damage that has already been applied to a player owner.
++---@param PEntity CBaseEntity
++---@param damage integer
++---@return boolean
++function CBaseEntity:attributeDamageTo(PEntity, damage)
++end
++
+ ---@param PEntity CBaseEntity
+ ---@param amount integer
+ ---@param fixedCE integer? Optional, Defaults to 0

@@ -1,0 +1,137 @@
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -91,6 +91,7 @@
+ #include "monstrosity.h"
+ #include "packets/s2c/0x039_mapschedulor.h"
+ #include "petskill.h"
++#include "packets/entity_update.h"
+ #include "roe.h"
+ #include "spell.h"
+ #include "status_effect_container.h"
+@@ -6370,6 +6371,33 @@ auto GetItemIDByName(const std::string& name) -> uint16
+ 
+ auto GenerateDynamicEntity(CZone* PZone, CInstance* PInstance, sol::table table) -> CBaseEntity*
+ {
++    // A player look is not a model ID or a Lua-reconstructed byte string. Resolve
++    // the authoritative source before allocating/assigning a dynamic entity ID so
++    // an invalid source fails without leaking a target slot.
++    CCharEntity* PLookSource = nullptr;
++    if (table["lookSource"].get_type() != sol::type::nil)
++    {
++        if (!table["lookSource"].is<CLuaBaseEntity*>())
++        {
++            ShowWarning("luautils::GenerateDynamicEntity: lookSource is not an entity.");
++            return nullptr;
++        }
++
++        auto* PLuaLookSource = table["lookSource"].get<CLuaBaseEntity*>();
++        PLookSource          = PLuaLookSource ? dynamic_cast<CCharEntity*>(PLuaLookSource->GetBaseEntity()) : nullptr;
++        if (PLookSource == nullptr)
++        {
++            ShowWarning("luautils::GenerateDynamicEntity: lookSource is not a player.");
++            return nullptr;
++        }
++
++        if (PLookSource->loc.zone != PZone || PLookSource->PInstance != PInstance)
++        {
++            ShowWarning("luautils::GenerateDynamicEntity: lookSource player is not in the destination zone/instance.");
++            return nullptr;
++        }
++    }
++
+     CBaseEntity* PEntity = nullptr;
+     if (table.get_or<uint8>("objtype", TYPE_NPC) == TYPE_NPC)
+     {
+@@ -6441,8 +6469,22 @@ auto GenerateDynamicEntity(CZone* PZone, CInstance* PInstance, sol::table table)
+     }
+ 
+     // Look must be set _before_ inserting the entity into the zone,
+-    // else equipped NPCs/Mobs will be invisible.
+-    if (table["look"].get_type() == sol::type::number)
++    // else equipped NPCs/Mobs will be invisible.  A PC stores physical size in
++    // look.size, while an equipped MOB must store MODEL_EQUIPPED there; copy
++    // the visible fields individually through look_t and transfer size to the
++    // entity packet's modelSize field.
++    if (PLookSource != nullptr)
++    {
++        const auto& visibleLook = PLookSource->getStyleLocked() ? PLookSource->mainlook : PLookSource->look;
++        PEntity->look           = visibleLook;
++        PEntity->look.size      = MODEL_EQUIPPED;
++        PEntity->modelSize      = static_cast<uint8>(std::min<uint16>(PLookSource->look.size, 3));
++        if (PLookSource->playerConfig.DisplayHeadOffFlg)
++        {
++            PEntity->look.head = 0;
++        }
++    }
++    else if (table["look"].get_type() == sol::type::number)
+     {
+         PEntity->SetModelId(table.get<uint16>("look"));
+     }
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -335,6 +335,7 @@ public:
+     void setModelId(uint16 modelId, const sol::object& slotObj);
+     void setLook(const sol::table& look);
+     auto getEquipmentModelIds() -> sol::table;
++    auto getLookSnapshot() -> sol::table;
+     auto getCostume() -> uint16;
+     void setCostume(uint16 costume);
+     auto getCostume2() -> uint16;
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -6275,6 +6275,44 @@ auto CLuaBaseEntity::getEquipmentModelIds() -> sol::table
+     return table;
+ }
+ 
++/************************************************************************
++ *  Function: getLookSnapshot()
++ *  Purpose : Returns the authoritative currently visible equipped look.
++ *  Example : local look = player:getLookSnapshot()
++ *  Notes   : Includes all eight equipment slots and maps PC size to the
++ *            dynamic-entity modelSize representation used by update packets.
++ ************************************************************************/
++auto CLuaBaseEntity::getLookSnapshot() -> sol::table
++{
++    auto table = lua.create_table();
++
++    const look_t* PLook     = &m_PBaseEntity->look;
++    uint8         modelSize = m_PBaseEntity->modelSize;
++    bool          hideHead  = false;
++
++    if (auto* PChar = dynamic_cast<CCharEntity*>(m_PBaseEntity))
++    {
++        PLook     = PChar->getStyleLocked() ? &PChar->mainlook : &PChar->look;
++        modelSize = static_cast<uint8>(std::min<uint16>(PChar->look.size, 3));
++        hideHead  = PChar->playerConfig.DisplayHeadOffFlg;
++    }
++
++    table["lookType"]  = PLook->size;
++    table["modelSize"] = modelSize;
++    table["face"]      = PLook->face;
++    table["race"]      = PLook->race;
++    table["head"]      = hideHead ? 0 : PLook->head;
++    table["body"]      = PLook->body;
++    table["hands"]     = PLook->hands;
++    table["legs"]      = PLook->legs;
++    table["feet"]      = PLook->feet;
++    table["main"]      = PLook->main;
++    table["sub"]       = PLook->sub;
++    table["ranged"]    = PLook->ranged;
++
++    return table;
++}
++
+ /************************************************************************
+  *  Function: getCostume()
+  *  Purpose : Returns the PC's appearance
+@@ -21154,6 +21194,7 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("setModelId", CLuaBaseEntity::setModelId);
+     SOL_REGISTER("setLook", CLuaBaseEntity::setLook);
+     SOL_REGISTER("getEquipmentModelIds", CLuaBaseEntity::getEquipmentModelIds);
++    SOL_REGISTER("getLookSnapshot", CLuaBaseEntity::getLookSnapshot);
+     SOL_REGISTER("getCostume", CLuaBaseEntity::getCostume);
+     SOL_REGISTER("setCostume", CLuaBaseEntity::setCostume);
+     SOL_REGISTER("getCostume2", CLuaBaseEntity::getCostume2);

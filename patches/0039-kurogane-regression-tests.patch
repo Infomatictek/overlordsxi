@@ -1,0 +1,197 @@
+diff --git a/scripts/specs/core/CBaseEntity.lua b/scripts/specs/core/CBaseEntity.lua
+--- a/scripts/specs/core/CBaseEntity.lua
++++ b/scripts/specs/core/CBaseEntity.lua
+@@ -1361,7 +1361,12 @@ function CBaseEntity:setLook(look)
+ ---@nodiscard
+ ---@return table
+ function CBaseEntity:getEquipmentModelIds()
+ end
+ 
++---@nodiscard
++---@return table
++function CBaseEntity:getLookSnapshot()
++end
++
+ ---@nodiscard
+ ---@return integer
+ function CBaseEntity:getCostume()
+diff --git a/scripts/tests/custom/kurogane.lua b/scripts/tests/custom/kurogane.lua
+new file mode 100644
+--- /dev/null
++++ b/scripts/tests/custom/kurogane.lua
+@@ -0,0 +1,175 @@
++local spec = xi.overlords.spec
++local K    = xi.overlords.kurogane
++
++local lookFields =
++{
++    'face',
++    'race',
++    'head',
++    'body',
++    'hands',
++    'legs',
++    'feet',
++    'main',
++    'sub',
++    'ranged',
++    'modelSize',
++}
++
++local function assertLookEquals(expected, actual, context)
++    for _, field in ipairs(lookFields) do
++        assert(expected[field] == actual[field], string.format(
++            '%s: %s mismatch (expected %s, got %s)',
++            context,
++            field,
++            tostring(expected[field]),
++            tostring(actual[field])))
++    end
++end
++
++local function insertLookClone(player, name)
++    local zone = GetZone(player:getZoneID())
++    assert(zone, 'player zone is unavailable')
++
++    local mob = zone:insertDynamicEntity({
++        objtype              = xi.objType.MOB,
++        allegiance           = xi.allegiance.PLAYER,
++        name                 = name,
++        packetName           = name,
++        x                    = player:getXPos(),
++        y                    = player:getYPos(),
++        z                    = player:getZPos(),
++        rotation             = player:getRotPos(),
++        groupId              = 5,
++        groupZoneId          = xi.zone.GHELSBA_OUTPOST,
++        minLevel             = 1,
++        maxLevel             = 1,
++        lookSource           = player,
++        releaseIdOnDisappear = true,
++    })
++    assert(mob, 'failed to insert authoritative-look dynamic MOB')
++
++    mob:setSpawn(player:getXPos(), player:getYPos(), player:getZPos(), player:getRotPos())
++    mob:spawn()
++    return mob
++end
++
++describe('Kurogane regressions', function()
++    it('keeps canonical, reversible Ninja crystal IDs', function()
++        local kuroganeByKey  = spec.resolve(xi.job.NIN, 'kurogane')
++        local kuroganeById   = spec.resolve(xi.job.NIN, 1)
++        local kagemushaByKey = spec.resolve(xi.job.NIN, 'kagemusha')
++        local kagemushaById  = spec.resolve(xi.job.NIN, 2)
++
++        assert(kuroganeByKey and kuroganeByKey.id == 1, 'kurogane key did not resolve to branch 1')
++        assert(kuroganeById and kuroganeById.key == 'kurogane', 'NIN branch 1 did not resolve to kurogane')
++        assert(kagemushaByKey and kagemushaByKey.id == 2, 'kagemusha key did not resolve to branch 2')
++        assert(kagemushaById and kagemushaById.key == 'kagemusha', 'NIN branch 2 did not resolve to kagemusha')
++    end)
++
++    describe('authoritative player appearance', function()
++        local dynamicMobs
++
++        before_each(function()
++            dynamicMobs = {}
++        end)
++
++        after_each(function()
++            for _, mob in ipairs(dynamicMobs) do
++                if mob and mob.getID then
++                    DespawnMob(mob:getID())
++                end
++            end
++        end)
++
++        it('copies every visible slot once before the clone becomes visible', function()
++            local player = xi.test.world:spawnPlayer({
++                zone  = xi.zone.WEST_RONFAURE,
++                job   = xi.job.NIN,
++                level = 75,
++            })
++
++            local models =
++            {
++                { xi.slot.HEAD,   0x2101 },
++                { xi.slot.BODY,   0x2202 },
++                { xi.slot.HANDS,  0x2303 },
++                { xi.slot.LEGS,   0x2404 },
++                { xi.slot.FEET,   0x2505 },
++                { xi.slot.MAIN,   0x2606 },
++                { xi.slot.SUB,    0x2707 },
++                { xi.slot.RANGED, 0x2808 },
++            }
++            for _, entry in ipairs(models) do
++                player:setModelId(entry[2], entry[1])
++            end
++
++            local ownerLookA = player:getLookSnapshot()
++            local cloneA     = insertLookClone(player, 'Kurogane_Look_A')
++            dynamicMobs[#dynamicMobs + 1] = cloneA
++            local cloneLookA = cloneA:getLookSnapshot()
++            assertLookEquals(ownerLookA, cloneLookA, 'first clone')
++
++            local firstLegs = cloneLookA.legs
++            player:setModelId(0x2A0A, xi.slot.LEGS)
++            local ownerLookB = player:getLookSnapshot()
++            assert(ownerLookB.legs ~= firstLegs, 'appearance mutation did not change the owner snapshot')
++
++            local cloneB = insertLookClone(player, 'Kurogane_Look_B')
++            dynamicMobs[#dynamicMobs + 1] = cloneB
++            assertLookEquals(ownerLookB, cloneB:getLookSnapshot(), 'second clone')
++            assert(cloneA:getLookSnapshot().legs == firstLegs, 'first clone appearance changed with its owner')
++        end)
++    end)
++
++    describe('clone cap and cleanup', function()
++        local player
++        local target
++
++        before_each(function()
++            K.ENABLE_EXPERIMENTAL_CLONES = true
++            K.ENABLE_EXPERIMENTAL_COMBAT = false
++            player = xi.test.world:spawnPlayer({
++                zone  = xi.zone.WEST_RONFAURE,
++                job   = xi.job.NIN,
++                level = 75,
++            })
++            player:setCharVar(spec.getVarName(xi.job.NIN), 1)
++            target = player.entities:moveTo('Wild_Rabbit')
++            target:respawn()
++            target:setUnkillable(true)
++            player.actions:engage(target)
++            assert(player:isEngaged(), 'player did not engage the Kurogane test target')
++        end)
++
++        after_each(function()
++            if player then
++                K.dismissAll(player)
++            end
++            if target then
++                target:setUnkillable(false)
++            end
++            K.ENABLE_EXPERIMENTAL_CLONES = false
++            K.ENABLE_EXPERIMENTAL_COMBAT = false
++        end)
++
++        it('caps at five and dismisses the whole group on disengage', function()
++            local ok, spawned = K.spawn(player, K.MAX_ACTIVE + 2)
++            assert(ok, string.format('clone spawn failed: %s', tostring(spawned)))
++            assert(spawned == K.MAX_ACTIVE, 'spawn request was not capped at five')
++
++            local snapshot = K.getSnapshot(player)
++            assert(snapshot.clones == K.MAX_ACTIVE, 'snapshot did not report five live clones')
++            assert(snapshot.appearance_ok == K.MAX_ACTIVE, 'not every clone passed the authoritative look check')
++            assert(snapshot.target_id == target:getID(), 'snapshot reported the wrong target')
++            assert(snapshot.target_alive, 'snapshot reported the live target as invalid')
++            assert(snapshot.owner_engaged, 'snapshot reported the owner as disengaged')
++            assert(snapshot.wrong_target == 0, 'a newly spawned clone selected the wrong target')
++            assert(snapshot.diagnostic ~= '', 'spawn diagnostics were empty')
++
++            player:disengage()
++            xi.test.world:tickEntity(player)
++            assert(K.getSnapshot(player).clones == 0, 'disengage did not dismiss every clone')
++        end)
++    end)
++end)

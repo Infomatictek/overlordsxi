@@ -789,7 +789,10 @@ if xi.job and xi.job.NIN then
     spec.registerJob(xi.job.NIN, 'NIN',
     {
         {
-            id             = 1,
+            -- Canonical NIN branch 1 is Kurogane; Kagemusha is branch 2.
+            -- Keeping these IDs unique prevents the later Kurogane additive
+            -- registration from leaving a stale kagemusha -> branch 1 key.
+            id             = 2,
             key            = KAGEMUSHA_KEY,
             name           = 'Kagemusha',
             role           = 'Shadow & Ninjutsu Tank',
