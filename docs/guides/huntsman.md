@@ -28,7 +28,7 @@ All Huntsman companions and commands are **100% single-target** so you never pul
 - **`Saurian Rend` (30s CD):** Tank-scaled rend with strong snap threat, `+12%` Pet HP heal, `+25` Pet EVA & `+15%` Pet Haste for 10s, and `Expose` (`-20` EVA/MEVA for 15s). Apex **Gabbrath** also applies `Breach` (`-15%` DEF/MDEF for 15s).
 - **`Primeval Takedown` (45s CD):** Tank-scaled interrupt with snap threat, `2s` Stun, `+10%` Pet HP heal, `+200` Pet TP, and `+150` Ranger TP.
 
-## Core Combat Loop & Defensive Tools
+## How to Play (Step-by-Step)
 1. **Melee Engagement & Threat Funneling:**
    - Fight alongside your companion with your **1H Axe** (or **Axe + Dagger**).
    - Huntsman carries `-20` Master Enmity and funnels **100%** of your single-target melee and WS threat directly to your active companion (both Tusker and Saurian).
@@ -44,6 +44,18 @@ All Huntsman companions and commands are **100% single-target** so you never pul
    - Arms a 10-second window where your companion (within **12 yalms**) intercepts the **next single-target direct attack** aimed at you, taking the hit with its own normal mitigation instead of you. Does not intercept AoE/conal attacks or multi-hit follow-ups.
 6. **Pet Death Recovery (`Last Whistle` — Passive, 180s CD):**
    - When your active companion **dies in combat** (never on despawn, swap, or zoning), you gain a **4-second escape window** (`+25%` movement speed, `+80` EVA — you remain vulnerable to damage) and a **15-second** opportunity for an **emergency resummon** (resets summon cooldown; the resummoned companion arrives at **50% Max HP** and **0 TP**).
+
+## Key Mechanics & Stacks
+- **Pet-centered enmity:** Master attack and weaponskill threat is funneled to the active tank companion, rather than to the Ranger. This is why Huntsman can command the front line without becoming a conventional Ranger tank.
+- **Beastguard:** Remain within 8y of your living tanking companion to gain reduction against eligible area/conal damage while it controls the enemy. This does not protect against all single-target or scripted attacks.
+- **Warhorn response rhythm:** Warden's Ration and tactical pet commands keep your companion alive and responsive; emergency Feint, Guard, and Last Whistle windows cover the risky moments.
+
+## Common Mistakes (Don't Do This)
+- Do not equip a Bow or Crossbow expecting the melee rework's Axe weaponskill sustain to trigger.
+- Do not leave your companion behind: losing it, its aggro, or the 8y Beastguard range makes the fragile Ranger vulnerable.
+- Do not choose a companion based solely on damage. Tusker favors boss anchoring while Saurian favors snap threat and tempo; both are tank pets.
+- Do not expect pet death to be harmless. Last Whistle is a limited emergency recovery window.
+- Do not treat unfinished custom Warhorn equipment as required at Lv10; native tactical commands provide the playable foundation.
 
 ## Level 10 Starter Experience → Level 75 Apex Progression
 - **At Lv.10:** Equip a 1H Axe (plus an optional Dagger if desired), summon **Wild Raaz** (sustained boss anchor) or **Stalker Raptor** (agile snap-threat tank), stay within 8y for **Beastguard**, weave **1H Axe WSs** for **Warden's Ration**, and hold **Predator's Feint** / **Guardian's Call** for spikes.
