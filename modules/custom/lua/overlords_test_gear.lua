@@ -3604,9 +3604,10 @@ function testGear.applyCanonicalSoulRole(player, profile, jobId)
 
     -- Specific profiles may describe a special gameplay loop (e.g. a
     -- weaponless healer); preserve their equipment/weapon configuration.
+    local wasExplicit = profile.specEntry ~= nil
     profile.specEntry = entry
     profile.specKey = key
-    if desired ~= nil then
+    if desired ~= nil and not wasExplicit then
         profile.role = desired
     end
     if not string.find(profile.label or '', entry.name or key, 1, true) then
@@ -3676,18 +3677,50 @@ local function isItemEquippable(player, entry, targetLevel, opts)
     return true
 end
 
+-- Gear candidates are ranked, not taken from hardcoded pool order. The repo
+-- does not ship authoritative acquisition tables, so names only identify clear
+-- prestige exceptions; the engine does NOT claim that every other item is easy.
+-- This preserves the existing pools without creating another equipment DB.
+local PRESTIGE_WORDS =
+{
+    'relic', 'mythic', 'empyrean', 'aeonic', 'ambuscade',
+    'abjuration', 'dynamis', 'salvage', 'nyzul',
+    'kaja ', 'malignance', 'crepuscular', 'sakpata',
+}
+
+local function isPrestigeItem(entry)
+    local name = string.lower(tostring(entry.name or ''))
+    for _, word in ipairs(PRESTIGE_WORDS) do
+        if string.find(name, word, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
 function testGear.pickFromPool(player, pool, targetLevel, opts)
     if pool == nil then
         return nil
     end
     opts = opts or {}
     opts.targetLevel = targetLevel
+    local best, bestScore = nil, -math.huge
     for _, entry in ipairs(pool) do
         if isItemEquippable(player, entry, targetLevel, opts) then
-            return entry
+            local level = tonumber(entry.lvl) or 1
+            -- For leveling, equipment near the character level is a useful
+            -- baseline when actual item modifiers are not available here.
+            -- Never grant level-99 gear for this level-75 server.
+            local score = level
+            if opts.accessibility ~= 'best' and isPrestigeItem(entry) then
+                score = score - 100
+            end
+            if score > bestScore then
+                best, bestScore = entry, score
+            end
         end
     end
-    return nil
+    return best
 end
 
 function testGear.isWeaponAllowedForJob(player, wKey)
@@ -3840,6 +3873,12 @@ function testGear.buildLoadout(player, opts)
 
     local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
     profile = testGear.applyCanonicalSoulRole(player, profile, player:getMainJob())
+    local originalPick = testGear.pickFromPool
+    local function pick(pool, options)
+        options = options or {}
+        options.accessibility = opts.accessibility
+        return originalPick(player, pool, targetLevel, options)
+    end
 
     if opts.role ~= nil then
         local rKey = testGear.resolveRoleKey(opts.role)
@@ -3873,17 +3912,17 @@ function testGear.buildLoadout(player, opts)
 
     -- 1. Mainhand Weapon
     local weaponPool = testGear.WEAPONS[profile.weapon]
-    local mainItem = testGear.pickFromPool(player, weaponPool, targetLevel, { weaponKey = profile.weapon })
+    local mainItem = pick(weaponPool, { weaponKey = profile.weapon })
     if mainItem == nil and profile.weapon == 'club_mage' then
-        mainItem = testGear.pickFromPool(player, testGear.WEAPONS.club, targetLevel, { weaponKey = 'club' })
+        mainItem = pick(testGear.WEAPONS.club, { weaponKey = 'club' })
     elseif mainItem == nil and profile.weapon == 'staff_mage' then
-        mainItem = testGear.pickFromPool(player, testGear.WEAPONS.staff, targetLevel, { weaponKey = 'staff' })
+        mainItem = pick(testGear.WEAPONS.staff, { weaponKey = 'staff' })
     elseif mainItem == nil and profile.weapon == 'gaxe' then
-        mainItem = testGear.pickFromPool(player, testGear.WEAPONS.axe, targetLevel, { weaponKey = 'axe' })
+        mainItem = pick(testGear.WEAPONS.axe, { weaponKey = 'axe' })
     elseif mainItem == nil and profile.weapon == 'gsword' then
-        mainItem = testGear.pickFromPool(player, testGear.WEAPONS.sword, targetLevel, { weaponKey = 'sword' })
+        mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
     elseif mainItem == nil and profile.weapon == 'gkatana' then
-        mainItem = testGear.pickFromPool(player, testGear.WEAPONS.sword, targetLevel, { weaponKey = 'sword' })
+        mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
     end
     slots[slotEnum.MAIN] = mainItem
 
@@ -3893,13 +3932,13 @@ function testGear.buildLoadout(player, opts)
     if mainItem ~= nil and profile.offhand ~= 'none' then
         if wInfo and wInfo.twoHand then
             local gripPool = testGear.SUBS[profile.offhand] or testGear.SUBS.grip_melee
-            subItem = testGear.pickFromPool(player, gripPool, targetLevel)
+            subItem = pick(gripPool)
         elseif wInfo and not wInfo.isH2H then
             if profile.offhand == 'auto' and hasDualWield(player) then
-                subItem = testGear.pickFromPool(player, weaponPool, targetLevel, { excludeId = mainItem.id, weaponKey = profile.weapon })
+                subItem = pick(weaponPool, { excludeId = mainItem.id, weaponKey = profile.weapon })
             end
             if subItem == nil then
-                subItem = testGear.pickFromPool(player, testGear.SUBS.shield, targetLevel)
+                subItem = pick(testGear.SUBS.shield)
             end
         end
     end
@@ -3910,16 +3949,16 @@ function testGear.buildLoadout(player, opts)
     local ammoItem   = nil
     if profile.ranged ~= nil and profile.ranged ~= 'none' then
         local rPool = testGear.RANGED[profile.ranged]
-        rangedItem = testGear.pickFromPool(player, rPool, targetLevel)
+        rangedItem = pick(rPool)
         if rangedItem == nil and profile.ranged == 'chakram_dnc' then
-            rangedItem = testGear.pickFromPool(player, testGear.RANGED.throwing, targetLevel)
+            rangedItem = pick(testGear.RANGED.throwing)
         end
     end
 
     if rangedItem ~= nil then
         slots[slotEnum.RANGED] = rangedItem
         if profile.ammo ~= nil and profile.ammo ~= 'none' then
-            ammoItem = testGear.pickFromPool(player, testGear.AMMO[profile.ammo], targetLevel)
+            ammoItem = pick(testGear.AMMO[profile.ammo])
         end
         slots[slotEnum.AMMO] = ammoItem
     else
@@ -3936,12 +3975,12 @@ function testGear.buildLoadout(player, opts)
                 ammoKey = 'ammo_tp'
             end
         end
-        ammoItem = testGear.pickFromPool(player, testGear.AMMO[ammoKey], targetLevel)
+        ammoItem = pick(testGear.AMMO[ammoKey])
         if ammoItem == nil and ammoKey == 'orphic_egg' then
-            ammoItem = testGear.pickFromPool(player, testGear.AMMO.ammo_caster, targetLevel)
+            ammoItem = pick(testGear.AMMO.ammo_caster)
         end
         if ammoItem == nil and ammoKey == 'ammo_ws' then
-            ammoItem = testGear.pickFromPool(player, testGear.AMMO.ammo_tp, targetLevel)
+            ammoItem = pick(testGear.AMMO.ammo_tp)
         end
         slots[slotEnum.AMMO] = ammoItem
     end
@@ -3950,20 +3989,20 @@ function testGear.buildLoadout(player, opts)
     local roleGear = testGear.ROLE_GEAR[profile.role] or testGear.ROLE_GEAR.tp
     slots[slotEnum.HEAD]  = testGear.pickFromPool(player, roleGear.HEAD,  targetLevel)
     slots[slotEnum.BODY]  = testGear.pickFromPool(player, roleGear.BODY,  targetLevel)
-    slots[slotEnum.HANDS] = testGear.pickFromPool(player, roleGear.HANDS, targetLevel)
+    slots[slotEnum.HANDS] = pick(roleGear.HANDS)
     slots[slotEnum.LEGS]  = testGear.pickFromPool(player, roleGear.LEGS,  targetLevel)
     slots[slotEnum.FEET]  = testGear.pickFromPool(player, roleGear.FEET,  targetLevel)
     slots[slotEnum.NECK]  = testGear.pickFromPool(player, roleGear.NECK,  targetLevel)
-    slots[slotEnum.WAIST] = testGear.pickFromPool(player, roleGear.WAIST, targetLevel)
+    slots[slotEnum.WAIST] = pick(roleGear.WAIST)
     slots[slotEnum.BACK]  = testGear.pickFromPool(player, roleGear.BACK,  targetLevel)
 
-    local ear1 = testGear.pickFromPool(player, roleGear.EAR, targetLevel)
-    local ear2 = testGear.pickFromPool(player, roleGear.EAR, targetLevel, { excludeId = ear1 and ear1.id or nil })
+    local ear1 = pick(roleGear.EAR)
+    local ear2 = pick(roleGear.EAR, { excludeId = ear1 and ear1.id or nil })
     slots[slotEnum.EAR1] = ear1
     slots[slotEnum.EAR2] = ear2
 
-    local ring1 = testGear.pickFromPool(player, roleGear.RING, targetLevel)
-    local ring2 = testGear.pickFromPool(player, roleGear.RING, targetLevel, { excludeId = ring1 and ring1.id or nil })
+    local ring1 = pick(roleGear.RING)
+    local ring2 = pick(roleGear.RING, { excludeId = ring1 and ring1.id or nil })
     slots[slotEnum.RING1] = ring1
     slots[slotEnum.RING2] = ring2
 
