@@ -54,7 +54,7 @@ def discover_soul_spec_files() -> list[Path]:
             relevant = True
         else:
             text = fpath.read_text(encoding="utf-8-sig", errors="replace")
-            relevant = bool(re.search(r"\\bspec\\s*\\.\\s*register(?:Job|Crystal)\\s*\\(", text))
+            relevant = bool(re.search(r"\bspec\s*\.\s*register(?:Job|Crystal)\s*\(", text))
         if relevant and str(fpath) not in seen:
             seen.add(str(fpath))
             found.append(fpath)
