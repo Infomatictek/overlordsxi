@@ -269,6 +269,12 @@ function K.spawn(owner, count)
             action = 0,
         }
         spawned = spawned + 1
+        if spawned == 1 then
+            local mobStatus = mobOrErr.getStatus and mobOrErr:getStatus() or -1
+            state.lastSpawnInfo = string.format(
+                'entity=%s status=%s look=equipped-20B zone=%s',
+                tostring(mobOrErr:getID()), tostring(mobStatus), tostring(zoneId(mobOrErr)))
+        end
     end
     setCount(owner, state)
     if spawned > 0 and owner.timer and not state.timerRunning then
@@ -297,7 +303,7 @@ function K.getSnapshot(owner)
             if nextExp == 0 or remaining < nextExp then nextExp = remaining end
         end
     end
-    return { clones = count, next_exp = math.ceil(nextExp) }
+    return { clones = count, next_exp = math.ceil(nextExp), diagnostic = state.lastSpawnInfo or '' }
 end
 
 return K
