@@ -789,7 +789,7 @@ if xi.job and xi.job.NIN then
     spec.registerJob(xi.job.NIN, 'NIN',
     {
         {
-            -- Canonical NIN branch 1 is Kurogane; Kagemusha is branch 2.
+            -- Canonical NIN branch 1 is Shinobi (legacy key kurogane); Kagemusha is branch 2.
             -- Keeping these IDs unique prevents the later Kurogane additive
             -- registration from leaving a stale kagemusha -> branch 1 key.
             id             = 2,
@@ -854,18 +854,18 @@ if xi.job and xi.job.NIN then
     spec.registerCrystal(xi.job.NIN, {
             id          = 1,
             key         = KUROGANE_KEY,
-            name        = 'Kurogane',
+            name        = 'Shinobi',
             role        = 'Damage',
             icon        = 'kurogane',
             reqLevel    = 10,
-            description = 'Tier 1 Pure Damage Ninja: fragile independent shadow-clone fighters, Katana weapon skills and offensive Ninjutsu. Real multi-NPC clones require the Kurogane server entity backend; defensive Utsusemi replacement is disabled until that backend exists.',
+            description = 'Pure-DPS Ninja focused on managing up to five offensive shadow clones. Build your shadow squad with Utsusemi, replace lost clones after dangerous attacks, and time coordinated burst and sustained pressure around the shadows still alive. Clone summoning and custom JAs are planned for production; current entity controls remain GM-only.',
             highlights  =
             {
                 'Tier 1 Damage: PHYS_DMG_DEALT and MAG_DMG_DEALT remain at 0 (the global Damage tier applies no penalty).',
                 'Katana focus: +10/16/22/28 STR and DEX, +15/25/35/50 Katana skill, +8/12/16/20% Attack, +5/8/12/16% WS damage.',
                 'Offensive flow: +5/8/11/14 Double Attack, +5/10/15/20 Store TP; -20/-25/-30/-40 Enmity.',
-                'Planned: Utsusemi Ichi/Ni create independent, 1-HP NPCs for 6-10s; they use asynchronous melee, shuriken, Ninjutsu and occasional WS, have an owner-wide damage budget and disappear on AoE.',
-                'Planned JAs: Shadow Legion (temporary large clone wave) and Phantom Assault (brief offensive clone action burst); neither grants defenses, buffs to allies, or rewards for clone deaths.',
+                'Shadow management (planned production loop): Ichi creates 2 and Ni creates 3 offensive copies, up to 5 total. Maintain your squad without wasting summons at cap; restore losses after boss spikes or AoE. Current GM-tested copies have 40-170 HP and last 25-30s.',
+                'Planned JAs: Shadow Legion (90s, coordinated single-target burst from surviving clones) and Phantom Assault (30s, 8s faster attacks for current clones). Neither summons extra clones or turns them into tanks.',
             },
             mods = function(_player, lvl)
                 local l = lvl or 10
