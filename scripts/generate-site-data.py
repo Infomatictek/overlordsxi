@@ -2400,6 +2400,18 @@ def validate_generated_wiki_files(json_path: Path, js_path: Path) -> dict:
         raise ValueError("Generated data.json reports 0 Crystal Specs")
     if stats.get("totalWeaponskills", 0) <= 0:
         raise ValueError("Generated data.json reports 0 Weaponskills")
+    if stats.get("totalCrystalSpecs") != 66:
+        raise ValueError(
+            f"Generated wiki must contain all 66 active Souls, found "
+            f"{stats.get('totalCrystalSpecs', 0)}. "
+            "Check server module discovery and registration order."
+        )
+    exported = [
+        (job.get("jobKey"), crystal.get("key"))
+        for job in data["jobSpecs"] for crystal in job.get("crystals", [])
+    ]
+    if len(set(exported)) != 66:
+        raise ValueError("Generated wiki contains duplicate Soul entries")
 
     js_text = js_path.read_text(encoding="utf-8")
     prefix = "window.OVERLORDS_DATA = "
