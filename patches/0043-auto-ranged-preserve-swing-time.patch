@@ -1,0 +1,12 @@
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -146,6 +146,7 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+                     const float hasteMult         = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, hasteCap, 2.0f);
+                     const int32 rangedDelay       = static_cast<int32>(static_cast<float>(baseDelay) * hasteMult);
+-                    m_attackTime                  = std::chrono::milliseconds(std::max<int32>(rangedDelay, 600));
++                    // Preserve elapsed swing time, as CanAttack() does for standard melee.
++                    m_attackTime                  += std::chrono::milliseconds(std::max<int32>(rangedDelay, 600));
+                     return true;
+                 }
+             }
