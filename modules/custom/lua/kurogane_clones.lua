@@ -178,6 +178,7 @@ local function makeClone(owner, target, index)
     if mob.setMobMod and xi.mobMod then
         if xi.mobMod.NO_DROPS then mob:setMobMod(xi.mobMod.NO_DROPS, 1) end
         if xi.mobMod.NO_EXP then mob:setMobMod(xi.mobMod.NO_EXP, 1) end
+        if xi.mobMod.NO_DESPAWN then mob:setMobMod(xi.mobMod.NO_DESPAWN, 1) end
     end
     if mob.setDropID then mob:setDropID(0) end
     mob:spawn()
@@ -189,8 +190,12 @@ local function makeClone(owner, target, index)
     if mob.setMod and xi.mod and xi.mod.ATTP then mob:setMod(xi.mod.ATTP, -90) end
     if mob.setMod and xi.mod and xi.mod.MACC then mob:setMod(xi.mod.MACC, -500) end
     if mob.setMod and xi.mod and xi.mod.MATT then mob:setMod(xi.mod.MATT, -100) end
-    mob:setMaxHP(1)
-    mob:setHP(1)
+    if mob.setMaxHP then mob:setMaxHP(1) end
+    if mob.setHP then mob:setHP(1) end
+    if not mob.getHP or mob:getHP() ~= 1 then
+        if type(DespawnMob) == 'function' then pcall(DespawnMob, mob:getID()) end
+        return nil, 'cannot enforce 1 HP on dynamic clone'
+    end
     -- Native AI shouldn't move/engage until its independent startup delay.
     if mob.stun then mob:stun(300 + math.random(250, 950)) end
     return mob
