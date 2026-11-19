@@ -37,7 +37,7 @@ struct Delivered
     uint64 signature{};
     timer::time_point at{};
 };
-std::unordered_map<uint64, Delivered> sent;
+std::unordered_map<const CZone*, std::unordered_map<uint64, Delivered>> sentByZone;
 std::unordered_map<const CZone*, timer::time_point> next;
 
 bool valid(const std::string& s, bool isName)
@@ -130,6 +130,7 @@ bool nearby(const Peer& viewer, const Peer& caster)
 }
 void announce(CZone* zone, timer::time_point now)
 {
+    auto& sent = sentByZone[zone]; // Avoid entity ID collisions across zones.
     std::vector<Peer> peers;
     zone->ForEachChar([&](CCharEntity* ch)
     {
@@ -168,12 +169,16 @@ void announce(CZone* zone, timer::time_point now)
 }
 void forgetActor(uint32 actor)
 {
-    for (auto it = sent.begin(); it != sent.end(); )
+    for (auto& zoneEntry : sentByZone)
     {
-        const uint32 viewer = static_cast<uint32>(it->first >> 32);
-        const uint32 caster = static_cast<uint32>(it->first);
-        if (viewer == actor || caster == actor) it = sent.erase(it);
-        else ++it;
+        auto& sent = zoneEntry.second;
+        for (auto it = sent.begin(); it != sent.end(); )
+        {
+            const uint32 viewer = static_cast<uint32>(it->first >> 32);
+            const uint32 caster = static_cast<uint32>(it->first);
+            if (viewer == actor || caster == actor) it = sent.erase(it);
+            else ++it;
+        }
     }
 }
 } // namespace
