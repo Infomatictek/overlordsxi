@@ -3723,11 +3723,30 @@ function testGear.pickFromPool(player, pool, targetLevel, opts)
     return best
 end
 
+-- Use the existing WS/Soul weapon whitelist as the authoritative source.
+-- Lazy require avoids loading WS metadata at module initialization.
+local function getSoulWeaponMap(player)
+    local key = testGear.getActiveSpecKey(player, player:getMainJob())
+    if key == nil then
+        return nil
+    end
+    local ok, profiles = pcall(require, 'modules/custom/lua/overlords_ws_spec_profiles')
+    if ok and type(profiles) == 'table' and type(profiles.ALLOWED_SKILLS_BY_SPEC) == 'table' then
+        return profiles.ALLOWED_SKILLS_BY_SPEC[key]
+    end
+    return nil
+end
+
 function testGear.isWeaponAllowedForJob(player, wKey)
     if player == nil or wKey == nil then
         return false
     end
     local jobId = player:getMainJob()
+    local allowedSkills = getSoulWeaponMap(player)
+    local weaponMeta = testGear.WEAPON_INFO[wKey]
+    if allowedSkills ~= nil and weaponMeta ~= nil then
+        return allowedSkills[weaponMeta.skill] == true
+    end
     local blmJob = (xi.job and xi.job.BLM) or 4
     if (wKey == 'scythe' or wKey == 'scythe_blm') and jobId == blmJob then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
@@ -3869,7 +3888,7 @@ function testGear.buildLoadout(player, opts)
 
     local mainLvl = player.getMainLvl and player:getMainLvl() or 1
     local targetLevel = tonumber(opts.level) or mainLvl
-    targetLevel = math.max(1, math.min(99, math.floor(targetLevel)))
+    targetLevel = math.max(1, math.min(75, math.floor(targetLevel)))
 
     local profile = testGear.getDefaultProfile(player, player:getMainJob(), targetLevel)
     profile = testGear.applyCanonicalSoulRole(player, profile, player:getMainJob())
@@ -3892,6 +3911,21 @@ function testGear.buildLoadout(player, opts)
             profile.ammo = 'ammo_tp'
         end
         profile.label = string.format('%s [%s]', profile.label, testGear.ROLE_LABELS[rKey] or string.upper(rKey))
+    end
+
+    -- A Soul's allowed skills take precedence over vanilla job defaults.
+    -- If no melee weapon is whitelisted, a ranged Soul may remain unarmed in
+    -- MAIN while retaining its ranged weapon and ammunition.
+    if not testGear.isWeaponAllowedForJob(player, profile.weapon) then
+        profile.weapon, profile.offhand = 'none', 'none'
+        for _, key in ipairs(testGear.WEAPON_ORDER) do
+            local info = testGear.WEAPON_INFO[key]
+            if info ~= nil and not info.isRanged and testGear.isWeaponAllowedForJob(player, key) then
+                profile.weapon = key
+                profile.offhand = info.twoHand and 'grip_melee' or (info.isH2H and 'none' or 'auto')
+                break
+            end
+        end
     end
 
     if opts.weapon ~= nil then
@@ -3917,11 +3951,11 @@ function testGear.buildLoadout(player, opts)
         mainItem = pick(testGear.WEAPONS.club, { weaponKey = 'club' })
     elseif mainItem == nil and profile.weapon == 'staff_mage' then
         mainItem = pick(testGear.WEAPONS.staff, { weaponKey = 'staff' })
-    elseif mainItem == nil and profile.weapon == 'gaxe' then
+    elseif mainItem == nil and profile.weapon == 'gaxe' and testGear.isWeaponAllowedForJob(player, 'axe') then
         mainItem = pick(testGear.WEAPONS.axe, { weaponKey = 'axe' })
-    elseif mainItem == nil and profile.weapon == 'gsword' then
+    elseif mainItem == nil and profile.weapon == 'gsword' and testGear.isWeaponAllowedForJob(player, 'sword') then
         mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
-    elseif mainItem == nil and profile.weapon == 'gkatana' then
+    elseif mainItem == nil and profile.weapon == 'gkatana' and testGear.isWeaponAllowedForJob(player, 'sword') then
         mainItem = pick(testGear.WEAPONS.sword, { weaponKey = 'sword' })
     end
     slots[slotEnum.MAIN] = mainItem
@@ -3987,14 +4021,14 @@ function testGear.buildLoadout(player, opts)
 
     -- 4. 5-Piece Armor + 7 Accessories
     local roleGear = testGear.ROLE_GEAR[profile.role] or testGear.ROLE_GEAR.tp
-    slots[slotEnum.HEAD]  = testGear.pickFromPool(player, roleGear.HEAD,  targetLevel)
-    slots[slotEnum.BODY]  = testGear.pickFromPool(player, roleGear.BODY,  targetLevel)
+    slots[slotEnum.HEAD]  = pick(roleGear.HEAD)
+    slots[slotEnum.BODY]  = pick(roleGear.BODY)
     slots[slotEnum.HANDS] = pick(roleGear.HANDS)
-    slots[slotEnum.LEGS]  = testGear.pickFromPool(player, roleGear.LEGS,  targetLevel)
-    slots[slotEnum.FEET]  = testGear.pickFromPool(player, roleGear.FEET,  targetLevel)
-    slots[slotEnum.NECK]  = testGear.pickFromPool(player, roleGear.NECK,  targetLevel)
+    slots[slotEnum.LEGS]  = pick(roleGear.LEGS)
+    slots[slotEnum.FEET]  = pick(roleGear.FEET)
+    slots[slotEnum.NECK]  = pick(roleGear.NECK)
     slots[slotEnum.WAIST] = pick(roleGear.WAIST)
-    slots[slotEnum.BACK]  = testGear.pickFromPool(player, roleGear.BACK,  targetLevel)
+    slots[slotEnum.BACK]  = pick(roleGear.BACK)
 
     local ear1 = pick(roleGear.EAR)
     local ear2 = pick(roleGear.EAR, { excludeId = ear1 and ear1.id or nil })
@@ -4054,7 +4088,7 @@ function testGear.equipLoadout(player, opts)
 
     -- Optional level change before building/equipping loadout
     if opts.setLevel and opts.level ~= nil and player.setLevel then
-        local targetLvl = math.max(1, math.min(99, math.floor(tonumber(opts.level) or 1)))
+        local targetLvl = math.max(1, math.min(75, math.floor(tonumber(opts.level) or 1)))
         if player:getMainLvl() ~= targetLvl then
             player:setLevel(targetLvl)
         end
