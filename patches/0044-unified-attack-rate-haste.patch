@@ -1,0 +1,55 @@
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -553,10 +553,17 @@
+                 }
+ 
+-                hasteMagic   = std::clamp<float>(hasteMagic, -1.0f, 0.4375f);
+-                hasteAbility = std::clamp<float>(hasteAbility, -0.25f, 0.25f);
+-                hasteGear    = std::min(hasteGear, 0.25f);
+-
+-                float hasteCap  = 1.0f - settings::get<float>("main.DELAY_REDUCTION_CAP");
+-                hasteMultiplier = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, hasteCap, 2.0f);
++                // OverlordsXI: no gear/magic/ability haste category caps.
++                // At 15% innate (magic slot) + 10% ability, un-geared players
++                // retain the original 25%-delay-reduction pace (4/3 rate).
++                // Gear haste is a strong, independent multiplier; Soul and party
++                // haste have smooth diminishing returns instead of hard caps.
++                const float otherHaste = hasteMagic + hasteAbility;
++                const float otherRate  = otherHaste >= 0.0f
++                                             ? 1.0f + (5.0f / 3.0f) * otherHaste / (1.0f + otherHaste)
++                                             : 1.0f / (1.0f - otherHaste);
++                const float gearRate   = hasteGear >= 0.0f
++                                             ? 1.0f + 1.5f * hasteGear
++                                             : 1.0f / (1.0f - 1.5f * hasteGear);
++                hasteMultiplier = 1.0f / (otherRate * gearRate);
+             }
+         }
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -140,9 +140,18 @@
+                     const int32 baseDelay         = static_cast<int32>(battleutils::GetRangedDelayReduction(PChar, PChar->GetRangedWeaponDelay(false)));
+-                    const float hasteMagic        = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_MAGIC) / 10000.0f, -1.0f, 0.4375f);
+-                    const float hasteAbility      = std::clamp<float>(PChar->getMod(xi::Mod::HASTE_ABILITY) / 10000.0f, -0.25f, 0.25f);
+-                    const float hasteGear         = std::min<float>(PChar->getMod(xi::Mod::HASTE_GEAR) / 10000.0f, 0.25f);
+-                    // Match melee's configurable delay-reduction cap; Snapshot remains ranged-specific.
+-                    const float hasteCap          = 1.0f - settings::get<float>("main.DELAY_REDUCTION_CAP");
+-                    const float hasteMult         = std::clamp<float>(1.0f - hasteMagic - hasteAbility - hasteGear, hasteCap, 2.0f);
++                    // Snapshot is already applied by GetRangedDelayReduction above.
++                    // Gear haste multiplies that result at full value; all other
++                    // haste scales more gently. 10/9 preserves existing 25%-baseline
++                    // firing rate after moving the free 15% out of gear haste.
++                    const float hasteMagic        = PChar->getMod(xi::Mod::HASTE_MAGIC) / 10000.0f;
++                    const float hasteAbility      = PChar->getMod(xi::Mod::HASTE_ABILITY) / 10000.0f;
++                    const float hasteGear         = PChar->getMod(xi::Mod::HASTE_GEAR) / 10000.0f;
++                    const float otherHaste        = hasteMagic + hasteAbility;
++                    const float otherRate         = otherHaste >= 0.0f
++                                                        ? 1.0f + otherHaste / (1.0f + otherHaste)
++                                                        : 1.0f / (1.0f - otherHaste);
++                    const float gearRate          = hasteGear >= 0.0f
++                                                        ? 1.0f + 1.5f * hasteGear
++                                                        : 1.0f / (1.0f - 1.5f * hasteGear);
++                    const float hasteMult         = 1.0f / ((10.0f / 9.0f) * otherRate * gearRate);
+                     const int32 rangedDelay       = static_cast<int32>(static_cast<float>(baseDelay) * hasteMult);
+                     // Preserve elapsed swing time, as CanAttack() does for standard melee.
