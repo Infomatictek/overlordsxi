@@ -556,6 +556,19 @@ function talents.cycleSCChoice(player, jobId, wsId, scTier, dir, specIdOverride)
 end
 
 function talents.getActiveSkillchains(player, jobId, wsId, ranksOverride, specIdOverride)
+    -- Evolution prototypes retain their original weapon-skill skillchain
+    -- properties without forcing a skillchain talent purchase.
+    if talents.EVOLUTION_WS[wsId] then
+        local ws = catalog.byId[wsId]
+        local original = (ws and ws.orig and ws.orig.skillchain) or {}
+        local chosen = {}
+        for _, name in ipairs(original) do
+            local id = SC_IDS[name]
+            if id and #chosen < 3 then table.insert(chosen, id) end
+        end
+        return { sc1 = chosen[1] or 0, sc2 = chosen[2] or 0,
+                 sc3 = chosen[3] or 0, scBonus = 0, ids = chosen }
+    end
     local ranks = ranksOverride
     if ranks == nil then
         ranks = talents.getWSRanks(player, jobId, wsId, specIdOverride)
