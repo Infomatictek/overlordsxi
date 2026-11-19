@@ -542,7 +542,7 @@ function talents.setSCChoice(player, jobId, wsId, scTier, scId, specIdOverride)
     end
     if talents.EVOLUTION_WS[wsId] then
         local requiredLevel = ({1, 5, 10, 15})[scTier] or 75
-        if player:getJobLevel(jobId) < requiredLevel or talents.getWSSpent(player, jobId, wsId) < scTier then
+        if player:getJobLevel(jobId) < requiredLevel or talents.getWSSpent(player, jobId, wsId, specIdOverride) < scTier then
             return false, 'Unlock the matching evolution stage first.'
         end
     end
@@ -1626,6 +1626,7 @@ local function finalizeTree(ws, archetype, rawNodes, opts)
         ws          = ws,
         archetype   = archetype,
         useBaseline = opts and opts.useBaseline == true or false,
+        evolution   = opts and opts.evolution == true or false,
         nodes       = nodes,
         byKey       = byKey,
     }
@@ -2222,6 +2223,7 @@ function talents.getTotalSpent(player, jobId, specIdOverride)
     scanPrefix(talents.getVarPrefix(jid, player, specIdOverride))
     scanPrefix(talents.getVar2Prefix(jid, player, specIdOverride))
     scanPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_')
+    scanPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_')
 
     return total, perWs
 end
@@ -2270,9 +2272,10 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
         end
         if node.allowedSpecs or node.allowedJobs then
             local _, specKey = talents.getActiveSpec(player, jid)
+            local normSpecKey = string.lower(tostring(specKey or ''))
             local category = talents.resolveSpecCategory(player, jid)
             local allowed = (node.allowedJobs and node.allowedJobs[jid]) or
-                (node.allowedSpecs and (node.allowedSpecs[specKey] or node.allowedSpecs[category]))
+                (node.allowedSpecs and (node.allowedSpecs[normSpecKey] or node.allowedSpecs[category]))
             if not allowed then return false, 'This evolution is not available for your Soul/spec.' end
         end
     end
@@ -2412,22 +2415,25 @@ function talents.resetAll(player, jobId)
     local jid = jobId or player:getMainJob()
     local count = 0
 
-    local function clearPrefix(prefix)
+    local function clearPrefix(prefix, skipEvolutionWs)
         local vars = player:getCharVarsWithPrefix(prefix)
         for varName, val in pairs(vars) do
             if val ~= 0 and string.sub(varName, 1, #prefix) == prefix then
-                player:setCharVar(varName, 0)
-                count = count + 1
+                local wsId = tonumber(string.sub(varName, #prefix + 1))
+                if not (skipEvolutionWs and wsId ~= nil and talents.EVOLUTION_WS[wsId]) then
+                    player:setCharVar(varName, 0)
+                    count = count + 1
+                end
             end
         end
     end
 
-    clearPrefix(talents.getVarPrefix(jid, player))
-    clearPrefix(talents.getVar2Prefix(jid, player))
-    clearPrefix(talents.getScVarPrefix(jid, player))
-    clearPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
-    clearPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
-    clearPrefix(EV_SC_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_')
+    clearPrefix(talents.getVarPrefix(jid, player), true)
+    clearPrefix(talents.getVar2Prefix(jid, player), true)
+    clearPrefix(talents.getScVarPrefix(jid, player), true)
+    clearPrefix(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
+    clearPrefix(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
+    clearPrefix(EV_SC_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid) .. '_', false)
 
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
@@ -2664,7 +2670,7 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
         end
     elseif op == 6 then
         local scTier = a1
-        local dir = (a2 == 2) and -1 or 1
+        local dir = (a2 == 2 or a2 == 255) and -1 or 1
         if wid > 0 and scTier >= 1 and scTier <= 4 then
             local ok, res = talents.cycleSCChoice(player, jobId, wid, scTier, dir)
             if not ok then
