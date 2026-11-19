@@ -98,6 +98,10 @@
 - **Chi Weaver.** Registration prose advertises a negative Attack% alongside a WS penalty. Preserve the empty-hand pulse/heal loop and existing thresholds. Check actual applied modifiers against the project's non-DPS accuracy/attack floor before adjusting numbers. Never implement a negative mod merely to match prose.
 - **Guide coverage.** The wiki supplies registered Templar and Magus entries even without standalone same-key guide files. SCH Medic/Sage register in the central file. A job module name or absent guide cannot stand in for a missingness verdict.
 
+## Launcher recheck
+
+During authoring launcher main advanced to [4f6b4dc](https://github.com/Infomatictek/overlordsxi-launcher/tree/4f6b4dc4481edc3679f9cbcde673cdc4d781f097). The six-file delta adds auto-loading, a native-state fallback and HUD identity parsing with Shinobi normalization. I checked the updated startup, addon, bridge, packet decoder, test and manifest. The native label and icon columns above still apply. The fallback hard-codes the same PUP, BST and DNC discrepancies. See the [handoff](handoff.md) and [ID reconciliation](action-ids.md).
+
 ## Open evidence
 
 Installed server patch set, DB contents, live character variables, binary DAT slot contents, field performance, client locale and the independent twin-pistol build cannot be certified from Git trees. Preserve each as a release gate. The design scope uses the named snapshots and staged targets. No migration, SQL, addon or combat file is part of this audit.
