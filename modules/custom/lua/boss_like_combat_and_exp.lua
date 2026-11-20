@@ -723,6 +723,28 @@ end
 
 xi.customBossServer.getMobLevelScale = getMobLevelScale
 
+local function isPlayerAlliedMob(entity)
+    if entity == nil then
+        return false
+    end
+
+    if entity.getAllegiance and xi.allegiance and xi.allegiance.PLAYER then
+        local ok, allegiance = pcall(function() return entity:getAllegiance() end)
+        if ok and allegiance == xi.allegiance.PLAYER then
+            return true
+        end
+    end
+
+    if entity.getLocalVar then
+        local ok, dynOwner = pcall(function() return entity:getLocalVar('dynamicOwnerId') end)
+        if ok and tonumber(dynOwner) and tonumber(dynOwner) > 0 then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function isWildMob(entity)
     if entity == nil or not entity.isMob or not entity:isMob() then
         return false
@@ -733,6 +755,10 @@ local function isWildMob(entity)
     end
 
     if entity.getMaster and entity:getMaster() ~= nil then
+        return false
+    end
+
+    if isPlayerAlliedMob(entity) then
         return false
     end
 
@@ -753,6 +779,10 @@ local function getPlayerSideLevel(entity)
         local eLvl = entity.getMainLvl and entity:getMainLvl() or 1
         local mLvl = master.getMainLvl and master:getMainLvl() or 1
         return math.max(eLvl, mLvl)
+    end
+
+    if isPlayerAlliedMob(entity) then
+        return entity.getMainLvl and entity:getMainLvl() or 1
     end
 
     return nil

@@ -47,7 +47,7 @@ local ABIL_FUTAE        = 259
 local EFFECT_SHADOW_SMOKE = 845
 local EFFECT_KAGE_BUNSHIN = 846
 
--- Lv.10+ Unlocked Ninjutsu Spells
+-- Lv.10+ Unlocked Ninjutsu Spells (Kagemusha)
 local KAGEMUSHA_SPELLS =
 {
     320, -- Katon: Ichi
@@ -61,6 +61,26 @@ local KAGEMUSHA_SPELLS =
     344, -- Hojo: Ichi
     347, -- Kurayami: Ichi
 }
+
+-- Authoritative Shinobi 2.0 Ninjutsu Kit:
+-- Maps repurposed Ninjutsu spell IDs to unlock levels (checked against effective level),
+-- cast times, and squad command executors. Vanilla/other Souls are never altered.
+local SHINOBI_KIT_SPELLS =
+{
+    [320] = { script = 'katon_ichi',    name = 'False Assault',         unlockLvl = 10, castMs = 500,  recastSec = 12, execFn = 'executeFalseAssault' },
+    [323] = { script = 'hyoton_ichi',   name = 'Mirror Step',           unlockLvl = 10, castMs = 500,  recastSec = 16, execFn = 'executeMirrorStep' },
+    [326] = { script = 'huton_ichi',    name = 'Crosscut',              unlockLvl = 10, castMs = 500,  recastSec = 14, execFn = 'executeCrosscut' },
+    [329] = { script = 'doton_ichi',    name = 'Shadow Pin',            unlockLvl = 30, castMs = 500,  recastSec = 18, execFn = 'executeShadowPin' },
+    [332] = { script = 'raiton_ichi',   name = 'Thunder Relay',         unlockLvl = 50, castMs = 500,  recastSec = 22, execFn = 'executeThunderRelay' },
+    [335] = { script = 'suiton_ichi',   name = 'Final Mirage',          unlockLvl = 70, castMs = 1000, recastSec = 45, execFn = 'executeFinalMirage' },
+    [338] = { script = 'utsusemi_ichi', name = 'Shadow Squadron: Ichi', unlockLvl = 10, castMs = 1500, recastSec = 20, summonCount = 2 },
+    [339] = { script = 'utsusemi_ni',   name = 'Shadow Squadron: Ni',   unlockLvl = 37, castMs = 1200, recastSec = 30, summonCount = 3 },
+}
+
+local SHINOBI_COMMAND_SPELL_IDS = { 320, 323, 326, 329, 332, 335 }
+local SHINOBI_ALL_SPELL_IDS     = { 338, 320, 323, 326, 329, 339, 332, 335 }
+
+xi.overlords.ninSpecs.SHINOBI_KIT_SPELLS = SHINOBI_KIT_SPELLS
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.KAGE_BUNSHIN    = ABIL_KAGE_BUNSHIN
@@ -222,6 +242,37 @@ local function syncKagemushaVarsAndSpells(player, fromMods)
     end
     -- Never reduce Utsusemi spell recast below fixed timers
     player:setLocalVar('OX_NIN_RECAST_REDUCT', 0)
+end
+
+local function syncShinobiStateAndSpells(player, fromMods)
+    if player == nil or not player:isPC() then
+        return
+    end
+
+    local active = false
+    if fromMods then
+        active = player:getMainJob() == xi.job.NIN and player:getMainLvl() >= 10 and spec.is(player, xi.job.NIN, KUROGANE_KEY)
+    else
+        active = isShinobi(player)
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('OX_SHINOBI_ACTIVE', active and 1 or 0)
+    end
+
+    if active and player.hasSpell and player.addSpell then
+        local effLvl = player:getMainLvl() or 1
+        local toGrant = {}
+        for _, spellId in ipairs(SHINOBI_ALL_SPELL_IDS) do
+            local entry = SHINOBI_KIT_SPELLS[spellId]
+            if entry and effLvl >= entry.unlockLvl and not player:hasSpell(spellId) then
+                toGrant[#toGrant + 1] = spellId
+            end
+        end
+        for idx, spellId in ipairs(toGrant) do
+            player:addSpell(spellId, { silentLog = true, saveToDB = true, sendUpdate = (idx == #toGrant) })
+        end
+    end
 end
 
 local function setUtsusemiShadows(player, shadows, tierPower)
@@ -435,15 +486,28 @@ m:addOverride('xi.spells.canUseSpellOverride', function(player, spell)
         return true
     end
 
+    if isShinobi(player) and spell ~= nil then
+        local entry = SHINOBI_KIT_SPELLS[spell:getID()]
+        if entry then
+            return (player:getMainLvl() or 1) >= entry.unlockLvl
+        end
+    end
+
     return super(player, spell)
 end)
 
 for _, utsuName in ipairs({ 'utsusemi_ichi', 'utsusemi_ni' }) do
+    local utsuSpellId = (utsuName == 'utsusemi_ni') and 339 or 338
+    local shinobiEntry = SHINOBI_KIT_SPELLS[utsuSpellId]
     m:addOverride('xi.actions.spells.ninjutsu.' .. utsuName .. '.onMagicCastingCheck', function(caster, target, spell)
         if isKagemusha(caster) and spell ~= nil and spell.setCastTime then
             local castMs = (utsuName == 'utsusemi_ni') and 1200 or 1500
             spell:setCastTime(castMs)
         elseif isShinobi(caster) then
+            local effLvl = caster:getMainLvl() or 1
+            if effLvl < shinobiEntry.unlockLvl then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
             local api = xi.overlords and xi.overlords.kurogane
             if not api or not api.canSpawn then
                 return xi.msg.basic.CANNOT_CAST_SPELL
@@ -452,6 +516,60 @@ for _, utsuName in ipairs({ 'utsusemi_ichi', 'utsusemi_ni' }) do
             if not okSpawn then
                 return xi.msg.basic.CANNOT_CAST_SPELL
             end
+            if spell ~= nil and spell.setCastTime then
+                spell:setCastTime(shinobiEntry.castMs)
+            end
+            return 0
+        end
+        return super(caster, target, spell)
+    end)
+end
+
+-- Repurposed Shinobi Ninjutsu Squad Commands (Spells 320, 323, 326, 329, 332, 335).
+-- Authoritative level-sync unlock enforcement, pre-cast validation (rejects invalid
+-- casts before consuming resources/cooldowns/phase), and complete suppression of
+-- vanilla elemental damage & NINJUTSU_ELE_DEBUFF for Shinobi only.
+for _, cmdSpellId in ipairs(SHINOBI_COMMAND_SPELL_IDS) do
+    local entry = SHINOBI_KIT_SPELLS[cmdSpellId]
+    local baseKey = 'xi.actions.spells.ninjutsu.' .. entry.script
+
+    m:addOverride(baseKey .. '.onMagicCastingCheck', function(caster, target, spell)
+        if isShinobi(caster) then
+            local effLvl = caster:getMainLvl() or 1
+            if effLvl < entry.unlockLvl then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
+            local api = xi.overlords and xi.overlords.kurogane
+            if not api or not api.canCommand then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
+            local okCmd, _err = api.canCommand(caster, target, 1)
+            if not okCmd then
+                return xi.msg.basic.CANNOT_CAST_SPELL
+            end
+            if spell ~= nil and spell.setCastTime then
+                spell:setCastTime(entry.castMs)
+            end
+            return 0
+        end
+        return super(caster, target, spell)
+    end)
+
+    m:addOverride(baseKey .. '.onSpellCast', function(caster, target, spell)
+        if isShinobi(caster) then
+            local effLvl = caster:getMainLvl() or 1
+            local api = xi.overlords and xi.overlords.kurogane
+            if effLvl < entry.unlockLvl or not api or not api[entry.execFn] then
+                spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+                return 0
+            end
+            local okExec = api[entry.execFn](caster, target)
+            if okExec then
+                spell:setMsg(xi.msg.basic.NONE)
+            else
+                spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
+            end
+            return 0
         end
         return super(caster, target, spell)
     end)
@@ -463,11 +581,14 @@ m:addOverride('xi.spells.enhancing.useEnhancingNinjutsu', function(caster, targe
         isShinobi(caster) and
         (spellId == xi.magic.spell.UTSUSEMI_ICHI or spellId == xi.magic.spell.UTSUSEMI_NI)
     then
-        -- Shinobi Offensive Utsusemi: summons independent offensive shadows
-        -- (Ichi = 2, Ni = 3, max 5) instead of defensive COPY_IMAGE shadows.
-        local count = (spellId == xi.magic.spell.UTSUSEMI_NI) and 3 or 2
+        -- Shinobi Offensive Utsusemi (Shadow Squadron Ichi/Ni): summons independent
+        -- offensive shadows (Ichi = 2 @ Lv10+, Ni = 3 @ Lv37+, max 5) instead of
+        -- defensive COPY_IMAGE shadows.
+        local entry = SHINOBI_KIT_SPELLS[spellId]
+        local effLvl = caster:getMainLvl() or 1
+        local count = (entry and entry.summonCount) or ((spellId == xi.magic.spell.UTSUSEMI_NI) and 3 or 2)
         local api   = xi.overlords and xi.overlords.kurogane
-        if api and api.spawn then
+        if entry and effLvl >= entry.unlockLvl and api and api.spawn then
             local ok, result = api.spawn(caster, count)
             if ok then
                 spell:setMsg(xi.msg.basic.NONE)
@@ -475,8 +596,8 @@ m:addOverride('xi.spells.enhancing.useEnhancingNinjutsu', function(caster, targe
                     local snap = api.getSnapshot and api.getSnapshot(caster) or nil
                     local total = snap and snap.clones or result
                     caster:printToPlayer(
-                        string.format('[Shinobi] Summoned %d offensive %s (%d/5 active).',
-                            result, result == 1 and 'shadow' or 'shadows', total),
+                        string.format('[Shinobi] %s summoned %d offensive %s (%d/5 active).',
+                            entry.name, result, result == 1 and 'shadow' or 'shadows', total),
                         xi.msg.channel.SYSTEM_3)
                 end
             else
@@ -795,7 +916,7 @@ m:addOverride('xi.actions.abilities.shadow_legion.onUseAbility', function(player
         return 0
     end
 
-    local ok, count, estTotal = api.executeShadowLegion(player, target)
+    local ok, count, estTotal, _immediate, tac = api.executeShadowLegion(player, target)
     if not ok then
         ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
         return 0
@@ -803,9 +924,18 @@ m:addOverride('xi.actions.abilities.shadow_legion.onUseAbility', function(player
 
     ability:setMsg(xi.msg.basic.NONE)
     if player.printToPlayer then
+        local extra = ''
+        if tac and tac.cascadeTriggered and (tac.cascadeExpected or 0) > 0 then
+            extra = string.format(' [CASCADE! %d shadows struck for ~%d dmg -> cycle reset]', tac.cascadeHits, tac.cascadeExpected)
+        elseif tac and tac.advanced and tac.newPhase == 2 then
+            extra = ' [Phase -> Switch Ready (20s)]'
+        elseif tac and tac.advanced and tac.newPhase == 3 then
+            extra = ' [Phase -> Cascade Ready (20s)]'
+        end
         player:printToPlayer(
-            string.format('[Shinobi] Shadow Legion! %d %s launched a coordinated strike (~%d dmg).',
-                count, count == 1 and 'shadow' or 'shadows', estTotal or 0),
+            string.format('[Shinobi] Shadow Legion! %d %s launched a coordinated strike (~%d dmg)%s.%s',
+                count, count == 1 and 'shadow' or 'shadows', estTotal or 0,
+                (tac and tac.openingConsumed) and ' [Opening]' or '', extra),
             xi.msg.channel.SYSTEM_3)
     end
     return estTotal or 0
@@ -833,7 +963,7 @@ m:addOverride('xi.actions.abilities.phantom_assault.onUseAbility', function(play
         return 0
     end
 
-    local ok, boosted, dur = api.executePhantomAssault(player)
+    local ok, boosted, dur, tac = api.executePhantomAssault(player)
     if not ok then
         ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
         return 0
@@ -841,9 +971,17 @@ m:addOverride('xi.actions.abilities.phantom_assault.onUseAbility', function(play
 
     ability:setMsg(xi.msg.basic.NONE)
     if player.printToPlayer then
+        local extra = ''
+        if tac and tac.cascadeTriggered and (tac.cascadeExpected or 0) > 0 then
+            extra = string.format(' [CASCADE! %d shadows struck for ~%d dmg -> cycle reset]', tac.cascadeHits, tac.cascadeExpected)
+        elseif tac and tac.advanced and tac.newPhase == 2 then
+            extra = ' [Phase -> Switch Ready (20s)]'
+        elseif tac and tac.advanced and tac.newPhase == 3 then
+            extra = ' [Phase -> Cascade Ready (20s)]'
+        end
         player:printToPlayer(
-            string.format('[Shinobi] Phantom Assault! %d living %s accelerated (-25%% attack interval) for %ds.',
-                boosted, boosted == 1 and 'shadow' or 'shadows', dur or 8),
+            string.format('[Shinobi] Phantom Assault! %d living %s accelerated (-25%% attack interval) for %ds.%s',
+                boosted, boosted == 1 and 'shadow' or 'shadows', dur or 8, extra),
             xi.msg.channel.SYSTEM_3)
     end
     return 0
@@ -863,6 +1001,7 @@ local function onEquipmentChange(player)
     weaponStateByChar[charId] = dual
 
     syncKagemushaVarsAndSpells(player)
+    syncShinobiStateAndSpells(player)
 
     if prev ~= dual and isKagemusha(player) and spec.appliedByCharId and spec.appliedByCharId[charId] ~= nil then
         spec.appliedByCharId[charId].level = -1
@@ -877,6 +1016,7 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     end
 
     syncKagemushaVarsAndSpells(player)
+    syncShinobiStateAndSpells(player)
 
     player:removeListener('OX_NIN_EQUIP')
     player:addListener('EQUIP', 'OX_NIN_EQUIP', onEquipmentChange)
@@ -1002,17 +1142,22 @@ if xi.job and xi.job.NIN then
             icon           = 'kurogane',
             reqLevel       = 10,
             extraAbilities = { ABIL_SHADOW_LEGION, ABIL_PHANTOM_ASSAULT },
-            description    = 'Tier 1 Pure Physical DPS Ninja (Lv10+, Katana): shadow-clone commander that converts Utsusemi Ichi/Ni into up to 5 independent offensive shadow clones, commanding them with Shadow Legion and Phantom Assault.',
+            description    = 'Tier 1 Pure Physical DPS Ninja (Lv10+, Katana): shadow-clone commander that fields up to 5 offensive shadow clones via Shadow Squadron Ichi/Ni and sequences squad commands through a Feint -> Switch -> Cascade tactical cycle.',
             highlights     =
             {
                 'Tier 1 Damage: PHYS_DMG_DEALT, MAG_DMG_DEALT, and RANGED_DMG_DEALT remain at 0 (full DPS scaling).',
                 'Passives (Lv10/30/50/70+): +10/16/22/28 STR & DEX, +15/25/35/50 Katana skill, +8/12/16/20% Attack, +5/8/12/16% WS damage, +5/8/11/14 Double Attack, +5/10/15/20 Store TP, and -20/-25/-30/-40 Enmity.',
-                'Offensive Utsusemi (Shadow Squadron): Utsusemi: Ichi summons 2 offensive clones and Utsusemi: Ni summons 3 (max 5 active, 25-30s lifetime, up to 170 HP at Lv75); clones copy your look and attack your engaged target independently.',
-                'Shadow Legion (90s CD): Every surviving shadow launches a staggered single-target coordinated strike at your engaged enemy.',
-                'Phantom Assault (30s CD, 8s): Reduces the native autoattack interval of all currently living shadows by 25% (~33.3% faster attacks) for 8 seconds.',
+                'Shadow Squadron (Utsusemi Ichi @ Lv10 / Ni @ Lv37): Summons 2 or 3 offensive shadow clones (max 5 active, 25-30s lifetime, up to 170 HP at Lv75, zero defensive shadows) that copy your appearance and independently attack your engaged target.',
+                'Feint -> Switch -> Cascade Tactical Cycle: 2 distinct living clones landing verified hits within 6s establish Feint Ready (20s). Issue varied squad commands (False Assault, Mirror Step, Crosscut, Shadow Pin, Thunder Relay, Final Mirage, Shadow Legion, Phantom Assault) to advance Feint -> Switch -> Cascade and unleash a capped coordinated strike.',
+                'Squad Commands (Zero-Tool Ninjutsu): False Assault (Lv10, 12s CD: feint + 12s Opening for +25% next different command), Mirror Step (Lv10, 16s CD: 10s alternating fast/heavy cadence scaling with squad size), Crosscut (Lv10, 14s CD: rapid single-target clone strikes), Shadow Pin (Lv30, 18s CD: 12s target lock +ACC/+melee & phase extension), Thunder Relay (Lv50, 22s CD: escalating sequential relay for 2+ clones), Final Mirage (Lv70, 45s CD: high-commitment phase-consuming finisher).',
+                'Custom JAs (Lv10+): Shadow Legion (90s CD: staggered full-squad burst) and Phantom Assault (30s CD, 8s: -25% attack interval for living clones) integrate directly into the tactical cycle.',
             },
-            mods = function(_player, lvl)
-                local l = lvl or 10
+            mods = function(player, lvl)
+                local isWiki = (player == nil) or (not player.getEquipID)
+                local l = lvl or (player and player:getMainLvl()) or 10
+                if not isWiki then
+                    syncShinobiStateAndSpells(player, true)
+                end
                 return
                 {
                     { xi.mod.STR, scaleTier(l, 10, 16, 22, 28) },
@@ -1026,17 +1171,19 @@ if xi.job and xi.job.NIN then
                 }
             end,
             onApply = function(player)
-                -- Entity backend will bind live clone lifecycle to this Soul activation.
+                -- Entity backend binds live clone lifecycle and zero-tool kit access to Soul activation.
+                syncShinobiStateAndSpells(player, true)
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_KRG_CLONE_COUNT', 0)
                 end
             end,
             onRemove = function(player)
-                -- Backend shutdown hook must destroy owned NPCs before clearing telemetry.
+                -- Backend shutdown hook destroys owned clones and resets tactical state before clearing flags.
                 if xi.overlords.kurogane and xi.overlords.kurogane.dismissAll then
                     xi.overlords.kurogane.dismissAll(player)
                 end
                 if player ~= nil and player.setLocalVar then
+                    player:setLocalVar('OX_SHINOBI_ACTIVE', 0)
                     player:setLocalVar('OX_KRG_CLONE_COUNT', 0)
                 end
             end,
