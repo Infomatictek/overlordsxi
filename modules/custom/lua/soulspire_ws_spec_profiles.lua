@@ -3039,6 +3039,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     alphawarden    = { [S.AXE or 5] = true },
     untamed        = { [S.AXE or 5] = true, [S.GREAT_AXE or 6] = true },
     beastspeaker   = { [S.AXE or 5] = true },
+    primalist      = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     miragesentinel = { [S.DAGGER or 2] = true },
     flintlock      = { [S.MARKSMANSHIP or 26] = true },
     buccaneer      = { [S.SWORD or 3] = true },

@@ -3570,6 +3570,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dragoon (Polearm TP)' }
     elseif jobId == (j.SMN or 15) then
+        if specKey == 'primalist' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SMN Primalist (Elemental Pacts)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'Summoner (Staff)' }
     elseif jobId == (j.BLU or 16) then
         if specKey == 'warmage' then
@@ -3694,6 +3697,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.SMN or 15) and testGear.getActiveSpecKey(player, jobId) == 'primalist' then
+        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    end
     if jobId == (xi.job.BST or 9) and testGear.getActiveSpecKey(player, jobId) == 'untamed' then
         return wKey == 'axe' or wKey == 'gaxe'
     end
