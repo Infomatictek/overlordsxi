@@ -93,7 +93,7 @@ C.FALLBACK_RETURN =
 C.ARENA_POS =
 {
     entry        = { x = 458.000, y = 0.000, z = 416.000, rotation = 192 },
-    guideNpc     = { x = 454.500, y = 0.000, z = 415.000, rotation = 224 },
+    guideNpc     = { x = 430.9652, y = 0.5000, z = 400.6440, rotation = 238 },
     shaman       = { x = 458.000, y = 0.200, z = 438.000, rotation = 64  },
     acolyte      = { x = 453.000, y = 0.200, z = 438.000, rotation = 64  },
     stoneguard   = { x = 458.000, y = 0.200, z = 442.000, rotation = 64  },

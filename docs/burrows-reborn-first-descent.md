@@ -22,7 +22,7 @@ Fresh Level 10 players can enter immediately from any starting nation or Ru'Lude
 | **Port Windurst** | `240` | `(181.500, -11.999, 217.730, 223)` | Orastery plaza (3.7 yalms west of Starter Weapons) |
 | **Ru'Lude Gardens** | `243` | `(3.700, 8.999, -41.341, 128)` | Palace terrace (7.4 yalms east of Starter Weapons) |
 
-Inside **Ghoyu's Reverie**, an in-instance **Burrows Expedition Guide** stands at the staging area `(454.500, 0.000, 415.000)` to check expedition status or exit safely at any time.
+Inside **Ghoyu's Reverie**, an in-instance **Burrows Expedition Guide** stands at `(430.9652, 0.5000, 400.6440, rot 238)` to check expedition status or exit safely at any time.
 
 ## How to Enter
 
