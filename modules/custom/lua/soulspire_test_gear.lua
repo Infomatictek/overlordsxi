@@ -3560,6 +3560,8 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.DRG or 14) then
         if specKey == 'lancer' then
             return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'DRG Lancer (Polearm Vault)', specEntry = specEntry }
+        elseif specKey == 'skyborn' then
+            return { role = 'tank', weapon = 'polearm', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'DRG Skyborn (Polearm Guard)', specEntry = specEntry }
         end
         return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dragoon (Polearm TP)' }
     elseif jobId == (j.SMN or 15) then
@@ -3682,8 +3684,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
-    if jobId == (xi.job.DRG or 14) and testGear.getActiveSpecKey(player, jobId) == 'lancer' then
-        return wKey == 'polearm'
+    if jobId == (xi.job.DRG or 14) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'lancer' or activeSpec == 'skyborn' then return wKey == 'polearm' end
     end
     if jobId == (xi.job.NIN or 13) and testGear.getActiveSpecKey(player, jobId) == 'nightblade' then
         return wKey == 'katana'

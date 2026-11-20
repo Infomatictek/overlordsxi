@@ -1,0 +1,222 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -49,6 +49,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -155,10 +156,20 @@
+     m_arcaneArcherAbility = arcaneArcher::isActive(character);
+     m_nightbladeAbility = nightblade::isActive(character);
+     m_lancerAbility = lancer::isActive(character);
++    m_skybornAbility = skyborn::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_lancerAbility && m_abilityId == lancer::Vault)
+     {
+         m_PAbility->setRange(12);
++    }
++    if (m_skybornAbility && m_abilityId == skyborn::Cry)
++    {
++        m_PAbility->setRange(15);
++    }
++    if (m_skybornAbility && m_abilityId == skyborn::Guard)
++    {
++        m_PAbility->setAOE(0);
++        m_PAbility->setRadius(0);
+     }
+     if (m_scourgeAbility && m_abilityId == scourge::Rite)
+     {
+@@ -350,6 +361,7 @@
+         const auto currentArcaneArcher = arcaneArcher::isActive(PChar);
+         const auto currentNightblade = nightblade::isActive(PChar);
+         const auto currentLancer = lancer::isActive(PChar);
++        const auto currentSkyborn = skyborn::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -368,6 +380,8 @@
+             (currentNightblade && (PAbility->getID() != nightblade::QuickRead || PChar->GetMLevel() < 30)) ||
+             m_lancerAbility != currentLancer ||
+             (currentLancer && (!lancer::isKitAbility(PAbility->getID()) || !lancer::hasPolearm(PChar))) ||
++            m_skybornAbility != currentSkyborn ||
++            (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -65,5 +65,6 @@
+     bool                      m_arcaneArcherAbility{ false };
+     bool                      m_nightbladeAbility{ false };
+     bool                      m_lancerAbility{ false };
++    bool                      m_skybornAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -52,6 +52,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -111,6 +112,7 @@
+     m_arcaneArcherCast = arcaneArcher::isActive(caster);
+     m_nightbladeCast = nightblade::isActive(caster);
+     m_lancerCast = lancer::isActive(caster);
++    m_skybornCast = skyborn::isActive(caster);
+ 
+     if (m_nightbladeCast && nightblade::spellLevel(m_spellId) != 0)
+     {
+@@ -531,7 +533,8 @@
+                           m_sniperCast == sniper::isActive(caster) &&
+                           m_arcaneArcherCast == arcaneArcher::isActive(caster) &&
+                           m_nightbladeCast == nightblade::isActive(caster) &&
+-                          m_lancerCast == lancer::isActive(caster);
++                          m_lancerCast == lancer::isActive(caster) &&
++                          m_skybornCast == skyborn::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -84,6 +84,7 @@
+     bool                    m_arcaneArcherCast{ false };
+     bool                    m_nightbladeCast{ false };
+     bool                    m_lancerCast{ false };
++    bool                    m_skybornCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -118,6 +118,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1512,7 +1513,8 @@
+         return nightblade::spellLevel(PSpell->getID()) != 0 &&
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+-    if ((sniper::isActive(this) || arcaneArcher::isActive(this) || lancer::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((sniper::isActive(this) || arcaneArcher::isActive(this) || lancer::isActive(this) || skyborn::isActive(this)) &&
++        PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -37,6 +37,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -58,7 +59,8 @@
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+-    const bool physicalKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar) || lancer::isActive(PChar);
++    const bool physicalKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar) ||
++                                   lancer::isActive(PChar) || skyborn::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+         oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || valkyrie::isActive(PChar))
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -35,6 +35,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -64,7 +65,8 @@
+     const bool arcaneArcherActive = arcaneArcher::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     const bool lancerActive = lancer::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || valkyrie::isActive(PChar))
++    const bool skybornActive = skyborn::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -84,6 +86,7 @@
+                                                    : arcaneArcherActive ? (id == arcaneArcher::AttunementArrow || id == arcaneArcher::NextElement || id == arcaneArcher::PreviousElement)
+                                                      : nightbladeActive ? (id == nightblade::QuickRead && PChar->GetMLevel() >= 30)
+                                                        : lancerActive ? lancer::isKitAbility(id)
++                                                         : skybornActive ? skyborn::isKitAbility(id)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -57,6 +57,7 @@
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
++#include "utils/skyborn_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -408,7 +409,7 @@
+         (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)) ||
+         (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)) ||
+         (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+-        (lancer::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
++        ((lancer::isActive(PChar) || skyborn::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/skyborn_actions.h b/src/map/utils/skyborn_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/skyborn_actions.h
+@@ -0,0 +1,27 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace skyborn
++{
++inline constexpr uint16 Guard = 65;
++inline constexpr uint16 Cry = 66;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::DRG && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_SKY_ACTIVE") == 1;
++}
++
++inline auto isKitAbility(uint16 ability) -> bool
++{
++    return ability == Guard || ability == Cry;
++}
++
++inline auto hasPolearm(const CCharEntity* character) -> bool
++{
++    const auto* weapon = dynamic_cast<const CItemWeapon*>(character->m_Weapons[SLOT_MAIN]);
++    return weapon && weapon->getSkillType() == xi::SkillType::Polearm;
++}
++} // namespace skyborn
