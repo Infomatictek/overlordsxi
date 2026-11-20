@@ -3031,6 +3031,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     vanguard       = { [S.HAND_TO_HAND or 1] = true },
     animist        = { [S.HAND_TO_HAND or 1] = true },
     verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
+    lancer         = { [S.POLEARM or 8] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
     alphawarden    = { [S.AXE or 5] = true },
     miragesentinel = { [S.DAGGER or 2] = true },

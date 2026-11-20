@@ -70,6 +70,7 @@ custom/lua/smn_specs.lua
 custom/lua/pup_healer_specs.lua
 custom/lua/geo_specs.lua
 custom/lua/drg_specs.lua
+custom/lua/drg_lancer_specs.lua
 custom/sql/whm_specs.sql
 custom/sql/pld_healer_specs.sql
 custom/sql/blu_healer_specs.sql
