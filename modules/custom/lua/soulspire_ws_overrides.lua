@@ -8,6 +8,7 @@
 require('modules/module_utils')
 require('modules/custom/lua/soulspire_ws_catalog')
 require('modules/custom/lua/soulspire_ws_talents')
+local wsFoundations = require('modules/custom/lua/soulspire_ws_foundations')
 require('modules/custom/lua/soulspire_throwing_ws')
 require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/monk')
@@ -340,7 +341,7 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
         end
     end
 
-    local ranks = talents.getWSRanks(attacker, jobId, wsID)
+    local ranks, wsSpent = talents.getWSRanks(attacker, jobId, wsID)
     local extraCtx = { extraScBonus = 0, packExtras = 0 }
     local effectiveTp = tp
 
@@ -1423,6 +1424,36 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
             end
             if (samMods.scBonus or 0) ~= 0 then
                 extraCtx.extraScBonus = extraCtx.extraScBonus + samMods.scBonus
+            end
+        end
+    end
+
+    -- First-point Foundation: make the WS playable after ANY initial T1
+    -- investment. At exactly one point use the tightly normalized baseline;
+    -- later ranks retain their bespoke scaling without falling below it.
+    -- Utility WSs are handled by their separate HP/MP/TP implementations.
+    if wsSpent > 0 then
+        local base = wsFoundations.get(ws)
+        if base ~= nil then
+            local firstPoint = (wsSpent == 1)
+            local oldFtp = params.ftpMod or { 1.0, 1.0, 1.0 }
+            params.ftpMod = {}
+            for i = 1, 3 do
+                params.ftpMod[i] = firstPoint and base.ftp[i] or math.max(oldFtp[i] or 1.0, base.ftp[i])
+            end
+            params.numHits = firstPoint and base.numHits or math.max(params.numHits or 1, base.numHits)
+            params.multiHitfTP = base.multiHitfTP or params.multiHitfTP
+            for _, stat in ipairs(talents.STAT_ORDER) do
+                local field = stat .. '_wsc'
+                local weight = (base.wsc and base.wsc[stat]) or 0
+                params[field] = firstPoint and weight or math.max(params[field] or 0, weight)
+            end
+            if firstPoint then
+                -- One point grants damage identity, NOT free advanced effects.
+                params.accVaries      = nil
+                params.atkVaries      = nil
+                params.critVaries     = nil
+                params.ignoredDefense = nil
             end
         end
     end
