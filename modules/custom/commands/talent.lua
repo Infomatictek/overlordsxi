@@ -2,8 +2,8 @@
 -- func: talent
 -- desc: Weaponskill talent tree UI, CLI, and Ashita v4 sync protocol.
 -----------------------------------
-require('modules/custom/lua/overlords_ws_catalog')
-require('modules/custom/lua/overlords_ws_talents')
+require('modules/custom/lua/soulspire_ws_catalog')
+require('modules/custom/lua/soulspire_ws_talents')
 -----------------------------------
 ---@type TCommand
 local commandObj = {}
@@ -14,8 +14,8 @@ commandObj.cmdprops =
     parameters = 'ssss',
 }
 
-local catalog = xi.overlords.wsCatalog
-local talents = xi.overlords.wsTalents
+local catalog = xi.soulspire.wsCatalog
+local talents = xi.soulspire.wsTalents
 
 local function tell(player, message)
     player:printToPlayer(message, xi.msg.channel.SYSTEM_3, '')

@@ -1,6 +1,6 @@
 # Shinobi (NIN) — Shadow Clone Commander 2.0 Guide
 
-**Soul:** Shinobi · Ninja branch 1 · Tier 1 Pure Physical DPS · unlock level 10 · OverlordsXI level cap 75  
+**Soul:** Shinobi · Ninja branch 1 · Tier 1 Pure Physical DPS · unlock level 10 · SoulspireXI level cap 75  
 **Legacy internal key:** `kurogane` (retained for saved Soul data and existing scripts)  
 **Selection:** `!spec set shinobi` or `!spec set kurogane`
 
@@ -66,5 +66,5 @@ Shinobi tracks **one server-authoritative tactical phase** on your Soul HUD:
 
 ## Soul HUD & GM Diagnostics
 
-- **Soul HUD (`overlords_soulhud`):** Displays living clones (`0–5` violet pips), current tactical phase (`BUILD 0/2..1/2`, `FEINT RDY`, `SWITCH RDY (!LAST)`, `CASCADE RDY (!LAST)`, `OPEN`), phase countdown bar (`0–20s`), and next-command readiness.
+- **Soul HUD (`soulspire_soulhud`):** Displays living clones (`0–5` violet pips), current tactical phase (`BUILD 0/2..1/2`, `FEINT RDY`, `SWITCH RDY (!LAST)`, `CASCADE RDY (!LAST)`, `OPEN`), phase countdown bar (`0–20s`), and next-command readiness.
 - **GM Diagnostics (`!kurogane`):** Permission-4 testers can inspect live clone/phase telemetry with `!kurogane status`, `!kurogane look`, `!kurogane spawn [1-5]`, and `!kurogane dismiss`.

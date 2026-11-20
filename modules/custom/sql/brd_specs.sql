@@ -1,4 +1,4 @@
--- OverlordsXI BRD Custom Job Abilities (432-437)
+-- SoulspireXI BRD Custom Job Abilities (432-437)
 -- Level set to 255 so these abilities stay hidden unless dynamically unlocked
 -- at Lv.10+ for each BRD crystal via patch 0007 (extraAbilities).
 

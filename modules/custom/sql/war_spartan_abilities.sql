@@ -1,4 +1,4 @@
--- OverlordsXI WAR Spartan Custom Job Abilities (402-403)
+-- SoulspireXI WAR Spartan Custom Job Abilities (402-403)
 -- Reuses the former Gladiator ability IDs in place (402 crimson_crush -> impaling_thrust,
 -- 403 vanguard_ward -> phalanx_ward). Level 255 keeps them hidden unless dynamically
 -- unlocked at Lv.10+ for WAR Spartan via patch 0007 (extraAbilities).

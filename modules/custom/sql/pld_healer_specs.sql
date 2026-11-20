@@ -1,4 +1,4 @@
--- OverlordsXI Paladin Crystal Spec (Templar - Healer)
+-- SoulspireXI Paladin Crystal Spec (Templar - Healer)
 -- Define custom PLD Templar Job Abilities (458-459; recastIds 82-83) with level = 255:
 --   - Holy Radiance    (458, 20s CD, Self / Party 15y, recastId 82)
 --   - Crusader's Aegis (459, 25s CD, Self / Party 15y, recastId 83)

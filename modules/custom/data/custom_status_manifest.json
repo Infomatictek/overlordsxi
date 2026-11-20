@@ -1653,7 +1653,7 @@
       "key": "EFF_OX_SUP_OFFENSE",
       "aliases": [],
       "name": "ox_sup_offense",
-      "displayName": "Overlords Offense",
+      "displayName": "Soulspire Offense",
       "tooltip": "Party offensive surge: attack power is enhanced.",
       "flags": [
         "DISPELABLE",

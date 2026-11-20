@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Samurai Crystal Specs
+-- SoulspireXI Samurai Crystal Specs
 -- Registers the three Samurai (job 12) Soul Crystal specializations:
 --   1. Ronin (RON)           : Mushin Seigan, Mind's Eye & Stagger Tank (Great Katana)
 --   2. Imperial Archer (IMP) : Tenzen's "Oisoya!" Bow & Blade Skirmisher (Bow / Great Katana)
@@ -9,7 +9,7 @@
 -- procs, and ability enhancements dynamically require Great Katana and/or Bow.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/physical_hit_rate')
 require('scripts/combat/physical_utilities')
 require('scripts/combat/ranged_utilities')
@@ -17,13 +17,13 @@ require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/samurai')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_sam_specs')
+local m = Module:new('soulspire_sam_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.samSpecs = xi.overlords.samSpecs or {}
-local samSpecs        = xi.overlords.samSpecs
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.samSpecs = xi.soulspire.samSpecs or {}
+local samSpecs        = xi.soulspire.samSpecs
 
 local RONIN_KEY           = 'ronin'
 local IMPERIAL_ARCHER_KEY = 'imperialarcher'
@@ -472,7 +472,7 @@ local function applyCustomTimedEffect(target, effectId, power, duration, origin,
         duration = duration or 15,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
     }
 
@@ -797,7 +797,7 @@ local function addWarlordAshuraStacks(player, addStacks)
 end
 
 -----------------------------------
--- Weaponskill Pre-Hit Modifier Hook (called from overlords_ws_overrides.lua)
+-- Weaponskill Pre-Hit Modifier Hook (called from soulspire_ws_overrides.lua)
 -----------------------------------
 function samSpecs.consumeWsModifiers(attacker, target, ws, primaryMsg)
     if
@@ -1021,7 +1021,7 @@ local function attachSamListeners(player)
             wsId = skill:getID() or 0
         end
 
-        local catalog  = xi.overlords and xi.overlords.wsCatalog
+        local catalog  = xi.soulspire and xi.soulspire.wsCatalog
         local wsEntry  = catalog and catalog.byId and catalog.byId[wsId] or nil
         local isGkWs   = (wsEntry ~= nil and wsEntry.skill == xi.skill.GREAT_KATANA) or (wsEntry == nil and wsId >= 144 and wsId <= 159)
         local isArchWs = (wsEntry ~= nil and wsEntry.skill == xi.skill.ARCHERY) or (wsEntry == nil and wsId >= 192 and wsId <= 203)

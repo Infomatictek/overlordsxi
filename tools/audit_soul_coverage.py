@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static Soul coverage, registration integrity, and regression audit for OverlordsXI.
+"""Static Soul coverage, registration integrity, and regression audit for SoulspireXI.
 
 Run from a repository checkout:
   python tools/audit_soul_coverage.py . --strict --csv soul-coverage.csv --json soul-coverage.json
@@ -21,7 +21,7 @@ import re
 import sys
 from pathlib import Path
 
-CATALOG = Path("modules/custom/lua/overlords_job_specs.lua")
+CATALOG = Path("modules/custom/lua/soulspire_job_specs.lua")
 INIT_APPEND = Path("modules/init.append.txt")
 DEFAULT_BASELINE = Path("tools/soul_coverage_baseline.json")
 
@@ -476,7 +476,7 @@ def render_markdown_summary(report: dict[str, object]) -> str:
     retired = report["retired_legacy"]
 
     lines = [
-        "## OverlordsXI Soul Coverage Audit",
+        "## SoulspireXI Soul Coverage Audit",
         "",
         f"- **Canonical Roster**: {report['canonical_count']} Souls (22 jobs x 3)",
         f"- **Implemented**: {counts['implemented']}",
@@ -519,7 +519,7 @@ def render_markdown_summary(report: dict[str, object]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("repo", nargs="?", default=".", help="OverlordsXI checkout root")
+    parser.add_argument("repo", nargs="?", default=".", help="SoulspireXI checkout root")
     parser.add_argument("--csv", dest="csv_path", help="Write coverage matrix to this CSV")
     parser.add_argument("--json", dest="json_path", help="Write full audit report to this JSON")
     parser.add_argument("--summary-md", dest="summary_md_path", help="Write readable Markdown summary")

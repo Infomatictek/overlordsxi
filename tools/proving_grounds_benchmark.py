@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""OverlordsXI Soul Proving Grounds — Stage A Formula/Matrix Runner & Telemetry Summarizer.
+"""SoulspireXI Soul Proving Grounds — Stage A Formula/Matrix Runner & Telemetry Summarizer.
 
 Responsibilities:
   1. Load the canonical 66 active Souls (22 jobs, excluding retired DNC:freelancer)
-     and the 6-tier Soul classification directly from overlords_job_specs.lua.
+     and the 6-tier Soul classification directly from soulspire_job_specs.lua.
   2. Validate and inspect the shared Lua encounter registry
-     (overlords_proving_grounds_registry.lua) via libluajit_64.dll when available.
+     (soulspire_proving_grounds_registry.lua) via libluajit_64.dll when available.
   3. Generate the standardized Balance Test Matrix (6 archetypes x 4 levels x
      3 difficulties, with +8 explicitly marked extreme_challenge / non-baseline).
   4. Execute Stage A Formula & Regression checks matching authoritative server
@@ -35,10 +35,10 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-JOB_SPECS_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "overlords_job_specs.lua"
+JOB_SPECS_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "soulspire_job_specs.lua"
 BOSS_COMBAT_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "boss_like_combat_and_exp.lua"
-REGISTRY_LUA_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "overlords_proving_grounds_registry.lua"
-TELEMETRY_LUA_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "overlords_proving_grounds_telemetry.lua"
+REGISTRY_LUA_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "soulspire_proving_grounds_registry.lua"
+TELEMETRY_LUA_PATH = REPO_ROOT / "modules" / "custom" / "lua" / "soulspire_proving_grounds_telemetry.lua"
 LUAJIT_DLL_DEFAULT = Path(r"C:\dev\server\libluajit_64.dll")
 
 RETIRED_SOULS = {("DNC", "freelancer")}
@@ -108,7 +108,7 @@ def load_canonical_souls(job_specs_path: Path = JOB_SPECS_PATH) -> list[dict[str
     start = src.find("spec.JOB_SPECS =")
     end = src.find("local KEY_ALIASES", start)
     if start < 0 or end < 0:
-        raise ValueError("Could not locate spec.JOB_SPECS block in overlords_job_specs.lua")
+        raise ValueError("Could not locate spec.JOB_SPECS block in soulspire_job_specs.lua")
 
     # Parse SPEC_KEY_TIERS overrides
     tier_overrides: dict[str, str] = {}
@@ -327,7 +327,7 @@ def armor_piercing_pdif_floor(raw_pdif: float, is_nm: bool = False, is_crit: boo
 
 
 def unified_melee_attack_rate(gear_haste: float, other_haste: float) -> float:
-    """OverlordsXI patches/0044 unified melee attack-rate multiplier."""
+    """SoulspireXI patches/0044 unified melee attack-rate multiplier."""
     gear_rate = 1.0 + 1.5 * gear_haste if gear_haste >= 0 else 1.0 / (1.0 - 1.5 * gear_haste)
     other_rate = (1.0 + (5.0 / 3.0) * other_haste / (1.0 + other_haste)) if other_haste >= 0 else 1.0 / (1.0 - other_haste)
     return gear_rate * other_rate
@@ -1070,7 +1070,7 @@ def run_stage_b_real_combat_poc(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OverlordsXI Soul Proving Grounds Benchmark & Historical Analyzer")
+    parser = argparse.ArgumentParser(description="SoulspireXI Soul Proving Grounds Benchmark & Historical Analyzer")
     parser.add_argument("--run-formula", action="store_true", help="Run Stage A formula & regression suite")
     parser.add_argument("--run-stage-b", action="store_true", help="Run Stage B real combat suite via xi_test.exe")
     parser.add_argument("--seed", type=int, default=12345, help="Deterministic PRNG seed for Stage B real combat")

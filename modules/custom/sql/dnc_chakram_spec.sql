@@ -1,4 +1,4 @@
--- OverlordsXI Dancer Bladewheel Spec (Lv 75 Cap + Post-75 Backports)
+-- SoulspireXI Dancer Bladewheel Spec (Lv 75 Cap + Post-75 Backports)
 -- 1. Lower post-75 DNC Step/Flourish abilities to Lv 75
 -- 2. Make all chakrams DNC-only (jobs = 262144) with competitive damage (no ammo slot)
 

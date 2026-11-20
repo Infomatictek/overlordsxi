@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Red Mage Crystal Specs
+-- SoulspireXI Red Mage Crystal Specs
 -- Registers the Red Mage (job 5) Soul Crystal specialization:
 --   1. Crimson Duelist (CRM) : Hex-Crippling Fencer & Barrier Weaver (1H Sword + Empty Sub)
 --
@@ -8,19 +8,19 @@
 -- in the main hand with an empty off-hand.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/red_mage')
 require('scripts/globals/spells/enhancing_spell')
 require('scripts/globals/spells/enfeebling_spell')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_rdm_specs')
+local m = Module:new('soulspire_rdm_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.rdmSpecs = xi.overlords.rdmSpecs or {}
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.rdmSpecs = xi.soulspire.rdmSpecs or {}
 
 local CRIMSON_DUELIST_KEY = 'crimsonduelist'
 
@@ -369,7 +369,7 @@ xi.actions.abilities.crimson_fleche.onUseAbility = function(player, _target, _ab
     end
 
     player:delStatusEffect(EFFECT_CRIMSON_FLECHE)
-    player:addStatusEffect(EFFECT_CRIMSON_FLECHE, { power = 1, duration = 6, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_CRIMSON_FLECHE) })
+    player:addStatusEffect(EFFECT_CRIMSON_FLECHE, { power = 1, duration = 6, origin = player, icon = xi.soulspire.getStatusIcon(EFFECT_CRIMSON_FLECHE) })
     return EFFECT_CRIMSON_FLECHE
 end
 
@@ -444,11 +444,11 @@ m:addOverride('xi.combat.physical.isParried', function(defender, attacker)
     return parried
 end)
 
-xi.overlords.onPreTakeDamage = xi.overlords.onPreTakeDamage or function(_defender, amount, _attacker, _attackType, _damageType)
+xi.soulspire.onPreTakeDamage = xi.soulspire.onPreTakeDamage or function(_defender, amount, _attacker, _attackType, _damageType)
     return amount or 0
 end
 
-m:addOverride('xi.overlords.onPreTakeDamage', function(defender, amount, attacker, attackType, damageType)
+m:addOverride('xi.soulspire.onPreTakeDamage', function(defender, amount, attacker, attackType, damageType)
     amount = super(defender, amount, attacker, attackType, damageType)
 
     if
@@ -633,7 +633,7 @@ local function attachRdmListeners(player)
 
         if isSwordAndEmptySub(actor) and actor.addStatusEffect then
             actor:delStatusEffect(EFFECT_CRIMSON_FLOW)
-            actor:addStatusEffect(EFFECT_CRIMSON_FLOW, { power = 1, duration = 6, origin = actor, icon = xi.overlords.getStatusIcon(EFFECT_CRIMSON_FLOW) })
+            actor:addStatusEffect(EFFECT_CRIMSON_FLOW, { power = 1, duration = 6, origin = actor, icon = xi.soulspire.getStatusIcon(EFFECT_CRIMSON_FLOW) })
         end
 
         if actor.hasStatusEffect and actor:hasStatusEffect(EFFECT_CRIMSON_FLECHE) then

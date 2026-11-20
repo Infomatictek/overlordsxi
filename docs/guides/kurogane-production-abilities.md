@@ -5,7 +5,7 @@
 Status: **DESIGN APPROVED FOR IMPLEMENTATION; NOT LIVE**. Shinobi is defined by **managing, replacing, and commanding a maximum of five fragile offensive shadow clones**; summoning count and timing are the primary skill expression. This replaces the earlier proposal for Shadow Legion as an extra clone-wave summoner. Existing native-MOB clone code remains GM-gated until validation.
 
 ## Guardrails
-- OverlordsXI level cap **75**. Shinobi is a level-10+ Katana pure-DPS Soul, distinct from Kagemusha (NIN branch 2, defensive tank).
+- SoulspireXI level cap **75**. Shinobi is a level-10+ Katana pure-DPS Soul, distinct from Kagemusha (NIN branch 2, defensive tank).
 - Shinobi can have **at most five real offensive shadow entities**, never five extra Utsusemi defensive images. Shadows should not tank, heal, support, independently acquire targets, or provide defensive buffs.
 - Existing tuning baseline: clones live 25–30 seconds, max HP = clamp(20 + 2 x owner's main level, 40, 170), and stay vulnerable to spikes, direct attacks, and enemy AoE. Spikes should not instantly kill a fresh clone; bosses can still kill clones with significant hits.
 - Preserve correct player-look snapshot (race, face, lockstyle, hidden head, eight weapon/armor slots), attribution to owner, low clone hate, owner/target cleanup, and five-clone rollback safety.

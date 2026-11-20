@@ -1,5 +1,5 @@
 /**
- * OverlordsXI Wiki — Combat Reports Analytics Dashboard
+ * SoulspireXI Wiki — Combat Reports Analytics Dashboard
  * -----------------------------------------------------
  * Visualizes Soul Proving Grounds server-side JSONL telemetry (schema v1 & v2).
  * Supports:
@@ -545,7 +545,7 @@
     const def = m.defense || {};
     const heal = m.healing || {};
     const lines = [
-      `# OverlordsXI Combat Report — \`${meta.run_id}\``,
+      `# SoulspireXI Combat Report — \`${meta.run_id}\``,
       '',
       `- **Date (UTC):** \`${s.timestamp_utc || ''}\``,
       `- **Character:** \`${meta.character_name || 'Not logged'}\``,

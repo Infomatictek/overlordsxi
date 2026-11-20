@@ -4,13 +4,13 @@
 A player sees only the current Soul action identity. Underlying FFXI spell, ability and WS IDs are private implementation details. Different Souls may map the same underlying ID to different identities.
 
 ## Current status
-- `modules/custom/lua/overlords_soul_actions.lua` is an **opt-in data registry**, not an active enforcement or client remapping hook.
+- `modules/custom/lua/soulspire_soul_actions.lua` is an **opt-in data registry**, not an active enforcement or client remapping hook.
 - Existing gameplay remains unchanged until permissions are audited and enforcement is integrated.
 - No claim is made that Ashita 4 can rewrite every native menu, macro, combat message or visual effect.
 
 ## Registry usage
 ```lua
-local actions = require('modules/custom/lua/overlords_soul_actions')
+local actions = require('modules/custom/lua/soulspire_soul_actions')
 actions.register('example_soul', {
     spell = {
         [1] = {

@@ -1,5 +1,5 @@
 ###############################################################################
-# OverlordsXI — Unraid Production Docker Compose Stack
+# SoulspireXI — Unraid Production Docker Compose Stack
 #
 # Networking Architecture:
 #   - MariaDB runs on an isolated bridge network and binds ONLY to 127.0.0.1:3306
@@ -11,9 +11,9 @@
 #
 # Usage:
 #   cp .env.example .env && chmod 600 .env   # fill in strong passwords
-#   ./scripts/overlords-ctl.sh init
-#   ./scripts/overlords-ctl.sh build v2026.11.19
-#   ./scripts/overlords-ctl.sh deploy v2026.11.19
+#   ./scripts/soulspire-ctl.sh init
+#   ./scripts/soulspire-ctl.sh build v2026.11.19
+#   ./scripts/soulspire-ctl.sh deploy v2026.11.19
 ###############################################################################
 
 x-logging: &default-logging
@@ -23,7 +23,7 @@ x-logging: &default-logging
     max-file: "5"
 
 x-game-common: &game-common
-  image: "${OVERLORDS_IMAGE:-overlordsxi/server}:${OVERLORDS_TAG:-latest}"
+  image: "${SOULSPIRE_IMAGE:-soulspirexi/server}:${SOULSPIRE_TAG:-latest}"
   network_mode: host
   restart: unless-stopped
   stop_grace_period: 30s
@@ -33,7 +33,7 @@ x-game-common: &game-common
     XI_NETWORK_SQL_HOST: "127.0.0.1"
     XI_NETWORK_SQL_PORT: "3306"
     XI_NETWORK_SQL_DATABASE: "${MARIADB_DATABASE:-xidb}"
-    XI_NETWORK_SQL_LOGIN: "${MARIADB_USER:-overlords}"
+    XI_NETWORK_SQL_LOGIN: "${MARIADB_USER:-soulspire}"
     XI_NETWORK_SQL_PASSWORD: "${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env}"
     XI_NETWORK_ZMQ_IP: "127.0.0.1"
     XI_NETWORK_ZMQ_PORT: "54003"
@@ -41,21 +41,21 @@ x-game-common: &game-common
     XI_NETWORK_TLS_CERT: "/server/certs/login.cert"
     XI_NETWORK_ENABLE_HTTP: "${XI_NETWORK_ENABLE_HTTP:-false}"
   volumes:
-    - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/config/settings:/server/settings"
-    - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/config/certs:/server/certs"
-    - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/logs:/server/log"
-    - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/meshes/navmeshes:/server/navmeshes:ro"
-    - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/meshes/ximeshes:/server/ximeshes:ro"
+    - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/config/settings:/server/settings"
+    - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/config/certs:/server/certs"
+    - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/logs:/server/log"
+    - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/meshes/navmeshes:/server/navmeshes:ro"
+    - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/meshes/ximeshes:/server/ximeshes:ro"
 
 services:
   mariadb:
     image: "mariadb:${MARIADB_VERSION:-10.11}"
-    container_name: overlordsxi-mariadb
+    container_name: soulspirexi-mariadb
     restart: unless-stopped
     stop_grace_period: 45s
     logging: *default-logging
     networks:
-      - overlords_db
+      - soulspire_db
     # Bound ONLY to Unraid loopback — unreachable from LAN, WireGuard, or internet
     ports:
       - "127.0.0.1:3306:3306"
@@ -63,11 +63,11 @@ services:
       TZ: "${TZ:-America/Chicago}"
       MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD must be set in .env}"
       MARIADB_DATABASE: "${MARIADB_DATABASE:-xidb}"
-      MARIADB_USER: "${MARIADB_USER:-overlords}"
+      MARIADB_USER: "${MARIADB_USER:-soulspire}"
       MARIADB_PASSWORD: "${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env}"
     volumes:
-      - "${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}/mariadb:/var/lib/mysql"
-      - "./config/mariadb/overlordsxi.cnf:/etc/mysql/conf.d/overlordsxi.cnf:ro"
+      - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/mariadb:/var/lib/mysql"
+      - "./config/mariadb/soulspirexi.cnf:/etc/mysql/conf.d/soulspirexi.cnf:ro"
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       start_period: 20s
@@ -77,7 +77,7 @@ services:
 
   xi-world:
     <<: *game-common
-    container_name: overlordsxi-world
+    container_name: soulspirexi-world
     command: ["/server/xi_world", "--log", "/server/log/world-server.log"]
     depends_on:
       mariadb:
@@ -91,7 +91,7 @@ services:
 
   xi-connect:
     <<: *game-common
-    container_name: overlordsxi-connect
+    container_name: soulspirexi-connect
     command: ["/server/xi_connect", "--log", "/server/log/login-server.log"]
     depends_on:
       mariadb:
@@ -107,7 +107,7 @@ services:
 
   xi-search:
     <<: *game-common
-    container_name: overlordsxi-search
+    container_name: soulspirexi-search
     command: ["/server/xi_search", "--log", "/server/log/search-server.log"]
     depends_on:
       mariadb:
@@ -123,7 +123,7 @@ services:
 
   xi-profile:
     <<: *game-common
-    container_name: overlordsxi-profile
+    container_name: soulspirexi-profile
     command: ["/server/xi_profile", "--log", "/server/log/profile-server.log"]
     depends_on:
       mariadb:
@@ -139,7 +139,7 @@ services:
 
   xi-map:
     <<: *game-common
-    container_name: overlordsxi-map
+    container_name: soulspirexi-map
     command: ["/server/xi_map", "--log", "/server/log/map-server.log"]
     depends_on:
       mariadb:
@@ -153,10 +153,10 @@ services:
       timeout: 5s
       retries: 4
 
-  # Optional one-shot DB schema update container (invoked manually via overlords-ctl.sh)
+  # Optional one-shot DB schema update container (invoked manually via soulspire-ctl.sh)
   db-migrate:
     <<: *game-common
-    container_name: overlordsxi-db-migrate
+    container_name: soulspirexi-db-migrate
     profiles: ["tools"]
     restart: "no"
     command: ["python", "/server/tools/dbtool.py", "update"]
@@ -165,5 +165,5 @@ services:
         condition: service_healthy
 
 networks:
-  overlords_db:
+  soulspire_db:
     driver: bridge

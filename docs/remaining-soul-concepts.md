@@ -1,4 +1,4 @@
-# OverlordsXI — Remaining Soul Concept Bible
+# SoulspireXI — Remaining Soul Concept Bible
 **Concept pass:** 2026-11-19 · **Not deployed** · Levels **10–75**
 
 ## Design guardrails

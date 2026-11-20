@@ -3,7 +3,7 @@
 -- Not a player JA; never enable on production before validation.
 -----------------------------------
 require('modules/custom/lua/kurogane_clones')
-local K = xi.overlords.kurogane
+local K = xi.soulspire.kurogane
 local commandObj = {}
 commandObj.cmdprops = { permission = 4, parameters = 'ss' }
 

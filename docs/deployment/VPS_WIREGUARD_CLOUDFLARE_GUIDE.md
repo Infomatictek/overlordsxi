@@ -1,4 +1,4 @@
-# OverlordsXI — VPS Gateway, WireGuard, Cloudflare DNS & Privacy Guide
+# SoulspireXI — VPS Gateway, WireGuard, Cloudflare DNS & Privacy Guide
 
 Covers **Phases 6, 7, 8, and 10**:
 
@@ -10,7 +10,7 @@ Players ──► play.<domain> (Cloudflare DNS-only) ──► Ubuntu LTS VPS (
                                             (outbound from Unraid — NO home port-forwards!)
                                                          │
                                                          ▼
-                                            Unraid Docker (OverlordsXI)
+                                            Unraid Docker (SoulspireXI)
 ```
 
 ---
@@ -37,10 +37,10 @@ Before applying, verify no conflict on Unraid (`ip route`) or VPS (`ip route`).
 
 ### SNAT (`masquerade`) vs Policy Routing — Important Trade-off
 
-The provided `deploy/vps/firewall/nftables-overlordsxi.conf.template` uses **DNAT + SNAT (`masquerade`)** on `wg0`:
+The provided `deploy/vps/firewall/nftables-soulspirexi.conf.template` uses **DNAT + SNAT (`masquerade`)** on `wg0`:
 - **Advantage:** Simple split-tunnel setup on Unraid (`AllowedIPs = 10.77.0.1/32`). Unraid **always** routes game replies back through `wg0` to the VPS, completely preventing asymmetric routing and residential IP leaks, while normal Unraid traffic stays on your LAN/WAN.
-- **Trade-off (Documented):** Because traffic is SNATed to `10.77.0.1`, OverlordsXI game logs and `accounts_sessions.client_addr` see `10.77.0.1` as the client IP.
-  - Ensure `settings/login.lua` has `LOGIN_LIMIT = 0` (already `0` on OverlordsXI) so multiple players behind `10.77.0.1` are not blocked.
+- **Trade-off (Documented):** Because traffic is SNATed to `10.77.0.1`, SoulspireXI game logs and `accounts_sessions.client_addr` see `10.77.0.1` as the client IP.
+  - Ensure `settings/login.lua` has `LOGIN_LIMIT = 0` (already `0` on SoulspireXI) so multiple players behind `10.77.0.1` are not blocked.
   - Ensure `settings/network.lua` has `TCP_ALLOW = '10.77.0.1'` (or high `TCP_CONNECT_COUNT`) so LandSandBoat's per-IP TCP flood guard does not rate-limit legitimate players sharing `10.77.0.1`.
   - **IP-based bans** must be enforced on the **VPS `nftables` firewall** (where real player IPs are visible), while account/character bans work normally in-game.
 - **Alternative (Full Real-IP Preservation):** Remove `masquerade` on `wg0` and configure a dedicated Linux policy routing table (`ip rule` + `fwmark`) on Unraid so all replies from game ports exit `wg0`. Only use this if you explicitly need real client IPs inside `xi_connect`/`xi_map` logs.
@@ -54,7 +54,7 @@ The provided `deploy/vps/firewall/nftables-overlordsxi.conf.template` uses **DNA
    wg genpsk > /etc/wireguard/unraid.psk
    ```
 2. Populate `/etc/wireguard/wg0.conf` from `deploy/vps/wireguard/vps-wg0.conf.template`.
-3. Populate `/etc/nftables.conf` from `deploy/vps/firewall/nftables-overlordsxi.conf.template` (confirm `WAN_IF` with `ip route get 1.1.1.1`).
+3. Populate `/etc/nftables.conf` from `deploy/vps/firewall/nftables-soulspirexi.conf.template` (confirm `WAN_IF` with `ip route get 1.1.1.1`).
 4. Run `sudo ./deploy/vps/scripts/setup-vps-gateway.sh`.
 5. Configure Unraid WireGuard (`Settings -> VPN Manager`) using `deploy/vps/wireguard/unraid-wg0.conf.template` with `PersistentKeepalive = 25`.
 6. Verify tunnel from VPS: `./deploy/vps/scripts/wg-healthcheck.sh 10.77.0.2`.
@@ -77,15 +77,15 @@ Create the following DNS record in Cloudflare for your domain (only when authori
 
 ## 3. Phase 8 — FFXI Client & Launcher Connectivity
 
-1. On Unraid, set `OVERLORDS_ZONE_IP=<VPS_PUBLIC_IPV4>` in `deploy/unraid/.env` and apply it:
+1. On Unraid, set `SOULSPIRE_ZONE_IP=<VPS_PUBLIC_IPV4>` in `deploy/unraid/.env` and apply it:
    ```bash
-   ./scripts/overlords-ctl.sh set-zone-ip <VPS_PUBLIC_IPV4>
-   ./scripts/overlords-ctl.sh restart xi-connect xi-map
+   ./scripts/soulspire-ctl.sh set-zone-ip <VPS_PUBLIC_IPV4>
+   ./scripts/soulspire-ctl.sh restart xi-connect xi-map
    ```
-2. Verify in `xi_connect` logs (`./scripts/overlords-ctl.sh logs xi-connect`) that on login:
+2. Verify in `xi_connect` logs (`./scripts/soulspire-ctl.sh logs xi-connect`) that on login:
    `zoneipp: <VPS_PUBLIC_IPV4>:54230, searchipp: <VPS_PUBLIC_IPV4>:54002`
 3. Test from an **external network** (e.g. mobile hotspot, NOT home LAN):
-   - Launch Ashita v4 via OverlordsXI Launcher pointed at `play.<domain>` (using `overlords-server.json` override during staging; update `manifest.json` `defaultHost` in `overlordsxi-launcher` only upon approved cutover).
+   - Launch Ashita v4 via SoulspireXI Launcher pointed at `play.<domain>` (using `overlords-server.json` override during staging; update `manifest.json` `defaultHost` in `overlordsxi-launcher` only upon approved cutover).
    - Confirm: login, character select, zone load, zone-to-zone transition, auction/search, logout, and reconnect.
    - Players do **not** need WireGuard or Tailscale installed.
 
@@ -98,7 +98,7 @@ Run `./deploy/vps/scripts/verify-privacy.sh play.<domain> <VPS_PUBLIC_IPV4> <RES
 - [ ] `dig +short A play.<domain> @1.1.1.1` returns **only** `<VPS_PUBLIC_IPV4>`.
 - [ ] `xi_connect` login logs show `zoneipp` and `searchipp` = `<VPS_PUBLIC_IPV4>` (never residential IP, never `10.77.0.2`, never `192.168.x.x`).
 - [ ] External client login, zoning, logout, and reconnect succeed over `play.<domain>`.
-- [ ] Residential router has **zero** game port-forwards (`54001–54231`, `51220`, `51240`) and **UPnP** has no mappings for OverlordsXI or Unraid.
+- [ ] Residential router has **zero** game port-forwards (`54001–54231`, `51220`, `51240`) and **UPnP** has no mappings for SoulspireXI or Unraid.
 - [ ] MariaDB (`3306`) is bound strictly to `127.0.0.1` on Unraid and unreachable from VPS/LAN/WAN.
 - [ ] Unraid WebUI (`80`/`443`) is unreachable via VPS or public internet.
 - [ ] VPS `nftables` exposes only SSH, WireGuard (`51820/udp`), and the 7 audited FFXI ports.

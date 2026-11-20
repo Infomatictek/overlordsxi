@@ -1,16 +1,16 @@
 -----------------------------------
--- OverlordsXI Summoner Crystal Spec: Celestial (CEL | Tier-5 Pure Healer)
+-- SoulspireXI Summoner Crystal Spec: Celestial (CEL | Tier-5 Pure Healer)
 -- Unlocks @ Lv. 10 (!spec set celestial)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+require('modules/custom/lua/soulspire_job_specs')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/summoner')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_smn_specs')
+local m = Module:new('soulspire_smn_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local CELESTIAL_KEY = 'celestial'
 
 -- Custom Trait ID (173; Astral Sanctuary)
@@ -77,8 +77,8 @@ m:addOverride('xi.effects.celestial_sanctuary.onEffectGain', function(target, ef
     local lvl = effect:getSubPower() or 75
     local flat = H.scaleTier(lvl, 12, 16, 20, 24)
     local regenTotal = flat
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
-        regenTotal = xi.overlords.regen.consumeEffectRegen(target, effect, flat, 150)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.consumeEffectRegen then
+        regenTotal = xi.soulspire.regen.consumeEffectRegen(target, effect, flat, 150)
     end
     effect:addMod(xi.mod.REGEN, regenTotal)
     effect:addMod(xi.mod.REFRESH, H.scaleTier(lvl, 4, 6, 8, 10))
@@ -104,12 +104,12 @@ local function pulseSanctuaryAura(smn)
     H.forEachPartyMemberInRange(smn, 15, false, function(member)
         if not member:hasStatusEffect(EFFECT_CELESTIAL_SANCTUARY) then
             local flat = H.scaleTier(lvl, 12, 16, 20, 24)
-            if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
-                xi.overlords.regen.stampRegenContext(smn, member, 150)
+            if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.stampRegenContext then
+                xi.soulspire.regen.stampRegenContext(smn, member, 150)
             end
-            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, flat, 6, smn, lvl, xi.overlords.getStatusIcon(EFFECT_CELESTIAL_SANCTUARY), 1)
-            if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
-                xi.overlords.regen.clearRegenContext(member)
+            H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_SANCTUARY, flat, 6, smn, lvl, xi.soulspire.getStatusIcon(EFFECT_CELESTIAL_SANCTUARY), 1)
+            if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.clearRegenContext then
+                xi.soulspire.regen.clearRegenContext(member)
             end
         end
     end)
@@ -222,9 +222,9 @@ end)
 
 m:addOverride('xi.actions.abilities.celestial_convergence.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_CONVERGENCE, 18, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_CELESTIAL_CONVERGENCE), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 30, 12)
+        H.applyCustomTimedEffect(member, EFFECT_CELESTIAL_CONVERGENCE, 18, 12, player, 0, xi.soulspire.getStatusIcon(EFFECT_CELESTIAL_CONVERGENCE), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1500, 30, 12)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

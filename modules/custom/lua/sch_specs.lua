@@ -1,14 +1,14 @@
 -----------------------------------
--- OverlordsXI Scholar Specs
+-- SoulspireXI Scholar Specs
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/basic/magic_aoe')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/globals/spells/damage_spell')
 require('scripts/globals/spells/enfeebling_spell')
 -----------------------------------
-local m = Module:new('overlords_sch_specs')
+local m = Module:new('soulspire_sch_specs')
 
 local medicSpecKey = 'medic'
 local sageSpecKey = 'sage'
@@ -40,11 +40,11 @@ local function isScholarSpec(entity, specKey)
         return false
     end
 
-    xi.overlords.spec.ensureUpToDate(entity)
-    return xi.overlords.spec.is(entity, xi.job.SCH, specKey)
+    xi.soulspire.spec.ensureUpToDate(entity)
+    return xi.soulspire.spec.is(entity, xi.job.SCH, specKey)
 end
 
-local schJob = xi.overlords.spec.jobs[xi.job.SCH]
+local schJob = xi.soulspire.spec.jobs[xi.job.SCH]
 if schJob and schJob.byKey then
     if schJob.byKey[medicSpecKey] then
         schJob.byKey[medicSpecKey].onRemove = function(player)

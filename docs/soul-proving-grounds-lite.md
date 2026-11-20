@@ -6,9 +6,9 @@ No custom DATs, custom animations, new monster models, custom graphical interfac
 
 ## Architecture & Files
 
-- `modules/custom/lua/overlords_proving_grounds_registry.lua` — Shared versioned encounter registry (`schemaVersion = 2.0.0`), native level synchronization (`xi.effect.LEVEL_RESTRICTION`), OverlordsXI Soul/HP/pet/clone rescaling, Normal & NM pools, and no-progression safeguards.
-- `modules/custom/lua/overlords_proving_grounds_telemetry.lua` — Full server-authoritative combat recorder (`telemetry_schema_version = 2.0.0`) producing summary index, millisecond chronological event logs, 1-second combat snapshots, and gameplay feedback files with explicit write-failure detection.
-- `modules/custom/lua/overlords_proving_grounds_lite.lua` — Native `customMenu` NPC controller (**The Arbiter**, existing look ID `2433`) in GM Home (zone 210) at `(-5, 0, 5)` (10 yalms clear of GM Home's sample `Menu Example` NPC at `(5, 0, 5)`).
+- `modules/custom/lua/soulspire_proving_grounds_registry.lua` — Shared versioned encounter registry (`schemaVersion = 2.0.0`), native level synchronization (`xi.effect.LEVEL_RESTRICTION`), SoulspireXI Soul/HP/pet/clone rescaling, Normal & NM pools, and no-progression safeguards.
+- `modules/custom/lua/soulspire_proving_grounds_telemetry.lua` — Full server-authoritative combat recorder (`telemetry_schema_version = 2.0.0`) producing summary index, millisecond chronological event logs, 1-second combat snapshots, and gameplay feedback files with explicit write-failure detection.
+- `modules/custom/lua/soulspire_proving_grounds_lite.lua` — Native `customMenu` NPC controller (**The Arbiter**, existing look ID `2433`) in GM Home (zone 210) at `(-5, 0, 5)` (10 yalms clear of GM Home's sample `Menu Example` NPC at `(5, 0, 5)`).
 
 ## Native NPC Menu Flow (The Arbiter)
 
@@ -31,8 +31,8 @@ No custom DATs, custom animations, new monster models, custom graphical interfac
 
 - Uses LandSandBoat's native `xi.effect.LEVEL_RESTRICTION` (`CLuaBaseEntity::levelRestriction`), **never** `setLevelCap` (which permanently writes DB genkai) and **never** mutating permanent job levels or learned abilities.
 - Enforces native stats, subjob cap (`floor(effectiveLevel / 2)`), equipment restrictions, skills, traits, spells, BLU spell validation, and pet stat recalculation.
-- Immediately refreshes OverlordsXI systems to the effective combat level:
-  - `xi.overlords.spec.refreshPlayer(player)` (Soul mods/abilities/traits)
+- Immediately refreshes SoulspireXI systems to the effective combat level:
+  - `xi.soulspire.spec.refreshPlayer(player)` (Soul mods/abilities/traits)
   - `xi.customBossServer.applyPlayerCombatPace(player, true)` (rescales `BASE_HP` from effective level's Base HP)
   - Dismisses high-level Kurogane Shinobi clones before/after sync so clones summoned in combat inherit `owner:getMainLvl() == effectiveLevel`
   - Resets `[CustomBoss]PetPaceApplied` and re-syncs Soul pet role mods

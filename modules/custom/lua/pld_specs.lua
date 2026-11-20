@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Paladin Crystal Specs
+-- SoulspireXI Paladin Crystal Specs
 -- Registers the Paladin (job 7) Soul Crystal specialization:
 --   1. Aegis Templar (PLD): Party-Intercepting Holy Bastion (Club + Shield)
 --
@@ -8,17 +8,17 @@
 -- dynamically require Club + Shield (and 100% SIRD requires Shield).
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/globals/job_utils/paladin')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_pld_specs')
+local m = Module:new('soulspire_pld_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.pldSpecs = xi.overlords.pldSpecs or {}
-local pldSpecs        = xi.overlords.pldSpecs
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.pldSpecs = xi.soulspire.pldSpecs or {}
+local pldSpecs        = xi.soulspire.pldSpecs
 
 local AEGIS_TEMPLAR_KEY = 'aegistemplar'
 
@@ -180,7 +180,7 @@ local function applyCustomTimedEffect(target, effectId, power, durationSec, orig
         duration = durationSec or 10,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
         tier     = tier or 0,
     })
@@ -327,7 +327,7 @@ local function detonateHolyNova(player, primaryTarget)
     end
 
     -- Heavy AoE enmity & light splash to nearby engaged mobs within 10y
-    for _, ent in ipairs(xi.overlords.getNearbyMobs(player, 10, primaryTarget)) do
+    for _, ent in ipairs(xi.soulspire.getNearbyMobs(player, 10, primaryTarget)) do
         if
             ent.isEngaged and ent:isEngaged() and
             ent:getID() ~= primaryId
@@ -397,10 +397,10 @@ local function findInterceptingAegisPaladin(defender)
     return nil
 end
 
-xi.overlords = xi.overlords or {}
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+xi.soulspire = xi.soulspire or {}
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
 
-function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+function xi.soulspire.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage ~= nil then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end
@@ -421,7 +421,7 @@ function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, da
     local windowCap   = math.max(1, math.floor(pldMaxHp * (consecrated and 0.40 or 0.30)))
 
     local charId = pld:getID()
-    local now    = xi.overlords.nowSec()
+    local now    = xi.soulspire.nowSec()
     local win    = interceptWindowByChar[charId]
     if win == nil or (now - win.start) >= 1.5 then
         win = { start = now, used = 0 }
@@ -475,7 +475,7 @@ m:addOverride('xi.effects.aegis_consecration.onEffectTick', function(target, _ef
     if target == nil or not isPldSpec(target, AEGIS_TEMPLAR_KEY) then
         return
     end
-    for _, ent in ipairs(xi.overlords.getNearbyMobs(target, 10)) do
+    for _, ent in ipairs(xi.soulspire.getNearbyMobs(target, 10)) do
         if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
             ent:addEnmity(target, 1, 200)
         end

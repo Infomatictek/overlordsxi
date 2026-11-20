@@ -1,4 +1,4 @@
--- OverlordsXI Blue Mage Crystal Spec (Azure Bastion)
+-- SoulspireXI Blue Mage Crystal Spec (Azure Bastion)
 -- Define Azure Bastion's custom Job Abilities with level = 255 so they stay hidden unless
 -- dynamically unlocked via patch 0007:
 --   - Behemoth Roar (445, 25s CD, Enemy 8y, recastId 220)

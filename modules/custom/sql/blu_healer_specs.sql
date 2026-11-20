@@ -1,4 +1,4 @@
--- OverlordsXI Blue Mage Crystal Spec (Magus - Healer)
+-- SoulspireXI Blue Mage Crystal Spec (Magus - Healer)
 -- 1. Un-gate merit ability Diffusion (176) so Magus can unlock/use it at Lv10+ via patch 0007.
 -- 2. Define custom BLU Magus Job Abilities (460-461; recastIds 111, 144) with level = 255:
 --      - White Wind Surge (460, 40s CD, Self / Party 15y, recastId 111)

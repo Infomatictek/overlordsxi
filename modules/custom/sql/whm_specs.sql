@@ -1,4 +1,4 @@
--- OverlordsXI White Mage Crystal Spec (Bishop)
+-- SoulspireXI White Mage Crystal Spec (Bishop)
 -- 1. Un-gate merit abilities Martyr (153) & Devotion (154) and Afflatus Solace (245) is Lv40 (unlocked @ Lv10 via patch 0007).
 -- 2. Define custom WHM Bishop Job Abilities (456-457; recastIds 55-56) with level = 255:
 --      - Divine Veil     (456, 25s CD, Self / Party 15y, recastId 55)

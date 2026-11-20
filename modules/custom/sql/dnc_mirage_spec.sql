@@ -1,4 +1,4 @@
--- OverlordsXI Dancer Crystal Spec (Mirage Sentinel)
+-- SoulspireXI Dancer Crystal Spec (Mirage Sentinel)
 -- 1. Un-gate merit abilities Fan Dance (238) and No Foot Rise (239) so Mirage Sentinel
 --    can unlock/use them without merit gating.
 -- 2. Define Mirage Sentinel's custom Job Abilities (454-455; recastIds 152-153) with

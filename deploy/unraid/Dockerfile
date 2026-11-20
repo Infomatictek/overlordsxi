@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ###############################################################################
-# OverlordsXI — Multi-Stage Production Linux x86_64 Dockerfile
+# SoulspireXI — Multi-Stage Production Linux x86_64 Dockerfile
 #
 # Builds the actual customized OverlordsXI server from the pinned upstream
 # LandSandBoat commit + all 50 OverlordsXI native patches + custom C++/Lua/SQL
@@ -9,9 +9,9 @@
 #
 # Build from repository root:
 #   docker build -f deploy/unraid/Dockerfile \
-#     --build-arg OVERLORDS_VERSION=v2026.11.19 \
-#     --build-arg OVERLORDS_COMMIT=$(git rev-parse HEAD) \
-#     -t overlordsxi/server:v2026.11.19 .
+#     --build-arg SOULSPIRE_VERSION=v2026.11.19 \
+#     --build-arg SOULSPIRE_COMMIT=$(git rev-parse HEAD) \
+#     -t soulspirexi/server:v2026.11.19 .
 ###############################################################################
 
 ARG BASE_TAG=26.04
@@ -133,12 +133,12 @@ RUN --mount=type=cache,target=/root/.cache/pip,id=ox-cache-pip \
  && "${VIRTUAL_ENV}/bin/python" -m pip install --upgrade -r /server/tools/requirements.txt
 
 # 3. Copy OverlordsXI overlay (patches, custom modules, settings, overlay script)
-COPY patches /overlordsxi/patches
-COPY modules /overlordsxi/modules
-COPY deploy/unraid/config/settings /overlordsxi/deploy/unraid/config/settings
-COPY deploy/unraid/scripts/apply-overlords-overlay.sh /overlordsxi/apply-overlords-overlay.sh
-RUN chmod +x /overlordsxi/apply-overlords-overlay.sh \
- && /overlordsxi/apply-overlords-overlay.sh /overlordsxi /server
+COPY patches /soulspirexi/patches
+COPY modules /soulspirexi/modules
+COPY deploy/unraid/config/settings /soulspirexi/deploy/unraid/config/settings
+COPY deploy/unraid/scripts/apply-soulspire-overlay.sh /soulspirexi/apply-soulspire-overlay.sh
+RUN chmod +x /soulspirexi/apply-soulspire-overlay.sh \
+ && /soulspirexi/apply-soulspire-overlay.sh /soulspirexi /server
 
 # 4. Copy default settings so /server/settings is complete
 RUN cp -n /server/settings/default/*.lua /server/settings/ 2>/dev/null || true
@@ -168,16 +168,16 @@ FROM base AS service
 
 ARG UID=99
 ARG GID=100
-ARG OVERLORDS_VERSION=dev
-ARG OVERLORDS_COMMIT=unknown
+ARG SOULSPIRE_VERSION=dev
+ARG SOULSPIRE_COMMIT=unknown
 ARG LSB_COMMIT=091e7409d1c9d702f366dc374115f939393c46ab
 
-LABEL org.opencontainers.image.title="OverlordsXI Server" \
+LABEL org.opencontainers.image.title="SoulspireXI Server" \
       org.opencontainers.image.description="Custom Final Fantasy XI private server built on LandSandBoat with 66 Souls and native patches" \
       org.opencontainers.image.source="https://github.com/Infomatictek/overlordsxi" \
-      org.opencontainers.image.version="${OVERLORDS_VERSION}" \
-      org.opencontainers.image.revision="${OVERLORDS_COMMIT}" \
-      org.overlordsxi.lsb_commit="${LSB_COMMIT}"
+      org.opencontainers.image.version="${SOULSPIRE_VERSION}" \
+      org.opencontainers.image.revision="${SOULSPIRE_COMMIT}" \
+      org.soulspirexi.lsb_commit="${LSB_COMMIT}"
 
 COPY --chown=${UID}:${GID} --from=build ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY --chown=${UID}:${GID} --from=build /server/LICENSE /server/LICENSE

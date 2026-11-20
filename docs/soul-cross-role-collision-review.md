@@ -1,4 +1,4 @@
-# OverlordsXI — Cross-Soul Collision Review of the 13 Pending Concepts
+# SoulspireXI — Cross-Soul Collision Review of the 13 Pending Concepts
 
 **Reviewed:** 2026-11-19 against the current `main` Soul registry and representative implemented modules. **Status: design review, not balance simulation or evidence of deployed playability.** Proposed improvements below supersede ambiguous parts of `docs/remaining-soul-concepts.md`. Preserve level-10 core loops, Lv75 ceiling, tough boss encounters, and avoid making every spec builder/spender.
 

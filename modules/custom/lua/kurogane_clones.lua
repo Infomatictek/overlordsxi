@@ -1,19 +1,19 @@
 -----------------------------------
--- OverlordsXI Shinobi (internal key: kurogane) — dynamic Shadow Clone backend
+-- SoulspireXI Shinobi (internal key: kurogane) — dynamic Shadow Clone backend
 -- & Feint -> Switch -> Cascade Tactical Squad Command Engine
 --
 -- Real dynamic MOB entities are used so every clone has its own native AI,
 -- pathing, HP, independent attack timer, and AoE vulnerability.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 
 local m = Module:new('kurogane_clones')
 
-xi.overlords = xi.overlords or {}
-xi.overlords.kurogane = xi.overlords.kurogane or {}
-local K = xi.overlords.kurogane
-local spec = xi.overlords.spec
+xi.soulspire = xi.soulspire or {}
+xi.soulspire.kurogane = xi.soulspire.kurogane or {}
+local K = xi.soulspire.kurogane
+local spec = xi.soulspire.spec
 
 -- Production default: enabled unless explicitly toggled off by GM/tests.
 if K.ENABLE_EXPERIMENTAL_CLONES == nil then
@@ -90,8 +90,8 @@ local DESPAWN_LISTENER = 'OX_KRG_CLONE_DESPAWN'
 local LOOK_FIELDS = { 'face', 'race', 'head', 'body', 'hands', 'legs', 'feet', 'main', 'sub', 'ranged', 'modelSize' }
 
 local function nowSec()
-    if xi.overlords and xi.overlords.nowSec then
-        return xi.overlords.nowSec()
+    if xi.soulspire and xi.soulspire.nowSec then
+        return xi.soulspire.nowSec()
     end
     return os.time()
 end

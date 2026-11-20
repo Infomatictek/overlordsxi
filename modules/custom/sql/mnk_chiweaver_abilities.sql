@@ -1,4 +1,4 @@
--- OverlordsXI MNK Chi Weaver Custom Job Abilities (429-431)
+-- SoulspireXI MNK Chi Weaver Custom Job Abilities (429-431)
 -- Level set to 255 so these abilities stay hidden unless dynamically unlocked
 -- at Lv.10+ for MNK Chi Weaver via patch 0007 (extraAbilities).
 -- AnimationTime = 1500-2000ms provides natural JA timing.

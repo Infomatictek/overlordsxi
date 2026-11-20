@@ -1,5 +1,5 @@
 ###############################################################################
-# OverlordsXI — Unraid WireGuard Client Template
+# SoulspireXI — Unraid WireGuard Client Template
 #
 # Configure via Unraid Settings -> VPN Manager (WireGuard) -> Add Tunnel
 # using "Remote tunneled access" / "Peer-to-Peer" mode, OR import this config.

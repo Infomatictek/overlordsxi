@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Ubuntu LTS VPS Gateway Setup Script
+# SoulspireXI — Ubuntu LTS VPS Gateway Setup Script
 #
 # Installs WireGuard + nftables, enables IPv4 forwarding, configures sysctl
 # hardening, and installs the WireGuard healthcheck systemd timer.
@@ -49,7 +49,7 @@ if [ -f /etc/nftables.conf ]; then
     nft -f /etc/nftables.conf
     echo "==> nftables rules validated and loaded."
 else
-    echo "[WARN] /etc/nftables.conf not found. Copy from deploy/vps/firewall/nftables-overlordsxi.conf.template first."
+    echo "[WARN] /etc/nftables.conf not found. Copy from deploy/vps/firewall/nftables-soulspirexi.conf.template first."
 fi
 
 echo "==> VPS gateway base setup complete."

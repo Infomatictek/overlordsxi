@@ -1,11 +1,11 @@
 -----------------------------------
 -- func: gear
 -- desc: Grants and equips level-appropriate 16-slot testing gear tailored to
---       the player's main job, active OverlordsXI crystal spec, role, and weapon.
+--       the player's main job, active SoulspireXI crystal spec, role, and weapon.
 -----------------------------------
-require('modules/custom/lua/overlords_job_specs')
-package.loaded['modules/custom/lua/overlords_test_gear'] = nil
-require('modules/custom/lua/overlords_test_gear')
+require('modules/custom/lua/soulspire_job_specs')
+package.loaded['modules/custom/lua/soulspire_test_gear'] = nil
+require('modules/custom/lua/soulspire_test_gear')
 -----------------------------------
 ---@type TCommand
 local commandObj = {}
@@ -16,8 +16,8 @@ commandObj.cmdprops =
     parameters = 'sss',
 }
 
-local testGear = xi.overlords.testGear
-local spec     = xi.overlords.spec
+local testGear = xi.soulspire.testGear
+local spec     = xi.soulspire.spec
 
 local SLOT_LABELS =
 {

@@ -1,4 +1,4 @@
--- OverlordsXI Samurai Crystal Specs (Ronin, Imperial Archer, Warlord)
+-- SoulspireXI Samurai Crystal Specs (Ronin, Imperial Archer, Warlord)
 -- 1. Un-gate merit abilities Shikikoyo (167) and Blade Bash (168) so SAM learns them
 --    naturally at Lv.75 and crystal specs can unlock them early via extraAbilities.
 -- 2. Backport post-75 SAM abilities Sengikori (258), Hamanoha (287), and Hagakure (288)

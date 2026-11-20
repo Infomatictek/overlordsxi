@@ -1,22 +1,22 @@
 -----------------------------------
--- OverlordsXI Blue Mage Crystal Spec: Magus (MAG | Tier-4 Combat Healer)
+-- SoulspireXI Blue Mage Crystal Spec: Magus (MAG | Tier-4 Combat Healer)
 -- Unlocks @ Lv. 10 (!spec set magus)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('modules/custom/lua/blu_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/blue_mage')
 require('scripts/globals/bluemagic')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_blu_healer_specs')
+local m = Module:new('soulspire_blu_healer_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local MAGUS_KEY = 'magus'
 
-xi.overlords                = xi.overlords or {}
-xi.overlords.bluHealerSpecs = xi.overlords.bluHealerSpecs or {}
+xi.soulspire                = xi.soulspire or {}
+xi.soulspire.bluHealerSpecs = xi.soulspire.bluHealerSpecs or {}
 
 -- Dual Wield (18) & Custom Trait ID (171; Azure Diffusion)
 local TRAIT_DUAL_WIELD      = (xi.trait and xi.trait.DUAL_WIELD) or 18
@@ -359,10 +359,10 @@ local function restoreSoulSpells(player, soulKey)
     end
 end
 
-xi.overlords.bluHealerSpecs.syncMagusSpells   = syncMagusSpells
-xi.overlords.bluHealerSpecs.saveSoulSpells    = saveSoulSpells
-xi.overlords.bluHealerSpecs.restoreSoulSpells = restoreSoulSpells
-xi.overlords.bluHealerSpecs.resetMagusSpells  = function(player)
+xi.soulspire.bluHealerSpecs.syncMagusSpells   = syncMagusSpells
+xi.soulspire.bluHealerSpecs.saveSoulSpells    = saveSoulSpells
+xi.soulspire.bluHealerSpecs.restoreSoulSpells = restoreSoulSpells
+xi.soulspire.bluHealerSpecs.resetMagusSpells  = function(player)
     syncMagusSpells(player, { forceReset = true })
 end
 
@@ -453,7 +453,7 @@ local function attachMagusListeners(player)
             attacker:delStatusEffectSilent(EFFECT_AZURE_CATALYST)
             triggerAzureMendingWave(attacker)
         else
-            H.applyCustomTimedEffect(attacker, EFFECT_AZURE_CATALYST, cur + 1, 20, attacker, 0, xi.overlords.getStatusIcon(EFFECT_AZURE_CATALYST), 1)
+            H.applyCustomTimedEffect(attacker, EFFECT_AZURE_CATALYST, cur + 1, 20, attacker, 0, xi.soulspire.getStatusIcon(EFFECT_AZURE_CATALYST), 1)
         end
     end)
 
@@ -586,7 +586,7 @@ end)
 
 m:addOverride('xi.actions.abilities.osmotic_conduit.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_OSMOTIC_CONDUIT, 10, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_OSMOTIC_CONDUIT), 1)
+        H.applyCustomTimedEffect(member, EFFECT_OSMOTIC_CONDUIT, 10, 12, player, 0, xi.soulspire.getStatusIcon(EFFECT_OSMOTIC_CONDUIT), 1)
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)
     return EFFECT_OSMOTIC_CONDUIT

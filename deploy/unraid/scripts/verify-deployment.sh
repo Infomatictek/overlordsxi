@@ -2,14 +2,14 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Automated Linux/Unraid Deployment Verification
+# SoulspireXI — Automated Linux/Unraid Deployment Verification
 #
 # Checks:
 #   1. All 6 containers running & healthy
 #   2. Expected game TCP/UDP ports listening
 #   3. MariaDB port 3306 bound ONLY to 127.0.0.1 (isolated)
 #   4. Database schema, charset, custom Soul tables & char_vars intact
-#   5. zone_settings.zoneip matches OVERLORDS_ZONE_IP (if configured)
+#   5. zone_settings.zoneip matches SOULSPIRE_ZONE_IP (if configured)
 #   6. Optional --run-lua-tests runs xi_test --lua-only inside container
 ###############################################################################
 
@@ -32,7 +32,7 @@ pass() { echo "  [PASS] $*"; }
 fail() { echo "  [FAIL] $*" >&2; FAILURES=$((FAILURES + 1)); }
 
 echo "=== 1. Container Health Checks ==="
-for c in overlordsxi-mariadb overlordsxi-world overlordsxi-connect overlordsxi-search overlordsxi-profile overlordsxi-map; do
+for c in soulspirexi-mariadb soulspirexi-world soulspirexi-connect soulspirexi-search soulspirexi-profile soulspirexi-map; do
     status="$(docker inspect -f '{{.State.Status}}:{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${c}" 2>/dev/null || echo 'missing')"
     if [[ "${status}" == "running:healthy" ]]; then
         pass "${c} (${status})"
@@ -63,9 +63,9 @@ else
     pass "MariaDB :3306 is loopback-only (127.0.0.1)"
 fi
 
-echo "=== 4. Database Schema & Custom OverlordsXI Parity ==="
+echo "=== 4. Database Schema & Custom SoulspireXI Parity ==="
 if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
-    db_info="$(docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e "
+    db_info="$(docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e "
         SELECT @@version, @@character_set_server, @@collation_server, @@lower_case_table_names;
     " 2>/dev/null || true)"
     if [ -n "${db_info}" ]; then
@@ -74,7 +74,7 @@ if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
         fail "Could not query MariaDB"
     fi
 
-    custom_effects="$(docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e \
+    custom_effects="$(docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e \
         "SELECT COUNT(*) FROM status_effects WHERE id >= 600;" 2>/dev/null || echo 0)"
     if [ "${custom_effects}" -ge 70 ]; then
         pass "Custom status_effects (id >= 600): ${custom_effects}"
@@ -82,17 +82,17 @@ if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
         fail "Expected >= 70 custom status_effects, found ${custom_effects}"
     fi
 
-    zone_ips="$(docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e \
+    zone_ips="$(docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e \
         "SELECT DISTINCT zoneip FROM zone_settings;" 2>/dev/null || true)"
     pass "zone_settings.zoneip values: $(echo "${zone_ips}" | tr '\n' ' ')"
-    if [ -n "${OVERLORDS_ZONE_IP:-}" ] && [ "${zone_ips}" != "${OVERLORDS_ZONE_IP}" ]; then
-        fail "zone_settings.zoneip (${zone_ips}) does not match OVERLORDS_ZONE_IP (${OVERLORDS_ZONE_IP})"
+    if [ -n "${SOULSPIRE_ZONE_IP:-}" ] && [ "${zone_ips}" != "${SOULSPIRE_ZONE_IP}" ]; then
+        fail "zone_settings.zoneip (${zone_ips}) does not match SOULSPIRE_ZONE_IP (${SOULSPIRE_ZONE_IP})"
     fi
 fi
 
 if [ "${RUN_LUA_TESTS}" = "--run-lua-tests" ]; then
     echo "=== 5. Optional xi_test --lua-only Smoke Test ==="
-    if docker exec overlordsxi-map /server/xi_test --lua-only; then
+    if docker exec soulspirexi-map /server/xi_test --lua-only; then
         pass "xi_test --lua-only passed"
     else
         fail "xi_test --lua-only failed"

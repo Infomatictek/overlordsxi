@@ -1,4 +1,4 @@
-"""SQLite storage layer for OverlordsXI Combat Analytics.
+"""SQLite storage layer for SoulspireXI Combat Analytics.
 
 Uses WAL mode, strict foreign keys, gzip-compressed raw JSONL archive blobs
 (for faithful original JSONL downloads), indexed filtering, and configurable

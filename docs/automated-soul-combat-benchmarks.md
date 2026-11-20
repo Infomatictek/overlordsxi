@@ -47,7 +47,7 @@ python tools/proving_grounds_benchmark.py --add-feedback <run_id> --tag damage_f
 1. **Python Unit & Analyzer Suite (`python -m unittest discover -s tests -v`)**: 25/25 passed (66 Souls, no Freelancer, LuaJIT registry check, 4 difficulties including Lv78/80/83, invalid sync & `+8` exclusion, timeline spike/DPS-drop analysis, mismatched condition comparison warning, feedback & CSV export).
 2. **Real Engine Suite (`xi_test.exe --lua-only --file proving_grounds_combat --seed 12345`)**: 7/7 passed:
    - Arbiter placement at `(-5, 0, 5)`.
-   - Lv75 -> Lv10 native `LEVEL_RESTRICTION` sync (subjob `<=5`, OverlordsXI HP & Soul rescaling, `+3` boss Lv13, Repeat preserving settings, clean Lv75 restoration on reset).
+   - Lv75 -> Lv10 native `LEVEL_RESTRICTION` sync (subjob `<=5`, SoulspireXI HP & Soul rescaling, `+3` boss Lv13, Repeat preserving settings, clean Lv75 restoration on reset).
    - Upward sync rejection (`cannot_sync_upward`) and Normal/NM combos across Lv10/30/50/75 including Lv78, Lv80, and Lv83 bosses.
    - Lv75 -> Lv10 Shinobi clone level scaling and dismissal on reset.
    - 30-second preparation phase isolation, monotonic `seq`/`session_ms`, non-double-counted WS, 1-second snapshots, and feedback persistence.

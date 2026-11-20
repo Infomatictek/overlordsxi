@@ -116,7 +116,7 @@ def build_markdown_summary(report: dict[str, Any]) -> str:
     notes = report.get("notes") or []
 
     lines: list[str] = [
-        f"# OverlordsXI Proving Grounds Report — `{meta.get('run_id')}`",
+        f"# SoulspireXI Proving Grounds Report — `{meta.get('run_id')}`",
         "",
         f"- **Date (UTC):** `{s.get('timestamp_utc')}`",
         f"- **Character:** `{meta.get('character_name') or 'Not logged'}`",

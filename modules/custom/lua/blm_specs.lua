@@ -1,19 +1,19 @@
 -----------------------------------
--- OverlordsXI Black Mage Crystal Specs
+-- SoulspireXI Black Mage Crystal Specs
 -- Registers the Necromancer (Scythe & Undead Summoner) BLM soul crystal,
 -- passive stats (HP+10%, A+ Scythe Skill, Occult Acumen), Undead Summons,
 -- Corpse Explosion, Harbinger's Drain, Dark Pact, and Pet Commands.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/globals/pets')
 require('scripts/globals/player')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
 -----------------------------------
-local m = Module:new('overlords_blm_specs')
+local m = Module:new('soulspire_blm_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local NECRO_KEY = 'necromancer'
 
@@ -1304,9 +1304,9 @@ end)
 -----------------------------------
 -- Modal Tank Thrall: 100% AoE/Conal Boss Immunity & 80% Cure (+100% Overheal) Forwarding
 -----------------------------------
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
 
-function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+function xi.soulspire.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage ~= nil then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end

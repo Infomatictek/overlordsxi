@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Ranger Crystal Specs
+-- SoulspireXI Ranger Crystal Specs
 -- Registers the Huntsman (Modal Pet-Tank & Saurian Pack Ranger) RNG soul crystal:
 --   - Lv.10 QoL: Auto-provisions Light Crossbow + Bolts if Ranged/Ammo empty,
 --     100% Ammo Recycle, and zero ranged distance penalty.
@@ -14,17 +14,17 @@
 --   - 7 Custom JAs (480-486), 100% Single-Target Enemy only.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/globals/pets')
 require('scripts/globals/player')
 require('scripts/combat/ranged_utilities')
 require('scripts/combat/physical_utilities')
 -----------------------------------
-local m = Module:new('overlords_rng_specs')
+local m = Module:new('soulspire_rng_specs')
 
-local spec  = xi.overlords.spec
-local slots = xi.overlords.slots
+local spec  = xi.soulspire.spec
+local slots = xi.soulspire.slots
 
 local HUNTSMAN_KEY = 'huntsman'
 
@@ -493,9 +493,9 @@ end
 -----------------------------------
 -- Glacial Tusker: 100% Pet AoE/Conal Immunity, 0.25x Mobskill Clamp & 80% Cure Forwarding
 -----------------------------------
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
 
-function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+function xi.soulspire.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage ~= nil then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end

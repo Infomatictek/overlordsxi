@@ -1,4 +1,4 @@
-"""Regression tests for OverlordsXI OXSI nearby-caster Soul identity protocol."""
+"""Regression tests for SoulspireXI OXSI nearby-caster Soul identity protocol."""
 import ctypes
 import os
 import struct
@@ -6,14 +6,14 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CPP_PATH = REPO_ROOT / 'modules' / 'custom' / 'cpp' / 'overlords_soul_action_peers.cpp'
-HUD_LUA_PATH = REPO_ROOT / 'modules' / 'custom' / 'lua' / 'overlords_soul_hud.lua'
+CPP_PATH = REPO_ROOT / 'modules' / 'custom' / 'cpp' / 'soulspire_soul_action_peers.cpp'
+HUD_LUA_PATH = REPO_ROOT / 'modules' / 'custom' / 'lua' / 'soulspire_soul_hud.lua'
 INIT_APPEND_PATH = REPO_ROOT / 'modules' / 'init.append.txt'
 LUAJIT_DLL = Path(r'C:\dev\server\libluajit_64.dll')
 
 
 def build_oxsi_packet(actor: int, job: int, branch: int, name: str, key: str, remove: bool) -> bytes:
-    """Reference encoder matching overlords_soul_action_peers.cpp makePacket()."""
+    """Reference encoder matching soulspire_soul_action_peers.cpp makePacket()."""
     name_b = name.encode('ascii')
     key_b = b'' if remove else key.encode('ascii')
     raw = 22 + len(name_b) + len(key_b)
@@ -81,7 +81,7 @@ def decode_oxsi_packet(pkt: bytes):
 class SoulActionPeersProtocolTests(unittest.TestCase):
     def test_module_registered_in_init_append(self):
         init_text = INIT_APPEND_PATH.read_text(encoding='utf-8')
-        self.assertIn('custom/cpp/overlords_soul_action_peers.cpp', init_text)
+        self.assertIn('custom/cpp/soulspire_soul_action_peers.cpp', init_text)
 
     def test_cpp_module_implements_oninit_and_zone_isolation(self):
         src = CPP_PATH.read_text(encoding='utf-8')
@@ -135,7 +135,7 @@ class SoulActionPeersProtocolTests(unittest.TestCase):
 
         hud_path = str(HUD_LUA_PATH).replace('\\', '\\\\')
         script = f"""
-        -- Minimal server globals stub to load overlords_soul_hud.lua
+        -- Minimal server globals stub to load soulspire_soul_hud.lua
         local origRequire = require
         function require(name)
             if type(name) == 'string' and (name:match('^modules/') or name:match('^scripts/')) then
@@ -153,7 +153,7 @@ class SoulActionPeersProtocolTests(unittest.TestCase):
         }}
         xi = {{
             effect = {{}},
-            overlords = {{
+            soulspire = {{
                 spec = {{
                     get = function(p, jobId) return p._active end,
                     isLevelEligible = function(p, jobId, active) return p._eligible == true end,
@@ -162,7 +162,7 @@ class SoulActionPeersProtocolTests(unittest.TestCase):
             }}
         }}
         dofile('{hud_path}')
-        local hud = xi.overlords.hud
+        local hud = xi.soulspire.hud
         assert(type(hud.buildIdentityData) == 'function', 'buildIdentityData missing')
         assert(type(hud.buildPacketData) == 'function', 'buildPacketData missing')
 

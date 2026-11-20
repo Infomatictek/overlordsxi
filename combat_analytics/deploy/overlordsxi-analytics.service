@@ -1,5 +1,5 @@
 [Unit]
-Description=OverlordsXI Combat Analytics Backend
+Description=SoulspireXI Combat Analytics Backend
 After=network.target
 
 [Service]

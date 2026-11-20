@@ -1,4 +1,4 @@
-"""Automated unit, HTTP API integration, security & UI tests for OverlordsXI Combat Analytics."""
+"""Automated unit, HTTP API integration, security & UI tests for SoulspireXI Combat Analytics."""
 from __future__ import annotations
 
 import http.client

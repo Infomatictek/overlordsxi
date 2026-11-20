@@ -85,9 +85,9 @@ class ProvingGroundsStageATests(unittest.TestCase):
             if ln.strip() and not ln.strip().startswith("--")
         ]
         boss_idx = lines.index("custom/lua/boss_like_combat_and_exp.lua")
-        reg_idx = lines.index("custom/lua/overlords_proving_grounds_registry.lua")
-        tel_idx = lines.index("custom/lua/overlords_proving_grounds_telemetry.lua")
-        lite_idx = lines.index("custom/lua/overlords_proving_grounds_lite.lua")
+        reg_idx = lines.index("custom/lua/soulspire_proving_grounds_registry.lua")
+        tel_idx = lines.index("custom/lua/soulspire_proving_grounds_telemetry.lua")
+        lite_idx = lines.index("custom/lua/soulspire_proving_grounds_lite.lua")
         self.assertLess(boss_idx, reg_idx)
         self.assertLess(reg_idx, tel_idx)
         self.assertLess(tel_idx, lite_idx)

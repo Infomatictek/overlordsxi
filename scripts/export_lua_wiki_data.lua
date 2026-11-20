@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Real-Lua Wiki Data Exporter
+-- SoulspireXI Real-Lua Wiki Data Exporter
 -- Executes the actual Lua modules in a lightweight LandSandBoat sandbox
 -- and emits a single JSON document to stdout.
 --
@@ -309,20 +309,20 @@ end
 
 -- Discover files via command-line arguments:
 -- arg[1] = ROOT_DIR
--- arg[2..] = list of *_specs.lua and overlords_ws_trees_*.lua files
+-- arg[2..] = list of *_specs.lua and soulspire_ws_trees_*.lua files
 local specFiles = {}
 local treeFiles = {}
 for i = 2, #(arg or {}) do
     local p = arg[i]
     if p:match('_specs$') or p:match('_specs%.lua$') then
         table.insert(specFiles, p)
-    elseif p:match('overlords_ws_trees_') then
+    elseif p:match('soulspire_ws_trees_') then
         table.insert(treeFiles, p)
     end
 end
 
 -- 1. Load Job Crystal / Spec Registry + ALL *_specs.lua
-local spec = require('modules/custom/lua/overlords_job_specs')
+local spec = require('modules/custom/lua/soulspire_job_specs')
 for _, sf in ipairs(specFiles) do
     local ok, err = pcall(require, sf)
     if not ok then
@@ -332,8 +332,8 @@ for _, sf in ipairs(specFiles) do
 end
 
 -- 2. Load Weaponskill Catalog + Talent Engine + ALL tree files
-local catalog = require('modules/custom/lua/overlords_ws_catalog')
-local talents = require('modules/custom/lua/overlords_ws_talents')
+local catalog = require('modules/custom/lua/soulspire_ws_catalog')
+local talents = require('modules/custom/lua/soulspire_ws_talents')
 for _, tf in ipairs(treeFiles) do
     local ok, err = pcall(require, tf)
     if not ok then

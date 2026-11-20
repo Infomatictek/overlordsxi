@@ -1,4 +1,4 @@
--- OverlordsXI Rune Fencer Crystal Specs (Inquisitor, Spellblade, Lifebinder)
+-- SoulspireXI Rune Fencer Crystal Specs (Inquisitor, Spellblade, Lifebinder)
 -- 1. Backport post-75 RUN abilities (Liement, One for All, Odyllic Subterfuge) to Lv 75
 --    and clear merit addType on Rayke (375) and Battuta (376) so crystal extraAbilities can unlock them.
 -- 2. Backport RUN Regen IV (spell 477) from Lv 99 (0x63) to Lv 75 (0x4B).

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-OverlordsXI Wiki & Database Generator
+SoulspireXI Wiki & Database Generator
 -------------------------------------
-Parses all custom OverlordsXI Lua modules, Weaponskill Catalog & 5-Spec Talent Trees,
+Parses all custom SoulspireXI Lua modules, Weaponskill Catalog & 5-Spec Talent Trees,
 Job Crystal Specs, Custom Job Abilities & Traits, Companions & Summons,
 Combat/QoL Rules, Player Commands, Engine Patches, and Git Commit History
 directly from the repository and emits:
@@ -406,7 +406,7 @@ def format_mod_scaling(mod_code: str, expr: str, local_vars: dict[str, str]) -> 
 
 
 # ---------------------------------------------------------------------------
-# 1. Parse Job Crystal Specs (*_specs.lua + overlords_job_specs.lua)
+# 1. Parse Job Crystal Specs (*_specs.lua + soulspire_job_specs.lua)
 # ---------------------------------------------------------------------------
 JOB_META = {
     "WAR": {"id": 1, "name": "Warrior", "color": "#ef4444", "badge": "WAR"},
@@ -531,7 +531,7 @@ CUSTOM_ABILITIES_BY_SPEC = {
 
 # Standard FFXI abilities unlocked early (Lv.10+) by Crystal Specs via extraAbilities
 VANILLA_ABILITY_INFO = {
-    2: ("Warcry", "60s", "Party (10y)", "Increases party Attack and shares active stances in OverlordsXI."),
+    2: ("Warcry", "60s", "Party (10y)", "Increases party Attack and shares active stances in SoulspireXI."),
     22: ("Invincible", "3600s", "Self", "Grants immunity to physical attacks for 30s."),
     27: ("Meikyo Shisui", "3600s", "Self", "Allows rapid Weapon Skill chaining for 30s."),
     28: ("Mijin Gakure", "3600s", "Enemy", "Sacrifices HP for massive elemental damage."),
@@ -670,7 +670,7 @@ def parse_lua_metadata() -> dict:
     ability_names = {}
     ability_comments = {}
 
-    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
+    spec_files = [LUA_DIR / "soulspire_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
     seen = set()
     for fpath in spec_files:
         if not fpath.exists() or fpath.name in seen:
@@ -1007,7 +1007,7 @@ def parse_job_specs(sql_abils: dict | None = None, lua_meta: dict | None = None)
     if lua_meta is None:
         lua_meta = parse_lua_metadata()
 
-    spec_files = [LUA_DIR / "overlords_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
+    spec_files = [LUA_DIR / "soulspire_job_specs.lua"] + sorted(LUA_DIR.glob("*_specs.lua"))
     seen_files = set()
     jobs_out = {}
 
@@ -1197,7 +1197,7 @@ SC_BONUS_BY_TIER = {
     4: (15, 28, "Lv3"),
 }
 
-# Current tier gates from overlords_ws_talents.lua
+# Current tier gates from soulspire_ws_talents.lua
 TIER_GATES = {
     1: {"reqWsPoints": 0, "reqLevel": 1},
     2: {"reqWsPoints": 2, "reqLevel": 5},
@@ -1235,7 +1235,7 @@ SPEC_CATEGORIES = [
 
 
 def parse_ws_catalog() -> dict[int, dict]:
-    cat_path = LUA_DIR / "overlords_ws_catalog.lua"
+    cat_path = LUA_DIR / "soulspire_ws_catalog.lua"
     if not cat_path.exists():
         return {}
     clean = strip_lua_comments(cat_path.read_text(encoding="utf-8", errors="replace"))
@@ -1630,7 +1630,7 @@ def parse_single_helper_node(call_str: str) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Spec-Tree Expansion (mirrors overlords_ws_tree_helpers.lua 5-spec engine)
+# Spec-Tree Expansion (mirrors soulspire_ws_tree_helpers.lua 5-spec engine)
 # ---------------------------------------------------------------------------
 def is_magic_or_utility_ws(ws: dict, archetype: str) -> tuple[bool, str]:
     ws_id = ws["id"]
@@ -1964,7 +1964,7 @@ def finalize_spec_nodes(raw_nodes: list[dict]) -> list[dict]:
 
 
 def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
-    tree_files = [LUA_DIR / "overlords_ws_talents.lua"] + sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))
+    tree_files = [LUA_DIR / "soulspire_ws_talents.lua"] + sorted(LUA_DIR.glob("soulspire_ws_trees_*.lua"))
     # Map ws_id -> {"mode": "reg"|"regB"|"regSpec"|"throwing", "archetype": str, "baseNodes": [...], "specNodes": {...}, "sourceFile": str}
     trees_by_ws_id = {}
 
@@ -1974,7 +1974,7 @@ def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
         clean = strip_lua_comments(fpath.read_text(encoding="utf-8", errors="replace"))
         src_rel = f"modules/custom/lua/{fpath.name}"
 
-        # Capture local zerkXX = { ... } blocks (used by regGS in overlords_ws_trees_gs.lua)
+        # Capture local zerkXX = { ... } blocks (used by regGS in soulspire_ws_trees_gs.lua)
         local_node_lists = {}
         for lm in re.finditer(r"local\s+(zerk\d+)\s*=\s*\{", clean):
             var_name = lm.group(1)
@@ -2010,7 +2010,7 @@ def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
             node_calls = split_top_level_args(clean[b_start + 1 : b_end])
             parsed_nodes = [pn for nc in node_calls if (pn := parse_single_helper_node(nc))]
             mode = "regB" if fn_used in ("regB", "H.regBaseline") else "reg"
-            if fpath.name == "overlords_ws_trees_throwing.lua":
+            if fpath.name == "soulspire_ws_trees_throwing.lua":
                 mode = "throwing"
             trees_by_ws_id[ws_id] = {
                 "mode": mode,
@@ -2050,7 +2050,7 @@ def parse_ws_trees(ws_by_id: dict[int, dict]) -> list[dict]:
         ws = ws_by_id[ws_id]
         tinfo = trees_by_ws_id.get(
             ws_id,
-            {"mode": "reg", "archetype": ws["wsType"], "baseNodes": [], "sourceFile": "modules/custom/lua/overlords_ws_talents.lua"},
+            {"mode": "reg", "archetype": ws["wsType"], "baseNodes": [], "sourceFile": "modules/custom/lua/soulspire_ws_talents.lua"},
         )
         archetype = tinfo["archetype"]
         base_nodes = tinfo["baseNodes"]
@@ -2285,7 +2285,7 @@ def run_lua_exporter(lua_bin: str, strict: bool = True) -> dict | None:
         print(f"[warn] {msg}", file=sys.stderr)
         return None
     spec_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("*_specs.lua"))]
-    tree_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("overlords_ws_trees_*.lua"))]
+    tree_mods = [f"modules/custom/lua/{p.stem}" for p in sorted(LUA_DIR.glob("soulspire_ws_trees_*.lua"))]
     cmd = [lua_bin, str(exporter), str(ROOT_DIR)] + spec_mods + tree_mods
     try:
         res = subprocess.run(
@@ -2529,7 +2529,7 @@ def parse_patches() -> list[dict]:
         "0015-dnc-ranged-dances.patch": "Allows Steps and Flourishes to execute at ranged distances up to 20 yalms when Bladewheel is socketed.",
         "0016-eos-jugpet-spells-and-skills.patch": "Configures deterministic spell lists and AI casting cooldowns for Eos and Titania faerie pets.",
         "0017-blm-necromancer-pets.patch": "Configures custom Undead Warrior, Undead Mage, Corse, and Dullahan pet IDs (130–133) for BLM Necromancer.",
-        "0018-search-job-labels.patch": "Streams active OverlordsXI Soul Crystal spec labels in `/search` and party search results.",
+        "0018-search-job-labels.patch": "Streams active SoulspireXI Soul Crystal spec labels in `/search` and party search results.",
         "0019-talent-ws-unlocks.patch": "Gates Weaponskill usage until at least 1 Tier-1 Talent Point is invested and adds the `0x1FD` (`OXTL`) binary packet for instant Ashita `/talents` UI syncing.",
         "0020-aoe-healing-affect-pets.patch": "Allows custom party AoE healing abilities (such as RUN Lifebinder's Sanctified Ward) to affect pets and avatars.",
         "0021-mnk-chiweaver-ranged-chi.patch": "Enables unarmed ranged Chi bolt auto-attacks (0–20y), custom effects 829–830, and party/pet AoE reach for MNK Chi Weaver.",
@@ -2543,7 +2543,7 @@ def parse_patches() -> list[dict]:
         "0027-blu-spec-effects.patch": "Registers BLU Azure Carapace spec status effects for Azure Surge and Bastion affinity buffs.",
         "0027-rdm-crimson-duelist.patch": "Adds RDM Crimson Duelist riposte, Flow weaving, and hex-mitigation C++ engine hooks.",
         "0028-healer-spec-effects.patch": "Registers status effect IDs for the WHM Bishop, PLD Martyr, BLU Magus, DNC Reveler, SMN Celestial, PUP Mechanist, GEO Arborist, and DRG Lifescale healer crystals.",
-        "0029-shared-ox-status-slots.patch": "Allocates reusable shared OverlordsXI buff and debuff status effect slots (Breach, Cripple, etc.) across all Crystal Specs.",
+        "0029-shared-ox-status-slots.patch": "Allocates reusable shared SoulspireXI buff and debuff status effect slots (Breach, Cripple, etc.) across all Crystal Specs.",
         "0030-polearm-buckler-equip.patch": "Allows Warrior Spartan crystal holders to equip Polearms alongside Size-1 Buckler shields.",
         "0031-reduce-recasts-binding.patch": "Exposes player:reduceRecasts(seconds) Lua binding for spec abilities that shave ally cooldowns.",
         "0032-cor-gambler-effects.patch": "Adds Corsair Gambler ability-only recast reduction (reduceAbilityRecasts) and Lucky/Roll XI hook support.",
@@ -2637,7 +2637,7 @@ def parse_git_commits(limit: int = 50) -> list[dict]:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate and validate OverlordsXI wiki data files.")
+    parser = argparse.ArgumentParser(description="Generate and validate SoulspireXI wiki data files.")
     parser.add_argument(
         "--require-lua",
         action="store_true",

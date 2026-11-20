@@ -3,7 +3,7 @@
 -- desc: Backup menu to equip a Size-1 Buckler in the Sub slot alongside a
 --       2H Polearm (WAR Spartan/Gladiator). Alias: !shield
 -----------------------------------
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 -----------------------------------
 ---@type TCommand
 local commandObj = {}
@@ -19,7 +19,7 @@ local function tell(player, message)
 end
 
 commandObj.onTrigger = function(player)
-    local B = xi.overlords and xi.overlords.buckler
+    local B = xi.soulspire and xi.soulspire.buckler
     if B == nil then
         tell(player, 'Buckler module is not loaded.')
         return

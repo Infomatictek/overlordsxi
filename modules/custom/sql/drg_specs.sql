@@ -1,4 +1,4 @@
--- OverlordsXI Dragoon Crystal Spec (Wyvernheart - Healer)
+-- SoulspireXI Dragoon Crystal Spec (Wyvernheart - Healer)
 -- 1. Un-gate merit ability Spirit Link (80) so Wyvernheart can use it without merit gating.
 -- 2. Define custom DRG Wyvernheart Job Abilities (470-471; recastIds 148, 185) with level = 255:
 --      - Wyrmblood Pulse       (470, 45s CD, Self / Party 15y, recastId 148)

@@ -1,18 +1,18 @@
 -----------------------------------
--- OverlordsXI Warrior Crystal Specs
+-- SoulspireXI Warrior Crystal Specs
 -- Registers Warrior crystals (Commander, Berserker, Spartan [formerly Gladiator]) and
 -- implements their passive scaling stats and ability transformations.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/physical_utilities')
 require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/warrior')
 require('scripts/globals/spells/damage_spell')
 -----------------------------------
-local m = Module:new('overlords_war_specs')
+local m = Module:new('soulspire_war_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local COMMANDER_KEY = 'commander'
 local BERSERKER_KEY = 'berserker'
@@ -212,7 +212,7 @@ local function pickTier(lvl, a, b, c, d)
 end
 
 local function applyDebuff(target, effectId, power, duration, origin, mods)
-    if target == nil or xi.overlords == nil or xi.overlords.slots == nil then
+    if target == nil or xi.soulspire == nil or xi.soulspire.slots == nil then
         return false
     end
 
@@ -223,7 +223,7 @@ local function applyDebuff(target, effectId, power, duration, origin, mods)
         end
     end
 
-    return xi.overlords.slots.applySlot(target, effectId, power, duration, origin, clean, effectId)
+    return xi.soulspire.slots.applySlot(target, effectId, power, duration, origin, clean, effectId)
 end
 
 -- Maim / Cripple: -15% ATTP, -20 ACC
@@ -389,7 +389,7 @@ local function onSpartanHit(defender, amount, attacker, attackType)
     end
 
     local stamp = gritBlockStamp[defender:getID()]
-    if stamp ~= nil and xi.overlords.nowSec() - stamp < 0.5 then
+    if stamp ~= nil and xi.soulspire.nowSec() - stamp < 0.5 then
         return
     end
 
@@ -981,8 +981,8 @@ m:addOverride('xi.job_utils.warrior.useWarcry', function(player, target, ability
         end
 
         -- Party -8% DMG routed through the capped shared ward slot (EFF_OX_SUP_WARD)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, target, -800, 0, duration)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, target, -800, 0, duration)
         end
 
         local targetId = target:getID()
@@ -1075,7 +1075,7 @@ m:addOverride('xi.combat.physical.isBlocked', function(defender, attacker)
     local blocked = super(defender, attacker)
 
     if blocked and isWarriorSpec(defender, SPARTAN_KEY) and isPhalanxSetup(defender) then
-        gritBlockStamp[defender:getID()] = xi.overlords.nowSec()
+        gritBlockStamp[defender:getID()] = xi.soulspire.nowSec()
         if defender:getLocalVar(BRACE_VAR) == 0 then
             addGrit(defender, 1)
         end
@@ -1194,7 +1194,7 @@ local function applyCommanderTimedEffect(target, effectId, power, duration, orig
         duration = duration,
         origin   = origin,
         subPower = subPower or 0,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
     })
     pendingCommanderMods[targetId] = nil
 end

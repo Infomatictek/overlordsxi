@@ -2,7 +2,7 @@
 -- Eos & Titania Faerie Companions
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/globals/pets')
 -----------------------------------
 local m = Module:new('eos_companion')
@@ -71,7 +71,7 @@ local function isScholarSpec(player, specKey)
         player ~= nil and
         player:isPC() and
         player:getMainJob() == xi.job.SCH and
-        xi.overlords.spec.is(player, xi.job.SCH, specKey)
+        xi.soulspire.spec.is(player, xi.job.SCH, specKey)
 end
 
 m:addOverride('xi.actions.abilities.faerie_companion.onAbilityCheck', function(player, target, ability)
@@ -125,7 +125,7 @@ local function handleEosRegenCast(caster, target, spell, superFn)
         local params = eosRegenSpells[spell:getID()] or eosRegenSpells[xi.magic.spell.REGEN]
         local maxHp  = target ~= nil and target.getMaxHP and math.max(0, target:getMaxHP() or 0) or 0
         local power  = math.max(params.minPower, math.floor(maxHp * params.pct))
-        if target:addStatusEffect(eosRegenEffectId, { power = power, tick = 3, duration = params.duration, icon = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(eosRegenEffectId, xi.effect.REGEN)) or xi.effect.REGEN, origin = caster }) then
+        if target:addStatusEffect(eosRegenEffectId, { power = power, tick = 3, duration = params.duration, icon = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(eosRegenEffectId, xi.effect.REGEN)) or xi.effect.REGEN, origin = caster }) then
             spell:setMsg(xi.msg.basic.MAGIC_GAIN_EFFECT)
             return xi.effect.REGEN
         end

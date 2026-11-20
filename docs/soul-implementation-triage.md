@@ -1,4 +1,4 @@
-# OverlordsXI: Unimplemented-Soul Triage and Distinct-Loop Design
+# SoulspireXI: Unimplemented-Soul Triage and Distinct-Loop Design
 
 > Status: implementation-planning document, not a declaration that listed Souls are absent. Updated 2026-11-19. Source of truth is live `main`, not historical weapon tables. The active registry still has a retired Freelancer placeholder; audit before altering persistent branch IDs.
 
@@ -63,13 +63,13 @@
 - [ ] No regression to sibling Souls, talent UI or haste work
 
 ## Verified repository pointers
-- `modules/custom/lua/overlords_job_specs.lua`: current 22-job canonical catalog and tiers
+- `modules/custom/lua/soulspire_job_specs.lua`: current 22-job canonical catalog and tiers
 - `modules/custom/lua/run_specs.lua`: three RUN implementations; reference for lore-linked differentiation
 - `modules/custom/lua/whm_specs.lua`: Bishop-focused implementation
 - `modules/custom/lua/rdm_specs.lua`: Crimson Duelist-focused implementation
 - `modules/custom/lua/nin_specs.lua`: Kagemusha-focused implementation
 - `modules/custom/lua/cor_specs.lua`: three COR Souls; leave Flintlock dual-pistol subsystem to external contributor
-- `modules/custom/lua/overlords_healer_helpers.lua`: existing shared healer primitives, do not create a competing utility layer
+- `modules/custom/lua/soulspire_healer_helpers.lua`: existing shared healer primitives, do not create a competing utility layer
 
 These design sketches require comparison to all currently registered Soul runtime modules before code generation. Do not overwrite extant mechanics solely to match this page.
 

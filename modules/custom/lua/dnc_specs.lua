@@ -1,20 +1,20 @@
 -----------------------------------
--- OverlordsXI Dancer Crystal Specs
+-- SoulspireXI Dancer Crystal Specs
 -- Registers Dancer (job 19) Soul Crystal specializations:
 --   1. Bladewheel (Ranged Chakram Dancer)
 --   2. Mirage Sentinel (Fan-Dance Rhythm & Waltz-Shield Tank, Lv.10+)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/dancer')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_dnc_specs')
+local m = Module:new('soulspire_dnc_specs')
 
-local spec  = xi.overlords.spec
-local slots = xi.overlords.slots
+local spec  = xi.soulspire.spec
+local slots = xi.soulspire.slots
 
 local BLADEWHEEL_KEY = 'bladewheel'
 local MIRAGE_KEY     = 'miragesentinel'
@@ -271,10 +271,10 @@ end
 -----------------------------------
 -- Global C++ Hook Callbacks
 -----------------------------------
-xi.overlords = xi.overlords or {}
+xi.soulspire = xi.soulspire or {}
 
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
-xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
+xi.soulspire.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end

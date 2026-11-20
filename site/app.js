@@ -1,5 +1,5 @@
 /**
- * OverlordsXI Server Wiki & Live Encyclopedia Engine
+ * SoulspireXI Server Wiki & Live Encyclopedia Engine
  * --------------------------------------------------
  * Zero-maintenance static SPA for SWAG / Nginx / GitHub Pages.
  * Automatically resolves the latest commit SHA from GitHub so
@@ -282,9 +282,9 @@
     return `
       <section class="wiki-hero">
         <div class="hero-eyebrow">⚡ Classic Level 75 Cap &bull; Level 99 QoL &bull; Spec-Adaptive WS Trees</div>
-        <h1>Welcome to the OverlordsXI Encyclopedia</h1>
+        <h1>Welcome to the SoulspireXI Encyclopedia</h1>
         <p>
-          OverlordsXI blends the iconic <strong>Level 75 Era cap</strong> with modern <strong>Level 99 Quality-of-Life</strong>,
+          SoulspireXI blends the iconic <strong>Level 75 Era cap</strong> with modern <strong>Level 99 Quality-of-Life</strong>,
           faster baseline combat pacing, transformative <strong>Lv.10+ Job Soul Crystals</strong>, and a deep
           <strong>Spec-Adaptive 56-point Talent Tree for every Weaponskill in the game</strong>.
         </p>
@@ -314,7 +314,7 @@
       </section>
 
       <div class="section-header">
-        <h2>🧭 Core Pillars of OverlordsXI</h2>
+        <h2>🧭 Core Pillars of SoulspireXI</h2>
         <span class="section-sub">Click any system below to explore the full wiki guide</span>
       </div>
 
@@ -435,7 +435,7 @@
         <div class="hero-eyebrow">⚔️ Server Ruleset &bull; boss_like_combat_and_exp.lua</div>
         <h1>Combat Pace, Mob Scaling, EXP &amp; Level 99 QoL</h1>
         <p>
-          OverlordsXI eliminates the slow early-game swing timers of vanilla FFXI while making every monster fight feel like an engaging,
+          SoulspireXI eliminates the slow early-game swing timers of vanilla FFXI while making every monster fight feel like an engaging,
           rewarding encounter with dramatically boosted EXP chains and full Level 99 convenience from your very first login.
         </p>
       </section>
@@ -1142,7 +1142,7 @@
         <div class="hero-eyebrow">🧚 Companions &amp; Custom Gear &bull; True Pets &amp; Item Overhauls</div>
         <h1>Custom Companions, Thralls &amp; Equipment</h1>
         <p>
-          OverlordsXI introduces <strong>6 deterministic custom pets</strong> across Scholar and Black Mage, repurposes
+          SoulspireXI introduces <strong>6 deterministic custom pets</strong> across Scholar and Black Mage, repurposes
           <strong>Orphic Egg</strong> for faerie Refresh scaling, unlocks <strong>all Scythes for Necromancer BLM</strong>,
           and overhauls <strong>21 Dancer Chakrams (Lv. 10–75)</strong> for ranged Bladewheel combat.
         </p>
@@ -1262,8 +1262,8 @@
         <div class="hero-eyebrow">⌨️ Player Commands &amp; Client Addons</div>
         <h1>In-Game Commands, Custom Menus &amp; Launcher</h1>
         <p>
-          Every custom system on OverlordsXI can be controlled either through <strong>in-game chat commands / paginated customMenus</strong>
-          or through our custom <strong>Ashita v4 UI addons</strong> bundled with <code>OverlordsLauncher.exe</code>.
+          Every custom system on SoulspireXI can be controlled either through <strong>in-game chat commands / paginated customMenus</strong>
+          or through our custom <strong>Ashita v4 UI addons</strong> bundled with <code>SoulspireLauncher.exe</code>.
         </p>
       </section>
 
@@ -1293,7 +1293,7 @@
 
       <div class="section-header">
         <h2>🖥️ Client Launcher &amp; Ashita v4 Custom UI Addons</h2>
-        <span class="section-sub">Auto-installed by OverlordsLauncher.exe</span>
+        <span class="section-sub">Auto-installed by SoulspireLauncher.exe</span>
       </div>
 
       <div class="card-grid-3">
@@ -1336,7 +1336,7 @@
         <div class="hero-eyebrow">🔧 Engine Architecture &amp; Live Repository History</div>
         <h1>C++ Engine Patches &amp; Live GitHub Commits</h1>
         <p>
-          OverlordsXI keeps its custom logic modular inside <code>modules/custom/</code> paired with <strong>${patches.length} targeted C++ engine patches</strong>.
+          SoulspireXI keeps its custom logic modular inside <code>modules/custom/</code> paired with <strong>${patches.length} targeted C++ engine patches</strong>.
           This page also displays the latest commits directly from <code>${escapeHtml(state.syncCfg.repo)}</code>.
         </p>
       </section>

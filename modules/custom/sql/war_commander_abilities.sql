@@ -1,4 +1,4 @@
--- OverlordsXI WAR Commander Custom Job Abilities (396-399)
+-- SoulspireXI WAR Commander Custom Job Abilities (396-399)
 -- Level set to 255 so these abilities stay hidden unless dynamically unlocked
 -- at Lv.10+ for WAR Commander via patch 0007 (extraAbilities).
 -- AnimationTime = 2000ms provides natural JA attack lockout to balance frequent active weaving.

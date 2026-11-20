@@ -1,17 +1,17 @@
 -----------------------------------
--- OverlordsXI Paladin Crystal Spec: Templar (TMP | Tier-4 Combat Healer)
+-- SoulspireXI Paladin Crystal Spec: Templar (TMP | Tier-4 Combat Healer)
 -- Unlocks @ Lv. 10 (!spec set templar)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('modules/custom/lua/pld_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/paladin')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_pld_healer_specs')
+local m = Module:new('soulspire_pld_healer_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local TEMPLAR_KEY = 'templar'
 
 -- Custom Trait ID (170; Perpetual Majesty)
@@ -107,8 +107,8 @@ end
 -----------------------------------
 m:addOverride('xi.effects.lights_grace.onEffectGain', function(target, effect)
     local total = effect:getPower() or 15
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
-        total = xi.overlords.regen.consumeEffectRegen(target, effect, 15, 220)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.consumeEffectRegen then
+        total = xi.soulspire.regen.consumeEffectRegen(target, effect, 15, 220)
     end
     effect:addMod(xi.mod.REGEN, total)
 end)
@@ -182,21 +182,21 @@ local function attachTemplarListeners(player)
                 if member ~= target then
                     local _, overheal = H.healEntity(caster, member, healAmt)
                     if overheal > 0 then
-                        if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
-                            xi.overlords.regen.stampRegenContext(caster, member, 220)
+                        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.stampRegenContext then
+                            xi.soulspire.regen.stampRegenContext(caster, member, 220)
                         end
-                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
-                        if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
-                            xi.overlords.regen.clearRegenContext(member)
+                        H.applyCustomTimedEffect(member, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.soulspire.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
+                        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.clearRegenContext then
+                            xi.soulspire.regen.clearRegenContext(member)
                         end
                     end
                 elseif target ~= nil and target:getHP() >= target:getMaxHP() then
-                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
-                        xi.overlords.regen.stampRegenContext(caster, target, 220)
+                    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.stampRegenContext then
+                        xi.soulspire.regen.stampRegenContext(caster, target, 220)
                     end
-                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
-                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
-                        xi.overlords.regen.clearRegenContext(target)
+                    H.applyCustomTimedEffect(target, EFFECT_LIGHTS_GRACE, 15, 10, caster, 0, xi.soulspire.getStatusIcon(EFFECT_LIGHTS_GRACE), 1)
+                    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.clearRegenContext then
+                        xi.soulspire.regen.clearRegenContext(target)
                     end
                 end
                 if cleanseDiv then
@@ -256,9 +256,9 @@ m:addOverride('xi.actions.abilities.rampart.onUseAbility', function(player, targ
     local res = super(player, target, ability)
     if isTemplar(player) then
         H.forEachPartyMemberInRange(player, 15, false, function(member)
-            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
-            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15)
+            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
+            if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+                xi.soulspire.slots.applyPartyWard(player, member, -1500, 0, 15)
             end
         end)
     end
@@ -270,9 +270,9 @@ m:addOverride('xi.actions.abilities.invincible.onUseAbility', function(player, t
         H.forEachPartyMemberInRange(player, 15, false, function(member)
             member:setHP(member:getMaxHP())
             H.cleanseDebuffs(member, 10)
-            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 20, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 2)
-            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 15)
+            H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 20, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 2)
+            if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+                xi.soulspire.slots.applyPartyWard(player, member, -1500, 0, 15)
             end
         end)
         return 0
@@ -309,9 +309,9 @@ end)
 
 m:addOverride('xi.actions.abilities.crusaders_aegis.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 10, player, 0, xi.overlords.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 10)
+        H.applyCustomTimedEffect(member, EFFECT_CRUSADERS_AEGIS, 15, 10, player, 0, xi.soulspire.getStatusIcon(EFFECT_CRUSADERS_AEGIS), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1500, 0, 10)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

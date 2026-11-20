@@ -1,4 +1,4 @@
-"""Command-line interface for OverlordsXI Combat Analytics backend.
+"""Command-line interface for SoulspireXI Combat Analytics backend.
 
 Examples:
   python -m combat_analytics.cli create-user --username admin --role admin
@@ -21,7 +21,7 @@ from .server import create_server
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="combat_analytics", description="OverlordsXI Combat Analytics Backend CLI")
+    p = argparse.ArgumentParser(prog="combat_analytics", description="SoulspireXI Combat Analytics Backend CLI")
     p.add_argument("--env-file", type=Path, default=None, help="Optional path to .env configuration file")
     p.add_argument("--db", type=Path, default=None, help="Override SQLite database path")
 
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         srv = create_server(cfg, db=db)
         srv.app.start_background_tasks()
         print(
-            f"OverlordsXI Combat Analytics listening on http://{cfg.host}:{cfg.port} "
+            f"SoulspireXI Combat Analytics listening on http://{cfg.host}:{cfg.port} "
             f"(db={cfg.db_path}, serve_site={cfg.serve_static_site}, retention={cfg.retention_per_character}/char)"
         )
         if db.count_users() == 0 and not (cfg.discord_enabled or cfg.github_enabled):

@@ -1,4 +1,4 @@
--- OverlordsXI Dancer Crystal Spec (Vampire - Healer)
+-- SoulspireXI Dancer Crystal Spec (Vampire - Healer)
 -- Define custom DNC Vampire Job Abilities (462-463; recastIds 155-156) with level = 255:
 --   - Sanguine Waltz (462, 18s CD, Self / Party 15y, recastId 155)
 --   - Nocturne Feast (463, 25s CD, Enemy 8y / Party 15y, recastId 156)
