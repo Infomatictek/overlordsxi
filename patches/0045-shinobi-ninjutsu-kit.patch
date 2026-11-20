@@ -1,0 +1,87 @@
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -2087,6 +2087,30 @@ auto isKagemushaSpec(CBattleEntity* PEntity) -> bool
+     return PChar != nullptr && PChar->GetMJob() == xi::Job::NIN && PChar->GetMLevel() >= 10 && PChar->hasTrait(161);
+ }
+ 
++auto isShinobiSpec(CBattleEntity* PEntity) -> bool
++{
++    auto* PChar = dynamic_cast<CCharEntity*>(PEntity);
++    return PChar != nullptr && PChar->GetMJob() == xi::Job::NIN && PChar->GetMLevel() >= 10 && PChar->GetLocalVar("OX_SHINOBI_ACTIVE") == 1;
++}
++
++auto isShinobiKitSpell(const SpellID spellId) -> bool
++{
++    switch (spellId)
++    {
++        case SpellID::Katon_Ichi:
++        case SpellID::Hyoton_Ichi:
++        case SpellID::Huton_Ichi:
++        case SpellID::Doton_Ichi:
++        case SpellID::Raiton_Ichi:
++        case SpellID::Suiton_Ichi:
++        case SpellID::Utsusemi_Ichi:
++        case SpellID::Utsusemi_Ni:
++            return true;
++        default:
++            return false;
++    }
++}
++
+ auto TryInterruptSpell(CBattleEntity* PAttacker, CBattleEntity* PDefender, CSpell* PSpell) -> bool
+ {
+     // Early return: Spell can't be interrupted.
+@@ -3853,7 +3877,12 @@ auto HasNinjaTool(CBattleEntity* PEntity, CSpell* PSpell, bool ConsumeTool) -> b
+         if (isKagemushaSpec(PChar) && PSpell->getSpellFamily() == SPELLFAMILY_UTSUSEMI)
+         {
+             return true;
+         }
++
++        if (isShinobiSpec(PChar) && isShinobiKitSpell(PSpell->getID()))
++        {
++            return true;
++        }
+ 
+         uint8  SlotID = 0;
+         uint16 toolID = PSpell->getMPCost();
+@@ -6018,7 +6047,39 @@ auto CalculateSpellRecastTime(CBattleEntity* PEntity, CSpell* PSpell) -> timer::
+         {
+             base = 22000ms;
+         }
+     }
++    else if (isShinobiSpec(PEntity))
++    {
++        switch (PSpell->getID())
++        {
++            case SpellID::Utsusemi_Ichi:
++                base = 20000ms;
++                break;
++            case SpellID::Utsusemi_Ni:
++                base = 30000ms;
++                break;
++            case SpellID::Katon_Ichi: // False Assault
++                base = 12000ms;
++                break;
++            case SpellID::Hyoton_Ichi: // Mirror Step
++                base = 16000ms;
++                break;
++            case SpellID::Huton_Ichi: // Crosscut
++                base = 14000ms;
++                break;
++            case SpellID::Doton_Ichi: // Shadow Pin
++                base = 18000ms;
++                break;
++            case SpellID::Raiton_Ichi: // Thunder Relay
++                base = 22000ms;
++                break;
++            case SpellID::Suiton_Ichi: // Final Mirage
++                base = 45000ms;
++                break;
++            default:
++                break;
++        }
++    }
+     auto recast = base;
+ 
+     const auto recastReductionCap                 = settings::get<float>("map.SPELL_RECAST_REDUCTION_CAP");

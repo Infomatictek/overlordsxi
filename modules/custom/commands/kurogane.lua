@@ -61,9 +61,13 @@ commandObj.onTrigger = function(player, sub, amount)
     elseif sub == 'status' then
         local snap = K.getSnapshot(player)
         local errorText = snap.last_error ~= '' and (' | Error: ' .. snap.last_error) or ''
-        tell(player, string.format('Prototype %s | Clones %d (eng %d/start %d/inactive %d/wrong %d) | Look %d/%d | Target %d alive=%s ownerEng=%s | Hits %d attempts %d | Next %ds | Melee %s%s',
+        local phaseText = string.format('%s(%ds hits=%d/2 open=%ds last=%s)',
+            snap.phase_name or 'Building', snap.phase_rem or 0, snap.feint_hits or 0,
+            snap.opening_rem or 0, (snap.last_cmd and snap.last_cmd ~= '') and snap.last_cmd or '-')
+        tell(player, string.format('Shinobi %s | Clones %d (eng %d/start %d/inactive %d/wrong %d) | Phase %s | Look %d/%d | Target %d alive=%s ownerEng=%s | Hits %d attempts %d | Next %ds | Melee %s%s',
             K.ENABLE_EXPERIMENTAL_CLONES and 'ON' or 'OFF', snap.clones, snap.engaged or 0,
             snap.startup or 0, snap.inactive or 0, snap.wrong_target or 0,
+            phaseText,
             snap.appearance_ok or 0, snap.clones, snap.target_id or 0,
             tostring(snap.target_alive == true), tostring(snap.owner_engaged == true),
             snap.attributed_hits or 0, snap.attempts or 0, snap.next_exp,
