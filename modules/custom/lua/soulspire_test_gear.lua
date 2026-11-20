@@ -3581,7 +3581,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'dagger', offhand = 'auto', ranged = 'throwing', ammo = 'none', label = 'Dancer (Daggers & Throwing TP)' }
     elseif jobId == (j.SCH or 20) then
-        if specKey == 'medic' then
+        if specKey == 'archivist' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SCH Archivist (Staff & Countermeasures)', specEntry = specEntry }
+        elseif specKey == 'medic' then
             return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'SCH Medic (Staff & Orphic Egg)', specEntry = specEntry }
         elseif specKey == 'sage' then
             return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'SCH Sage (Staff & Orphic Egg)', specEntry = specEntry }
@@ -3687,6 +3689,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.SCH or 20) and testGear.getActiveSpecKey(player, jobId) == 'archivist' then
+        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    end
     if jobId == (xi.job.BLU or 16) and testGear.getActiveSpecKey(player, jobId) == 'warmage' then
         return wKey == 'sword' or wKey == 'club' or wKey == 'club_mage'
     end

@@ -2999,6 +2999,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     spellblade     = { [S.GREAT_SWORD or 4] = true },
     lifebinder     = RUN_OPEN_SKILLS,
     medic          = SCH_OPEN_SKILLS,
+    archivist      = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     sage           = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true, [S.CLUB or 11] = true, [S.STAFF or 12] = true }, -- SCH + BRD Musician
     necromancer    = { [S.SCYTHE or 7] = true },
     astromancer    = { [S.STAFF or 12] = true },
