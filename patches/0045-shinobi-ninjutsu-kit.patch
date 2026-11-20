@@ -1,8 +1,8 @@
 diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
 --- a/src/map/utils/battleutils.cpp
 +++ b/src/map/utils/battleutils.cpp
-@@ -2087,6 +2087,30 @@ auto isKagemushaSpec(CBattleEntity* PEntity) -> bool
-     return PChar != nullptr && PChar->GetMJob() == xi::Job::NIN && PChar->GetMLevel() >= 10 && PChar->hasTrait(161);
+@@ -2170,6 +2170,30 @@ auto isCrimsonFlowSpell(CSpell* PSpell) -> bool
+            PSpell->getID() == SpellID::Phalanx);
  }
  
 +auto isShinobiSpec(CBattleEntity* PEntity) -> bool
