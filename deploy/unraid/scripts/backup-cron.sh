@@ -22,11 +22,11 @@ if [ -f "${ENV_FILE}" ]; then
     set +a
 fi
 
-APPDATA_DIR="${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}"
+APPDATA_DIR="${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}"
 KEEP_DAILY="${BACKUP_KEEP_DAILY:-14}"
 KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"
 
-"${SCRIPT_DIR}/overlords-ctl.sh" backup "scheduled" "daily"
+"${SCRIPT_DIR}/soulspire-ctl.sh" backup "scheduled" "daily"
 
 # Promote Sunday backups (day 7) to weekly retention
 if [ "$(date +%u)" = "7" ]; then

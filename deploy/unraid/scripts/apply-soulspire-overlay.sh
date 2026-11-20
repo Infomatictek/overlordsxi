@@ -4,12 +4,12 @@ set -euo pipefail
 # Applies SoulspireXI engine patches, custom modules, and modules/init.txt
 # cleanly onto a pinned LandSandBoat checkout inside Docker (or Linux).
 #
-# Usage: apply-overlords-overlay.sh <overlords_repo_dir> <lsb_server_dir>
+# Usage: apply-soulspire-overlay.sh <overlords_repo_dir> <lsb_server_dir>
 
-OVERLORDS_DIR="${1:?overlords_repo_dir required}"
+SOULSPIRE_DIR="${1:?overlords_repo_dir required}"
 SERVER_DIR="${2:?lsb_server_dir required}"
 
-echo "==> Applying SoulspireXI patches from ${OVERLORDS_DIR}/patches to ${SERVER_DIR}"
+echo "==> Applying SoulspireXI patches from ${SOULSPIRE_DIR}/patches to ${SERVER_DIR}"
 cd "${SERVER_DIR}"
 
 applied=0
@@ -40,13 +40,13 @@ while IFS= read -r patch; do
         git apply --check "${patch}" || true
         exit 1
     fi
-done < <(LC_ALL=C find "${OVERLORDS_DIR}/patches" -maxdepth 1 -type f -name '*.patch' | sort)
+done < <(LC_ALL=C find "${SOULSPIRE_DIR}/patches" -maxdepth 1 -type f -name '*.patch' | sort)
 
 echo "==> Patches complete: ${applied} applied, ${skipped} skipped."
 
 echo "==> Syncing SoulspireXI custom modules (lua, cpp, sql, commands)..."
 for sub in lua cpp sql commands; do
-    src="${OVERLORDS_DIR}/modules/custom/${sub}"
+    src="${SOULSPIRE_DIR}/modules/custom/${sub}"
     dst="${SERVER_DIR}/modules/custom/${sub}"
     if [ -d "${src}" ]; then
         mkdir -p "${dst}"
@@ -70,7 +70,7 @@ if [ ! -f "${INIT_FILE}" ]; then
 fi
 
 # Strip UTF-8 BOM and CRLF, filter stale entries, append SoulspireXI entries idempotently
-python3 - "${INIT_FILE}" "${OVERLORDS_DIR}/modules/init.append.txt" <<'PYEOF'
+python3 - "${INIT_FILE}" "${SOULSPIRE_DIR}/modules/init.append.txt" <<'PYEOF'
 import sys
 from pathlib import Path
 
@@ -109,10 +109,10 @@ print(f"    modules/init.txt updated ({added} SoulspireXI entries added).")
 PYEOF
 
 echo "==> Seeding SoulspireXI default gameplay settings (main.lua, map.lua)..."
-if [ -d "${OVERLORDS_DIR}/deploy/unraid/config/settings" ]; then
+if [ -d "${SOULSPIRE_DIR}/deploy/unraid/config/settings" ]; then
     for cfg in main.lua map.lua; do
-        if [ -f "${OVERLORDS_DIR}/deploy/unraid/config/settings/${cfg}" ]; then
-            cp "${OVERLORDS_DIR}/deploy/unraid/config/settings/${cfg}" "${SERVER_DIR}/settings/${cfg}"
+        if [ -f "${SOULSPIRE_DIR}/deploy/unraid/config/settings/${cfg}" ]; then
+            cp "${SOULSPIRE_DIR}/deploy/unraid/config/settings/${cfg}" "${SERVER_DIR}/settings/${cfg}"
             echo "    Installed settings/${cfg}"
         fi
     done

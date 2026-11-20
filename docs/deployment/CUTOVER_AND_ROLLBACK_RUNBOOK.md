@@ -8,7 +8,7 @@
 
 All items must be verified before starting the cutover window:
 
-- [ ] All 6 Unraid containers pass `./scripts/overlords-ctl.sh verify`.
+- [ ] All 6 Unraid containers pass `./scripts/soulspire-ctl.sh verify`.
 - [ ] Phase 5 local LAN gameplay validation passed (including 66 Souls, Shinobi clones, Proving Grounds, container recreation).
 - [ ] Phase 6–8 VPS + WireGuard + `play.<domain>` external client tests passed (login, zoning, logout, reconnect).
 - [ ] Phase 10 security & privacy verification passed (`verify-privacy.sh`).
@@ -29,18 +29,18 @@ All items must be verified before starting the cutover window:
 3. **Stop Windows MariaDB (Prevent Accidental Re-Start/Split-Brain):**
    - Stop `mariadbd.exe` on Windows and keep `C:\dev\server`, `C:\dev\mariadb`, and `C:\overlordsxi-migration-cutover` intact (do **not** delete!).
 4. **Transfer & Restore Final DB to Unraid:**
-   - Copy `xidb-final-cutover-*.sql.gz` and `.sha256` to `/mnt/user/appdata/overlordsxi/backups/`.
+   - Copy `xidb-final-cutover-*.sql.gz` and `.sha256` to `/mnt/user/appdata/soulspirexi/backups/`.
    - On Unraid:
      ```bash
-     ./scripts/overlords-ctl.sh restore /mnt/user/appdata/overlordsxi/backups/xidb-final-cutover-*.sql.gz
-     ./scripts/overlords-ctl.sh set-zone-ip <VPS_PUBLIC_IPV4>
+     ./scripts/soulspire-ctl.sh restore /mnt/user/appdata/soulspirexi/backups/xidb-final-cutover-*.sql.gz
+     ./scripts/soulspire-ctl.sh set-zone-ip <VPS_PUBLIC_IPV4>
      ```
 5. **Verify Parity Against Windows Manifest:**
    - Compare restored table/row counts (`tables_total`, `accounts`, `chars`, `char_vars`, `char_inventory`, `status_effects`, `zone_settings`) against `xidb-final-cutover-*.manifest.json`.
 6. **Start Unraid Production & Verify Health:**
    ```bash
-   ./scripts/overlords-ctl.sh restart
-   ./scripts/overlords-ctl.sh verify
+   ./scripts/soulspire-ctl.sh restart
+   ./scripts/soulspire-ctl.sh verify
    ```
 7. **Switch Public Endpoint & Launcher:**
    - Confirm Cloudflare `A` record `play.<domain>` → `<VPS_PUBLIC_IPV4>` (DNS only).
@@ -56,7 +56,7 @@ All items must be verified before starting the cutover window:
 ### Scenario A — Rollback Application Image Only (Unraid DB Healthy)
 If a new SoulspireXI Docker image has a regression:
 ```bash
-./scripts/overlords-ctl.sh rollback <previous-known-good-tag>
+./scripts/soulspire-ctl.sh rollback <previous-known-good-tag>
 ```
 Persistent MariaDB data and player progress are preserved.
 
@@ -68,7 +68,7 @@ To prevent divergent player progression:
    ```
 2. **Export any post-cutover progress from Unraid (if players logged in):**
    ```bash
-   ./scripts/overlords-ctl.sh backup rollback-export
+   ./scripts/soulspire-ctl.sh backup rollback-export
    ```
 3. **Decide DB state:**
    - If no players played on Unraid (or progress is discarded): restart Windows `mariadbd.exe` and `start_server.ps1` directly from the untouched Windows DB.

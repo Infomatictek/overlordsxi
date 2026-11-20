@@ -12,7 +12,7 @@ set -euo pipefail
 #   backup [label]       Create consistent gzipped MariaDB backup + SHA256
 #   restore <sql.gz>     Restore a backup into MariaDB + verify schema/counts
 #   set-zone-ip <ipv4>   Update zone_settings.zoneip (preserves zone 0 port 0)
-#   db-migrate           Run LandSandBoat dbtool.py update & re-apply OVERLORDS_ZONE_IP
+#   db-migrate           Run LandSandBoat dbtool.py update & re-apply SOULSPIRE_ZONE_IP
 #   rollback <tag>       Roll back to a previously built image tag
 #   restart [service]    Gracefully restart one or all game services
 #   status               Show container status, health, and active image tag
@@ -33,9 +33,9 @@ if [ -f "${ENV_FILE}" ]; then
     set +a
 fi
 
-APPDATA_DIR="${APPDATA_DIR:-/mnt/user/appdata/overlordsxi}"
-OVERLORDS_IMAGE="${OVERLORDS_IMAGE:-overlordsxi/server}"
-OVERLORDS_TAG="${OVERLORDS_TAG:-latest}"
+APPDATA_DIR="${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}"
+SOULSPIRE_IMAGE="${SOULSPIRE_IMAGE:-soulspirexi/server}"
+SOULSPIRE_TAG="${SOULSPIRE_TAG:-latest}"
 MARIADB_DATABASE="${MARIADB_DATABASE:-xidb}"
 PUID="${PUID:-99}"
 PGID="${PGID:-100}"
@@ -104,18 +104,18 @@ cmd_build() {
     local commit_sha
     commit_sha="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo 'unknown')"
 
-    echo "==> Building ${OVERLORDS_IMAGE}:${tag} (commit ${commit_sha})"
+    echo "==> Building ${SOULSPIRE_IMAGE}:${tag} (commit ${commit_sha})"
     DOCKER_BUILDKIT=1 docker build \
         --platform linux/amd64 \
         -f "${DEPLOY_DIR}/Dockerfile" \
         --build-arg "UID=${PUID}" \
         --build-arg "GID=${PGID}" \
-        --build-arg "OVERLORDS_VERSION=${tag}" \
-        --build-arg "OVERLORDS_COMMIT=${commit_sha}" \
-        -t "${OVERLORDS_IMAGE}:${tag}" \
+        --build-arg "SOULSPIRE_VERSION=${tag}" \
+        --build-arg "SOULSPIRE_COMMIT=${commit_sha}" \
+        -t "${SOULSPIRE_IMAGE}:${tag}" \
         "${REPO_ROOT}"
 
-    echo "==> Built ${OVERLORDS_IMAGE}:${tag} successfully."
+    echo "==> Built ${SOULSPIRE_IMAGE}:${tag} successfully."
 }
 
 cmd_backup() {
@@ -129,7 +129,7 @@ cmd_backup() {
     local out_file="${out_dir}/xidb-${label}-${ts}.sql.gz"
 
     echo "==> Backing up ${MARIADB_DATABASE} -> ${out_file}"
-    docker exec overlordsxi-mariadb \
+    docker exec soulspirexi-mariadb \
         mariadb-dump -uroot "-p${MARIADB_ROOT_PASSWORD}" \
         --single-transaction --routines --triggers --events --hex-blob \
         --default-character-set=utf8mb4 \
@@ -165,24 +165,24 @@ cmd_restore() {
     dc up -d mariadb
     echo "==> Waiting for MariaDB health..."
     for _ in $(seq 1 30); do
-        if [ "$(docker inspect -f '{{.State.Health.Status}}' overlordsxi-mariadb 2>/dev/null || true)" = "healthy" ]; then
+        if [ "$(docker inspect -f '{{.State.Health.Status}}' soulspirexi-mariadb 2>/dev/null || true)" = "healthy" ]; then
             break
         fi
         sleep 2
     done
 
     echo "==> Restoring ${src} into ${MARIADB_DATABASE}..."
-    docker exec -i overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -e \
+    docker exec -i soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -e \
         "CREATE DATABASE IF NOT EXISTS \`${MARIADB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
     if [[ "${src}" == *.gz ]]; then
-        gunzip -c "${src}" | docker exec -i overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}"
+        gunzip -c "${src}" | docker exec -i soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}"
     else
-        docker exec -i overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" < "${src}"
+        docker exec -i soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" < "${src}"
     fi
 
     echo "==> Verifying restored table & row counts:"
-    docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e "
+    docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e "
         SELECT 'tables_total', COUNT(*) FROM information_schema.TABLES WHERE table_schema='${MARIADB_DATABASE}'
         UNION ALL SELECT 'accounts', COUNT(*) FROM accounts
         UNION ALL SELECT 'chars', COUNT(*) FROM chars
@@ -192,9 +192,9 @@ cmd_restore() {
         UNION ALL SELECT 'zone_settings', COUNT(*) FROM zone_settings;
     "
 
-    if [ -n "${OVERLORDS_ZONE_IP:-}" ] && [ "${OVERLORDS_ZONE_IP}" != "127.0.0.1" ]; then
-        echo "==> Applying OVERLORDS_ZONE_IP=${OVERLORDS_ZONE_IP} to zone_settings..."
-        cmd_set_zone_ip "${OVERLORDS_ZONE_IP}"
+    if [ -n "${SOULSPIRE_ZONE_IP:-}" ] && [ "${SOULSPIRE_ZONE_IP}" != "127.0.0.1" ]; then
+        echo "==> Applying SOULSPIRE_ZONE_IP=${SOULSPIRE_ZONE_IP} to zone_settings..."
+        cmd_set_zone_ip "${SOULSPIRE_ZONE_IP}"
     fi
     echo "==> Restore complete. Start services with: $0 restart"
 }
@@ -207,9 +207,9 @@ cmd_set_zone_ip() {
         exit 1
     fi
     echo "==> Updating zone_settings.zoneip -> ${ip}"
-    docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" -e \
+    docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" -e \
         "UPDATE zone_settings SET zoneip = '${ip}';"
-    docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" -e \
+    docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" -e \
         "SELECT zoneip, zoneport, COUNT(*) AS zones FROM zone_settings GROUP BY zoneip, zoneport;"
 }
 
@@ -218,30 +218,30 @@ cmd_db_migrate() {
     cmd_backup "pre-migrate" "pre-deploy"
     echo "==> Running LandSandBoat dbtool.py update..."
     dc --profile tools run --rm db-migrate
-    if [ -n "${OVERLORDS_ZONE_IP:-}" ]; then
-        cmd_set_zone_ip "${OVERLORDS_ZONE_IP}"
+    if [ -n "${SOULSPIRE_ZONE_IP:-}" ]; then
+        cmd_set_zone_ip "${SOULSPIRE_ZONE_IP}"
     fi
 }
 
 update_env_tag() {
     local tag="$1"
-    if grep -q '^OVERLORDS_TAG=' "${ENV_FILE}"; then
-        sed -i "s|^OVERLORDS_TAG=.*|OVERLORDS_TAG=${tag}|" "${ENV_FILE}"
+    if grep -q '^SOULSPIRE_TAG=' "${ENV_FILE}"; then
+        sed -i "s|^SOULSPIRE_TAG=.*|SOULSPIRE_TAG=${tag}|" "${ENV_FILE}"
     else
-        echo "OVERLORDS_TAG=${tag}" >> "${ENV_FILE}"
+        echo "SOULSPIRE_TAG=${tag}" >> "${ENV_FILE}"
     fi
 }
 
 cmd_deploy() {
     require_env
     local tag="${1:?Usage: $0 deploy <tag>}"
-    if ! docker image inspect "${OVERLORDS_IMAGE}:${tag}" >/dev/null 2>&1; then
-        echo "[ERROR] Image ${OVERLORDS_IMAGE}:${tag} not found locally. Run '$0 build ${tag}' first." >&2
+    if ! docker image inspect "${SOULSPIRE_IMAGE}:${tag}" >/dev/null 2>&1; then
+        echo "[ERROR] Image ${SOULSPIRE_IMAGE}:${tag} not found locally. Run '$0 build ${tag}' first." >&2
         exit 1
     fi
 
     # Take pre-deploy DB backup if MariaDB is already running
-    if [ "$(docker inspect -f '{{.State.Running}}' overlordsxi-mariadb 2>/dev/null || true)" = "true" ]; then
+    if [ "$(docker inspect -f '{{.State.Running}}' soulspirexi-mariadb 2>/dev/null || true)" = "true" ]; then
         cmd_backup "pre-deploy-${tag}" "pre-deploy"
     fi
 
@@ -253,7 +253,7 @@ cmd_deploy() {
 
     echo "==> Waiting for health checks..."
     for _ in $(seq 1 20); do
-        if [ "$(docker inspect -f '{{.State.Health.Status}}' overlordsxi-map 2>/dev/null || true)" = "healthy" ]; then
+        if [ "$(docker inspect -f '{{.State.Health.Status}}' soulspirexi-map 2>/dev/null || true)" = "healthy" ]; then
             break
         fi
         sleep 3
@@ -279,7 +279,7 @@ cmd_restart() {
 
 cmd_status() {
     require_env
-    echo "==> Active OVERLORDS_TAG=${OVERLORDS_TAG}"
+    echo "==> Active SOULSPIRE_TAG=${SOULSPIRE_TAG}"
     dc ps
 }
 
