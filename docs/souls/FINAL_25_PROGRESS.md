@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 13/25. Current: Arcane Archer. Blocked: none.
-- Latest pushed Soul implementation commits: server `dfa5aab1bf4a1dad768fc7ba9f5ed4d951df2598`, launcher `38862b165b8d4964bc31f43086410c12f1f5aaf9`. The server branch also carries this tracker update.
+- Completed: 14/25. Current: Nightblade. Blocked: none.
+- Latest pushed Soul implementation commits: server `b040bf127776d1cc23fb95413548f417660afca0`, launcher `53ed85a9a1517ff95cc1a3792b258c2e2963ba07`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -24,8 +24,8 @@
 | 11 | DRK | Reaper | reaper | Damage | Pushed. Manual verification required. |
 | 12 | DRK | Scourge | scourge | Support | Pushed. Manual verification required. |
 | 13 | RNG | Sniper | sniper | Damage | Pushed. Manual verification required. |
-| 14 | RNG | Arcane Archer | arcanearcher | Support | Current |
-| 15 | NIN | Nightblade | nightblade | Support | Pending |
+| 14 | RNG | Arcane Archer | arcanearcher | Support | Pushed. Manual verification required. |
+| 15 | NIN | Nightblade | nightblade | Support | Current |
 | 16 | DRG | Lancer | lancer | Damage | Pending |
 | 17 | DRG | Skyborn | skyborn | Tank | Pending |
 | 18 | BLU | Warmage | warmage | Damage | Pending |
@@ -79,4 +79,6 @@
 - **Scourge architecture:** Use native mob action scope to distinguish physical TP damage and spell damage from ordinary swings. Apply Famine only inside standard cure and healing-move calculations, and keep party fallback separate from the enemy-wide curse slot.
 - **Sniper checkpoint:** [Implementation report](completed/sniper.md). Server `dfa5aab1bf4a1dad768fc7ba9f5ed4d951df2598`, launcher `38862b165b8d4964bc31f43086410c12f1f5aaf9`. Three focused tests, 89 accessible regression tests, strict Lua wiki and roster, 15 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Sniper architecture:** Route the repurposed action through native ranged state and the ordinary ammo/damage resolver with an explicitly scoped one-projectile profile. Validate the target and equipment again at release. Keep the stock ranged animation and result line for the aimed shot.
-- **Next step:** Implement Arcane Archer's exclusive six-element Bow mark, qualifying party follow-up and solo elemental Bow WS at half potency, with native actions, progression, HUD and tests.
+- **Arcane Archer checkpoint:** [Implementation report](completed/arcanearcher.md). Server `b040bf127776d1cc23fb95413548f417660afca0`, launcher `53ed85a9a1517ff95cc1a3792b258c2e2963ba07`. Four focused tests, 93 accessible regression tests, strict Lua wiki and roster, 15 native syntax checks, three shared Lua syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Arcane Archer architecture:** Distinct ranged action profiles share native aim and ammo handling. Reserve one matching elemental mark before damage and finish the claim only after actual HP loss; prove spell, skillchain and solo bow WS contexts explicitly.
+- **Next step:** Implement Nightblade's reactive combat control using its approved planned interruption and fallback rules, with Native Soul Actions, progression and HUD.
