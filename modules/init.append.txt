@@ -58,6 +58,7 @@ custom/sql/rdm_specs.sql
 
 custom/lua/drk_specs.lua
 custom/lua/drk_reaper_specs.lua
+custom/lua/drk_scourge_specs.lua
 custom/sql/drk_specs.sql
 custom/lua/soulspire_healer_helpers.lua
 custom/lua/whm_specs.lua

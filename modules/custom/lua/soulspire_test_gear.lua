@@ -3528,6 +3528,8 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.DRK or 8) then
         if specKey == 'reaper' then
             return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'DRK Reaper (Scythe)', specEntry = specEntry }
+        elseif specKey == 'scourge' then
+            return { role = 'caster', weapon = 'scythe', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'DRK Scourge (Scythe Curses)', specEntry = specEntry }
         end
         return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dark Knight (Scythe TP)' }
     elseif jobId == (j.BST or 9) then
@@ -3669,8 +3671,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
-    if jobId == (xi.job.DRK or 8) and testGear.getActiveSpecKey(player, jobId) == 'reaper' then
-        return wKey == 'scythe'
+    if jobId == (xi.job.DRK or 8) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'reaper' or activeSpec == 'scourge' then return wKey == 'scythe' end
     end
     if jobId == (xi.job.PLD or 7) and testGear.getActiveSpecKey(player, jobId) == 'oathbreaker' then
         return wKey == 'gsword'
