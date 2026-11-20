@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 2/25. Current: Astromancer. Blocked: none.
-- Latest pushed Soul implementation commits: server `57285260d8b2604a50cf779331cfee1a20ef86e7`, launcher `463d7b43b040f48a47e34aaf0cc672e089577b9c`. The server branch also carries this tracker update.
+- Completed: 3/25. Current: Channeler. Blocked: none.
+- Latest pushed Soul implementation commits: server `4e1ee017c2e53e2b205771dabc7ab89823e780fb`, launcher `2966b5c5b0f2982ef3e25e80733e7d5500620454`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -13,8 +13,8 @@
 |---|---|---|---|---|---|
 | 1 | WHM | Zealot | zealot | Damage | Pushed. Manual verification required. |
 | 2 | WHM | Valkyrie | valkyrie | Support | Pushed. Manual verification required. |
-| 3 | BLM | Astromancer | astromancer | Damage | Current |
-| 4 | BLM | Channeler | channeler | Support | Pending |
+| 3 | BLM | Astromancer | astromancer | Damage | Pushed. Manual verification required. |
+| 4 | BLM | Channeler | channeler | Support | Current |
 | 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Pending |
 | 6 | RDM | Royal Tactician | royaltactician | Support | Pending |
 | 7 | THF | Bandit | bandit | Damage | Pending |
@@ -57,4 +57,6 @@
 - **Zealot architecture:** `whm_zealot_specs.lua` exposes its spell table to the wiki exporter and uses the existing Soul Action registry. `0046-zealot-native-actions.patch` handles virtual spell grants, filtered native menus, scoped action permission and cast/ability swap invalidation. It also exposes a staff-hit event after positive main-hand damage. Launcher rules require the corresponding branch for wiki verification.
 - **Valkyrie checkpoint:** [Implementation report](completed/valkyrie.md). Server `57285260d8b2604a50cf779331cfee1a20ef86e7`, launcher `463d7b43b040f48a47e34aaf0cc672e089577b9c`. Seven focused WHM tests and 54 non-loopback tests passed. Strict roster audit: 43 registered, 23 planned. Strict wiki generation and nine action wiki tests passed. Native patch application, nine C++ syntax checks, launcher TSVs and 1,109 manifest entries verified.
 - **Valkyrie architecture:** `whm_valkyrie_specs.lua` registers Wingmate and Escort. `0047-valkyrie-native-actions.patch` records a hostile interruption, scopes one protected retry to the original spell and tracks actual MP spent. Scoped Polearm equipment/skill and `!gear` support are included. `!gear` also now selects Staff for Zealot.
-- **Next step:** reconcile the approved Astromancer Ancient Magic design in `docs/soul-action-whitelist-and-astromancer.md` with the Sequence C prototype. Verify current single-target cast, cost and resolve hooks. Implement a complete Lv.10 filler/Ancient Magic loop including shared per-target Astral Saturation, with a matched native action catalog and HUD.
+- **Astromancer checkpoint:** [Implementation report](completed/astromancer.md). Server `4e1ee017c2e53e2b205771dabc7ab89823e780fb`, launcher `2966b5c5b0f2982ef3e25e80733e7d5500620454`. Four focused tests and 58 local non-loopback tests passed. Strict roster audit: 44 registered, 22 planned. Wiki generated all 16 actions. Native patch checked and 11 C++ units syntax-checked. Launcher validator and 1,109 manifest entries passed.
+- **Astromancer architecture:** `blm_astromancer_specs.lua` owns probes, selection, cast presentation and Saturation. `0048-astromancer-native-actions.patch` validates virtual grants, costs and Ancient recovery. It applies the bonus in native damage calculation and confirms actual HP loss before claiming the shared target window. Mob spawn resets Saturation.
+- **Next step:** inspect Channeler's Sequence E Conduit Link prototype and compare its approved cast/MP support with the current magic init, cost, interruption and completion paths. Respect the exclusion of Ancient Magic and Channeler-to-Channeler links. Wire Lv.10 support without borrowing Astromancer or Cleric gameplay.
