@@ -630,16 +630,58 @@ local function resolveBossAoeTremor(session)
     end
 
     b.aoeTremorsResolved = (b.aoeTremorsResolved or 0) + 1
-    local extra = adapt.tremorAppliesDebuff and ' (Ritual Empowered: Defense Down inflicted!)' or ''
+    local extra = adapt.tremorAppliesDebuff and ' A heavy ward weakens your defenses!' or ''
     broadcast(session, string.format('Grudgeburrow shakes the cavern with BURROW TREMOR (%d targets hit)!%s', hitCount, extra))
 end
 
-local function spawnStage3Boss(session)
-    if session.stage == 3 or session.finished then
+-- Dynamically recalculates and applies Grudgeburrow's exact adaptation modifiers
+-- in real time as hidden-unlock encounters (Burrow Shaman / Stoneguard) resolve.
+local function syncBossAdaptationMods(session)
+    if session == nil then
         return
     end
-    session.stage = 3
-    session.pendingStageSpawnAt = nil
+    local adapt = C.computeBossAdaptations(session)
+    session.bossAdaptations = adapt
+
+    local b = session.bossState
+    if not b or not isMobAlive(b.mob) then
+        return
+    end
+
+    local targetAttp   = adapt.attackBonusPct
+    local targetDefp   = adapt.defDeltaPct
+    local targetPhysDt = adapt.physDtDeltaPct * 100
+
+    local dAttp   = targetAttp - (b.appliedAttp or 0)
+    local dDefp   = targetDefp - (b.appliedDefp or 0)
+    local dPhysDt = targetPhysDt - (b.appliedPhysDt or 0)
+
+    if dAttp ~= 0 then
+        safeAddMod(b.mob, xi.mod and xi.mod.ATTP, dAttp)
+        b.appliedAttp = targetAttp
+    end
+    if dDefp ~= 0 then
+        safeAddMod(b.mob, xi.mod and xi.mod.DEFP, dDefp)
+        b.appliedDefp = targetDefp
+    end
+    if dPhysDt ~= 0 then
+        safeAddMod(b.mob, xi.mod and xi.mod.DMGPHYS, dPhysDt)
+        b.appliedPhysDt = targetPhysDt
+    end
+
+    local cfg = session.mode.grudgeburrow
+    b.heavyCadence = math.max(12, cfg.heavyIntervalSec + adapt.heavyIntervalDeltaSec)
+    b.aoeCadence   = math.max(16, cfg.aoeIntervalSec + adapt.aoeIntervalDeltaSec)
+    if not b.engaged then
+        b.nextHeavyAt = b.heavyCadence - cfg.heavyTelegraphSec
+        b.nextAoeAt   = b.aoeCadence - cfg.aoeWarningSec
+    end
+end
+
+local function spawnStage3Boss(session)
+    if session.bossState ~= nil or session.finished then
+        return
+    end
     session.bossAdaptations = C.computeBossAdaptations(session)
 
     local cfg = session.mode.grudgeburrow
@@ -662,6 +704,9 @@ local function spawnStage3Boss(session)
         exposedRemaining   = 0,
         heavySlamsResolved = 0,
         aoeTremorsResolved = 0,
+        appliedAttp        = 0,
+        appliedDefp        = 0,
+        appliedPhysDt      = 0,
     }
 
     local mob = spawnExpeditionMob(session, C.ENCOUNTERS.grudgeburrow, cfg.level, cfg.hpMultiplier, C.ARENA_POS.grudgeburrow, {
@@ -678,11 +723,10 @@ local function spawnStage3Boss(session)
                 session.exitCountdown = C.VICTORY_EXIT_SEC
                 writeTelemetryRecord(session, 'victory')
                 broadcast(session, string.format(
-                    'VICTORY! Grudgeburrow has fallen! [%s | %d players | %ds | Adaptations: %s]',
+                    'VICTORY! Grudgeburrow has fallen! [%s | %d players | %ds]',
                     session.mode.shortLabel,
                     session.initialPartySize,
-                    session.elapsedSec,
-                    session.bossAdaptations.summary
+                    session.elapsedSec
                 ))
                 broadcast(session, string.format(
                     'Prototype complete (0 EXP / 0 gil / 0 loot). Returning safely to your hub in %ds (or speak to the Guide to exit now).',
@@ -699,16 +743,8 @@ local function spawnStage3Boss(session)
 
     if mob then
         session.bossState.mob = mob
-        safeAddMod(mob, xi.mod and xi.mod.ATTP, adapt.attackBonusPct)
-        safeAddMod(mob, xi.mod and xi.mod.DEFP, adapt.defDeltaPct)
-        safeAddMod(mob, xi.mod and xi.mod.DMGPHYS, adapt.physDtDeltaPct * 100)
+        syncBossAdaptationMods(session)
     end
-
-    broadcast(session, string.format(
-        'ENCOUNTER 3/3: GRUDGEBURROW (Lv.%d) emerges! Active traits: %s',
-        cfg.level,
-        adapt.summary
-    ))
 end
 
 local function tickStage3Boss(session)
@@ -794,6 +830,7 @@ local function enterStoneguardExposed(session, brokenEarly)
     end
     if brokenEarly then
         session.stoneguardCleanBreak = true
+        syncBossAdaptationMods(session)
     end
     local dur = session.mode.stoneguard.exposedDurationSec
     sg.exposedActive = true
@@ -803,12 +840,12 @@ local function enterStoneguardExposed(session, brokenEarly)
     safeAddMod(sg.mob, xi.mod and xi.mod.DEFP, -35)
     if brokenEarly then
         broadcast(session, string.format(
-            'IRON SHELL SHATTERED! The Stoneguard is EXPOSED for %ds (+35%% physical / +25%% magic damage taken)!',
+            'IRON SHELL SHATTERED! The Stoneguard is EXPOSED for %ds!',
             dur
         ))
     else
         broadcast(session, string.format(
-            'The Stoneguard drops Iron Shell and lowers its guard — EXPOSED for %ds! Strike now!',
+            'The Stoneguard drops Iron Shell and lowers its guard — EXPOSED for %ds!',
             dur
         ))
     end
@@ -831,17 +868,15 @@ local function enterStoneguardStance(session)
         end)
     end
     broadcast(session, string.format(
-        'The Stoneguard enters IRON SHELL STANCE (%ds)! Melee attacks suffer counter-spikes and -65%% damage — hold TP or shatter it with magic!',
+        'The Stoneguard retreats into IRON SHELL STANCE (%ds)! Melee strikes rebound off its carapace — hold TP or break it with magic!',
         cfg.stanceDurationSec
     ))
 end
 
 local function spawnStage2Stoneguard(session)
-    if session.stage >= 2 or session.finished then
+    if session.stoneguardState ~= nil or session.finished then
         return
     end
-    session.stage = 2
-    session.pendingStageSpawnAt = nil
 
     local cfg = session.mode.stoneguard
     session.stoneguardState =
@@ -869,10 +904,8 @@ local function spawnStage2Stoneguard(session)
                 session.stoneguardState.stanceActive = false
                 session.stoneguardState.exposedActive = false
             end
-            broadcast(session, 'The Stoneguard falls! Its resonant ward shatters — Grudgeburrow\'s stone armor is WEAKENED (-25% DEF, +15% physical damage taken)!')
-            broadcast(session, 'Regroup and recover — Grudgeburrow arrives in 6 seconds!')
-            session.pendingStageSpawnAt = session.elapsedSec + 6
-            session.pendingStageNumber = 3
+            syncBossAdaptationMods(session)
+            broadcast(session, 'The Stoneguard crumbles. Cracks spiderweb across the cavern floor as a distant weight gives way.')
         end,
     })
 
@@ -900,11 +933,6 @@ local function spawnStage2Stoneguard(session)
             end)
         end
     end
-
-    broadcast(session, string.format(
-        'ENCOUNTER 2/3: THE STONEGUARD (Lv.%d) blocks the inner passage! Time your offense around its Iron Shell Stance — defeating it will weaken Grudgeburrow\'s armor.',
-        cfg.level
-    ))
 end
 
 local function tickStage2Stoneguard(session)
@@ -946,7 +974,7 @@ local function tickStage2Stoneguard(session)
 end
 
 -----------------------------------
--- Stage 1: The Burrow Shaman (Ritual Caster)
+-- Hidden Unlock: The Burrow Shaman (Ritual Caster)
 -----------------------------------
 local function breakShamanRitual(session, reason)
     local sh = session.shamanState
@@ -955,8 +983,9 @@ local function breakShamanRitual(session, reason)
     end
     sh.ritualState = 'broken'
     session.shamanRitualBroken = true
+    syncBossAdaptationMods(session)
     broadcast(session, string.format(
-        'RITUAL INTERRUPTED (%s)! The Burrow Ward shatters — Grudgeburrow\'s dark empowerment is DENIED!',
+        'The Burrow Shaman\'s chant shatters (%s) — a resonant hum fades somewhere deeper in the cavern.',
         tostring(reason or 'disrupted')
     ))
 end
@@ -968,7 +997,8 @@ local function completeShamanRitual(session)
     end
     sh.ritualState = 'completed'
     session.shamanRitualBroken = false
-    broadcast(session, 'THE BURROW WARD RITUAL COMPLETES! Dark energy surges deeper into the chamber — Grudgeburrow will enter EMPOWERED!')
+    syncBossAdaptationMods(session)
+    broadcast(session, 'The Burrow Shaman completes its chant! A deep pulse ripples across the stone.')
 end
 
 local function checkStage1Complete(session)
@@ -982,17 +1012,14 @@ local function checkStage1Complete(session)
     sh.cleared = true
     if sh.ritualState ~= 'completed' then
         session.shamanRitualBroken = true
+        syncBossAdaptationMods(session)
     end
-    local statusText = session.shamanRitualBroken
-        and 'Ritual DENIED (Grudgeburrow will NOT be empowered).'
-        or 'Ritual COMPLETED (Grudgeburrow will enter EMPOWERED!).'
-    broadcast(session, 'Encounter 1 cleared! ' .. statusText .. ' The Stoneguard advances in 5 seconds!')
-    session.pendingStageSpawnAt = session.elapsedSec + 5
-    session.pendingStageNumber = 2
 end
 
 local function spawnStage1Shaman(session)
-    session.stage = 1
+    if session.shamanState ~= nil or session.finished then
+        return
+    end
     local cfg = session.mode.shaman
     session.shamanState =
     {
@@ -1023,6 +1050,8 @@ local function spawnStage1Shaman(session)
             elseif session.shamanState and session.shamanState.ritualState == 'pending' then
                 session.shamanState.ritualState = 'broken'
                 session.shamanRitualBroken = true
+                syncBossAdaptationMods(session)
+                broadcast(session, 'The Burrow Shaman falls silent — a resonant hum fades somewhere deeper in the cavern.')
             end
             checkStage1Complete(session)
         end,
@@ -1056,13 +1085,6 @@ local function spawnStage1Shaman(session)
         })
         session.shamanState.acolyte = acolyte
     end
-
-    local addNote = cfg.spawnAcolyte and ' A Burrow Acolyte guards its flank — establish enmity and prioritize the Shaman!' or ''
-    broadcast(session, string.format(
-        'ENCOUNTER 1/3: THE BURROW SHAMAN (Lv.%d) awaits ahead. Prepare your buffs, then pull when ready!%s',
-        cfg.level,
-        addNote
-    ))
 end
 
 local function tickStage1Shaman(session)
@@ -1086,7 +1108,7 @@ local function tickStage1Shaman(session)
         sh.ritualRemaining = cfg.ritualDurationSec
         sh.ritualStartHpp = (sh.mob.getHPP and sh.mob:getHPP()) or 100
         broadcast(session, string.format(
-            'The Burrow Shaman begins chanting the BURROW WARD RITUAL (%ds)! Interrupt with Stun/Silence, a Weapon Skill, or burst it down!',
+            'The Burrow Shaman begins chanting a strange ritual (%ds)! Interrupt with Stun/Silence, a Weapon Skill, or burst it down!',
             cfg.ritualDurationSec
         ))
     elseif sh.ritualState == 'channeling' then
@@ -1104,7 +1126,7 @@ local function tickStage1Shaman(session)
         sh.ritualRemaining = sh.ritualRemaining - 1
         if sh.ritualRemaining == 15 or sh.ritualRemaining == 5 then
             broadcast(session, string.format(
-                'Burrow Ward Ritual: %ds remaining before Grudgeburrow is empowered!',
+                'The Burrow Shaman\'s chant swells (%ds remaining)...',
                 sh.ritualRemaining
             ))
         elseif sh.ritualRemaining <= 0 then
@@ -1118,10 +1140,9 @@ end
 -----------------------------------
 local function buildInInstanceGuideMenu(player, session)
     local modeLabel = session and session.mode and session.mode.shortLabel or 'Expedition'
-    local stageText = session and string.format('Stage %d/3', session.stage or 1) or 'Active'
     return
     {
-        title = string.format('Burrows Guide (%s - %s)', modeLabel, stageText),
+        title = string.format('Burrows Guide (%s)', modeLabel),
         options =
         {
             {
@@ -1132,18 +1153,14 @@ local function buildInInstanceGuideMenu(player, session)
                         return
                     end
                     local rem = math.max(0, C.TIME_LIMIT_SEC - (session.elapsedSec or 0))
-                    local ritualTxt = (session.shamanState and session.shamanState.ritualState == 'completed') and 'Completed (Boss Empowered)'
-                        or (session.shamanRitualBroken and 'Interrupted (Boss Unempowered)' or 'In Progress')
-                    local guardTxt = session.stoneguardDefeated and 'Defeated (Boss Armor Weakened)' or 'Pending'
+                    local bossStanding = (session.bossState and isMobAlive(session.bossState.mob)) and 'Active in the chamber ahead' or 'Defeated'
                     tell(p, string.format(
-                        '%s [%s] | Stage %d/3 | Time Left: %dm %02ds | Shaman Ritual: %s | Stoneguard: %s',
+                        '%s [%s] | Time Left: %dm %02ds | Grudgeburrow: %s',
                         C.EXPEDITION_NAME,
                         session.mode.label,
-                        session.stage or 1,
                         math.floor(rem / 60),
                         rem % 60,
-                        ritualTxt,
-                        guardTxt
+                        bossStanding
                     ))
                 end,
             },
@@ -1308,9 +1325,7 @@ function B.buildHubMenu(player)
                         C.EXPEDITION_NAME,
                         C.EFFECTIVE_LEVEL
                     ))
-                    tell(p, '1. The Burrow Shaman: Interrupt its ritual (Stun/Silence, Weapon Skill, or burst) to deny Grudgeburrow\'s empowerment.')
-                    tell(p, '2. The Stoneguard: Respect Iron Shell Stance (hold melee or shatter with magic) to expose it; defeating it weakens Grudgeburrow\'s armor.')
-                    tell(p, '3. Grudgeburrow: Survive telegraphed Crushing Burrow Slams & Burrow Tremors, then burst during its 8s Exposed Core windows!')
+                    tell(p, 'Grudgeburrow waits at the heart of the cavern. Other denizens lurk along the chamber flanks — observant parties may decide whether to challenge the boss directly or explore first.')
                     tell(p, 'Rules: Effective Lv.10 sync (original level restored on exit), zero entry items/fees, unlimited replays, zero rewards (gameplay test prototype).')
                     openLater(p, B.buildHubMenu)
                 end,
@@ -1427,10 +1442,15 @@ function I.onInstanceCreatedCallback(requester, instance)
         synced[#synced + 1] = member
     end
 
-    -- Spawn in-instance Guide NPC and Encounter 1 (Burrow Shaman) inside this isolated instance.
+    -- Spawn in-instance Guide book + ALL encounter mobs at the beginning:
+    -- Grudgeburrow is showcased front-and-center; Shaman & Stoneguard lurk on
+    -- separated flanks as non-obvious hidden unlocks that weaken Grudgeburrow live.
     session.initialized = true
+    session.stage = 3
     spawnInInstanceGuide(session)
+    spawnStage3Boss(session)
     spawnStage1Shaman(session)
+    spawnStage2Stoneguard(session)
 
     -- Zone every participant into the isolated Ghoyu's Reverie instance.
     for _, member in ipairs(synced) do
@@ -1454,7 +1474,7 @@ function I.afterInstanceRegister(player)
         end)
     end
     tell(player, string.format(
-        'Entered %s [%s | Effective Lv.%d]. Zero rewards enabled. Speak to the Guide beside you at any time to check status or exit safely.',
+        'Entered %s [%s | Effective Lv.%d]. Grudgeburrow looms straight ahead in the main chamber — survey your surroundings and engage when ready. (Zero rewards prototype.)',
         C.EXPEDITION_NAME,
         session.mode.label,
         C.EFFECTIVE_LEVEL
@@ -1551,26 +1571,10 @@ function I.onInstanceTimeUpdate(instance, elapsed)
         session.wipeSec = 0
     end
 
-    -- Handle delayed stage spawns (breather between encounters).
-    if session.pendingStageSpawnAt ~= nil and session.elapsedSec >= session.pendingStageSpawnAt then
-        local nextStage = session.pendingStageNumber
-        session.pendingStageSpawnAt = nil
-        session.pendingStageNumber = nil
-        if nextStage == 2 then
-            spawnStage2Stoneguard(session)
-        elseif nextStage == 3 then
-            spawnStage3Boss(session)
-        end
-    end
-
-    -- Tick active encounter mechanics.
-    if session.stage == 1 then
-        tickStage1Shaman(session)
-    elseif session.stage == 2 then
-        tickStage2Stoneguard(session)
-    elseif session.stage == 3 then
-        tickStage3Boss(session)
-    end
+    -- Tick all active encounters concurrently (all mobs spawn at instance start).
+    tickStage1Shaman(session)
+    tickStage2Stoneguard(session)
+    tickStage3Boss(session)
 end
 
 function I.onInstanceProgressUpdate(instance, progress)

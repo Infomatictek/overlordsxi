@@ -538,9 +538,20 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
                 inGhoyus = (tank:getZoneID() == xi.zone.GHOYUS_REVERIE),
             }
 
-            -- Encounter 1: The Burrow Shaman (interrupt via Weapon Skill during channel)
-            local shaman = session.shamanState.mob
-            assert(shaman ~= nil and session.shamanState.acolyte == nil)
+            -- ALL mobs must be spawned immediately at instance start (boss showcased + flank hidden unlocks)
+            local boss = session.bossState and session.bossState.mob or nil
+            local shaman = session.shamanState and session.shamanState.mob or nil
+            local sg = session.stoneguardState and session.stoneguardState.mob or nil
+            assert(boss ~= nil and shaman ~= nil and sg ~= nil, 'All 3 encounters must spawn at start')
+            assert(session.shamanState.acolyte == nil, 'Low Man must not spawn Burrow Acolyte')
+
+            -- Grudgeburrow starts with FULL intact protections (ATTP +18, DEFP +25, DMGPHYS -2000)
+            local initialBossMods = {
+                attp = boss:getMod(xi.mod.ATTP),
+                defp = boss:getMod(xi.mod.DEFP),
+                physDt = boss:getMod(xi.mod.DMGPHYS),
+            }
+
             local mobNoRewards = {
                 expVar = shaman:getLocalVar('[BurrowsReborn]ExpeditionMob'),
                 pgVar = shaman:getLocalVar('[ProvingGrounds]TrialMob'),
@@ -550,23 +561,22 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
                 expBonus = shaman:getMobMod(xi.mobMod.EXP_BONUS),
                 cfh = shaman:getCallForHelpFlag(),
             }
+
+            -- Hidden Unlock 1: Interrupt Burrow Shaman via Weapon Skill -> strips Grudgeburrow ATTP live!
             shaman:engage(tank)
             for t = 1, 6 do I.onInstanceTimeUpdate(session.instance, t) end
             assert(session.shamanState.ritualState == 'channeling', 'Shaman should be channeling ritual')
             shaman:fireListener('WEAPONSKILL_TAKE', tank)
             assert(session.shamanState.ritualState == 'broken', 'WS should interrupt ritual')
+            assert(boss:getMod(xi.mod.ATTP) == 0, 'Breaking Shaman ritual must strip boss ATTP live')
             shaman:kill(tank)
 
-            -- Advance 5s breather -> Stage 2: The Stoneguard
-            for t = 7, 12 do I.onInstanceTimeUpdate(session.instance, t) end
-            assert(session.stage == 2, 'Stage 2 should spawn')
-            local sg = session.stoneguardState.mob
+            -- Hidden Unlock 2: Engage Stoneguard (already spawned!) -> magic shatter + defeat strips boss armor live!
             sg:engage(tank)
-            for t = 13, 22 do I.onInstanceTimeUpdate(session.instance, t) end
+            for t = 7, 16 do I.onInstanceTimeUpdate(session.instance, t) end
             assert(session.stoneguardState.stanceActive == true, 'Stoneguard should enter Iron Shell')
             local stancePhysDt = sg:getMod(xi.mod.DMGPHYS)
 
-            -- Melee hit during Iron Shell triggers counter-spike; magic damage shatters it early
             local hpBeforeSpike = tank:getHP()
             sg:fireListener('TAKE_DAMAGE', 20, tank, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
             local tookSpike = (tank:getHP() < hpBeforeSpike)
@@ -576,10 +586,6 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
             assert(session.stoneguardCleanBreak == true, 'Clean break flag should be set')
             sg:kill(tank)
 
-            -- Advance 6s breather -> Stage 3: Grudgeburrow
-            for t = 23, 29 do I.onInstanceTimeUpdate(session.instance, t) end
-            assert(session.stage == 3, 'Stage 3 Grudgeburrow should spawn')
-            local boss = session.bossState.mob
             local adapt = session.bossAdaptations
             assert(adapt.ritualEmpowered == false, 'Ritual was broken -> unempowered')
             assert(adapt.armorWeakened == true, 'Stoneguard defeated -> armor weakened')
@@ -593,7 +599,7 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
             -- Fight Grudgeburrow through a telegraphed Crushing Burrow Slam + Exposed Core + AoE Tremor
             tank:addStatusEffect(xi.effect.DEFENDER, 1, 0, 60)
             boss:engage(tank)
-            for t = 30, 60 do
+            for t = 17, 50 do
                 tank:setHP(tank:getMaxHP())
                 healer:setHP(healer:getMaxHP())
                 I.onInstanceTimeUpdate(session.instance, t)
@@ -605,7 +611,7 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
             -- Defeat Grudgeburrow -> Victory + 12s grace -> full state restore + safe hub return
             boss:kill(tank)
             assert(session.outcome == 'victory')
-            for t = 61, 74 do I.onInstanceTimeUpdate(session.instance, t) end
+            for t = 51, 64 do I.onInstanceTimeUpdate(session.instance, t) end
 
             local restored = {
                 tankLvl = tank:getMainLvl(),
@@ -621,6 +627,7 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
 
             return {
                 syncCheck = syncCheck,
+                initialBossMods = initialBossMods,
                 mobNoRewards = mobNoRewards,
                 stancePhysDt = stancePhysDt,
                 tookSpike = tookSpike,
@@ -647,6 +654,11 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
         self.assertGreaterEqual(sc["tankPetSync"], 1)
         self.assertTrue(sc["inGhoyus"])
 
+        # Initial showcased Grudgeburrow has both hidden locks intact
+        self.assertEqual(res["initialBossMods"]["attp"], 18)
+        self.assertEqual(res["initialBossMods"]["defp"], 25)
+        self.assertEqual(res["initialBossMods"]["physDt"], -2000)
+
         nr = res["mobNoRewards"]
         self.assertEqual(nr["expVar"], 1)
         self.assertEqual(nr["pgVar"], 1)
@@ -658,6 +670,7 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
 
         self.assertEqual(res["stancePhysDt"], -6500)
         self.assertTrue(res["tookSpike"])
+        # After both hidden unlocks, Grudgeburrow mods stripped live
         self.assertEqual(res["bossMods"]["attp"], 0)
         self.assertEqual(res["bossMods"]["defp"], -25)
         self.assertEqual(res["bossMods"]["physDt"], 1500)
@@ -691,12 +704,12 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
             local B = xi.soulspire.burrows.runtime
             local I = xi.soulspire.burrows.instance
 
-            -- Party A: Low Man (2 players) -> will BREAK Shaman ritual
+            -- Party A: Low Man (2 players) -> breaks Shaman ritual + kills Stoneguard
             local a1 = MOCK.newPlayer(201, 'A1', 50, xi.zone.PORT_SAN_DORIA, 'berserker')
             local a2 = MOCK.newPlayer(202, 'A2', 10, xi.zone.PORT_SAN_DORIA, 'medic')
             MOCK.makeParty({ a1, a2 })
 
-            -- Party B: Full Party (6 players) -> will ALLOW Shaman ritual to COMPLETE
+            -- Party B: Full Party (6 players) -> rushes Grudgeburrow directly (no hidden unlocks!)
             local bParty = {}
             for i = 1, 6 do
                 bParty[i] = MOCK.newPlayer(300 + i, 'B' .. i, 10 + i * 10, xi.zone.PORT_WINDURST, 'commander')
@@ -710,56 +723,52 @@ class BurrowsLiveLuaSimulationTests(unittest.TestCase):
             local sessB = B.getSessionForPlayer(bParty[1])
             assert(sessA.runId ~= sessB.runId, 'Concurrent parties must have distinct runIds')
             assert(sessA.instance ~= sessB.instance, 'Concurrent parties must have isolated instances')
-            assert(sessB.shamanState.acolyte ~= nil, 'Full Party must spawn Burrow Acolyte')
+            assert(sessB.shamanState.acolyte ~= nil, 'Full Party must spawn Burrow Acolyte at start')
+            assert(sessB.bossState.mob ~= nil and sessB.stoneguardState.mob ~= nil, 'All Full Party mobs must spawn at start')
 
-            -- Party A breaks ritual via STUN and clears Stage 1 & 2
+            -- Party A breaks Shaman ritual via STUN and kills Stoneguard -> Grudgeburrow weakened live
             sessA.shamanState.mob:engage(a1)
             for t = 1, 6 do I.onInstanceTimeUpdate(sessA.instance, t) end
             sessA.shamanState.mob:addStatusEffect(xi.effect.STUN, 1, 0, 5)
             I.onInstanceTimeUpdate(sessA.instance, 7)
             assert(sessA.shamanState.ritualState == 'broken')
             sessA.shamanState.mob:kill(a1)
-            for t = 8, 13 do I.onInstanceTimeUpdate(sessA.instance, t) end
             sessA.stoneguardState.mob:kill(a1)
-            for t = 14, 20 do I.onInstanceTimeUpdate(sessA.instance, t) end
 
-            -- Party B lets ritual COMPLETE, kills Shaman + Acolyte, clears Stage 2
-            sessB.shamanState.mob:engage(bParty[1])
-            for t = 1, 35 do I.onInstanceTimeUpdate(sessB.instance, t) end
-            assert(sessB.shamanState.ritualState == 'completed', 'Party B ritual should complete')
-            sessB.shamanState.mob:kill(bParty[1])
-            assert(sessB.stage == 1, 'Stage 1 must wait until Burrow Acolyte is also defeated')
-            sessB.shamanState.acolyte:kill(bParty[1])
-            for t = 36, 42 do I.onInstanceTimeUpdate(sessB.instance, t) end
-            assert(sessB.stage == 2)
-            sessB.stoneguardState.mob:kill(bParty[1])
-            for t = 43, 50 do I.onInstanceTimeUpdate(sessB.instance, t) end
-            assert(sessB.stage == 3)
-
-            -- Trigger Party B's empowered Grudgeburrow AoE Tremor -> should apply DEFENSE_DOWN
+            -- Party B rushes straight to Grudgeburrow without touching Shaman or Stoneguard
             sessB.bossState.mob:engage(bParty[1])
-            for t = 51, 80 do
+            for t = 1, 30 do
                 for _, p in ipairs(bParty) do p:setHP(p:getMaxHP()) end
                 I.onInstanceTimeUpdate(sessB.instance, t)
             end
+            local bDefDownApplied = bParty[1]:hasStatusEffect(xi.effect.DEFENSE_DOWN)
+            local bBossAttp = sessB.bossState.mob:getMod(xi.mod.ATTP)
+            local bBossDefp = sessB.bossState.mob:getMod(xi.mod.DEFP)
+            sessB.bossState.mob:kill(bParty[1])
 
             return {
                 aEmpowered = sessA.bossAdaptations.ritualEmpowered,
                 aBossAttp = sessA.bossState.mob:getMod(xi.mod.ATTP),
+                aBossDefp = sessA.bossState.mob:getMod(xi.mod.DEFP),
                 bEmpowered = sessB.bossAdaptations.ritualEmpowered,
-                bBossAttp = sessB.bossState.mob:getMod(xi.mod.ATTP),
                 bArmorWeak = sessB.bossAdaptations.armorWeakened,
-                bDefDownApplied = bParty[1]:hasStatusEffect(xi.effect.DEFENSE_DOWN),
+                bBossAttp = bBossAttp,
+                bBossDefp = bBossDefp,
+                bDefDownApplied = bDefDownApplied,
+                bOutcome = sessB.outcome,
             }
             """
         )
 
         self.assertFalse(res["aEmpowered"])
         self.assertEqual(res["aBossAttp"], 0)
+        self.assertEqual(res["aBossDefp"], -25)
         self.assertTrue(res["bEmpowered"])
+        self.assertFalse(res["bArmorWeak"])
         self.assertEqual(res["bBossAttp"], 18)
-        self.assertTrue(res["bArmorWeak"])
+        self.assertEqual(res["bBossDefp"], 25)
         self.assertTrue(res["bDefDownApplied"])
+        self.assertEqual(res["bOutcome"], "victory")
 
     def test_wipe_failure_recovery_and_disconnect_handling(self):
         res = self.lua.execute(

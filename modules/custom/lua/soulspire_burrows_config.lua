@@ -88,16 +88,17 @@ C.FALLBACK_RETURN =
 }
 
 -- Verified walkable chamber coordinates inside Ghoyu's Reverie (zone 129).
--- Players enter at the southern staging area (z=416) facing north (rot=192)
--- toward the open encounter floor (x=450..466, z=434..464).
+-- All encounter mobs spawn at instance start: Grudgeburrow is showcased straight
+-- ahead at center while The Burrow Shaman (west flank) and The Stoneguard (east
+-- flank) wait in separated positions as non-obvious hidden unlocks.
 C.ARENA_POS =
 {
     entry        = { x = 458.000, y = 0.000, z = 416.000, rotation = 192 },
     guideNpc     = { x = 430.9652, y = 0.5000, z = 400.6440, rotation = 238 },
-    shaman       = { x = 458.000, y = 0.200, z = 438.000, rotation = 64  },
-    acolyte      = { x = 453.000, y = 0.200, z = 438.000, rotation = 64  },
-    stoneguard   = { x = 458.000, y = 0.200, z = 442.000, rotation = 64  },
-    grudgeburrow = { x = 458.000, y = 0.200, z = 446.000, rotation = 64  },
+    shaman       = { x = 442.000, y = 0.200, z = 434.000, rotation = 32  },
+    acolyte      = { x = 439.000, y = 0.200, z = 434.000, rotation = 32  },
+    stoneguard   = { x = 466.000, y = 0.200, z = 434.000, rotation = 96  },
+    grudgeburrow = { x = 458.000, y = 0.200, z = 456.000, rotation = 64  },
 }
 
 -- Two difficulty modes, both fighting at effective Level 10.

@@ -32,30 +32,27 @@ Inside **Ghoyu's Reverie**, an in-instance **Burrows Expedition Guide** stands a
    - **Low Man (1–3 Players, Lv. 10 Sync)** — balanced primarily around 2 players.
    - **Full Party (4–6 Players, Lv. 10 Sync)** — balanced primarily around 6 players.
 4. You are synced to Level 10 and transported directly into an isolated Ghoyu's Reverie chamber at `(458.0, 0.0, 416.0)`.
-5. Buff and position at the staging area, then pull **The Burrow Shaman** when ready.
+5. **All encounters are already spawned at the start**: **Grudgeburrow** is showcased straight ahead at `(458.0, 0.2, 456.0)`, while **The Burrow Shaman** (west flank) and **The Stoneguard** (east flank) wait in separated positions. Parties may rush Grudgeburrow directly or explore the flanks first to discover hidden ways to strip its protections in real time.
 
-## The Three Connected Encounters
+## Chamber Layout & Hidden Unlocks
 
-### 1. The Burrow Shaman (Ritual Caster)
-- **Enemy**: `The Burrow Shaman` (Lv. 10 Low Man / Lv. 11 Full Party; Full Party adds a Lv. 10 `Burrow Acolyte` for enmity & target priority).
-- **Mechanic**: 6 seconds after engagement, the Shaman begins chanting the **Burrow Ward Ritual** (28s Low Man / 26s Full Party).
-- **Counterplay**: Interrupt the ritual before it finishes by inflicting **Stun** or **Silence**, landing a **Weapon Skill**, bursting its HP during the channel (`>= 25%` Low Man / `>= 22%` Full Party), or defeating it in time.
-- **Boss Impact**:
-  - **Interrupted / Defeated**: Grudgeburrow's dark empowerment is **denied**.
-  - **Completed**: Grudgeburrow enters **Ritual Empowered** (`+18%` ATK, faster heavy slam & AoE cadences, and `Burrow Tremor` inflicts a 10s Defense Down).
-
-### 2. The Stoneguard (Defensive Stance & Timing)
-- **Enemy**: `The Stoneguard` (Lv. 11 Low Man / Lv. 12 Full Party).
-- **Mechanic**: Cycles into **Iron Shell Stance** for 12s (`-65%` physical damage taken, `+20` MDEF, melee counter-spikes), followed by an **8s Guard Broken / Exposed** window (`+35%` physical / `+25%` magic damage taken, `-35%` DEF).
-- **Counterplay**: Hold heavy melee TP skills during Iron Shell and burst during the Exposed window — or shatter Iron Shell early with elemental magic damage or Defense Down (which also grants a bonus `+5%` Exposed damage window on Grudgeburrow).
-- **Boss Impact**: Defeating The Stoneguard shatters Grudgeburrow's stone plating (**-25% DEF, +15% physical damage taken**).
-
-### 3. Grudgeburrow (Final Boss)
+### Showcased Boss: Grudgeburrow `(458.0, 0.2, 456.0)`
 - **Enemy**: `Grudgeburrow` (Lv. 12 Low Man / Lv. 13 Full Party, NM scaling).
+- **Default State at Spawn**: Starts with **both** of its innate protections active (Dark Ward `+18%` ATK / faster slams & tremors / Defense Down on Tremor, plus Stone Plating `+25%` DEF / `-20%` physical damage taken). Parties that rush straight in face the full-strength boss.
 - **Mechanics**:
   - **Crushing Burrow Slam**: Telegraphed 5 seconds in advance against the primary enmity target. Mitigated by active tank cooldowns (Defender, Sentinel, Rampart, Palisade, Phalanx, Utsusemi) and capped safely to reward tanking & healing rather than one-shotting.
   - **Exposed Core (8s)**: Immediately follows every Crushing Burrow Slam (`+30%` / `+35%` physical damage taken, `+25%` magic damage taken, `-25%` DEF) for coordinated Weapon Skill and Soul bursts.
-  - **Burrow Tremor**: Warned 3 seconds in advance; deals manageable earth AoE damage across the chamber (plus 10s Defense Down if the Shaman's ritual completed).
+  - **Burrow Tremor**: Warned 3 seconds in advance; deals manageable earth AoE damage across the chamber (plus 10s Defense Down if its Dark Ward is still active).
+
+### Hidden Unlock 1: The Burrow Shaman `(442.0, 0.2, 434.0)`
+- **Enemy**: `The Burrow Shaman` (Lv. 10 Low Man / Lv. 11 Full Party; Full Party adds a Lv. 10 `Burrow Acolyte` at `(439.0, 0.2, 434.0)`).
+- **Mechanic**: 6 seconds after engagement, the Shaman begins chanting a ritual (28s Low Man / 26s Full Party).
+- **Hidden Effect**: Interrupting the ritual (Stun/Silence, Weapon Skill, burst damage, or defeating the Shaman before the chant finishes) immediately strips Grudgeburrow's Dark Ward in real time (`ATTP` returns to baseline, slower slam/tremor cadence, no Defense Down on Tremor) with only a subtle cavern cue.
+
+### Hidden Unlock 2: The Stoneguard `(466.0, 0.2, 434.0)`
+- **Enemy**: `The Stoneguard` (Lv. 11 Low Man / Lv. 12 Full Party).
+- **Mechanic**: Cycles into **Iron Shell Stance** for 12s (`-65%` physical damage taken, `+20` MDEF, melee counter-spikes), followed by an **8s Exposed** window (`+35%` physical / `+25%` magic damage taken, `-35%` DEF). Magic damage or Defense Down shatters Iron Shell early.
+- **Hidden Effect**: Defeating The Stoneguard immediately shatters Grudgeburrow's Stone Plating in real time (`-25%` DEF, `+15%` physical damage taken) with only a subtle cavern cue; cleanly shattering Iron Shell early also grants a hidden `+5%` bonus during Grudgeburrow's Exposed Core windows.
 
 ## Technical Architecture
 
