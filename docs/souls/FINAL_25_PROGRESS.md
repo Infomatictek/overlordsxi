@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 22/25. Current: Herald. Blocked: none.
-- Latest pushed Soul implementation commits: server `d7659bf788ae0a335ccb7fb7d53024df36ca163d`, launcher `c2c79cdc0d293dac8becf9174fc1025c793e0335`. The server branch also carries this tracker update.
+- Completed: 23/25. Current: Terramancer. Blocked: none.
+- Latest pushed Soul implementation commits: server `c6d52ae97980482c5fb825f598d02b851e38cf90`, launcher `169695cf40b4195743e30649b9169cb250eb4176`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -33,8 +33,8 @@
 | 20 | BST | Untamed | untamed | Damage | Pushed. Manual verification required. |
 | 21 | BST | Beastspeaker | beastspeaker | Support | Pushed. Manual verification required. |
 | 22 | SMN | Primalist | primalist | Damage | Pushed. Manual verification required. |
-| 23 | SMN | Herald | herald | Support | Current |
-| 24 | GEO | Terramancer | terramancer | Damage | Pending |
+| 23 | SMN | Herald | herald | Support | Pushed. Manual verification required. |
+| 24 | GEO | Terramancer | terramancer | Damage | Current |
 | 25 | GEO | Diviner | diviner | Support | Pending |
 
 ## Audit and shared patterns
@@ -97,4 +97,6 @@
 - **Beastspeaker architecture:** Resolve physical contribution in the native regular attack loop after damage mitigation. Track one claim per native round and two per party member. After actual pet melee HP loss, validate owner, assigned companion, enemy spawn and pending order before exposing.
 - **Primalist checkpoint:** [Implementation report](completed/primalist.md). Server `d7659bf788ae0a335ccb7fb7d53024df36ca163d`, launcher `c2c79cdc0d293dac8becf9174fc1025c793e0335`. Four focused tests, 123 accessible regression tests, strict Lua wiki and roster, seven native syntax checks, LuaJIT syntax, HUD fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Primalist architecture:** Use a virtual summon list driven by level and saved choices so learned spells stay intact. Fill only the matching avatar's native pet command bit. Use the common Blood Pact MP and recast pipeline and resolve the Soul bonus after elemental resistance on the bound target.
-- **Next step:** Implement Herald's approved Astral Accord, loaned avatars and support delivery. Verify party membership, one claim per member, avatar cleanup, and isolation from Celestial and Primalist.
+- **Herald checkpoint:** [Implementation report](completed/herald.md). Server `c6d52ae97980482c5fb825f598d02b851e38cf90`, launcher `169695cf40b4195743e30649b9169cb250eb4176`. Four focused tests, 127 accessible regression tests, strict Lua wiki and roster, nine native syntax checks, LuaJIT syntax, HUD fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Herald architecture:** Snapshot in-range party IDs and bind the Accord to the exact avatar entity. Reserve each matching direct damage claim before application and settle on actual HP loss. Reserve only the ordinary portion of damage when another Soul adds a burst, and route pet damage through a scoped native callback.
+- **Next step:** Implement Terramancer's approved fault/luopan damage mechanic with a native Lv. 10 opening. Verify position, enemy eligibility, gear, actions, HUD and separation from Verdant and Diviner.
