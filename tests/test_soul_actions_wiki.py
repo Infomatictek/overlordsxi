@@ -1,6 +1,7 @@
 """Automated validation tests for SoulspireXI Soul Action Wiki integration."""
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 import sys
@@ -86,14 +87,16 @@ class SoulActionWikiValidationTests(unittest.TestCase):
         self.assertEqual(len(errors), 3)
 
     def test_unsupported_action_for_planned_soul_rejected(self):
-        # THF:trickster is currently planned
+        roster = copy.deepcopy(self.roster)
+        _, entry = saw.resolve_soul_key("trickster", roster)
+        entry["implementationStatus"] = "planned"
         tsv = "trickster\tspell\t100\tPhantom Trick\tPrototype ability."
-        actions, parse_errors = saw.parse_soul_actions_tsv(tsv, self.roster)
+        actions, parse_errors = saw.parse_soul_actions_tsv(tsv, roster)
         self.assertEqual(parse_errors, [])
         _, audit = saw.integrate_soul_actions(
             jobs=[],
             job_meta={},
-            roster=self.roster,
+            roster=roster,
             launcher_actions=actions,
             launcher_visibility=[],
         )

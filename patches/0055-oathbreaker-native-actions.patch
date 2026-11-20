@@ -1,0 +1,265 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -42,6 +42,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -141,6 +142,7 @@
+     m_banditAbility = bandit::isActive(character);
+     m_tricksterAbility = trickster::isActive(character);
+     m_phantomAbility = phantom::isActive(character);
++    m_oathbreakerAbility = oathbreaker::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -320,6 +322,7 @@
+         const auto currentBandit = bandit::isActive(PChar);
+         const auto currentTrickster = trickster::isActive(PChar);
+         const auto currentPhantom = phantom::isActive(PChar);
++        const auto currentOathbreaker = oathbreaker::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -327,6 +330,7 @@
+             m_banditAbility != currentBandit || (currentBandit && !bandit::isKitAbility(PAbility->getID())) ||
+             m_tricksterAbility != currentTrickster || (currentTrickster && PAbility->getID() != trickster::PassTheBlame) ||
+             m_phantomAbility != currentPhantom || (currentPhantom && PAbility->getID() != phantom::Dare) ||
++            m_oathbreakerAbility != currentOathbreaker || (currentOathbreaker && !oathbreaker::isKitAbility(PAbility->getID())) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -58,5 +58,6 @@
+     bool                      m_banditAbility{ false };
+     bool                      m_tricksterAbility{ false };
+     bool                      m_phantomAbility{ false };
++    bool                      m_oathbreakerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -45,6 +45,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -97,6 +98,7 @@
+     m_banditCast = bandit::isActive(caster);
+     m_tricksterCast = trickster::isActive(caster);
+     m_phantomCast = phantom::isActive(caster);
++    m_oathbreakerCast = oathbreaker::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -456,7 +458,8 @@
+                           m_royalCast == royal::isActive(caster) &&
+                           m_banditCast == bandit::isActive(caster) &&
+                           m_tricksterCast == trickster::isActive(caster) &&
+-                          m_phantomCast == phantom::isActive(caster);
++                          m_phantomCast == phantom::isActive(caster) &&
++                          m_oathbreakerCast == oathbreaker::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -77,6 +77,7 @@
+     bool                    m_banditCast{ false };
+     bool                    m_tricksterCast{ false };
+     bool                    m_phantomCast{ false };
++    bool                    m_oathbreakerCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -61,6 +61,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+@@ -1146,7 +1147,17 @@
+         }
+     }
+ 
+-    return addHP(-amount);
++    const auto hpBefore = health.hp;
++    const auto result = addHP(-amount);
++    const auto hpLost = hpBefore - health.hp;
++    if (hpLost > 0 && isAlive() && !isSkillchainDamage && attacker && attacker->objtype == TYPE_MOB &&
++        (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Magical ||
++         attackType == xi::AttackType::Ranged || attackType == xi::AttackType::Breath) &&
++        oathbreaker::isActive(dynamic_cast<const CCharEntity*>(this)))
++    {
++        PAI->EventHandler.triggerListener("SOUL_DIRECT_HP_LOSS", this, attacker, hpLost);
++    }
++    return result;
+ }
+ 
+ auto CBattleEntity::STR() -> uint16
+@@ -3696,7 +3707,7 @@
+     /////////////////////////////////////////////////////////////////////////
+     const auto* character = dynamic_cast<const CCharEntity*>(this);
+     const bool trackStaffHit = zealot::isActive(character) && zealot::hasStaff(character);
+-    const auto yangBonus = scarlet::yangBonus(character);
++    const auto offensiveSwingBonus = scarlet::yangBonus(character) + oathbreaker::condemnBonus(character);
+     bool landedStaffHit = false;
+     const bool trackPhantomEvade = objtype == TYPE_MOB && phantom::isActive(dynamic_cast<const CCharEntity*>(PTarget));
+     bool phantomEvaded = false;
+@@ -3899,9 +3910,9 @@
+                 }
+ 
+                 int32 strikeDamage = attack.GetDamage();
+-                if (yangBonus > 0 && strikeDamage > 0 && weaponSlot == SLOT_MAIN && attack.GetAttackType() == PHYSICAL_ATTACK_TYPE::NORMAL)
+-                {
+-                    strikeDamage = static_cast<int32>(static_cast<int64>(strikeDamage) * (100 + yangBonus) / 100);
++                if (offensiveSwingBonus > 0 && strikeDamage > 0 && weaponSlot == SLOT_MAIN && attack.GetAttackType() == PHYSICAL_ATTACK_TYPE::NORMAL)
++                {
++                    strikeDamage = static_cast<int32>(static_cast<int64>(strikeDamage) * (100 + offensiveSwingBonus) / 100);
+                 }
+                 const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), strikeDamage, attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
+                 if (damage < 0)
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -111,6 +111,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1499,6 +1500,11 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (oathbreaker::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return PSpell->getID() == SpellID::Banish &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     return charutils::hasSpell(this, static_cast<uint16>(PSpell->getID())) && CBattleEntity::CanUseSpell(PSpell);
+ }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -30,6 +30,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -48,7 +49,9 @@
+     const bool scarletActive = scarlet::isActive(PChar);
+     const bool royalActive = royal::isActive(PChar);
+     const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar) || phantom::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive || valkyrie::isActive(PChar))
++    const bool oathbreakerActive = oathbreaker::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
++        oathbreakerActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -28,6 +28,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -50,7 +51,8 @@
+     const bool banditActive = bandit::isActive(PChar);
+     const bool tricksterActive = trickster::isActive(PChar);
+     const bool phantomActive = phantom::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || valkyrie::isActive(PChar))
++    const bool oathbreakerActive = oathbreaker::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -63,6 +65,7 @@
+                                      : banditActive ? bandit::isKitAbility(id)
+                                        : tricksterActive ? id == trickster::PassTheBlame
+                                          : phantomActive ? id == phantom::Dare
++                                           : oathbreakerActive ? oathbreaker::isKitAbility(id)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -50,6 +50,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/oathbreaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -395,7 +396,8 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger)) ||
+         (phantom::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger) &&
+-         PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)))
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
++        (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/oathbreaker_actions.h b/src/map/utils/oathbreaker_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/oathbreaker_actions.h
+@@ -0,0 +1,28 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace oathbreaker
++{
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::PLD && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_OTB_ACTIVE") == 1;
++}
++
++inline auto isKitAbility(uint16 id) -> bool
++{
++    return id == 46 || id == 48 || id == 255;
++}
++
++inline auto condemnBonus(const CCharEntity* character) -> uint32
++{
++    if (!isActive(character) || character->GetLocalVar("OX_OTB_VOW") != 1)
++    {
++        return 0;
++    }
++    const auto* weapon = dynamic_cast<const CItemWeapon*>(character->m_Weapons[SLOT_MAIN]);
++    return weapon && weapon->getSkillType() == xi::SkillType::GreatSword ? character->GetLocalVar("OX_OTB_BONUS") : 0;
++}
++} // namespace oathbreaker

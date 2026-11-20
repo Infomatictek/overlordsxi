@@ -1,0 +1,371 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -53,6 +53,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -163,7 +164,23 @@
+     m_warmageAbility = warmage::isActive(character);
+     m_archivistAbility = archivist::isActive(character);
+     m_untamedAbility = untamed::isActive(character);
++    m_beastspeakerAbility = beastspeaker::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_beastspeakerAbility)
++    {
++        if (m_abilityId == ABILITY_GAUGE || m_abilityId == ABILITY_TAME)
++        {
++            m_PAbility->setRange(15);
++            m_PAbility->setRecastTime(m_abilityId == ABILITY_GAUGE ? 10s : 25s);
++            m_PAbility->setMeritModID(0);
++        }
++        else if (m_abilityId == ABILITY_STAY)
++        {
++            m_PAbility->setRecastTime(1s);
++            m_PAbility->setCE(0);
++            m_PAbility->setVE(0);
++        }
++    }
+     if (m_untamedAbility && m_abilityId == ABILITY_CHARM)
+     {
+         m_PAbility->setRange(3);
+@@ -376,6 +393,7 @@
+         const auto currentWarmage = warmage::isActive(PChar);
+         const auto currentArchivist = archivist::isActive(PChar);
+         const auto currentUntamed = untamed::isActive(PChar);
++        const auto currentBeastspeaker = beastspeaker::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -397,6 +415,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_beastspeakerAbility != currentBeastspeaker ||
++            (currentBeastspeaker && !beastspeaker::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_untamedAbility != currentUntamed ||
+             (currentUntamed && !untamed::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_archivistAbility != currentArchivist ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -69,5 +69,6 @@
+     bool                      m_warmageAbility{ false };
+     bool                      m_archivistAbility{ false };
+     bool                      m_untamedAbility{ false };
++    bool                      m_beastspeakerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -56,6 +56,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -119,6 +120,7 @@
+     m_warmageCast = warmage::isActive(caster);
+     m_archivistCast = archivist::isActive(caster);
+     m_untamedCast = untamed::isActive(caster);
++    m_beastspeakerCast = beastspeaker::isActive(caster);
+     if (m_archivistCast && archivist::spellLevel(m_spellId) != 0)
+     {
+         const bool countermeasure = m_spellId == SpellID::Sandstorm;
+@@ -568,7 +570,8 @@
+                           m_skybornCast == skyborn::isActive(caster) &&
+                           m_warmageCast == warmage::isActive(caster) &&
+                           m_archivistCast == archivist::isActive(caster) &&
+-                          m_untamedCast == untamed::isActive(caster);
++                          m_untamedCast == untamed::isActive(caster) &&
++                          m_beastspeakerCast == beastspeaker::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -88,6 +88,7 @@
+     bool                    m_warmageCast{ false };
+     bool                    m_archivistCast{ false };
+     bool                    m_untamedCast{ false };
++    bool                    m_beastspeakerCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -3459,9 +3459,10 @@
+             auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
+             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
+         }
++        bool exposureClaimed = false;
+         actionResult.recordDamage(attack_outcome_t{
+             .atkType    = xi::AttackType::Physical,
+-            .damage     = battleutils::TakePhysicalDamage(this, PTarget, PHYSICAL_ATTACK_TYPE::RANGED, totalDamage, false, slot, realHits, nullptr, true, true),
++            .damage     = battleutils::TakePhysicalDamage(this, PTarget, PHYSICAL_ATTACK_TYPE::RANGED, totalDamage, false, slot, realHits, nullptr, true, true, false, false, nullptr, realHits == 1 ? &exposureClaimed : nullptr),
+             .target     = PTarget,
+             .isCritical = wasCritical,
+         });
+@@ -3734,6 +3735,7 @@
+     const bool trackStaffHit = zealot::isActive(character) && zealot::hasStaff(character);
+     const auto offensiveSwingBonus = scarlet::yangBonus(character) + oathbreaker::condemnBonus(character);
+     bool landedStaffHit = false;
++    bool exposureClaimed = false;
+     const bool trackPhantomEvade = objtype == TYPE_MOB && phantom::isActive(dynamic_cast<const CCharEntity*>(PTarget));
+     bool phantomEvaded = false;
+     while (attackRound.GetAttackSwingCount() && PTarget->isAlive() && this->isAlive())
+@@ -3939,7 +3941,7 @@
+                 {
+                     strikeDamage = static_cast<int32>(static_cast<int64>(strikeDamage) * (100 + offensiveSwingBonus) / 100);
+                 }
+-                const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), strikeDamage, attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
++                const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), strikeDamage, attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget, &exposureClaimed);
+                 if (damage < 0)
+                 {
+                     actionResult.param     = -damage;
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -122,6 +122,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1511,7 +1512,7 @@
+     {
+         return false;
+     }
+-    if (untamed::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((untamed::isActive(this) || beastspeaker::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -41,6 +41,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -68,8 +69,9 @@
+     const bool warmageActive = warmage::isActive(PChar);
+     const bool archivistActive = archivist::isActive(PChar);
+     const bool untamedActive = untamed::isActive(PChar);
++    const bool beastspeakerActive = beastspeaker::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -91,7 +93,7 @@
+                                             : nightbladeActive ? nightblade::spellLevel(spellId)
+                                               : warmageActive ? warmage::spellLevel(spellId)
+                                                 : archivistActive ? archivist::spellLevel(spellId)
+-                                                  : untamedActive ? 0
++                                                  : (untamedActive || beastspeakerActive) ? 0
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -39,6 +39,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -72,7 +73,8 @@
+     const bool warmageActive = warmage::isActive(PChar);
+     const bool archivistActive = archivist::isActive(PChar);
+     const bool untamedActive = untamed::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || valkyrie::isActive(PChar))
++    const bool beastspeakerActive = beastspeaker::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -96,6 +98,7 @@
+                                                            : warmageActive ? id == warmage::Assess && PChar->GetMLevel() >= 10
+                                                              : archivistActive ? archivist::kitAbility(id, PChar->GetMLevel())
+                                                                : untamedActive ? untamed::kitAbility(id, PChar->GetMLevel())
++                                                                 : beastspeakerActive ? beastspeaker::kitAbility(id, PChar->GetMLevel())
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -61,6 +61,7 @@
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -418,7 +419,8 @@
+         (archivist::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
+         (untamed::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe) &&
+-         PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)))
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)) ||
++        (beastspeaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe)))
+     {
+         return false;
+     }
+@@ -2346,7 +2348,7 @@
+  *                                                                       *
+  ************************************************************************/
+ 
+-auto TakePhysicalDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, PHYSICAL_ATTACK_TYPE physicalAttackType, int32 damage, bool isBlocked, uint8 slot, uint16 tpMultiplier, CBattleEntity* taChar, bool giveTPtoVictim, bool giveTPtoAttacker, bool isCounter, bool isCovered, CBattleEntity* POriginalTarget) -> int32
++auto TakePhysicalDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, PHYSICAL_ATTACK_TYPE physicalAttackType, int32 damage, bool isBlocked, uint8 slot, uint16 tpMultiplier, CBattleEntity* taChar, bool giveTPtoVictim, bool giveTPtoAttacker, bool isCounter, bool isCovered, CBattleEntity* POriginalTarget, bool* exposureClaimed) -> int32
+ {
+     auto* weapon              = GetEntityWeapon(PAttacker, (SLOTTYPE)slot);
+     giveTPtoAttacker          = giveTPtoAttacker && !PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::MeikyoShisui);
+@@ -2522,10 +2524,33 @@
+ 
+     damage = CheckAndApplyDamageCap(damage, PDefender);
+ 
++    const bool regularPhysical = exposureClaimed && !isCounter && damage > 0 && PDefender->objtype == TYPE_MOB &&
++                                 (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Ranged);
++    const auto damageBeforeExposure = damage;
++    if (regularPhysical && !*exposureClaimed && PAttacker->objtype == TYPE_PC && PDefender->GetLocalVar("OX_BSP_EXPOSED") != 0)
++    {
++        const auto bonus = luautils::callGlobal<int32>("xi.soulspire.beastspeaker.bonus", PAttacker, PDefender, static_cast<uint8>(damageType));
++        damage = CheckAndApplyDamageCap(std::min(99999, damage + damage * std::clamp(bonus, 0, 12) / 100), PDefender);
++    }
++    const auto hpBefore = regularPhysical ? PDefender->health.hp : 0;
++
+     // Scarlet Delirium: Updates status effect power with damage bonus
+     battleutils::HandleScarletDelirium(PDefender, damage);
+ 
+     int32 corrected = PDefender->takeDamage(damage, PAttacker, attackType, damageType);
++    if (regularPhysical && PDefender->health.hp < hpBefore)
++    {
++        if (damage > damageBeforeExposure)
++        {
++            *exposureClaimed = luautils::callGlobal<bool>("xi.soulspire.beastspeaker.claim", PAttacker, PDefender, static_cast<uint8>(damageType));
++        }
++        auto* owner = PAttacker->PMaster;
++        if (!isRanged && PAttacker->objtype == TYPE_PET && beastspeaker::isActive(owner) &&
++            owner->GetLocalVar("OX_BSP_PENDING") != 0)
++        {
++            luautils::callGlobal<void>("xi.soulspire.beastspeaker.onTrackerHit", PAttacker, PDefender, owner);
++        }
++    }
+     if (damage < 0)
+     {
+         damage = -corrected;
+diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
+--- a/src/map/utils/battleutils.h
++++ b/src/map/utils/battleutils.h
+@@ -155,7 +155,7 @@
+ auto GetAGICritBonus(CBattleEntity* PAttacker, CBattleEntity* PDefender) -> int8;
+ auto GetDamageRatio(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool isCritical, float bonusAttPercent, xi::SkillType weaponType, SLOTTYPE weaponSlot, bool isCannonball) -> float;
+ 
+-auto TakePhysicalDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, PHYSICAL_ATTACK_TYPE physicalAttackType, int32 damage, bool isBlocked, uint8 slot, uint16 tpMultiplier, CBattleEntity* taChar, bool giveTPtoVictim, bool giveTPtoAttacker, bool isCounter = false, bool isCovered = false, CBattleEntity* POriginalTarget = nullptr) -> int32;
++auto TakePhysicalDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, PHYSICAL_ATTACK_TYPE physicalAttackType, int32 damage, bool isBlocked, uint8 slot, uint16 tpMultiplier, CBattleEntity* taChar, bool giveTPtoVictim, bool giveTPtoAttacker, bool isCounter = false, bool isCovered = false, CBattleEntity* POriginalTarget = nullptr, bool* exposureClaimed = nullptr) -> int32;
+ auto TakeWeaponskillDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, int32 damage, xi::AttackType attackType, xi::DamageType damageType, uint8 slot, bool primary, float tpMultiplier, uint16 bonusTP, float targetTPMultiplier) -> int32;
+ auto TakeSkillchainDamage(CBattleEntity* PAttacker, CBattleEntity* PDefender, int32 lastSkillDamage, CBattleEntity* taChar) -> int32;
+ void TakeSpellDamage(CBattleEntity* PDefender, CBattleEntity* PAttacker, CSpell* PSpell, int32 damage, xi::AttackType attackType, xi::DamageType damageType);
+diff --git a/src/map/utils/beastspeaker_actions.h b/src/map/utils/beastspeaker_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/beastspeaker_actions.h
+@@ -0,0 +1,31 @@
++#pragma once
++
++#include "ability.h"
++#include "entities/battle_entity.h"
++
++namespace beastspeaker
++{
++inline auto isActive(const CBattleEntity* entity) -> bool
++{
++    return entity && entity->objtype == TYPE_PC && entity->GetMJob() == xi::Job::BST &&
++           entity->GetMLevel() >= 10 && entity->GetLocalVar("OX_BSP_ACTIVE") == 1;
++}
++
++inline auto kitAbility(uint16 id, uint8 level) -> bool
++{
++    switch (id)
++    {
++        case ABILITY_GAUGE:
++        case ABILITY_TAME:
++        case ABILITY_FIGHT:
++        case ABILITY_HEEL:
++        case ABILITY_LEAVE:
++        case ABILITY_CALL_BEAST:
++            return true;
++        case ABILITY_STAY:
++            return level >= 50;
++        default:
++            return false;
++    }
++}
++} // namespace beastspeaker
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -109,6 +109,7 @@
+ 
+ #include "battleutils.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "blueutils.h"
+ #include "char_points_queries.h"
+ #include "charutils.h"
+@@ -3370,6 +3371,12 @@
+         return;
+     }
+ 
++    if (beastspeaker::isActive(PChar))
++    {
++        PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++        return;
++    }
++
+     if (untamed::isActive(PChar))
+     {
+         if (PPet->getPetType() == PET_TYPE::JUG_PET && PetID == PETID_HARE_FAMILIAR)
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -25,6 +25,7 @@
+ #include "ability.h"
+ #include "battleutils.h"
+ #include "utils/untamed_actions.h"
++#include "utils/beastspeaker_actions.h"
+ #include "charutils.h"
+ #include "enmity_container.h"
+ #include "entities/automaton_entity.h"
+@@ -1109,7 +1110,8 @@
+         highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
+     }
+ 
+-    if (petID == PETID_HARE_FAMILIAR && untamed::isActive(PMaster))
++    if ((petID == PETID_HARE_FAMILIAR && untamed::isActive(PMaster)) ||
++        (petID == PETID_FLOWERPOT_BILL && beastspeaker::isActive(PMaster)))
+     {
+         highestLvl = PMaster->GetMLevel();
+     }

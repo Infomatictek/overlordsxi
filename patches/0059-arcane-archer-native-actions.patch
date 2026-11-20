@@ -1,0 +1,737 @@
+diff --git a/scripts/combat/skillchain.lua b/scripts/combat/skillchain.lua
+--- a/scripts/combat/skillchain.lua
++++ b/scripts/combat/skillchain.lua
+@@ -141,9 +141,14 @@
+         finalDamage = utils.clamp(utils.handlePhalanx(target, finalDamage), 0, 99999)
+         finalDamage = utils.clamp(utils.handleOneForAll(target, finalDamage), 0, 99999)
+         finalDamage = utils.handleStoneskin(target, finalDamage, xi.attackType.SPECIAL)
++        local arcane = xi.soulspire and xi.soulspire.arcaneArcher
++        local claim
++        if arcane then finalDamage, claim = arcane.reserve(actor, target, skillchainElement, finalDamage, 'chain') end
+         finalDamage = target:checkDamageCap(finalDamage)
+ 
++        local hpBefore = claim and target:getHP() or 0
+         target:takeDamage(finalDamage, actor, xi.attackType.SPECIAL, xi.damageType.ELEMENTAL + skillchainElement)
++        if claim then arcane.finish(target, claim, hpBefore - target:getHP()) end
+     end
+ 
+     return finalDamage
+diff --git a/scripts/globals/spells/damage_spell.lua b/scripts/globals/spells/damage_spell.lua
+--- a/scripts/globals/spells/damage_spell.lua
++++ b/scripts/globals/spells/damage_spell.lua
+@@ -1171,11 +1171,13 @@
+         finalDamage = math.floor(finalDamage * zealot.damageMultiplier(caster, spell))
+     end
+ 
++    local beforeAstro = finalDamage
+     local astro = xi.soulspire and xi.soulspire.blmAstromancerSpecs
+     if astro and not absorb then
+         finalDamage = astro.adjustDamage(caster, target, spell, finalDamage)
+     end
+ 
++    local astroBonus = math.max(0, finalDamage - beforeAstro)
+     local weaver = xi.soulspire and xi.soulspire.rdmScarletWeaverSpecs
+     if weaver and not absorb then
+         finalDamage = weaver.adjustDamage(caster, spell, finalDamage)
+@@ -1199,12 +1201,19 @@
+     finalDamage = utils.handleStoneskin(target, finalDamage, xi.attackType.MAGICAL)
+ 
+     -- Handle final adjustments. Most are located in core. TODO: Decide if we want core handling this.
++    local arcane = xi.soulspire and xi.soulspire.arcaneArcher
++    local claim
++    if arcane and finalDamage > 0 then
++        local ordinaryDamage = math.max(0, finalDamage - math.floor(astroBonus * nukeWallFactor))
++        finalDamage, claim = arcane.reserve(caster, target, spellElement, finalDamage, 'spell', ordinaryDamage)
++    end
+     -- Check if the mob has a damage cap
+     finalDamage = target:checkDamageCap(finalDamage)
+ 
+     -- Handle Bind break and TP?
+-    local hpBefore = astro and target:getHP() or 0
++    local hpBefore = (astro or claim) and target:getHP() or 0
+     target:takeSpellDamage(caster, spell, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + spellElement)
++    if claim then arcane.finish(target, claim, hpBefore - target:getHP()) end
+     if zealot then
+         zealot.onNukeDamage(caster, spell, finalDamage)
+     end
+diff --git a/scripts/globals/weaponskills.lua b/scripts/globals/weaponskills.lua
+--- a/scripts/globals/weaponskills.lua
++++ b/scripts/globals/weaponskills.lua
+@@ -795,7 +795,9 @@
+     -- Add in magic damage for hybrid weaponskills
+     -- Only procs if the mob still has HP remaining
+     if wsParams.hybridWS and target:getHP() > finaldmg then
+-        finaldmg = finaldmg + calculateHybridMagicDamage(tp, finaldmg, attacker, target, wsParams, calcParams, wsID)
++        local elementalDamage = calculateHybridMagicDamage(tp, finaldmg, attacker, target, wsParams, calcParams, wsID)
++        finaldmg = finaldmg + elementalDamage
++        if elementalDamage > 0 then calcParams.arcaneElement = wsParams.ele end
+     end
+ 
+     finaldmg            = finaldmg * xi.settings.main.WEAPON_SKILL_POWER -- Add server bonus
+@@ -1001,7 +1003,16 @@
+         extraHitsTP = 0
+     end
+ 
++    local arcane = xi.soulspire and xi.soulspire.arcaneArcher
++    local claim
++    if arcane and wsResults.hitsLanded > 0 and wsResults.arcaneElement and
++        attack.slot == xi.slot.RANGED and attack.weaponType == xi.skill.ARCHERY
++    then
++        finaldmg, claim = arcane.reserve(attacker, defender, wsResults.arcaneElement, finaldmg, 'bow')
++    end
++    local hpBefore = claim and defender:getHP() or 0
+     finaldmg = defender:takeWeaponskillDamage(attacker, finaldmg, attack.type, attack.damageType, attack.slot, primaryMsg, wsResults.tpHitsLanded * attackerTPMult, extraHitsTP, targetTPMult)
++    if claim then arcane.finish(defender, claim, hpBefore - defender:getHP()) end
+     if wsResults.tpHitsLanded + wsResults.extraHitsLanded > 0 then
+         action:recordDamage(defender, attack.type, math.abs(finaldmg), wsResults.criticalHit)
+     end
+diff --git a/src/map/ai/ai_container.cpp b/src/map/ai/ai_container.cpp
+--- a/src/map/ai/ai_container.cpp
++++ b/src/map/ai/ai_container.cpp
+@@ -328,7 +328,7 @@
+     return false;
+ }
+ 
+-auto CAIContainer::Internal_RangedAttack(const EntityId& target, bool sightline) -> bool
++auto CAIContainer::Internal_RangedAttack(const EntityId& target, RangedSoulShot shot) -> bool
+ {
+     auto* entity = dynamic_cast<CBattleEntity*>(PEntity);
+     if (entity)
+@@ -338,7 +338,7 @@
+             return false;
+         }
+ 
+-        return ChangeState<CRangeState>(entity, target, sightline);
++        return ChangeState<CRangeState>(entity, target, shot);
+     }
+     return false;
+ }
+diff --git a/src/map/ai/ai_container.h b/src/map/ai/ai_container.h
+--- a/src/map/ai/ai_container.h
++++ b/src/map/ai/ai_container.h
+@@ -20,6 +20,8 @@
+ */
+ 
+ #pragma once
++
++#include "enums/ranged_soul_shot.h"
+ 
+ #include "common/macros.h"
+ #include <memory>
+@@ -78,7 +80,7 @@
+     auto Internal_MobSkill(const EntityId& target, uint16 wsid, Maybe<timer::duration> castTimeOverride, Maybe<uint16> tpCostOverride = std::nullopt) -> bool;
+     auto Internal_PetSkill(const EntityId& target, uint16 abilityid) -> bool;
+     auto Internal_Ability(const EntityId& target, uint16 abilityid) -> bool;
+-    auto Internal_RangedAttack(const EntityId& target, bool sightline = false) -> bool;
++    auto Internal_RangedAttack(const EntityId& target, RangedSoulShot shot = RangedSoulShot::Normal) -> bool;
+     auto Internal_Die(timer::duration, DeathParams params = {}) -> bool;
+     auto Internal_UseItem(const EntityId& target, uint8 loc, uint8 slotid) -> bool;
+     auto Internal_Despawn(bool instantDespawn = false) -> bool;
+diff --git a/src/map/ai/controllers/player_controller.cpp b/src/map/ai/controllers/player_controller.cpp
+--- a/src/map/ai/controllers/player_controller.cpp
++++ b/src/map/ai/controllers/player_controller.cpp
+@@ -34,6 +34,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "weapon_skill.h"
+ 
+ CPlayerController::CPlayerController(CCharEntity* character)
+@@ -226,7 +227,11 @@
+ 
+         if (sniper::isActive(PChar) && abilityid == sniper::Sightline)
+         {
+-            return PChar->PAI->Internal_RangedAttack(target, true);
++            return PChar->PAI->Internal_RangedAttack(target, RangedSoulShot::Sightline);
++        }
++        if (arcaneArcher::isActive(PChar) && abilityid == arcaneArcher::AttunementArrow)
++        {
++            return PChar->PAI->Internal_RangedAttack(target, RangedSoulShot::Attunement);
+         }
+         return PChar->PAI->Internal_Ability(target, abilityid);
+     }
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -46,6 +46,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -149,6 +150,7 @@
+     m_reaperAbility = reaper::isActive(character);
+     m_scourgeAbility = scourge::isActive(character);
+     m_sniperAbility = sniper::isActive(character);
++    m_arcaneArcherAbility = arcaneArcher::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_scourgeAbility && m_abilityId == scourge::Rite)
+     {
+@@ -337,6 +339,7 @@
+         const auto currentReaper = reaper::isActive(PChar);
+         const auto currentScourge = scourge::isActive(PChar);
+         const auto currentSniper = sniper::isActive(PChar);
++        const auto currentArcaneArcher = arcaneArcher::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -349,6 +352,8 @@
+             m_scourgeAbility != currentScourge || (currentScourge && PAbility->getID() != scourge::Rite) ||
+             m_sniperAbility != currentSniper ||
+             (currentSniper && (PAbility->getID() != sniper::DeepSight || PChar->GetMLevel() < 50)) ||
++            m_arcaneArcherAbility != currentArcaneArcher ||
++            (currentArcaneArcher && PAbility->getID() != arcaneArcher::NextElement && PAbility->getID() != arcaneArcher::PreviousElement) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -62,5 +62,6 @@
+     bool                      m_reaperAbility{ false };
+     bool                      m_scourgeAbility{ false };
+     bool                      m_sniperAbility{ false };
++    bool                      m_arcaneArcherAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -49,6 +49,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -105,6 +106,7 @@
+     m_reaperCast = reaper::isActive(caster);
+     m_scourgeCast = scourge::isActive(caster);
+     m_sniperCast = sniper::isActive(caster);
++    m_arcaneArcherCast = arcaneArcher::isActive(caster);
+ 
+     if (m_scourgeCast && scourge::spellLevel(m_spellId) != 0)
+     {
+@@ -484,7 +486,8 @@
+                           m_oathbreakerCast == oathbreaker::isActive(caster) &&
+                           m_reaperCast == reaper::isActive(caster) &&
+                           m_scourgeCast == scourge::isActive(caster) &&
+-                          m_sniperCast == sniper::isActive(caster);
++                          m_sniperCast == sniper::isActive(caster) &&
++                          m_arcaneArcherCast == arcaneArcher::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -81,6 +81,7 @@
+     bool                    m_reaperCast{ false };
+     bool                    m_scourgeCast{ false };
+     bool                    m_sniperCast{ false };
++    bool                    m_arcaneArcherCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/ai/states/range_state.cpp b/src/map/ai/states/range_state.cpp
+--- a/src/map/ai/states/range_state.cpp
++++ b/src/map/ai/states/range_state.cpp
+@@ -41,12 +41,14 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "zone.h"
+ 
+-CRangeState::CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, bool sightline)
++CRangeState::CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, RangedSoulShot shot)
+ : CState(PEntity, target)
+ , m_PEntity(PEntity)
+-, m_sightline(sightline)
++, m_sightline(shot == RangedSoulShot::Sightline)
++, m_attunement(shot == RangedSoulShot::Attunement)
+ {
+     // Capture constructor arguments into members and nothing else. All other logic goes into init().
+ }
+@@ -60,18 +62,23 @@
+         return refuseWithErrorMsg();
+     }
+ 
+-    if (m_sightline)
++    if (m_sightline || m_attunement)
+     {
+         auto* player = dynamic_cast<CCharEntity*>(m_PEntity);
+-        if (!sniper::isActive(player) || PTarget->objtype != TYPE_MOB ||
++        const auto active = m_sightline ? sniper::isActive(player) : arcaneArcher::isActive(player);
++        if (!active || PTarget->objtype != TYPE_MOB ||
+             player->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Amnesia))
+         {
+             m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, m_PEntity, 0, 0, MsgBasic::UnableToUseJobAbility);
+             return refuseWithErrorMsg();
+         }
+-        m_sightlineLevel = player->GetMLevel();
+-        m_deepSight = m_sightlineLevel >= 50 && player->GetLocalVar("OX_SNP_DEEP") != 0;
++        m_soulShotLevel = player->GetMLevel();
++        m_deepSight = m_soulShotLevel >= 50 && player->GetLocalVar("OX_SNP_DEEP") != 0;
+         m_originalBattleTarget = player->battleTarget();
++        if (m_attunement)
++        {
++            m_attunementElement = static_cast<uint8>(std::clamp(player->GetLocalVar("OX_ACA_ELEMENT"), 1u, 6u));
++        }
+     }
+ 
+     // Configured in main : Default is 500ms
+@@ -82,7 +89,7 @@
+         return refuseWithErrorMsg();
+     }
+ 
+-    const auto maxRange = m_sightline ? sniper::MaxRange : m_PEntity->GetRangedAttackRange();
++    const auto maxRange = (m_sightline || m_attunement) ? sniper::MaxRange : m_PEntity->GetRangedAttackRange();
+     if (distance(m_PEntity->loc.p, PTarget->loc.p) > maxRange)
+     {
+         m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, PTarget, 0, 0, MsgBasic::TooFarAway);
+@@ -139,15 +146,18 @@
+ 
+     m_aimTime  = std::chrono::milliseconds(delay);
+     m_startPos = m_PEntity->loc.p;
+-    if (m_sightline)
++    if (m_sightline || m_attunement)
+     {
+         auto* player = static_cast<CCharEntity*>(m_PEntity);
+-        m_aimTime = m_deepSight ? 4s : 3s;
++        m_aimTime = m_attunement ? 700ms : (m_deepSight ? 4s : 3s);
+         m_rapidShot = false;
+-        m_sightlineWeapon = player->getEquip(SLOT_RANGED)->getID();
+-        m_sightlineAmmo = player->getEquip(SLOT_AMMO)->getID();
+-        m_sightlinePending = true;
+-        player->SetLocalVar("OX_SNP_AIM_UNTIL", sniper::nowSecond() + (m_deepSight ? 4 : 3));
++        m_soulShotWeapon = player->getEquip(SLOT_RANGED)->getID();
++        m_soulShotAmmo = player->getEquip(SLOT_AMMO)->getID();
++        m_soulShotPending = true;
++        if (m_sightline)
++        {
++            player->SetLocalVar("OX_SNP_AIM_UNTIL", sniper::nowSecond() + (m_deepSight ? 4 : 3));
++        }
+     }
+ 
+     action_t action{
+@@ -183,28 +193,33 @@
+ 
+ auto CRangeState::Update(const timer::time_point tick) -> bool
+ {
+-    if (m_sightlinePending)
++    if (m_soulShotPending)
+     {
+         auto* player = static_cast<CCharEntity*>(m_PEntity);
+         auto* enemy = target().resolve<CBattleEntity>();
+-        if (!validSightlineTarget(player, enemy))
++        if (!validSoulShotTarget(player, enemy))
+         {
+             action_t action{};
+-            finishSightline(false);
++            finishSoulShot(false);
+             InterruptRangedAttack(action);
+             Complete();
+         }
+         else if (tick >= GetEntryTime() + m_aimTime)
+         {
+             action_t action{};
++            const auto hpBefore = enemy->health.hp;
+             if (m_PEntity->IsValidTarget(target(), TARGET_ENEMY, m_errorMsg) && !m_errorMsg)
+             {
+                 m_PEntity->OnRangedAttack(*this, action);
+             }
+             const auto released = !action.targets.empty();
+-            finishSightline(released);
++            finishSoulShot(released);
+             if (released)
+             {
++                if (m_attunement && enemy->isAlive() && enemy->health.hp < hpBefore)
++                {
++                    m_PEntity->PAI->EventHandler.triggerListener("SOUL_ATTUNEMENT_ARROW_LAND", m_PEntity, enemy, m_attunementElement);
++                }
+                 m_PEntity->loc.zone->PushPacket(m_PEntity, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
+                 m_PEntity->PAI->EventHandler.triggerListener("RANGE_STATE_EXIT", m_PEntity, enemy, &action);
+             }
+@@ -216,7 +231,7 @@
+         }
+     }
+ 
+-    if (!m_sightline && m_PEntity && m_PEntity->isAlive() && (tick > GetEntryTime() + m_aimTime && !IsCompleted()))
++    if (!m_sightline && !m_attunement && m_PEntity && m_PEntity->isAlive() && (tick > GetEntryTime() + m_aimTime && !IsCompleted()))
+     {
+         auto* PTarget = m_PEntity->IsValidTarget(target(), TARGET_ENEMY, m_errorMsg);
+ 
+@@ -282,15 +297,16 @@
+ 
+ void CRangeState::Cleanup(timer::time_point tick)
+ {
+-    if (m_sightlinePending)
+-    {
+-        finishSightline(false);
+-    }
+-}
+-
+-auto CRangeState::validSightlineTarget(CCharEntity* player, CBattleEntity* target) const -> bool
+-{
+-    if (!sniper::isActive(player) || !player->isAlive() || player->GetMLevel() != m_sightlineLevel ||
++    if (m_soulShotPending)
++    {
++        finishSoulShot(false);
++    }
++}
++
++auto CRangeState::validSoulShotTarget(CCharEntity* player, CBattleEntity* target) const -> bool
++{
++    const auto active = m_sightline ? sniper::isActive(player) : arcaneArcher::isActive(player);
++    if (!active || !player->isAlive() || player->GetMLevel() != m_soulShotLevel ||
+         player->StatusEffectContainer->HasPreventActionEffect() ||
+         player->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Amnesia) ||
+         player->battleTarget() != m_originalBattleTarget || HasMoved() ||
+@@ -303,17 +319,30 @@
+ 
+     const auto* weapon = dynamic_cast<CItemWeapon*>(player->getEquip(SLOT_RANGED));
+     const auto* ammo = dynamic_cast<CItemWeapon*>(player->getEquip(SLOT_AMMO));
+-    return sniper::usesMarksmanship(weapon, ammo) && weapon->getID() == m_sightlineWeapon && ammo->getID() == m_sightlineAmmo;
+-}
+-
+-void CRangeState::finishSightline(bool released)
+-{
+-    m_sightlinePending = false;
++    const auto eligible = m_attunement ? arcaneArcher::usesBow(weapon, ammo) : sniper::usesMarksmanship(weapon, ammo);
++    return eligible && weapon->getID() == m_soulShotWeapon && ammo->getID() == m_soulShotAmmo;
++}
++
++void CRangeState::finishSoulShot(bool released)
++{
++    m_soulShotPending = false;
+     auto* player = static_cast<CCharEntity*>(m_PEntity);
+-    const auto duration = released ? 12 : 3;
+-    player->SetLocalVar("OX_SNP_AIM_UNTIL", 0);
+-    player->SetLocalVar("OX_SNP_RECAST_UNTIL", sniper::nowSecond() + duration);
+-    player->PRecastContainer->Add(xi::RecastType::Ability, static_cast<xi::Recast>(sniper::SightlineRecast), std::chrono::seconds(duration));
++    if (m_attunement && !released)
++    {
++        return;
++    }
++    const auto duration = m_attunement ? 16 : (released ? 12 : 3);
++    if (m_attunement)
++    {
++        player->SetLocalVar("OX_ACA_ARROW_CD", sniper::nowSecond() + duration);
++    }
++    else
++    {
++        player->SetLocalVar("OX_SNP_AIM_UNTIL", 0);
++        player->SetLocalVar("OX_SNP_RECAST_UNTIL", sniper::nowSecond() + duration);
++    }
++    const auto recast = m_attunement ? arcaneArcher::ArrowRecast : sniper::SightlineRecast;
++    player->PRecastContainer->Add(xi::RecastType::Ability, static_cast<xi::Recast>(recast), std::chrono::seconds(duration));
+     if (player->loc.zone)
+     {
+         player->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(player);
+@@ -340,7 +369,8 @@
+             return false;
+         }
+ 
+-        if (sniper::isActive(PChar) && !sniper::usesMarksmanship(PRanged, PAmmo))
++        if ((sniper::isActive(PChar) && !sniper::usesMarksmanship(PRanged, PAmmo)) ||
++            (arcaneArcher::isActive(PChar) && !arcaneArcher::usesBow(PRanged, PAmmo)))
+         {
+             m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::NoRangedWeapon);
+             return false;
+@@ -440,6 +470,11 @@
+     return m_sightline;
+ }
+ 
++auto CRangeState::IsAttunement() const -> bool
++{
++    return m_attunement;
++}
++
+ auto CRangeState::IsDeepSight() const -> bool
+ {
+     return m_deepSight;
+diff --git a/src/map/ai/states/range_state.h b/src/map/ai/states/range_state.h
+--- a/src/map/ai/states/range_state.h
++++ b/src/map/ai/states/range_state.h
+@@ -22,6 +22,7 @@
+ #pragma once
+ 
+ #include "state.h"
++#include "enums/ranged_soul_shot.h"
+ 
+ struct action_t;
+ class CCharEntity;
+@@ -29,7 +30,7 @@
+ class CRangeState : public CState
+ {
+ public:
+-    CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, bool sightline = false);
++    CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, RangedSoulShot shot = RangedSoulShot::Normal);
+ 
+     auto init() -> StateErrorOr<void> override;
+ 
+@@ -43,6 +44,7 @@
+     auto IsOutOfRange() const -> bool;
+     auto IsSightline() const -> bool;
+     auto IsDeepSight() const -> bool;
++    auto IsAttunement() const -> bool;
+ 
+ protected:
+     auto Update(timer::time_point tick) -> bool override;
+@@ -61,15 +63,17 @@
+     timer::duration m_freePhaseTimePlayer{};      // Phase 3 (players): Cooldown before a ranged attack can fire again, set from RANGED_ATTACK_FREE_PHASE_DELAY (Default 500ms)
+     bool            m_rapidShot{ false };
+     bool            m_sightline{ false };
+-    bool            m_sightlinePending{ false };
++    bool            m_attunement{ false };
++    bool            m_soulShotPending{ false };
++    uint8           m_attunementElement{ 0 };
+     bool            m_deepSight{ false };
+-    uint16          m_sightlineWeapon{ 0 };
+-    uint16          m_sightlineAmmo{ 0 };
++    uint16          m_soulShotWeapon{ 0 };
++    uint16          m_soulShotAmmo{ 0 };
+     EntityId        m_originalBattleTarget{};
+-    uint8           m_sightlineLevel{ 0 };
++    uint8           m_soulShotLevel{ 0 };
+ 
+-    void finishSightline(bool released);
+-    auto validSightlineTarget(CCharEntity* player, CBattleEntity* target) const -> bool;
++    void finishSoulShot(bool released);
++    auto validSoulShotTarget(CCharEntity* player, CBattleEntity* target) const -> bool;
+     position_t      m_startPos;
+     bool            m_isOutOfRange{ false }; // True if target moved out of range during aim time
+ };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -3214,10 +3214,10 @@
+ 
+ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ {
+-    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot(), state.IsSightline(), state.IsDeepSight());
+-}
+-
+-void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline, bool deepSight)
++    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot(), state.IsSightline(), state.IsDeepSight(), state.IsAttunement());
++}
++
++void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline, bool deepSight, bool attunement)
+ {
+     TracyZoneScoped;
+     if (!PTarget)
+@@ -3278,8 +3278,9 @@
+     auto  ammoConsumed = 0;
+     bool  hitOccured   = false; // Track if there was a successful hit
+     bool  wasCritical  = false; // Track if the hit was critical
+-    bool  isBarrage    = !sightline && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Barrage, 0);
+-    bool  isSange      = !sightline && isChar && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sange) && getMod(xi::Mod::SANGE_MULTI_HIT) > 0; // Pre-SoA Sange logic check, applied in SoA module
++    const auto singleShot = sightline || attunement;
++    bool  isBarrage    = !singleShot && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Barrage, 0);
++    bool  isSange      = !singleShot && isChar && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sange) && getMod(xi::Mod::SANGE_MULTI_HIT) > 0; // Pre-SoA Sange logic check, applied in SoA module
+ 
+     // Player Barrage check. Mobs and trusts have barrage.
+     if ((isChar && !ammoThrowing && !rangedThrowing && isBarrage) || (!isChar && isBarrage))
+@@ -3298,11 +3299,11 @@
+             hitCount = PAmmo->getQuantity();
+         }
+     }
+-    else if (!sightline && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TripleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::TRIPLE_SHOT_RATE))
++    else if (!singleShot && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TripleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::TRIPLE_SHOT_RATE))
+     {
+         hitCount = 3;
+     }
+-    else if (!sightline && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DoubleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::DOUBLE_SHOT_RATE))
++    else if (!singleShot && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DoubleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::DOUBLE_SHOT_RATE))
+     {
+         hitCount = 2;
+     }
+@@ -3382,7 +3383,7 @@
+ 
+             if (PAmmo != nullptr)
+             {
+-                const bool recycleProc = !sightline && xirand::GetRandomNumber(100) < recycleChance;
++                const bool recycleProc = !singleShot && xirand::GetRandomNumber(100) < recycleChance;
+ 
+                 if (!recycleProc)
+                 {
+diff --git a/src/map/entities/battle_entity.h b/src/map/entities/battle_entity.h
+--- a/src/map/entities/battle_entity.h
++++ b/src/map/entities/battle_entity.h
+@@ -334,7 +334,7 @@
+ 
+     virtual void OnAbility(CAbilityState&, action_t&);
+     virtual void OnRangedAttack(CRangeState&, action_t&);
+-    void         ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline = false, bool deepSight = false);
++    void         ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline = false, bool deepSight = false, bool attunement = false);
+     void         processActionEffectFlags(const action_t& action) const; // Drops status effects whose flags are tied to action emit/receive.
+     virtual void OnDeathTimer();
+ 
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -115,6 +115,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1504,7 +1505,7 @@
+     {
+         return false;
+     }
+-    if (sniper::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((sniper::isActive(this) || arcaneArcher::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -728,6 +728,7 @@
+ void CMobEntity::Spawn()
+ {
+     TracyZoneScopedN("CMobEntity::Spawn");
++    SetLocalVar("OX_ACA_MARK_END", 0);
+     SetLocalVar("OX_SCR_CURSE_END", 0);
+     SetLocalVar("OX_SCR_WARD_END", 0);
+     SetLocalVar("OX_RPR_ROUNDS", 0);
+@@ -1527,6 +1528,7 @@
+ void CMobEntity::OnDisengage(CAttackState& state)
+ {
+     TracyZoneScopedN("CMobEntity::OnDisengage");
++    SetLocalVar("OX_ACA_MARK_END", 0);
+     SetLocalVar("OX_SCR_CURSE_END", 0);
+     SetLocalVar("OX_SCR_WARD_END", 0);
+     SetLocalVar("OX_RPR_ROUNDS", 0);
+diff --git a/src/map/enums/ranged_soul_shot.h b/src/map/enums/ranged_soul_shot.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/enums/ranged_soul_shot.h
+@@ -0,0 +1,8 @@
++#pragma once
++
++enum class RangedSoulShot
++{
++    Normal,
++    Sightline,
++    Attunement,
++};
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -34,6 +34,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -55,9 +56,9 @@
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+-    const bool sniperActive = sniper::isActive(PChar);
++    const bool shotKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || sniperActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || shotKitActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -73,7 +74,7 @@
+                                 : chnActive ? channeler::spellLevel(spellId)
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
+                                     : royalActive ? royal::spellLevel(spellId)
+-                                      : (thfKitActive || sniperActive) ? 0
++                                      : (thfKitActive || shotKitActive) ? 0
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
+                                           : scourgeActive ? scourge::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -32,6 +32,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -58,7 +59,8 @@
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+     const bool sniperActive = sniper::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || valkyrie::isActive(PChar))
++    const bool arcaneArcherActive = arcaneArcher::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -75,6 +77,7 @@
+                                              : reaperActive ? id == reaper::Finality
+                                                : scourgeActive ? id == scourge::Rite
+                                                  : sniperActive ? sniper::kitAbility(id, PChar->GetMLevel())
++                                                   : arcaneArcherActive ? (id == arcaneArcher::AttunementArrow || id == arcaneArcher::NextElement || id == arcaneArcher::PreviousElement)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/arcane_archer_actions.h b/src/map/utils/arcane_archer_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/arcane_archer_actions.h
+@@ -0,0 +1,24 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace arcaneArcher
++{
++inline constexpr uint16 AttunementArrow = 57;
++inline constexpr uint16 NextElement = 59;
++inline constexpr uint16 PreviousElement = 58;
++inline constexpr uint16 ArrowRecast = 122;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::RNG && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_ACA_ACTIVE") == 1;
++}
++
++inline auto usesBow(const CItemWeapon* weapon, const CItemWeapon* ammo) -> bool
++{
++    return weapon && ammo && ammo->getQuantity() > 0 &&
++           weapon->getSkillType() == xi::SkillType::Archery && ammo->getSkillType() == xi::SkillType::Archery;
++}
++} // namespace arcaneArcher
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -54,6 +54,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/arcane_archer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -402,7 +403,8 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+         (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)) ||
+         ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)) ||
+-        (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)))
++        (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)) ||
++        (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)))
+     {
+         return false;
+     }

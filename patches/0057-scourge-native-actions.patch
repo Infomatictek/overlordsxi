@@ -1,0 +1,459 @@
+diff --git a/scripts/actions/spells/white/cure.lua b/scripts/actions/spells/white/cure.lua
+--- a/scripts/actions/spells/white/cure.lua
++++ b/scripts/actions/spells/white/cure.lua
+@@ -96,6 +96,9 @@
+             final = diff
+         end
+ 
++        if xi.soulspire and xi.soulspire.scourge then
++            final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++        end
+         target:addHP(final)
+ 
+         target:wakeUp()
+@@ -123,6 +126,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/actions/spells/white/cure_ii.lua b/scripts/actions/spells/white/cure_ii.lua
+--- a/scripts/actions/spells/white/cure_ii.lua
++++ b/scripts/actions/spells/white/cure_ii.lua
+@@ -96,6 +96,9 @@
+             final = diff
+         end
+ 
++        if xi.soulspire and xi.soulspire.scourge then
++            final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++        end
+         target:addHP(final)
+ 
+         target:wakeUp()
+@@ -121,6 +124,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/actions/spells/white/cure_iii.lua b/scripts/actions/spells/white/cure_iii.lua
+--- a/scripts/actions/spells/white/cure_iii.lua
++++ b/scripts/actions/spells/white/cure_iii.lua
+@@ -92,6 +92,9 @@
+             final = diff
+         end
+ 
++        if xi.soulspire and xi.soulspire.scourge then
++            final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++        end
+         target:addHP(final)
+ 
+         target:wakeUp()
+@@ -117,6 +120,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/actions/spells/white/cure_iv.lua b/scripts/actions/spells/white/cure_iv.lua
+--- a/scripts/actions/spells/white/cure_iv.lua
++++ b/scripts/actions/spells/white/cure_iv.lua
+@@ -91,6 +91,9 @@
+             final = diff
+         end
+ 
++        if xi.soulspire and xi.soulspire.scourge then
++            final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++        end
+         target:addHP(final)
+         target:wakeUp()
+         caster:updateEnmityFromCure(target, final)
+@@ -115,6 +118,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/actions/spells/white/cure_v.lua b/scripts/actions/spells/white/cure_v.lua
+--- a/scripts/actions/spells/white/cure_v.lua
++++ b/scripts/actions/spells/white/cure_v.lua
+@@ -100,6 +100,9 @@
+             final = diff
+         end
+ 
++        if xi.soulspire and xi.soulspire.scourge then
++            final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++        end
+         target:addHP(final)
+ 
+         target:wakeUp()
+@@ -128,6 +131,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/actions/spells/white/cure_vi.lua b/scripts/actions/spells/white/cure_vi.lua
+--- a/scripts/actions/spells/white/cure_vi.lua
++++ b/scripts/actions/spells/white/cure_vi.lua
+@@ -103,6 +103,9 @@
+                 final = diff
+             end
+ 
++            if xi.soulspire and xi.soulspire.scourge then
++                final = xi.soulspire.scourge.reduceSelfHeal(caster, target, final)
++            end
+             target:addHP(final)
+         end
+     end
+diff --git a/scripts/globals/mobskills.lua b/scripts/globals/mobskills.lua
+--- a/scripts/globals/mobskills.lua
++++ b/scripts/globals/mobskills.lua
+@@ -1714,6 +1714,9 @@
+ 
+     -- TODO: Handle Cure Potency/Cure Potency Received modifiers (See: Leviathan's Soothing Current)
+     healAmount = math.min(healAmount, target:getMaxHP() - target:getHP())
++    if xi.soulspire and xi.soulspire.scourge then
++        healAmount = xi.soulspire.scourge.reduceSelfHeal(mob, target, healAmount)
++    end
+ 
+     target:wakeUp()
+     target:addHP(healAmount)
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -44,6 +44,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -145,7 +146,13 @@
+     m_phantomAbility = phantom::isActive(character);
+     m_oathbreakerAbility = oathbreaker::isActive(character);
+     m_reaperAbility = reaper::isActive(character);
++    m_scourgeAbility = scourge::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_scourgeAbility && m_abilityId == scourge::Rite)
++    {
++        m_PAbility->setAOE(0);
++        m_PAbility->setRadius(0);
++    }
+     m_castTime = PAbility->getCastTime();
+ 
+     if (m_castTime > 0s && CanUseAbility())
+@@ -326,6 +333,7 @@
+         const auto currentPhantom = phantom::isActive(PChar);
+         const auto currentOathbreaker = oathbreaker::isActive(PChar);
+         const auto currentReaper = reaper::isActive(PChar);
++        const auto currentScourge = scourge::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -335,6 +343,7 @@
+             m_phantomAbility != currentPhantom || (currentPhantom && PAbility->getID() != phantom::Dare) ||
+             m_oathbreakerAbility != currentOathbreaker || (currentOathbreaker && !oathbreaker::isKitAbility(PAbility->getID())) ||
+             m_reaperAbility != currentReaper || (currentReaper && PAbility->getID() != reaper::Finality) ||
++            m_scourgeAbility != currentScourge || (currentScourge && PAbility->getID() != scourge::Rite) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -60,5 +60,6 @@
+     bool                      m_phantomAbility{ false };
+     bool                      m_oathbreakerAbility{ false };
+     bool                      m_reaperAbility{ false };
++    bool                      m_scourgeAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -47,6 +47,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -101,6 +102,16 @@
+     m_phantomCast = phantom::isActive(caster);
+     m_oathbreakerCast = oathbreaker::isActive(caster);
+     m_reaperCast = reaper::isActive(caster);
++    m_scourgeCast = scourge::isActive(caster);
++
++    if (m_scourgeCast && scourge::spellLevel(m_spellId) != 0)
++    {
++        m_PSpell->setMPCost(10);
++        m_PSpell->setCastTime(1000ms);
++        m_PSpell->setRecastTime(12s);
++        m_PSpell->setCE(1);
++        m_PSpell->setVE(20);
++    }
+ 
+     if (m_reaperCast && m_spellId == SpellID::Drain)
+     {
+@@ -469,7 +480,8 @@
+                           m_tricksterCast == trickster::isActive(caster) &&
+                           m_phantomCast == phantom::isActive(caster) &&
+                           m_oathbreakerCast == oathbreaker::isActive(caster) &&
+-                          m_reaperCast == reaper::isActive(caster);
++                          m_reaperCast == reaper::isActive(caster) &&
++                          m_scourgeCast == scourge::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -79,6 +79,7 @@
+     bool                    m_phantomCast{ false };
+     bool                    m_oathbreakerCast{ false };
+     bool                    m_reaperCast{ false };
++    bool                    m_scourgeCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -113,6 +113,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1501,6 +1502,12 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (scourge::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto unlock = scourge::spellLevel(PSpell->getID());
++        return unlock != 0 && GetMLevel() >= unlock &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (reaper::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "mob_entity.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ 
+ #include "action/action.h"
+ #include "action/interrupts.h"
+@@ -727,6 +728,8 @@
+ void CMobEntity::Spawn()
+ {
+     TracyZoneScopedN("CMobEntity::Spawn");
++    SetLocalVar("OX_SCR_CURSE_END", 0);
++    SetLocalVar("OX_SCR_WARD_END", 0);
+     SetLocalVar("OX_RPR_ROUNDS", 0);
+     SetLocalVar("OX_RPR_OPEN_UNTIL", 0);
+     SetLocalVar("OX_AST_SATURATION", 0);
+@@ -847,6 +850,7 @@
+ 
+     {
+         const reaper::ObserveEnemyAction observe(*this);
++        const scourge::ObserveAction category(*this, scourge::PhysicalMove);
+         CBattleEntity::OnWeaponSkillFinished(state, action);
+     }
+ 
+@@ -859,6 +863,7 @@
+ 
+     {
+         const reaper::ObserveEnemyAction observe(*this);
++        const scourge::ObserveAction category(*this, scourge::PhysicalMove);
+         CBattleEntity::OnMobSkillFinished(state, action);
+     }
+ 
+@@ -1522,6 +1527,8 @@
+ void CMobEntity::OnDisengage(CAttackState& state)
+ {
+     TracyZoneScopedN("CMobEntity::OnDisengage");
++    SetLocalVar("OX_SCR_CURSE_END", 0);
++    SetLocalVar("OX_SCR_WARD_END", 0);
+     SetLocalVar("OX_RPR_ROUNDS", 0);
+     SetLocalVar("OX_RPR_OPEN_UNTIL", 0);
+ 
+@@ -1548,6 +1555,7 @@
+ 
+     {
+         const reaper::ObserveEnemyAction observe(*this);
++        const scourge::ObserveAction category(*this, scourge::Spell);
+         CBattleEntity::OnCastFinished(state, action);
+     }
+ 
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -32,6 +32,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -52,8 +53,9 @@
+     const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar) || phantom::isActive(PChar);
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
++    const bool scourgeActive = scourge::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -71,6 +73,7 @@
+                                     : royalActive ? royal::spellLevel(spellId)
+                                       : thfKitActive ? 0
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
++                                          : scourgeActive ? scourge::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -30,6 +30,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -54,7 +55,8 @@
+     const bool phantomActive = phantom::isActive(PChar);
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || valkyrie::isActive(PChar))
++    const bool scourgeActive = scourge::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -69,6 +71,7 @@
+                                          : phantomActive ? id == phantom::Dare
+                                            : oathbreakerActive ? oathbreaker::isKitAbility(id)
+                                              : reaperActive ? id == reaper::Finality
++                                               : scourgeActive ? id == scourge::Rite
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -52,6 +52,7 @@
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/scourge_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -399,7 +400,7 @@
+         (phantom::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+         (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)) ||
+-        (reaper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)))
++        ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/scourge_actions.h b/src/map/utils/scourge_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/scourge_actions.h
+@@ -0,0 +1,57 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "spell.h"
++
++namespace scourge
++{
++inline constexpr uint16 Rite = 50;
++inline constexpr uint32 PhysicalMove = 1;
++inline constexpr uint32 Spell = 2;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::DRK && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_SCR_ACTIVE") == 1;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    switch (id)
++    {
++        case SpellID::Absorb_STR:
++        case SpellID::Bio:
++            return 10;
++        case SpellID::Absorb_MND:
++            return 30;
++        default:
++            return 0;
++    }
++}
++
++class ObserveAction
++{
++public:
++    ObserveAction(CBattleEntity& mob, uint32 category)
++    : mob_(mob)
++    , active_(mob.objtype == TYPE_MOB && mob.allegiance == xi::Allegiance::Mob)
++    {
++        if (active_)
++        {
++            mob_.SetLocalVar("OX_SCR_ACTION", category);
++        }
++    }
++
++    ~ObserveAction()
++    {
++        if (active_)
++        {
++            mob_.SetLocalVar("OX_SCR_ACTION", 0);
++        }
++    }
++
++private:
++    CBattleEntity& mob_;
++    bool active_;
++};
++} // namespace scourge

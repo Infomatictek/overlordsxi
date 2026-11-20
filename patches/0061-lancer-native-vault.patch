@@ -1,0 +1,357 @@
+diff --git a/scripts/globals/job_utils/dragoon.lua b/scripts/globals/job_utils/dragoon.lua
+--- a/scripts/globals/job_utils/dragoon.lua
++++ b/scripts/globals/job_utils/dragoon.lua
+@@ -230,6 +230,8 @@
+     -- Only 'Jump' and not others get the fTP VIT bonus
+     local ftp = 1 + (player:getStat(xi.mod.VIT) / 256)
+     params.ftpMod = { ftp, ftp, ftp }
++    local lancer = xi.soulspire and xi.soulspire.lancer
++    if lancer then params.lancerFollowup = lancer.jumpBonus(player, target) end
+ 
+     local damage, totalHits = performWSJump(player, target, action, params, ability:getID())
+ 
+diff --git a/scripts/globals/weaponskills.lua b/scripts/globals/weaponskills.lua
+--- a/scripts/globals/weaponskills.lua
++++ b/scripts/globals/weaponskills.lua
+@@ -1010,9 +1010,12 @@
+     then
+         finaldmg, claim = arcane.reserve(attacker, defender, wsResults.arcaneElement, finaldmg, 'bow')
+     end
+-    local hpBefore = claim and defender:getHP() or 0
++    local jumpBonus = wsParams.lancerFollowup or 0
++    if jumpBonus > 0 and finaldmg > 0 then finaldmg = math.floor(finaldmg * (100 + jumpBonus) / 100) end
++    local hpBefore = (claim or jumpBonus > 0) and defender:getHP() or 0
+     finaldmg = defender:takeWeaponskillDamage(attacker, finaldmg, attack.type, attack.damageType, attack.slot, primaryMsg, wsResults.tpHitsLanded * attackerTPMult, extraHitsTP, targetTPMult)
+     if claim then arcane.finish(defender, claim, hpBefore - defender:getHP()) end
++    if jumpBonus > 0 and hpBefore > defender:getHP() then xi.soulspire.lancer.finishJump(attacker) end
+     if wsResults.tpHitsLanded + wsResults.extraHitsLanded > 0 then
+         action:recordDamage(defender, attack.type, math.abs(finaldmg), wsResults.criticalHit)
+     end
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -48,6 +48,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -153,7 +154,12 @@
+     m_sniperAbility = sniper::isActive(character);
+     m_arcaneArcherAbility = arcaneArcher::isActive(character);
+     m_nightbladeAbility = nightblade::isActive(character);
++    m_lancerAbility = lancer::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_lancerAbility && m_abilityId == lancer::Vault)
++    {
++        m_PAbility->setRange(12);
++    }
+     if (m_scourgeAbility && m_abilityId == scourge::Rite)
+     {
+         m_PAbility->setAOE(0);
+@@ -343,6 +349,7 @@
+         const auto currentSniper = sniper::isActive(PChar);
+         const auto currentArcaneArcher = arcaneArcher::isActive(PChar);
+         const auto currentNightblade = nightblade::isActive(PChar);
++        const auto currentLancer = lancer::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -359,6 +366,8 @@
+             (currentArcaneArcher && PAbility->getID() != arcaneArcher::NextElement && PAbility->getID() != arcaneArcher::PreviousElement) ||
+             m_nightbladeAbility != currentNightblade ||
+             (currentNightblade && (PAbility->getID() != nightblade::QuickRead || PChar->GetMLevel() < 30)) ||
++            m_lancerAbility != currentLancer ||
++            (currentLancer && (!lancer::isKitAbility(PAbility->getID()) || !lancer::hasPolearm(PChar))) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+@@ -402,7 +411,8 @@
+                 return false;
+             }
+ 
+-            if (m_PEntity->loc.zone->CanUseMisc(xi::ZoneMisc::LosPlayerBlock) && !m_PEntity->CanSeeTarget(PTarget))
++            const bool vault = currentLancer && PAbility->getID() == lancer::Vault;
++            if (!vault && m_PEntity->loc.zone->CanUseMisc(xi::ZoneMisc::LosPlayerBlock) && !m_PEntity->CanSeeTarget(PTarget))
+             {
+                 PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PTarget, 0, 0, MsgBasic::UnableToSeeTarget);
+                 return false;
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -64,5 +64,6 @@
+     bool                      m_sniperAbility{ false };
+     bool                      m_arcaneArcherAbility{ false };
+     bool                      m_nightbladeAbility{ false };
++    bool                      m_lancerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -51,6 +51,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -109,6 +110,7 @@
+     m_sniperCast = sniper::isActive(caster);
+     m_arcaneArcherCast = arcaneArcher::isActive(caster);
+     m_nightbladeCast = nightblade::isActive(caster);
++    m_lancerCast = lancer::isActive(caster);
+ 
+     if (m_nightbladeCast && nightblade::spellLevel(m_spellId) != 0)
+     {
+@@ -528,7 +530,8 @@
+                           m_scourgeCast == scourge::isActive(caster) &&
+                           m_sniperCast == sniper::isActive(caster) &&
+                           m_arcaneArcherCast == arcaneArcher::isActive(caster) &&
+-                          m_nightbladeCast == nightblade::isActive(caster);
++                          m_nightbladeCast == nightblade::isActive(caster) &&
++                          m_lancerCast == lancer::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -83,6 +83,7 @@
+     bool                    m_sniperCast{ false };
+     bool                    m_arcaneArcherCast{ false };
+     bool                    m_nightbladeCast{ false };
++    bool                    m_lancerCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -117,6 +117,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1511,7 +1512,7 @@
+         return nightblade::spellLevel(PSpell->getID()) != 0 &&
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+-    if ((sniper::isActive(this) || arcaneArcher::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((sniper::isActive(this) || arcaneArcher::isActive(this) || lancer::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+@@ -2289,6 +2290,10 @@
+         // Cleanup "consumed" abilities after action like Contradance
+         StatusEffectContainer->DelStatusEffect(PAbility->getPostActionEffectCleanup());
+ 
++        if (lancer::isActive(this) && PAbility->getID() == lancer::Vault)
++        {
++            action.recast = PAbility->getRecastTime();
++        }
+         charutils::ApplyAbilityRecast(this, PAbility, charge, baseChargeTime, action.recast);
+         this->processActionEffectFlags(action);
+     }
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -20,6 +20,8 @@
+ */
+ 
+ #include "lua_base_entity.h"
++#include "navmesh/navmesh.h"
++#include "utils/lancer_actions.h"
+ 
+ #include "lua_instance.h"
+ 
+@@ -2462,6 +2464,49 @@
+     const auto dst = Vector3{ targetPointBase.x, targetPointBase.y - ENTITY_HEIGHT, targetPointBase.z };
+ 
+     return !m_PBaseEntity->loc.zone->xiMesh()->rayIntersect(src, dst, IgnoreTransparentBarriers(flag));
++}
++
++/************************************************************************
++ *  Function: getLancerLanding()
++ *  Purpose : Find a safe, same-zone landing for Spineshatter Vault.
++ ************************************************************************/
++
++auto CLuaBaseEntity::getLancerLanding(const CLuaBaseEntity* luaTarget) -> sol::object
++{
++    auto* player = dynamic_cast<CCharEntity*>(m_PBaseEntity);
++    auto* target = luaTarget ? dynamic_cast<CBattleEntity*>(luaTarget->GetBaseEntity()) : nullptr;
++    if (!lancer::isActive(player) || !lancer::hasPolearm(player) || !target || target->objtype != TYPE_MOB ||
++        !target->isAlive() || !player->loc.zone || player->loc.zone != target->loc.zone ||
++        player->getBattleID() != target->getBattleID() || player->entityId().instanceRunId != target->entityId().instanceRunId ||
++        !player->CanSeeTarget(target))
++    {
++        return sol::lua_nil;
++    }
++
++    const auto start = player->loc.p;
++    const auto goal = target->loc.p;
++    const auto lane = distance(start, goal, true);
++    const auto standOff = std::max(2.5f, target->modelHitboxSize + player->modelHitboxSize + 0.5f);
++    if (distance(start, goal) < 4.0f || distance(start, goal) > 12.0f || lane <= standOff + 0.25f ||
++        std::abs(start.y - goal.y) > 2.0f)
++    {
++        return sol::lua_nil;
++    }
++
++    const auto fraction = (lane - standOff) / lane;
++    auto requested = goal;
++    requested.x = start.x + (goal.x - start.x) * fraction;
++    requested.z = start.z + (goal.z - start.z) * fraction;
++    const auto* mesh = player->loc.zone->navMesh();
++    const auto ground = mesh->findClosestValidPoint(requested);
++    position_t reached{};
++    if (!ground || distance(*ground, requested) > 0.75f || !mesh->moveAlongSurface(start, *ground, reached) ||
++        distance(reached, *ground) > 0.40f || !player->CanSeeTarget(reached))
++    {
++        return sol::lua_nil;
++    }
++
++    return lua.create_table_with("x", reached.x, "y", reached.y, "z", reached.z, "rotation", worldAngle(reached, goal));
+ }
+ 
+ /************************************************************************
+@@ -21103,6 +21148,7 @@
+     SOL_REGISTER("hasFollowTarget", CLuaBaseEntity::hasFollowTarget);
+     SOL_REGISTER("unfollow", CLuaBaseEntity::unfollow);
+     SOL_REGISTER("canSee", CLuaBaseEntity::canSee);
++    SOL_REGISTER("getLancerLanding", CLuaBaseEntity::getLancerLanding);
+     SOL_REGISTER("inWater", CLuaBaseEntity::inWater);
+ 
+     SOL_REGISTER("openDoor", CLuaBaseEntity::openDoor);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -177,6 +177,7 @@
+     // int32 RoamAround(lua_Stat* L);       // pick a random point to walk to
+     // int32 LimitDistance(lua_Stat* L);    // limits the current path distance to given max distance
+     auto canSee(const CLuaBaseEntity* PTarget, const sol::object& ignoreInvisibleBoundaries) -> bool;
++    auto getLancerLanding(const CLuaBaseEntity* target) -> sol::object;
+     auto inWater() -> bool;
+ 
+     void openDoor(const sol::object& seconds);
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -36,6 +36,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -57,10 +58,10 @@
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+-    const bool shotKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar);
++    const bool physicalKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar) || lancer::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || shotKitActive || nightbladeActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -76,7 +77,7 @@
+                                 : chnActive ? channeler::spellLevel(spellId)
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
+                                     : royalActive ? royal::spellLevel(spellId)
+-                                      : (thfKitActive || shotKitActive) ? 0
++                                      : (thfKitActive || physicalKitActive) ? 0
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
+                                           : scourgeActive ? scourge::spellLevel(spellId)
+                                             : nightbladeActive ? nightblade::spellLevel(spellId)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -34,6 +34,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -62,7 +63,8 @@
+     const bool sniperActive = sniper::isActive(PChar);
+     const bool arcaneArcherActive = arcaneArcher::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || valkyrie::isActive(PChar))
++    const bool lancerActive = lancer::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -81,6 +83,7 @@
+                                                  : sniperActive ? sniper::kitAbility(id, PChar->GetMLevel())
+                                                    : arcaneArcherActive ? (id == arcaneArcher::AttunementArrow || id == arcaneArcher::NextElement || id == arcaneArcher::PreviousElement)
+                                                      : nightbladeActive ? (id == nightblade::QuickRead && PChar->GetMLevel() >= 30)
++                                                       : lancerActive ? lancer::isKitAbility(id)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -56,6 +56,7 @@
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/lancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -406,7 +407,8 @@
+         ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)) ||
+         (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)) ||
+         (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)) ||
+-        (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)))
++        (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
++        (lancer::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/lancer_actions.h b/src/map/utils/lancer_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/lancer_actions.h
+@@ -0,0 +1,27 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace lancer
++{
++inline constexpr uint16 Jump = 66;
++inline constexpr uint16 Vault = 67;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::DRG && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_LNC_ACTIVE") == 1;
++}
++
++inline auto isKitAbility(uint16 ability) -> bool
++{
++    return ability == Jump || ability == Vault;
++}
++
++inline auto hasPolearm(const CCharEntity* character) -> bool
++{
++    const auto* weapon = dynamic_cast<const CItemWeapon*>(character->m_Weapons[SLOT_MAIN]);
++    return weapon && weapon->getSkillType() == xi::SkillType::Polearm;
++}
++} // namespace lancer

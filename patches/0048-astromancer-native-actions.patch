@@ -1,0 +1,380 @@
+diff --git a/scripts/globals/spells/damage_spell.lua b/scripts/globals/spells/damage_spell.lua
+--- a/scripts/globals/spells/damage_spell.lua
++++ b/scripts/globals/spells/damage_spell.lua
+@@ -343,6 +343,11 @@
+         baseSpellDamage = xi.spells.damage.pTable[spellId][column.PC_POWER] -- vPC
+     end
+ 
++    local astro = xi.soulspire and xi.soulspire.blmAstromancerSpecs
++    if astro then
++        baseSpellDamage = astro.basePower(caster, spellId, baseSpellDamage)
++    end
++
+     -----------------------------------
+     -- STEP 2: statDiffBonus (statDiff * M)
+     -----------------------------------
+@@ -1166,6 +1171,11 @@
+         finalDamage = math.floor(finalDamage * zealot.damageMultiplier(caster, spell))
+     end
+ 
++    local astro = xi.soulspire and xi.soulspire.blmAstromancerSpecs
++    if astro and not absorb then
++        finalDamage = astro.adjustDamage(caster, target, spell, finalDamage)
++    end
++
+     -- Handle "Nuke Wall". It must be handled after all previous calculations, but before clamp.
+     local nukeWallFactor = not absorb and calculateNukeWallFactor(target, spellElement, finalDamage) or 1
+     finalDamage          = math.floor(finalDamage * nukeWallFactor)
+@@ -1188,9 +1198,13 @@
+     finalDamage = target:checkDamageCap(finalDamage)
+ 
+     -- Handle Bind break and TP?
++    local hpBefore = astro and target:getHP() or 0
+     target:takeSpellDamage(caster, spell, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + spellElement)
+     if zealot then
+         zealot.onNukeDamage(caster, spell, finalDamage)
++    end
++    if astro then
++        astro.onNukeDamage(caster, target, spell, hpBefore - target:getHP())
+     end
+ 
+     -- Handle Afflatus Misery.
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -39,6 +39,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -127,6 +128,7 @@
+     const auto* character = dynamic_cast<const CCharEntity*>(m_PEntity);
+     m_zealotAbility = zealot::isActive(character);
+     m_valkyrieAbility = valkyrie::isActive(character);
++    m_astromancerAbility = astromancer::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -299,7 +301,10 @@
+     {
+         const auto currentZealot = zealot::isActive(PChar);
+         const auto currentValkyrie = valkyrie::isActive(PChar);
++        const auto currentAstromancer = astromancer::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
++            m_astromancerAbility != currentAstromancer ||
++            (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+             (currentValkyrie && (!valkyrie::isKitAbility(PAbility->getID()) || !valkyrie::hasPolearm(PChar))))
+         {
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -51,5 +51,6 @@
+     const uint16              m_abilityId;
+     bool                      m_zealotAbility{ false };
+     bool                      m_valkyrieAbility{ false };
++    bool                      m_astromancerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -42,6 +42,7 @@
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -83,6 +84,7 @@
+     const auto* caster = dynamic_cast<const CCharEntity*>(m_PEntity);
+     m_zealotCast = zealot::isActive(caster);
+     m_valkyrieCast = valkyrie::isActive(caster);
++    m_astromancerCast = astromancer::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -392,7 +394,9 @@
+ auto CMagicState::CanCastSpell(CBattleEntity* PTarget, bool isEndOfCast) -> bool
+ {
+     const auto* caster = dynamic_cast<const CCharEntity*>(m_PEntity);
+-    const bool sameSoul = m_zealotCast == zealot::isActive(caster) && m_valkyrieCast == valkyrie::isActive(caster);
++    const bool sameSoul = m_zealotCast == zealot::isActive(caster) &&
++                          m_valkyrieCast == valkyrie::isActive(caster) &&
++                          m_astromancerCast == astromancer::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -69,6 +69,7 @@
+     bool                    m_startedMoving{ false };
+     bool                    m_zealotCast{ false };
+     bool                    m_valkyrieCast{ false };
++    bool                    m_astromancerCast{ false };
+     bool                    m_hostileInterrupt{ false };
+     bool                    m_valkyrieRetry{ false };
+     int32                   m_valkyrieRefund{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -108,6 +108,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/gardenutils.h"
+ #include "utils/messageutils.h"
+@@ -1449,6 +1450,14 @@
+     if (valkyrie::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return PSpell->getID() == SpellID::Banish && valkyrie::hasPolearm(this) &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
++    }
++
++    if (astromancer::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto profile = astromancer::spellProfile(PSpell->getID());
++        return profile.level > 0 && GetMLevel() >= profile.level &&
++               (!profile.ancient || astromancer::ancientReady(this)) &&
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -726,6 +726,8 @@
+ void CMobEntity::Spawn()
+ {
+     TracyZoneScopedN("CMobEntity::Spawn");
++    SetLocalVar("OX_AST_SATURATION", 0);
++    SetLocalVar("OX_AST_ENCOUNTER_HP", 0);
+ 
+     // Reset stolen item always for battlefields or only if HP was 0 (mob died)
+     if ((this->m_Type & xi::MobType::Battlefield) != xi::MobType::Normal || health.hp == 0)
+@@ -1385,6 +1387,7 @@
+ void CMobEntity::OnEngage(CAttackState& state)
+ {
+     TracyZoneScopedN("CMobEntity::OnEngage");
++    SetLocalVar("OX_AST_ENCOUNTER_HP", GetMaxHP());
+ 
+     CBattleEntity::OnEngage(state);
+     luautils::OnMobEngage(this, state.target().resolve());
+diff --git a/src/map/lua/lua_spell.cpp b/src/map/lua/lua_spell.cpp
+--- a/src/map/lua/lua_spell.cpp
++++ b/src/map/lua/lua_spell.cpp
+@@ -131,6 +131,11 @@
+ auto CLuaSpell::getMagicBurstMessage() const -> MsgBasic
+ {
+     return m_PLuaSpell->getMagicBurstMessage();
++}
++
++void CLuaSpell::setElement(uint16 element)
++{
++    m_PLuaSpell->setElement(element);
+ }
+ 
+ auto CLuaSpell::getElement() -> uint16
+@@ -219,6 +224,7 @@
+     SOL_REGISTER("tookEffect", CLuaSpell::tookEffect);
+     SOL_REGISTER("getMagicBurstMessage", CLuaSpell::getMagicBurstMessage);
+     SOL_REGISTER("getElement", CLuaSpell::getElement);
++    SOL_REGISTER("setElement", CLuaSpell::setElement);
+     SOL_REGISTER("getTotalTargets", CLuaSpell::getTotalTargets);
+     SOL_REGISTER("getSkillType", CLuaSpell::getSkillType);
+     SOL_REGISTER("getID", CLuaSpell::getID);
+diff --git a/src/map/lua/lua_spell.h b/src/map/lua/lua_spell.h
+--- a/src/map/lua/lua_spell.h
++++ b/src/map/lua/lua_spell.h
+@@ -69,6 +69,7 @@
+     auto getTotalTargets() -> uint16;
+     auto getMagicBurstMessage() const -> MsgBasic;
+     auto getElement() -> uint16;
++    void setElement(uint16 element);
+     auto getID() -> uint16;
+     auto getMPCost() -> uint16;
+     auto getSkillType() -> uint8;
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -27,6 +27,7 @@
+ #include "monstrosity.h"
+ #include "spell.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_MAGIC_DATA::GP_SERV_COMMAND_MAGIC_DATA(const CCharEntity* PChar)
+@@ -36,7 +37,8 @@
+     std::memcpy(packet.MagicDataTbl, &PChar->m_SpellList, sizeof(packet.MagicDataTbl));
+ 
+     const bool zealotActive = zealot::isActive(PChar);
+-    if (zealotActive || valkyrie::isActive(PChar))
++    const bool astroActive = astromancer::isActive(PChar);
++    if (zealotActive || astroActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -48,7 +50,8 @@
+             }
+ 
+             const auto unlock = zealotActive ? zealot::spellProfile(spellId, PChar->GetMLevel()).level
+-                                              : (spellId == SpellID::Banish ? 10 : 0);
++                              : astroActive ? astromancer::spellProfile(spellId).level
++                                            : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+             {
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -25,6 +25,7 @@
+ 
+ #include "entities/char_entity.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_COMMAND_DATA::GP_SERV_COMMAND_COMMAND_DATA(const CCharEntity* PChar)
+@@ -36,12 +37,16 @@
+     std::memcpy(packet.CommandDataTbl.JobAbilities, PChar->m_Abilities, sizeof(PChar->m_Abilities));
+     std::memcpy(packet.CommandDataTbl.PetAbilities, PChar->m_PetCommands, sizeof(PChar->m_PetCommands));
+     const bool zealotActive = zealot::isActive(PChar);
+-    if (zealotActive || valkyrie::isActive(PChar))
++    const bool astroActive = astromancer::isActive(PChar);
++    if (zealotActive || astroActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+         {
+-            if (!(zealotActive ? id == zealot::SealAbility : valkyrie::isKitAbility(id)))
++            const bool allowed = zealotActive ? id == zealot::SealAbility
++                             : astroActive ? id == astromancer::GatherAether
++                                           : valkyrie::isKitAbility(id);
++            if (!allowed)
+             {
+                 abilities[id / 8] &= static_cast<uint8_t>(~(1 << (id % 8)));
+             }
+diff --git a/src/map/utils/astromancer_actions.h b/src/map/utils/astromancer_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/astromancer_actions.h
+@@ -0,0 +1,56 @@
++#pragma once
++
++#include "common/timer.h"
++#include "entities/char_entity.h"
++#include "spell.h"
++
++namespace astromancer
++{
++struct SpellProfile
++{
++    uint8 level;
++    uint8 mpCost;
++    uint8 mpPercent;
++    uint8 recastSeconds;
++    bool ancient;
++};
++
++inline constexpr uint16 GatherAether = 75;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::BLM && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_AST_ACTIVE") == 1;
++}
++
++inline auto spellProfile(SpellID id) -> SpellProfile
++{
++    switch (id)
++    {
++        case SpellID::Fire:      return { 10,   6,  0,  3, false };
++        case SpellID::Blizzard:  return { 10,   8,  0,  3, false };
++        case SpellID::Aero:      return { 10,   6,  0,  3, false };
++        case SpellID::Stone:     return { 10,   4,  0,  3, false };
++        case SpellID::Thunder:   return { 10,   9,  0,  3, false };
++        case SpellID::Water:     return { 10,   5,  0,  3, false };
++        case SpellID::Stone_II:  return { 10,   0, 16, 18, true };
++        case SpellID::Burn:      return { 30,   0,  2, 30, false };
++        case SpellID::Warp:      return { 30, 100,  0, 10, false };
++        case SpellID::Flare:
++        case SpellID::Freeze:
++        case SpellID::Tornado:
++        case SpellID::Quake:
++        case SpellID::Burst:
++        case SpellID::Flood:
++            return { 50, 0, 22, 18, true };
++        default:
++            return {};
++    }
++}
++
++inline auto ancientReady(const CCharEntity* character) -> bool
++{
++    const auto now = std::chrono::duration_cast<std::chrono::seconds>(timer::now().time_since_epoch()).count();
++    return character->GetLocalVar("OX_AST_RECOVERY") <= now;
++}
++} // namespace astromancer
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -47,6 +47,7 @@
+ #include "attackutils.h"
+ #include "charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/astromancer_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "data/datasets/animation_locks/dataset.h"
+ #include "data/datasets/skills/dataset.h"
+@@ -380,7 +381,8 @@
+         return false;
+     }
+ 
+-    if ((zealot::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
++    if (((zealot::isActive(PChar) || astromancer::isActive(PChar)) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
+         (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
+     {
+         return false;
+@@ -6041,6 +6043,19 @@
+         }
+     }
+ 
++    if (const auto* character = dynamic_cast<const CCharEntity*>(PEntity); astromancer::isActive(character))
++    {
++        const auto profile = astromancer::spellProfile(PSpell->getID());
++        if (profile.mpPercent != 0)
++        {
++            return static_cast<uint16>(std::clamp((PEntity->health.maxmp * profile.mpPercent + 99) / 100, 1, 9999));
++        }
++        if (profile.mpCost != 0)
++        {
++            return profile.mpCost;
++        }
++    }
++
+     bool   applyArts = true;
+     uint16 base      = PSpell->getMPCost();
+     if (PSpell->getID() == SpellID::Embrava || PSpell->getID() == SpellID::Kaustra) // Embrava/Kaustra
+@@ -6200,6 +6215,14 @@
+     if (const auto* character = dynamic_cast<const CCharEntity*>(PEntity); zealot::isActive(character))
+     {
+         const auto profile = zealot::spellProfile(PSpell->getID(), character->GetMLevel());
++        if (profile.recastSeconds != 0)
++        {
++            base = std::chrono::seconds(profile.recastSeconds);
++        }
++    }
++    if (const auto* character = dynamic_cast<const CCharEntity*>(PEntity); astromancer::isActive(character))
++    {
++        const auto profile = astromancer::spellProfile(PSpell->getID());
+         if (profile.recastSeconds != 0)
+         {
+             base = std::chrono::seconds(profile.recastSeconds);

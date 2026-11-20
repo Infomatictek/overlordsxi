@@ -1,0 +1,367 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -51,6 +51,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -159,6 +160,7 @@
+     m_lancerAbility = lancer::isActive(character);
+     m_skybornAbility = skyborn::isActive(character);
+     m_warmageAbility = warmage::isActive(character);
++    m_archivistAbility = archivist::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_lancerAbility && m_abilityId == lancer::Vault)
+     {
+@@ -365,6 +367,7 @@
+         const auto currentLancer = lancer::isActive(PChar);
+         const auto currentSkyborn = skyborn::isActive(PChar);
+         const auto currentWarmage = warmage::isActive(PChar);
++        const auto currentArchivist = archivist::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -386,6 +389,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_archivistAbility != currentArchivist ||
++            (currentArchivist && !archivist::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -67,5 +67,6 @@
+     bool                      m_lancerAbility{ false };
+     bool                      m_skybornAbility{ false };
+     bool                      m_warmageAbility{ false };
++    bool                      m_archivistAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -54,6 +54,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -115,6 +116,23 @@
+     m_lancerCast = lancer::isActive(caster);
+     m_skybornCast = skyborn::isActive(caster);
+     m_warmageCast = warmage::isActive(caster);
++    m_archivistCast = archivist::isActive(caster);
++    if (m_archivistCast && archivist::spellLevel(m_spellId) != 0)
++    {
++        const bool countermeasure = m_spellId == SpellID::Sandstorm;
++        m_PSpell->setMPCost(countermeasure ? 0 : 4);
++        m_PSpell->setCastTime(500ms);
++        m_PSpell->setRecastTime(countermeasure ? 0s : 6s);
++        if (countermeasure)
++        {
++            m_PEntity->SetLocalVar("OX_ARC_FILE_APPLIED", 0);
++            m_PSpell->setRange(caster->GetMLevel() >= 30 ? 20.0f : 15.0f);
++            m_PSpell->setAOE(SPELLAOE_NONE);
++            m_PSpell->setRadius(0.0f);
++            m_PSpell->setCE(0);
++            m_PSpell->setVE(0);
++        }
++    }
+     if (const auto* profile = m_warmageCast ? warmage::profile(m_spellId) : nullptr)
+     {
+         m_PSpell->setMPCost(profile->mp);
+@@ -546,7 +564,8 @@
+                           m_nightbladeCast == nightblade::isActive(caster) &&
+                           m_lancerCast == lancer::isActive(caster) &&
+                           m_skybornCast == skyborn::isActive(caster) &&
+-                          m_warmageCast == warmage::isActive(caster);
++                          m_warmageCast == warmage::isActive(caster) &&
++                          m_archivistCast == archivist::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -86,6 +86,7 @@
+     bool                    m_lancerCast{ false };
+     bool                    m_skybornCast{ false };
+     bool                    m_warmageCast{ false };
++    bool                    m_archivistCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -65,6 +65,7 @@
+ #include "utils/reaper_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/nightblade_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+@@ -2740,6 +2741,11 @@
+         action.recast = std::chrono::seconds(GetLocalVar("OX_NGB_CAST_RECAST"));
+         SetLocalVar("OX_NGB_CAST_RECAST", 0);
+     }
++    if (archivist::isActive(dynamic_cast<const CCharEntity*>(this)) && PSpell->getID() == SpellID::Sandstorm)
++    {
++        action.recast = GetLocalVar("OX_ARC_FILE_APPLIED") == 1 ? 15s : 0s;
++        SetLocalVar("OX_ARC_FILE_APPLIED", 0);
++    }
+     PRecastContainer->Add(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()), action.recast);
+ }
+ 
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -120,6 +120,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1508,6 +1509,11 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (archivist::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return archivist::spellLevel(PSpell->getID()) != 0 &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (warmage::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -20,6 +20,11 @@
+ */
+ 
+ #include "mob_entity.h"
++#include "ai/states/magic_state.h"
++#include "ai/states/mobskill_state.h"
++#include "ai/states/weaponskill_state.h"
++#include "utils/archivist_actions.h"
++#include "weapon_skill.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
+ 
+@@ -746,6 +751,7 @@
+     }
+ 
+     CBattleEntity::Spawn();
++    SetLocalVar("OX_ARC_SPAWN", archivist::nextSpawn());
+ 
+     m_giveExp        = true;
+     m_HiPCLvl        = 0;
+@@ -854,7 +860,13 @@
+     {
+         const reaper::ObserveEnemyAction observe(*this);
+         const scourge::ObserveAction category(*this, scourge::PhysicalMove);
++        auto* entry = state.GetSkill();
++        const archivist::ActionScope archived(*this, archivist::Weaponskill, entry ? entry->getID() : 0, entry != nullptr);
+         CBattleEntity::OnWeaponSkillFinished(state, action);
++        if (archived.active() && !action.targets.empty())
++        {
++            PAI->EventHandler.triggerListener("SOUL_ARCHIVIST_ACTION_COMPLETED", this, archivist::Weaponskill, entry->getID(), entry->getName());
++        }
+     }
+ 
+     TapDeaggroTime();
+@@ -867,7 +879,13 @@
+     {
+         const reaper::ObserveEnemyAction observe(*this);
+         const scourge::ObserveAction category(*this, scourge::PhysicalMove);
++        auto* entry = state.GetSkill();
++        const archivist::ActionScope archived(*this, archivist::Technique, entry ? entry->getID() : 0, entry && (entry->getValidTargets() & TARGET_ENEMY) && !(entry->getFlag() & SKILLFLAG_NO_START_MSG));
+         CBattleEntity::OnMobSkillFinished(state, action);
++        if (archived.active() && !action.targets.empty())
++        {
++            PAI->EventHandler.triggerListener("SOUL_ARCHIVIST_ACTION_COMPLETED", this, archivist::Technique, entry->getID(), entry->getName());
++        }
+     }
+ 
+     TapDeaggroTime();
+@@ -1562,7 +1580,13 @@
+     {
+         const reaper::ObserveEnemyAction observe(*this);
+         const scourge::ObserveAction category(*this, scourge::Spell);
++        auto* entry = state.GetSpell();
++        const archivist::ActionScope archived(*this, archivist::Spell, entry ? static_cast<uint16>(entry->getID()) : 0, entry && entry->canTargetEnemy() && entry->getID() != SpellID::Death && !(entry->getFlag() & (SPELLFLAG_NO_START_MSG | SPELLFLAG_IGNORE_SHADOWS)));
+         CBattleEntity::OnCastFinished(state, action);
++        if (archived.active() && !action.targets.empty())
++        {
++            PAI->EventHandler.triggerListener("SOUL_ARCHIVIST_ACTION_COMPLETED", this, archivist::Spell, static_cast<uint16>(entry->getID()), entry->getName());
++        }
+     }
+ 
+     CMobController* mobController = dynamic_cast<CMobController*>(PAI->GetController());
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -39,6 +39,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -64,8 +65,9 @@
+                                    lancer::isActive(PChar) || skyborn::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     const bool warmageActive = warmage::isActive(PChar);
++    const bool archivistActive = archivist::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -86,6 +88,7 @@
+                                           : scourgeActive ? scourge::spellLevel(spellId)
+                                             : nightbladeActive ? nightblade::spellLevel(spellId)
+                                               : warmageActive ? warmage::spellLevel(spellId)
++                                                : archivistActive ? archivist::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -37,6 +37,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -68,7 +69,8 @@
+     const bool lancerActive = lancer::isActive(PChar);
+     const bool skybornActive = skyborn::isActive(PChar);
+     const bool warmageActive = warmage::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || valkyrie::isActive(PChar))
++    const bool archivistActive = archivist::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -90,6 +92,7 @@
+                                                        : lancerActive ? lancer::isKitAbility(id)
+                                                          : skybornActive ? skyborn::isKitAbility(id)
+                                                            : warmageActive ? id == warmage::Assess && PChar->GetMLevel() >= 10
++                                                             : archivistActive ? archivist::kitAbility(id, PChar->GetMLevel())
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/archivist_actions.h b/src/map/utils/archivist_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/archivist_actions.h
+@@ -0,0 +1,70 @@
++#pragma once
++
++#include <atomic>
++
++#include "entities/char_entity.h"
++#include "spell.h"
++
++namespace archivist
++{
++inline constexpr uint16 Record = 214;
++inline constexpr uint16 Index = 233;
++inline constexpr uint32 Spell = 1;
++inline constexpr uint32 Technique = 2;
++inline constexpr uint32 Weaponskill = 3;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::SCH && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_ARC_ACTIVE") == 1;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    return id == SpellID::Sandstorm || id == SpellID::Stone ? 10 : 0;
++}
++
++inline auto kitAbility(uint16 id, uint8 level) -> bool
++{
++    return id == Record || (id == Index && level >= 50);
++}
++
++inline auto nextSpawn() -> uint32
++{
++    static std::atomic<uint32> next{ 1 };
++    return next.fetch_add(1, std::memory_order_relaxed);
++}
++
++class ActionScope
++{
++public:
++    ActionScope(CBattleEntity& source, uint32 category, uint16 id, bool eligible)
++    : source_(source)
++    , active_(eligible && source_.objtype == TYPE_MOB && source_.allegiance == xi::Allegiance::Mob &&
++              source_.GetLocalVar("OX_ARC_SCRIPTED") == 0)
++    {
++        if (active_)
++        {
++            const auto sequence = std::max(source_.GetLocalVar("OX_ARC_SEQUENCE") + 1, 1u);
++            source_.SetLocalVar("OX_ARC_SEQUENCE", sequence);
++            source_.SetLocalVar("OX_ARC_ACTION", id);
++            source_.SetLocalVar("OX_ARC_CATEGORY", category);
++        }
++    }
++
++    ~ActionScope()
++    {
++        if (active_)
++        {
++            source_.SetLocalVar("OX_ARC_ACTION", 0);
++            source_.SetLocalVar("OX_ARC_CATEGORY", 0);
++        }
++    }
++
++    auto active() const -> bool { return active_; }
++
++private:
++    CBattleEntity& source_;
++    bool active_;
++};
++} // namespace archivist
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -59,6 +59,7 @@
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
++#include "utils/archivist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -412,6 +413,8 @@
+         (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+         ((lancer::isActive(PChar) || skyborn::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)) ||
+         (warmage::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
++        (archivist::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
+     {
+         return false;

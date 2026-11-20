@@ -1,0 +1,502 @@
+diff --git a/scripts/globals/bluemagic.lua b/scripts/globals/bluemagic.lua
+--- a/scripts/globals/bluemagic.lua
++++ b/scripts/globals/bluemagic.lua
+@@ -485,6 +485,8 @@
+         end
+     end
+ 
++    local warmage = xi.soulspire and xi.soulspire.warmage
++    if warmage and hitsLanded > 0 then totalDamage = warmage.damage(caster, target, spell, totalDamage) end
+     returnInfo.damage       = totalDamage * xi.settings.main.BLUE_POWER
+     returnInfo.hybridDamage = 0
+     returnInfo.hitsLanded   = hitsLanded
+@@ -1118,15 +1120,24 @@
+     dmg = math.floor(target:handleSevereDamage(dmg, false))
+ 
+     -- Final adjustments.
++    local warmage = xi.soulspire and xi.soulspire.warmage
++    local arcane = xi.soulspire and xi.soulspire.arcaneArcher
++    local claim
+     if dmg > 0 then
++        if warmage then dmg = warmage.damage(caster, target, spell, dmg) end
+         dmg = utils.clamp(utils.handlePhalanx(target, dmg), 0, 99999)
+         dmg = utils.clamp(utils.handleOneForAll(target, dmg), 0, 99999)
+         dmg = utils.handleStoneskin(target, dmg, attackType)
++        if arcane and (attackType == xi.attackType.MAGICAL or attackType == xi.attackType.BREATH) then
++            dmg, claim = arcane.reserve(caster, target, spellElement, dmg, 'spell')
++        end
+         dmg = utils.clamp(dmg, 0, target:getHP())
+         dmg = target:checkDamageCap(dmg)
+     end
+ 
++    local hpBefore = claim and target:getHP() or 0
+     target:takeSpellDamage(caster, spell, dmg, attackType, damageType)
++    if claim then arcane.finish(target, claim, hpBefore - target:getHP()) end
+ 
+     -- Handle Afflatus Misery.
+     target:handleAfflatusMiseryDamage(dmg)
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -50,6 +50,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -157,6 +158,7 @@
+     m_nightbladeAbility = nightblade::isActive(character);
+     m_lancerAbility = lancer::isActive(character);
+     m_skybornAbility = skyborn::isActive(character);
++    m_warmageAbility = warmage::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_lancerAbility && m_abilityId == lancer::Vault)
+     {
+@@ -362,6 +364,7 @@
+         const auto currentNightblade = nightblade::isActive(PChar);
+         const auto currentLancer = lancer::isActive(PChar);
+         const auto currentSkyborn = skyborn::isActive(PChar);
++        const auto currentWarmage = warmage::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -382,6 +385,7 @@
+             (currentLancer && (!lancer::isKitAbility(PAbility->getID()) || !lancer::hasPolearm(PChar))) ||
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
++            m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -66,5 +66,6 @@
+     bool                      m_nightbladeAbility{ false };
+     bool                      m_lancerAbility{ false };
+     bool                      m_skybornAbility{ false };
++    bool                      m_warmageAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -53,6 +53,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -113,6 +114,16 @@
+     m_nightbladeCast = nightblade::isActive(caster);
+     m_lancerCast = lancer::isActive(caster);
+     m_skybornCast = skyborn::isActive(caster);
++    m_warmageCast = warmage::isActive(caster);
++    if (const auto* profile = m_warmageCast ? warmage::profile(m_spellId) : nullptr)
++    {
++        m_PSpell->setMPCost(profile->mp);
++        m_PSpell->setCastTime(profile->cast);
++        m_PSpell->setRecastTime(profile->recast);
++        m_PSpell->setRange(profile->range);
++        m_PSpell->setAOE(SPELLAOE_NONE);
++        m_PSpell->setRadius(0.0f);
++    }
+ 
+     if (m_nightbladeCast && nightblade::spellLevel(m_spellId) != 0)
+     {
+@@ -534,7 +545,8 @@
+                           m_arcaneArcherCast == arcaneArcher::isActive(caster) &&
+                           m_nightbladeCast == nightblade::isActive(caster) &&
+                           m_lancerCast == lancer::isActive(caster) &&
+-                          m_skybornCast == skyborn::isActive(caster);
++                          m_skybornCast == skyborn::isActive(caster) &&
++                          m_warmageCast == warmage::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -85,6 +85,7 @@
+     bool                    m_nightbladeCast{ false };
+     bool                    m_lancerCast{ false };
+     bool                    m_skybornCast{ false };
++    bool                    m_warmageCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -119,6 +119,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1507,6 +1508,12 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (warmage::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto level = warmage::spellLevel(PSpell->getID());
++        return level > 0 && GetMLevel() >= level &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (nightblade::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -22,6 +22,7 @@
+ #include "lua_base_entity.h"
+ #include "navmesh/navmesh.h"
+ #include "utils/lancer_actions.h"
++#include "utils/warmage_actions.h"
+ 
+ #include "lua_instance.h"
+ 
+@@ -11863,6 +11864,45 @@
+  *  Function: syncBlueMagicSpells()
+  *  Purpose : Rebuilds traits/stats and pushes BLU 0x044/status packets
+  ************************************************************************/
++
++void CLuaBaseEntity::setWarmageKit(bool enabled)
++{
++    auto* player = dynamic_cast<CCharEntity*>(m_PBaseEntity);
++    if (!player || (enabled && player->GetMJob() != xi::Job::BLU))
++    {
++        return;
++    }
++
++    const auto wasEnabled = player->GetLocalVar(warmage::Active) == 1;
++    if (wasEnabled != enabled)
++    {
++        for (const auto slot : player->m_SetBlueSpells)
++        {
++            if (slot == 0)
++            {
++                continue;
++            }
++            const auto spellId = static_cast<SpellID>(static_cast<uint16>(slot) + 0x200);
++            if (auto* blue = dynamic_cast<CBlueSpell*>(spell::GetSpell(spellId)))
++            {
++                if (enabled)
++                {
++                    player->delModifiers(&blue->modList);
++                }
++                else if (player->GetMJob() == xi::Job::BLU || player->GetSJob() == xi::Job::BLU)
++                {
++                    player->addModifiers(&blue->modList);
++                }
++            }
++        }
++        player->SetLocalVar(warmage::Active, enabled ? 1 : 0);
++        charutils::BuildingCharTraitsTable(player);
++        charutils::CalculateStats(player);
++        player->UpdateHealth();
++    }
++    charutils::SendExtendedJobPackets(player);
++    player->pushPacket<GP_SERV_COMMAND_CLISTATUS>(player);
++}
+ 
+ void CLuaBaseEntity::syncBlueMagicSpells()
+ {
+@@ -21547,6 +21587,7 @@
+     SOL_REGISTER("getBlueMagicSlots", CLuaBaseEntity::getBlueMagicSlots);
+     SOL_REGISTER("setBlueMagicSpell", CLuaBaseEntity::setBlueMagicSpell);
+     SOL_REGISTER("syncBlueMagicSpells", CLuaBaseEntity::syncBlueMagicSpells);
++    SOL_REGISTER("setWarmageKit", CLuaBaseEntity::setWarmageKit);
+ 
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -595,6 +595,7 @@
+     auto getBlueMagicSlots() -> sol::table;
+     void setBlueMagicSpell(uint8 slotIndex, uint16 spellID, const sol::optional<bool>& sendUpdate);
+     void syncBlueMagicSpells();
++    void setWarmageKit(bool enabled);
+ 
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
+diff --git a/src/map/packets/c2s/0x102_extended_job.cpp b/src/map/packets/c2s/0x102_extended_job.cpp
+--- a/src/map/packets/c2s/0x102_extended_job.cpp
++++ b/src/map/packets/c2s/0x102_extended_job.cpp
+@@ -29,6 +29,7 @@
+ #include "packets/s2c/0x0ac_command_data.h"
+ #include "recast_container.h"
+ #include "utils/blueutils.h"
++#include "utils/warmage_actions.h"
+ #include "utils/charutils.h"
+ #include "utils/petutils.h"
+ #include "utils/puppetutils.h"
+@@ -99,6 +100,11 @@
+ {
+     if ((PChar->GetMJob() == xi::Job::BLU || PChar->GetSJob() == xi::Job::BLU) && this->Data.bluData.JobIndex == static_cast<uint8>(xi::Job::BLU))
+     {
++        if (warmage::isActive(PChar))
++        {
++            charutils::SendExtendedJobPackets(PChar);
++            return;
++        }
+         const auto bluData = this->Data.bluData;
+ 
+         // This may be a request to add or remove set spells, so lets check.
+diff --git a/src/map/packets/s2c/0x044_extended_job_blu.cpp b/src/map/packets/s2c/0x044_extended_job_blu.cpp
+--- a/src/map/packets/s2c/0x044_extended_job_blu.cpp
++++ b/src/map/packets/s2c/0x044_extended_job_blu.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "0x044_extended_job_blu.h"
++#include "utils/warmage_actions.h"
+ 
+ #include "entities/char_entity.h"
+ 
+@@ -29,5 +30,19 @@
+ 
+     packet.Job      = static_cast<uint8_t>(xi::Job::BLU);
+     packet.IsSubJob = !mjob;
+-    std::memcpy(packet.SetSpells, &PChar->m_SetBlueSpells, 20);
++    if (warmage::isActive(PChar))
++    {
++        uint8 slot = 0;
++        for (const auto& entry : warmage::Kit)
++        {
++            if (PChar->GetMLevel() >= entry.level)
++            {
++                packet.SetSpells[slot++] = static_cast<uint8>(static_cast<uint16>(entry.id) - 0x200);
++            }
++        }
++    }
++    else
++    {
++        std::memcpy(packet.SetSpells, &PChar->m_SetBlueSpells, 20);
++    }
+ }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -38,6 +38,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -62,8 +63,9 @@
+     const bool physicalKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar) ||
+                                    lancer::isActive(PChar) || skyborn::isActive(PChar);
+     const bool nightbladeActive = nightblade::isActive(PChar);
++    const bool warmageActive = warmage::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -83,6 +85,7 @@
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
+                                           : scourgeActive ? scourge::spellLevel(spellId)
+                                             : nightbladeActive ? nightblade::spellLevel(spellId)
++                                              : warmageActive ? warmage::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -36,6 +36,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -66,7 +67,8 @@
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     const bool lancerActive = lancer::isActive(PChar);
+     const bool skybornActive = skyborn::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || valkyrie::isActive(PChar))
++    const bool warmageActive = warmage::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -87,6 +89,7 @@
+                                                      : nightbladeActive ? (id == nightblade::QuickRead && PChar->GetMLevel() >= 30)
+                                                        : lancerActive ? lancer::isKitAbility(id)
+                                                          : skybornActive ? skyborn::isKitAbility(id)
++                                                           : warmageActive ? id == warmage::Assess && PChar->GetMLevel() >= 10
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -58,6 +58,7 @@
+ #include "utils/nightblade_actions.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/skyborn_actions.h"
++#include "utils/warmage_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -409,7 +410,9 @@
+         (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)) ||
+         (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)) ||
+         (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+-        ((lancer::isActive(PChar) || skyborn::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
++        ((lancer::isActive(PChar) || skyborn::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)) ||
++        (warmage::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/blueutils.cpp b/src/map/utils/blueutils.cpp
+--- a/src/map/utils/blueutils.cpp
++++ b/src/map/utils/blueutils.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "blueutils.h"
++#include "utils/warmage_actions.h"
+ 
+ #include "common/logging.h"
+ #include "common/utils.h"
+@@ -45,6 +46,11 @@
+ 
+ void SetBlueSpell(CCharEntity* PChar, CBlueSpell* PSpell, uint8 slotIndex, bool addingSpell)
+ {
++    if (PChar->GetLocalVar(warmage::Active) == 1)
++    {
++        return;
++    }
++
+     if (addingSpell && slotIndex >= GetTotalSlots(PChar))
+     {
+         ShowWarningFmt("SetBlueSpell: Player {} trying to set a spell in slot {} beyond their slot count", PChar->getName(), slotIndex);
+@@ -203,6 +209,11 @@
+ 
+ void UnequipAllBlueSpells(CCharEntity* PChar)
+ {
++    if (PChar->GetLocalVar(warmage::Active) == 1)
++    {
++        return;
++    }
++
+     for (unsigned char& m_SetBlueSpell : PChar->m_SetBlueSpells)
+     {
+         if (m_SetBlueSpell != 0)
+@@ -353,6 +364,11 @@
+ 
+ void LoadSetSpells(CCharEntity* PChar)
+ {
++    if (PChar->GetLocalVar(warmage::Active) == 1)
++    {
++        return;
++    }
++
+     TracyZoneScoped;
+ 
+     if (PChar->GetMJob() == xi::Job::BLU || PChar->GetSJob() == xi::Job::BLU)
+@@ -384,6 +400,11 @@
+ 
+ void ValidateBlueSpells(CCharEntity* PChar)
+ {
++    if (PChar->GetLocalVar(warmage::Active) == 1)
++    {
++        return;
++    }
++
+     CheckSpellLevels(PChar);
+ 
+     uint8 maxSetPoints  = GetTotalBlueMagicPoints(PChar);
+@@ -429,6 +450,11 @@
+ // ***note*** this function assumes Blue Traits are added with `tier` in ascending order to reduce complexity
+ void CalculateTraits(CCharEntity* PChar)
+ {
++    if (PChar->GetLocalVar(warmage::Active) == 1)
++    {
++        return;
++    }
++
+     TraitList_t*           PTraitsList = traits::GetTraits(xi::Job::BLU);
+     std::map<uint8, uint8> points;
+     std::vector<CTrait*>   traitsToAdd;
+diff --git a/src/map/utils/warmage_actions.h b/src/map/utils/warmage_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/warmage_actions.h
+@@ -0,0 +1,59 @@
++#pragma once
++
++#include <array>
++
++#include "entities/char_entity.h"
++#include "spell.h"
++
++namespace warmage
++{
++inline constexpr uint16 Assess = 94;
++inline constexpr const char* Active = "OX_WMG_ACTIVE";
++
++struct SpellProfile
++{
++    SpellID id;
++    uint8 level;
++    uint16 mp;
++    timer::duration cast;
++    timer::duration recast;
++    float range;
++};
++
++inline constexpr std::array Kit{
++    SpellProfile{ SpellID::Sprout_Smack,    10,  6,  500ms,  7s,  5.0f },
++    SpellProfile{ SpellID::Power_Attack,    10,  5,  500ms,  7s,  5.0f },
++    SpellProfile{ SpellID::Foot_Kick,       10,  5,  500ms,  7s,  5.0f },
++    SpellProfile{ SpellID::Bludgeon,        30, 16,  500ms, 12s,  5.0f },
++    SpellProfile{ SpellID::Smite_of_Rage,   30, 24,  500ms, 13s,  5.0f },
++    SpellProfile{ SpellID::Jet_Stream,      50, 28,  500ms, 16s,  8.0f },
++    SpellProfile{ SpellID::Mandibular_Bite, 50, 25,  500ms, 17s,  5.0f },
++    SpellProfile{ SpellID::Bomb_Toss,       50, 26, 1500ms, 16s, 15.0f },
++    SpellProfile{ SpellID::Death_Scissors,  70, 32,  500ms, 20s,  5.0f },
++    SpellProfile{ SpellID::Heat_Breath,     70, 36, 1800ms, 20s, 10.0f },
++    SpellProfile{ SpellID::Mind_Blast,      70, 30, 1400ms, 18s, 15.0f },
++};
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::BLU && character->GetLocalVar(Active) == 1;
++}
++
++inline auto profile(SpellID id) -> const SpellProfile*
++{
++    for (const auto& entry : Kit)
++    {
++        if (entry.id == id)
++        {
++            return &entry;
++        }
++    }
++    return nullptr;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    const auto* entry = profile(id);
++    return entry ? entry->level : 0;
++}
++} // namespace warmage

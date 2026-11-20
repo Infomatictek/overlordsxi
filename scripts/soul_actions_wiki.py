@@ -405,6 +405,7 @@ def integrate_soul_actions(
     roster: dict[str, Any],
     kit_spells_by_soul: dict[str, dict[str, dict[str, Any]]] | None = None,
     server_ability_unlocks: dict[str, dict[int, int]] | None = None,
+    kit_ability_recasts: dict[str, dict[str, int]] | None = None,
     server_spell_grants: dict[str, dict[int, int]] | None = None,
     launcher_actions: list[dict[str, Any]] | None = None,
     launcher_visibility: list[dict[str, Any]] | None = None,
@@ -697,12 +698,13 @@ def integrate_soul_actions(
                     continue
 
                 srv_unlock = abil_unlocks.get(srv_id, int(crystal.get("reqLevel", 10)))
-                srv_recast_sec = _parse_seconds(srv_abil.get("cd") if srv_abil else None)
+                kit_recast = (kit_ability_recasts or {}).get(canonical, {}).get(str(srv_id))
+                srv_recast_sec = kit_recast if kit_recast is not None else _parse_seconds(srv_abil.get("cd") if srv_abil else None)
                 desc_recast = _extract_desc_recast_sec(row["description"])
                 if srv_recast_sec is not None and desc_recast is not None and desc_recast != srv_recast_sec:
                     errors.append(
                         f"Stale description recast for '{row['rawSoul']}' ability {aid} ('{row['name']}'): "
-                        f"description says {desc_recast}s but server SQL has {srv_recast_sec}s"
+                        f"description says {desc_recast}s but the server has {srv_recast_sec}s"
                     )
 
                 action_rec = {
@@ -713,7 +715,7 @@ def integrate_soul_actions(
                     "description": row["description"],
                     "cost": None,
                     "castTime": "Instant",
-                    "recast": srv_abil.get("cd") if srv_abil else (f"{desc_recast}s" if desc_recast else None),
+                    "recast": f"{srv_recast_sec}s" if srv_recast_sec is not None else (f"{desc_recast}s" if desc_recast else None),
                     "target": srv_abil.get("target") if srv_abil else None,
                     "implementationStatus": "implemented",
                     "source": "launcher+server",
@@ -728,6 +730,8 @@ def integrate_soul_actions(
                     srv_abil["name"] = row["name"]
                     srv_abil["desc"] = row["description"]
                     srv_abil["unlockLevel"] = srv_unlock
+                    if kit_recast is not None:
+                        srv_abil["cd"] = f"{kit_recast}s"
 
             elif kind == "weaponskill":
                 # Weapon skills are validated against positive unlock level if present in visibility.tsv
