@@ -1,0 +1,327 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -42,6 +42,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -139,6 +140,7 @@
+     m_royalAbility = royal::isActive(character);
+     m_banditAbility = bandit::isActive(character);
+     m_tricksterAbility = trickster::isActive(character);
++    m_phantomAbility = phantom::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -317,12 +319,14 @@
+         const auto currentRoyal = royal::isActive(PChar);
+         const auto currentBandit = bandit::isActive(PChar);
+         const auto currentTrickster = trickster::isActive(PChar);
++        const auto currentPhantom = phantom::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+             m_royalAbility != currentRoyal || (currentRoyal && PAbility->getID() != royal::IssueOrder) ||
+             m_banditAbility != currentBandit || (currentBandit && !bandit::isKitAbility(PAbility->getID())) ||
+             m_tricksterAbility != currentTrickster || (currentTrickster && PAbility->getID() != trickster::PassTheBlame) ||
++            m_phantomAbility != currentPhantom || (currentPhantom && PAbility->getID() != phantom::Dare) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -57,5 +57,6 @@
+     bool                      m_royalAbility{ false };
+     bool                      m_banditAbility{ false };
+     bool                      m_tricksterAbility{ false };
++    bool                      m_phantomAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -45,6 +45,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -95,6 +96,7 @@
+     m_royalCast = royal::isActive(caster);
+     m_banditCast = bandit::isActive(caster);
+     m_tricksterCast = trickster::isActive(caster);
++    m_phantomCast = phantom::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -453,7 +455,8 @@
+                           m_scarletCast == scarlet::isActive(caster) &&
+                           m_royalCast == royal::isActive(caster) &&
+                           m_banditCast == bandit::isActive(caster) &&
+-                          m_tricksterCast == trickster::isActive(caster);
++                          m_tricksterCast == trickster::isActive(caster) &&
++                          m_phantomCast == phantom::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -76,6 +76,7 @@
+     bool                    m_royalCast{ false };
+     bool                    m_banditCast{ false };
+     bool                    m_tricksterCast{ false };
++    bool                    m_phantomCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -61,6 +61,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+ #include "utils/messageutils.h"
+@@ -3697,6 +3698,8 @@
+     const bool trackStaffHit = zealot::isActive(character) && zealot::hasStaff(character);
+     const auto yangBonus = scarlet::yangBonus(character);
+     bool landedStaffHit = false;
++    const bool trackPhantomEvade = objtype == TYPE_MOB && phantom::isActive(dynamic_cast<const CCharEntity*>(PTarget));
++    bool phantomEvaded = false;
+     while (attackRound.GetAttackSwingCount() && PTarget->isAlive() && this->isAlive())
+     {
+         action_result_t& actionResult = list.addResult();
+@@ -3933,6 +3936,7 @@
+             actionResult.resolution = ActionResolution::Miss;
+             actionResult.messageID  = MsgBasic::AttackMisses;
+             attack.SetEvaded(true);
++            phantomEvaded |= trackPhantomEvade && attack.GetAttackType() == PHYSICAL_ATTACK_TYPE::NORMAL;
+ 
+             // Check & Handle Afflatus Misery Accuracy Bonus
+             battleutils::HandleAfflatusMiseryAccuracyBonus(this);
+@@ -4024,6 +4028,10 @@
+     if (landedStaffHit && isAlive())
+     {
+         PAI->EventHandler.triggerListener("SOUL_STAFF_HIT", this, PTarget);
++    }
++    if (phantomEvaded && PTarget->isAlive())
++    {
++        PTarget->PAI->EventHandler.triggerListener("SOUL_MELEE_EVADE", PTarget, this);
+     }
+     PAI->EventHandler.triggerListener("ATTACK", this, PTarget, &action);
+     PTarget->PAI->EventHandler.triggerListener("ATTACKED", PTarget, this, &action);
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -111,6 +111,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -1494,7 +1495,8 @@
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+-    if ((bandit::isActive(this) || trickster::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((bandit::isActive(this) || trickster::isActive(this) || phantom::isActive(this)) &&
++        PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+@@ -2211,7 +2213,7 @@
+             MsgBasic prevMsg              = actionResult.messageID;
+ 
+             // Check for special situations from Steal (The Tenshodo Showdown quest)
+-            if (PAbility->getID() == ABILITY_STEAL)
++            if (PAbility->getID() == ABILITY_STEAL && !phantom::isActive(this))
+             {
+                 // Force a specific result to be stolen based on the mob LUA
+                 actionResult.param = luautils::OnSteal(this, PTarget, PAbility, &action);
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -162,6 +162,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/blueutils.h"
+ #include "utils/charutils.h"
++#include "utils/phantom_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/dboxutils.h"
+ #include "utils/guildutils.h"
+@@ -5502,7 +5503,7 @@
+     }
+ 
+     if (!(PItem->getJobs() & (1 << (static_cast<uint8>(PChar->GetMJob()) - 1))) &&
+-        !valkyrie::canEquipPolearm(PChar, PItem))
++        !valkyrie::canEquipPolearm(PChar, PItem) && !phantom::canEquipKatana(PChar, PItem))
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -30,6 +30,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -46,7 +47,7 @@
+     const bool chnActive = channeler::isActive(PChar);
+     const bool scarletActive = scarlet::isActive(PChar);
+     const bool royalActive = royal::isActive(PChar);
+-    const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar);
++    const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar) || phantom::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -28,6 +28,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -48,7 +49,8 @@
+     const bool royalActive = royal::isActive(PChar);
+     const bool banditActive = bandit::isActive(PChar);
+     const bool tricksterActive = trickster::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || valkyrie::isActive(PChar))
++    const bool phantomActive = phantom::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -60,6 +62,7 @@
+                                    : royalActive ? id == royal::IssueOrder
+                                      : banditActive ? bandit::isKitAbility(id)
+                                        : tricksterActive ? id == trickster::PassTheBlame
++                                         : phantomActive ? id == phantom::Dare
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -50,6 +50,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+@@ -392,7 +393,9 @@
+         ((scarlet::isActive(PChar) || royal::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword)) ||
+         ((bandit::isActive(PChar) || trickster::isActive(PChar)) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
+-         PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger)))
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger)) ||
++        (phantom::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -111,6 +111,7 @@
+ #include "blueutils.h"
+ #include "char_points_queries.h"
+ #include "charutils.h"
++#include "utils/phantom_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "enums/item_lockflg.h"
+ #include "items/transactions/player_trade.h"
+@@ -2095,7 +2096,7 @@
+     }
+ 
+     const bool jobEligible = (PItem->getJobs() & (1 << (static_cast<uint8>(PChar->GetMJob()) - 1))) ||
+-                             (equipSlotID == SLOT_MAIN && valkyrie::canEquipPolearm(PChar, PItem));
++                             (equipSlotID == SLOT_MAIN && (valkyrie::canEquipPolearm(PChar, PItem) || phantom::canEquipKatana(PChar, PItem)));
+     if ((PChar->m_EquipBlock & (1 << equipSlotID)) || !jobEligible ||
+         (PItem->getSuperiorLevel() > PChar->getMod(xi::Mod::SUPERIOR_LEVEL)) ||
+         (PItem->getReqLvl() > (settings::get<bool>("map.DISABLE_GEAR_SCALING") ? PChar->GetMLevel() : PChar->jobs.job[static_cast<uint8>(PChar->GetMJob())])) ||
+@@ -3259,7 +3260,7 @@
+         }
+ 
+         const bool jobEligible = (PItem->getJobs() & (1 << (static_cast<uint8>(PChar->GetMJob()) - 1))) ||
+-                                 (slotID == SLOT_MAIN && valkyrie::canEquipPolearm(PChar, PItem));
++                                 (slotID == SLOT_MAIN && (valkyrie::canEquipPolearm(PChar, PItem) || phantom::canEquipKatana(PChar, PItem)));
+         if (jobEligible && (PItem->getEquipSlotId() & (1 << slotID)))
+         {
+             continue;
+@@ -3735,6 +3736,14 @@
+             const auto value = std::max<int32>(warriorCap + skillBonus, 0);
+             PChar->WorkingSkills.skill[i] = static_cast<uint16>(value) | 0x8000;
+             PChar->WorkingSkills.rank[i] = battleutils::GetSkillRank(xi::SkillType::Polearm, xi::Job::WAR);
++        }
++
++        if (i == static_cast<int32>(xi::SkillType::Katana) && phantom::isActive(PChar))
++        {
++            const auto ninjaCap = battleutils::GetMaxSkill(xi::SkillType::Katana, xi::Job::NIN, PChar->GetMLevel());
++            const auto value = std::max<int32>(ninjaCap + skillBonus, 0);
++            PChar->WorkingSkills.skill[i] = static_cast<uint16>(value) | 0x8000;
++            PChar->WorkingSkills.rank[i] = battleutils::GetSkillRank(xi::SkillType::Katana, xi::Job::NIN);
+         }
+ 
+         // Automaton skills are special (especially with magic...)
+diff --git a/src/map/utils/phantom_actions.h b/src/map/utils/phantom_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/phantom_actions.h
+@@ -0,0 +1,34 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace phantom
++{
++inline constexpr uint16 Dare = 41;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::THF && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_PHN_ACTIVE") == 1;
++}
++
++inline auto canEquipKatana(const CCharEntity* character, const CItemEquipment* item) -> bool
++{
++    if (!isActive(character))
++    {
++        return false;
++    }
++    switch (item->getID())
++    {
++        case 16896: // Kunai
++        case 16900: // Wakizashi
++        case 16901: // Kodachi
++        case 17795: // Sai
++        case 17791: // Rai Kunimitsu
++            return true;
++        default:
++            return false;
++    }
++}
++} // namespace phantom

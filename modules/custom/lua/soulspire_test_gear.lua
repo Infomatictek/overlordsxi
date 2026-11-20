@@ -3516,6 +3516,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.RDM or 5) then
         return { role = 'caster', weapon = 'sword', offhand = 'shield', ranged = 'none', ammo = 'ammo_caster', label = 'Red Mage (Sword & Shield)' }
     elseif jobId == (j.THF or 6) then
+        if specKey == 'phantom' then
+            return { role = 'tank', weapon = 'dagger', offhand = 'none', ranged = 'none', ammo = 'ammo_tank', label = 'THF Phantom (Evasion Tank)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'dagger', offhand = 'auto', ranged = 'throwing', ammo = 'none', label = 'Thief (Dagger TP)' }
     elseif jobId == (j.PLD or 7) then
         return { role = 'tank', weapon = 'sword', offhand = 'shield', ranged = 'none', ammo = 'ammo_tank', label = 'Paladin (Sword & Shield Tank)' }
@@ -3624,12 +3627,13 @@ local function isItemEquippable(player, entry, targetLevel, opts)
         if activeSpec ~= 'necromancer' then
             return false
         end
-    elseif opts.weaponKey ~= 'polearm' or jobId ~= (xi.job.WHM or 3) or
-        testGear.getActiveSpecKey(player, jobId) ~= 'valkyrie'
-    then
+    else
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        local soulWeapon = (opts.weaponKey == 'polearm' and activeSpec == 'valkyrie') or
+            (opts.weaponKey == 'katana' and activeSpec == 'phantom')
         -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs.
-        -- Valkyrie's polearm exceptions are checked by player:canEquipItem below.
-        if entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
+        -- Soul weapon exceptions are checked by player:canEquipItem below.
+        if not soulWeapon and entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
             return false
         end
     end
@@ -3659,6 +3663,14 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.THF or 6) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'phantom' then
+            return wKey == 'dagger' or wKey == 'katana'
+        elseif activeSpec == 'bandit' or activeSpec == 'trickster' then
+            return wKey == 'dagger' or wKey == 'sword'
+        end
+    end
     if jobId == (xi.job.WHM or 3) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'valkyrie' then
