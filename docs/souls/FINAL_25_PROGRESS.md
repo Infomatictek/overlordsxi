@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 15/25. Current: Lancer. Blocked: none.
-- Latest pushed Soul implementation commits: server `672e2d63114373441719e49e0fcad2e0d54f3b69`, launcher `773f9cf1e683e26324f1e9e4d12422f2cf788d98`. The server branch also carries this tracker update.
+- Completed: 16/25. Current: Skyborn. Blocked: none.
+- Latest pushed Soul implementation commits: server `d10988283c5114bb8bb9944f1729ad55476ce2fd`, launcher `5307c576b30e7bdf3854ab69d04f436320d48544`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -26,8 +26,8 @@
 | 13 | RNG | Sniper | sniper | Damage | Pushed. Manual verification required. |
 | 14 | RNG | Arcane Archer | arcanearcher | Support | Pushed. Manual verification required. |
 | 15 | NIN | Nightblade | nightblade | Support | Pushed. Manual verification required. |
-| 16 | DRG | Lancer | lancer | Damage | Current |
-| 17 | DRG | Skyborn | skyborn | Tank | Pending |
+| 16 | DRG | Lancer | lancer | Damage | Pushed. Manual verification required. |
+| 17 | DRG | Skyborn | skyborn | Tank | Current |
 | 18 | BLU | Warmage | warmage | Damage | Pending |
 | 19 | SCH | Archivist | archivist | Support | Pending |
 | 20 | BST | Untamed | untamed | Damage | Pending |
@@ -83,4 +83,6 @@
 - **Arcane Archer architecture:** Distinct ranged action profiles share native aim and ammo handling. Reserve one matching elemental mark before damage and finish the claim only after actual HP loss; prove spell, skillchain and solo bow WS contexts explicitly.
 - **Nightblade checkpoint:** [Implementation report](completed/nightblade.md). Server `672e2d63114373441719e49e0fcad2e0d54f3b69`, launcher `773f9cf1e683e26324f1e9e4d12422f2cf788d98`. Four focused tests, 97 accessible regression tests, strict Lua wiki and roster, 16 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Nightblade architecture:** Read native spell and technique sequence IDs and clear them on completion, interruption or disengage. Scope reduction to classified damage from that same sequence. Confirm TP damage type at resolution and refund the long recast when Blunting mismatches.
-- **Next step:** Implement Lancer's Polearm vault and native Jump follow-through, verify distance and terrain checks and document the Lv. 10–75 rotation.
+- **Lancer checkpoint:** [Implementation report](completed/lancer.md). Server `d10988283c5114bb8bb9944f1729ad55476ce2fd`, launcher `5307c576b30e7bdf3854ab69d04f436320d48544`. Three focused tests, 100 accessible regression tests, strict Lua wiki and roster, 16 native syntax checks, two shared Lua syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Lancer architecture:** Scope custom position validation to the active Soul and its current enemy. Require the same battle and instance, a clear path and a legal navmesh landing before moving. Pass the follow-up through the native Jump damage calculation, and consume it on positive HP loss.
+- **Next step:** Implement Skyborn's approved DRG tank and wyvern response, including a Lv. 10 enmity tool, scope the real defensive effects, then verify and push both repositories.
