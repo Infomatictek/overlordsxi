@@ -3011,6 +3011,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     kurogane       = { [S.KATANA or 9] = true },
     bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     zealot         = { [S.STAFF or 12] = true },
+    valkyrie       = { [S.POLEARM or 8] = true },
     templar        = { [S.CLUB or 11] = true },
     magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
     vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },

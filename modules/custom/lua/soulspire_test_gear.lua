@@ -3502,6 +3502,11 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'h2h', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'Monk (Hand-to-Hand TP)' }
     elseif jobId == (j.WHM or 3) then
+        if specKey == 'valkyrie' then
+            return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'WHM Valkyrie (Polearm Support)', specEntry = specEntry }
+        elseif specKey == 'zealot' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'WHM Zealot (Staff Communion)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'none', ammo = 'ammo_caster', label = 'White Mage (Club & Shield)' }
     elseif jobId == (j.BLM or 4) then
         if specKey == 'necromancer' then
@@ -3619,8 +3624,11 @@ local function isItemEquippable(player, entry, targetLevel, opts)
         if activeSpec ~= 'necromancer' then
             return false
         end
-    else
-        -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs
+    elseif opts.weaponKey ~= 'polearm' or jobId ~= (xi.job.WHM or 3) or
+        testGear.getActiveSpecKey(player, jobId) ~= 'valkyrie'
+    then
+        -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs.
+        -- Valkyrie's polearm exceptions are checked by player:canEquipItem below.
         if entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
             return false
         end
@@ -3651,6 +3659,14 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.WHM or 3) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'valkyrie' then
+            return wKey == 'polearm'
+        elseif activeSpec == 'zealot' then
+            return wKey == 'staff' or wKey == 'staff_mage'
+        end
+    end
     local blmJob = (xi.job and xi.job.BLM) or 4
     if (wKey == 'scythe' or wKey == 'scythe_blm') and jobId == blmJob then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
