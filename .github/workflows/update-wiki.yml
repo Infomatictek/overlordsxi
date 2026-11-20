@@ -71,7 +71,7 @@ jobs:
       - name: Checkout launcher repository for Soul action definitions
         uses: actions/checkout@v7
         with:
-          repository: Infomatictek/overlordsxi-launcher
+          repository: Infomatictek/soulspirexi-launcher
           ref: ${{ github.event.inputs.launcher_ref || github.event.client_payload.launcher_sha || 'main' }}
           path: .launcher-repo
           fetch-depth: 1
@@ -119,7 +119,7 @@ jobs:
       - name: Checkout launcher repository for fresh regeneration fallback
         uses: actions/checkout@v7
         with:
-          repository: Infomatictek/overlordsxi-launcher
+          repository: Infomatictek/soulspirexi-launcher
           ref: ${{ github.event.inputs.launcher_ref || github.event.client_payload.launcher_sha || 'main' }}
           path: .launcher-repo
           fetch-depth: 1

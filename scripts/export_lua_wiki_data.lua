@@ -533,9 +533,12 @@ for _, jid in ipairs(sortedJobIds) do
             end
         end
 
-        -- Probe onApply(fakePlayer, lvl) across levels 1..75 to capture authoritative addSpell grants
+        -- Probe onApply(fakePlayer, lvl) across levels reqLvl..75 to capture authoritative addSpell grants.
+        -- Guard spec.ensureUpToDate against re-entrant tail-call recursion into onApply (e.g. MNK weapon gate).
         local spellGrants = {}
         if type(entry.onApply) == 'function' then
+            local origEnsure = spec.ensureUpToDate
+            spec.ensureUpToDate = function() end
             local seenSpell = {}
             for lvl = reqLvl, 75 do
                 local fp = makeFakePlayer(jid, lvl, entry, jKey)
@@ -548,6 +551,7 @@ for _, jid in ipairs(sortedJobIds) do
                     end
                 end
             end
+            spec.ensureUpToDate = origEnsure
         end
 
         local extraTraits = {}
