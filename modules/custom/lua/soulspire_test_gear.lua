@@ -3602,6 +3602,8 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.GEO or 21) then
         if specKey == 'terramancer' then
             return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'GEO Terramancer (Seismic Faults)', specEntry = specEntry }
+        elseif specKey == 'diviner' then
+            return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'GEO Diviner (Ley Corridor)', specEntry = specEntry }
         end
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'Geomancer (Club & Handbell)' }
     elseif jobId == (j.RUN or 22) then
@@ -3702,8 +3704,11 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
-    if jobId == (xi.job.GEO or 21) and testGear.getActiveSpecKey(player, jobId) == 'terramancer' then
-        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    if jobId == (xi.job.GEO or 21) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'terramancer' or activeSpec == 'diviner' then
+            return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+        end
     end
     if jobId == (xi.job.SMN or 15) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)

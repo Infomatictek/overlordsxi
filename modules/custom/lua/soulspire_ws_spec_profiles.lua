@@ -3042,6 +3042,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     primalist      = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     herald         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     terramancer    = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
+    diviner        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     miragesentinel = { [S.DAGGER or 2] = true },
     flintlock      = { [S.MARKSMANSHIP or 26] = true },
     buccaneer      = { [S.SWORD or 3] = true },
