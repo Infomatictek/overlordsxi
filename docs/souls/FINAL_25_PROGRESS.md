@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 21/25. Current: Primalist. Blocked: none.
-- Latest pushed Soul implementation commits: server `e47539a3adc08955570bedf247b0699b9177461d`, launcher `12238365431a324427f67920329e05b9303de7f9`. The server branch also carries this tracker update.
+- Completed: 22/25. Current: Herald. Blocked: none.
+- Latest pushed Soul implementation commits: server `d7659bf788ae0a335ccb7fb7d53024df36ca163d`, launcher `c2c79cdc0d293dac8becf9174fc1025c793e0335`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -32,8 +32,8 @@
 | 19 | SCH | Archivist | archivist | Support | Pushed. Manual verification required. |
 | 20 | BST | Untamed | untamed | Damage | Pushed. Manual verification required. |
 | 21 | BST | Beastspeaker | beastspeaker | Support | Pushed. Manual verification required. |
-| 22 | SMN | Primalist | primalist | Damage | Current |
-| 23 | SMN | Herald | herald | Support | Pending |
+| 22 | SMN | Primalist | primalist | Damage | Pushed. Manual verification required. |
+| 23 | SMN | Herald | herald | Support | Current |
 | 24 | GEO | Terramancer | terramancer | Damage | Pending |
 | 25 | GEO | Diviner | diviner | Support | Pending |
 
@@ -95,4 +95,6 @@
 - **Untamed architecture:** The native Ready list can loan one pet command at Lv. 10. Validate the owner, current pet and both targets at execution. For real Ready hits, wrap the pet ability callback and confirm positive HP loss. Native pet command IDs of 512 or above go into the pet command table, separate from normal job abilities.
 - **Beastspeaker checkpoint:** [Implementation report](completed/beastspeaker.md). Server `e47539a3adc08955570bedf247b0699b9177461d`, launcher `12238365431a324427f67920329e05b9303de7f9`. Four focused tests, 119 accessible regression tests, strict wiki and roster audits, nine native syntax checks, Lua HUD layout fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Beastspeaker architecture:** Resolve physical contribution in the native regular attack loop after damage mitigation. Track one claim per native round and two per party member. After actual pet melee HP loss, validate owner, assigned companion, enemy spawn and pending order before exposing.
-- **Next step:** Implement Primalist's approved avatar damage loop and native pact identities. Establish the Lv. 10 baseline and verify pet lifecycle, damage type, Soul isolation, HUD and progression.
+- **Primalist checkpoint:** [Implementation report](completed/primalist.md). Server `d7659bf788ae0a335ccb7fb7d53024df36ca163d`, launcher `c2c79cdc0d293dac8becf9174fc1025c793e0335`. Four focused tests, 123 accessible regression tests, strict Lua wiki and roster, seven native syntax checks, LuaJIT syntax, HUD fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Primalist architecture:** Use a virtual summon list driven by level and saved choices so learned spells stay intact. Fill only the matching avatar's native pet command bit. Use the common Blood Pact MP and recast pipeline and resolve the Soul bonus after elemental resistance on the bound target.
+- **Next step:** Implement Herald's approved Astral Accord, loaned avatars and support delivery. Verify party membership, one claim per member, avatar cleanup, and isolation from Celestial and Primalist.
