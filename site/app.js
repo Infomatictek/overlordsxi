@@ -280,14 +280,21 @@
     const s = d.stats || {};
 
     return `
-      <section class="wiki-hero">
-        <div class="hero-eyebrow">⚡ Classic Level 75 Cap &bull; Level 99 QoL &bull; Spec-Adaptive WS Trees</div>
-        <h1>Welcome to the SoulspireXI Encyclopedia</h1>
-        <p>
-          SoulspireXI blends the iconic <strong>Level 75 Era cap</strong> with modern <strong>Level 99 Quality-of-Life</strong>,
-          faster baseline combat pacing, transformative <strong>Lv.10+ Job Soul Crystals</strong>, and a deep
-          <strong>Spec-Adaptive 56-point Talent Tree for every Weaponskill in the game</strong>.
-        </p>
+      <section class="wiki-hero wiki-hero-overview">
+        <div class="hero-top">
+          <div class="hero-copy">
+            <div class="hero-eyebrow">⚡ Classic Level 75 Cap &bull; Level 99 QoL &bull; Spec-Adaptive WS Trees</div>
+            <h1>Welcome to the SoulspireXI Encyclopedia</h1>
+            <p>
+              SoulspireXI blends the iconic <strong>Level 75 Era cap</strong> with modern <strong>Level 99 Quality-of-Life</strong>,
+              faster baseline combat pacing, transformative <strong>Lv.10+ Job Soul Crystals</strong>, and a deep
+              <strong>Spec-Adaptive 56-point Talent Tree for every Weaponskill in the game</strong>.
+            </p>
+          </div>
+          <div class="hero-emblem">
+            <img src="assets/soulspire-emblem.jpg" alt="SoulspireXI Emblem" />
+          </div>
+        </div>
 
         <div class="stat-grid">
           <div class="stat-card" data-nav="crystals">

@@ -62,6 +62,9 @@ location / {
     location ~* \.css$  { add_header Content-Type "text/css; charset=utf-8";  proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
     location ~* \.js$   { add_header Content-Type "application/javascript; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
     location ~* \.json$ { add_header Content-Type "application/json; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.png$  { add_header Content-Type "image/png"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.jpe?g$ { add_header Content-Type "image/jpeg"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.ico$  { add_header Content-Type "image/x-icon"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
 }
 ```
 
