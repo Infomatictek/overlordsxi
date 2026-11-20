@@ -15,6 +15,7 @@ Runs automatically via GitHub Actions on every push (or locally via `python scri
 import argparse
 import copy
 import datetime
+import importlib.util
 import json
 import re
 import shutil
@@ -24,12 +25,27 @@ import tempfile
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+SCRIPTS_DIR = Path(__file__).resolve().parent
 LUA_DIR = ROOT_DIR / "modules" / "custom" / "lua"
 CMD_DIR = ROOT_DIR / "modules" / "custom" / "commands"
 SQL_DIR = ROOT_DIR / "modules" / "custom" / "sql"
 PATCH_DIR = ROOT_DIR / "patches"
 GUIDES_DIR = ROOT_DIR / "docs" / "guides"
 SITE_DIR = ROOT_DIR / "site"
+
+
+def _load_soul_actions_module():
+    mod_path = SCRIPTS_DIR / "soul_actions_wiki.py"
+    spec = importlib.util.spec_from_file_location("soul_actions_wiki", str(mod_path))
+    if not spec or not spec.loader:
+        raise RuntimeError(f"Unable to load {mod_path}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["soul_actions_wiki"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+soul_actions_wiki = _load_soul_actions_module()
 
 
 def run_git(args):
@@ -2428,13 +2444,13 @@ def parse_spec_guides() -> dict[str, dict]:
         at_a_glance = " ".join(
             ln.strip()
             for sk, lines in sections.items()
-            if sk.startswith("at a glance")
+            if sk.startswith(("at a glance", "what is "))
             for ln in lines
-            if ln.strip()
+            if ln.strip() and not ln.strip().startswith("|")
         )
         setup = collect_items(("setup", "gear", "requirements"))
-        loop = collect_items(("how to play", "core loop", "gameplay loop", "rotation"))
-        mechanics = collect_items(("key mechanics", "mechanics", "stacks", "stances"))
+        loop = collect_items(("how to play", "core loop", "gameplay loop", "rotation", "level-10 gameplay loop", "level 10 gameplay loop"))
+        mechanics = collect_items(("key mechanics", "mechanics", "stacks", "stances", "the tactical cycle", "tactical cycle", "soul hud"))
         tips = collect_items(("common mistakes", "tips", "watch out", "avoid"))
 
         guides[ckey] = {
@@ -2659,6 +2675,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Generate into a temporary directory and validate JSON/JS output without modifying site/.",
     )
+    parser.add_argument(
+        "--launcher-dir",
+        type=Path,
+        default=None,
+        help="Path to Infomatictek/overlordsxi-launcher checkout containing Soul action TSVs.",
+    )
+    parser.add_argument(
+        "--strict-actions",
+        action="store_true",
+        help="Fail if launcher Soul action TSVs are missing or if any Soul action validation error occurs.",
+    )
     return parser.parse_args(argv)
 
 
@@ -2683,8 +2710,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[error] {exc}", file=sys.stderr)
         return 1
 
+    server_ability_unlocks: dict[str, dict[int, int]] = {}
+    server_spell_grants: dict[str, dict[int, int]] = {}
+    kit_spells_by_soul: dict[str, dict] = {}
+    roster = soul_actions_wiki.build_soul_roster(ROOT_DIR)
+
     if lua_data:
         print(f"Using real Lua runtime ({lua_bin}) for exact module evaluation.")
+        kit_spells_by_soul = lua_data.get("kitSpells", {}) or {}
         jobs = []
         for j in lua_data.get("jobSpecs", []):
             jkey = j["jobKey"]
@@ -2695,6 +2728,17 @@ def main(argv: list[str] | None = None) -> int:
                 highlights = c.get("highlights", [])
                 cdesc = c.get("description", "")
                 passive_mods = [format_evaluated_mod(m["mod"], m["values"]) for m in c.get("evaluatedMods", [])]
+
+                canonical_key, _ = soul_actions_wiki.resolve_soul_key(ckey, roster)
+                if canonical_key:
+                    raw_au = c.get("abilityUnlockLevels", {}) or {}
+                    server_ability_unlocks[canonical_key] = {
+                        int(aid): int(lvl) for aid, lvl in raw_au.items() if str(aid).isdigit()
+                    }
+                    raw_sg = c.get("spellGrants", {}) or {}
+                    server_spell_grants[canonical_key] = {
+                        int(sid): int(lvl) for sid, lvl in raw_sg.items() if str(sid).isdigit()
+                    }
 
                 spec_abilities = resolve_spec_abilities(
                     c.get("extraAbilities", []), jkey, ckey, cname, highlights, sql_abils, lua_meta
@@ -2760,12 +2804,64 @@ def main(argv: list[str] | None = None) -> int:
 
     wiki_extras = get_companions_and_equipment()
     guides_map = parse_spec_guides()
-    # Attach Playstyle Guide + dynamically populate all resolved custom job traits
+
+    # Load launcher Soul action & visibility TSVs when available
+    actions_tsv_path, visibility_tsv_path = soul_actions_wiki.locate_launcher_files(args.launcher_dir, ROOT_DIR)
+    launcher_parse_errors: list[str] = []
+    launcher_actions: list[dict] = []
+    launcher_visibility: list[dict] = []
+
+    if args.strict_actions and (actions_tsv_path is None or visibility_tsv_path is None):
+        print(
+            "[error] --strict-actions was specified, but launcher soul_actions.tsv / visibility.tsv "
+            "could not be located. Pass --launcher-dir <path>.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if actions_tsv_path is not None:
+        launcher_actions, errs = soul_actions_wiki.parse_soul_actions_tsv(
+            actions_tsv_path.read_text(encoding="utf-8", errors="replace"),
+            roster,
+            source_label=str(actions_tsv_path.name),
+        )
+        launcher_parse_errors.extend(errs)
+    if visibility_tsv_path is not None:
+        launcher_visibility, errs = soul_actions_wiki.parse_visibility_tsv(
+            visibility_tsv_path.read_text(encoding="utf-8", errors="replace"),
+            roster,
+            source_label=str(visibility_tsv_path.name),
+        )
+        launcher_parse_errors.extend(errs)
+
+    jobs, soul_action_audit = soul_actions_wiki.integrate_soul_actions(
+        jobs=jobs,
+        job_meta=JOB_META,
+        roster=roster,
+        kit_spells_by_soul=kit_spells_by_soul,
+        server_ability_unlocks=server_ability_unlocks,
+        server_spell_grants=server_spell_grants,
+        launcher_actions=launcher_actions,
+        launcher_visibility=launcher_visibility,
+        guides_map=guides_map,
+        build_fallback_guide_fn=build_fallback_guide,
+    )
+    if launcher_parse_errors:
+        soul_action_audit["errors"] = launcher_parse_errors + soul_action_audit["errors"]
+        soul_action_audit["errorCount"] = len(soul_action_audit["errors"])
+
+    for warn in soul_action_audit["warnings"]:
+        print(f"[warn] Soul actions: {warn}", file=sys.stderr)
+    if soul_action_audit["errors"]:
+        for err in soul_action_audit["errors"]:
+            print(f"[error] Soul actions: {err}", file=sys.stderr)
+        if args.strict_actions or args.launcher_dir is not None:
+            return 1
+
+    # Dynamically populate all resolved custom job traits
     all_traits_by_id = {ct["id"]: copy.deepcopy(ct) for ct in CUSTOM_TRAITS.values()}
     for j in jobs:
         for c in j.get("crystals", []):
-            ckey = c.get("key", "")
-            c["guide"] = guides_map.get(ckey) or build_fallback_guide(j, c)
             for t in c.get("customTraits", []):
                 tid = t.get("id")
                 if isinstance(tid, int) and tid >= 140 and tid not in all_traits_by_id:
@@ -2779,6 +2875,13 @@ def main(argv: list[str] | None = None) -> int:
     branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"]) or "main"
 
     total_custom_jas = sum(len(c.get("customAbilities", [])) for j in jobs for c in j["crystals"])
+    total_soul_actions = sum(len(c.get("soulActions", [])) for j in jobs for c in j["crystals"])
+    implemented_souls = sum(
+        1 for j in jobs for c in j["crystals"] if c.get("implementationStatus") == "implemented"
+    )
+    planned_souls = sum(
+        1 for j in jobs for c in j["crystals"] if c.get("implementationStatus") != "implemented"
+    )
 
     data = {
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -2789,6 +2892,10 @@ def main(argv: list[str] | None = None) -> int:
         "stats": {
             "totalJobsWithSpecs": len(jobs),
             "totalCrystalSpecs": sum(len(j["crystals"]) for j in jobs),
+            "totalCanonicalSouls": soul_action_audit["totalCanonicalSouls"],
+            "totalImplementedSouls": implemented_souls,
+            "totalPlannedSouls": planned_souls,
+            "totalSoulActions": total_soul_actions,
             "totalCustomAbilities": total_custom_jas,
             "totalCustomTraits": len(wiki_extras["customTraits"]),
             "totalCompanions": len(wiki_extras["companions"]),
@@ -2796,6 +2903,16 @@ def main(argv: list[str] | None = None) -> int:
             "totalWeaponSkillsCategories": len(set(w["skillName"] for w in ws_trees)),
             "totalPatches": len(patches),
             "totalRecentCommits": len(commits),
+        },
+        "soulActionAudit": {
+            "totalCanonicalSouls": soul_action_audit["totalCanonicalSouls"],
+            "implementedSouls": soul_action_audit["implementedSouls"],
+            "plannedSouls": soul_action_audit["plannedSouls"],
+            "soulsWithLauncherCatalog": soul_action_audit["soulsWithLauncherCatalog"],
+            "totalLauncherActions": soul_action_audit["totalLauncherActions"],
+            "totalGeneratedActions": soul_action_audit["totalGeneratedActions"],
+            "errorCount": soul_action_audit["errorCount"],
+            "warningCount": soul_action_audit["warningCount"],
         },
         "serverRules": rules,
         "jobSpecs": jobs,

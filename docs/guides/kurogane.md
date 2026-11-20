@@ -4,4 +4,4 @@ Kurogane was renamed **Shinobi** at testers' request. The underlying Soul key `k
 
 **Read the updated [Shinobi shadow-clone management guide](shinobi.md).**
 
-The legacy `!kurogane` GM command remains valid for clone-engine testing. Production Utsusemi summoning and the two new Shinobi JAs are still awaiting implementation.
+The legacy `!kurogane` GM command remains valid for clone-engine diagnostics.

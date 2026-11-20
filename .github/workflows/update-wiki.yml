@@ -11,11 +11,16 @@ on:
       - 'modules/custom/lua/**'
       - 'modules/custom/commands/**'
       - 'modules/custom/sql/**'
+      - 'modules/init.append.txt'
       - 'patches/**'
       - 'docs/guides/**'
       - 'scripts/generate-site-data.py'
+      - 'scripts/soul_actions_wiki.py'
       - 'scripts/export_lua_wiki_data.lua'
+      - 'tools/audit_soul_coverage.py'
+      - 'tools/soul_coverage_baseline.json'
       - 'tests/test_ci_tooling.py'
+      - 'tests/test_soul_actions_wiki.py'
       - '.github/workflows/update-wiki.yml'
   pull_request:
     branches:
@@ -24,13 +29,27 @@ on:
       - 'modules/custom/lua/**'
       - 'modules/custom/commands/**'
       - 'modules/custom/sql/**'
+      - 'modules/init.append.txt'
       - 'patches/**'
       - 'docs/guides/**'
       - 'scripts/generate-site-data.py'
+      - 'scripts/soul_actions_wiki.py'
       - 'scripts/export_lua_wiki_data.lua'
+      - 'tools/audit_soul_coverage.py'
+      - 'tools/soul_coverage_baseline.json'
       - 'tests/test_ci_tooling.py'
+      - 'tests/test_soul_actions_wiki.py'
       - '.github/workflows/update-wiki.yml'
   workflow_dispatch:
+    inputs:
+      launcher_ref:
+        description: 'Launcher repository ref or commit SHA for Soul action definitions'
+        required: false
+        default: 'main'
+        type: string
+  repository_dispatch:
+    types:
+      - launcher-soul-actions-updated
 
 concurrency:
   group: update-wiki-${{ github.ref }}
@@ -41,12 +60,21 @@ permissions:
 
 jobs:
   validate-wiki-data:
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout server repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 100
+
+      - name: Checkout launcher repository for Soul action definitions
+        uses: actions/checkout@v7
+        with:
+          repository: Infomatictek/overlordsxi-launcher
+          ref: ${{ github.event.inputs.launcher_ref || github.event.client_payload.launcher_sha || 'main' }}
+          path: .launcher-repo
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -56,16 +84,17 @@ jobs:
       - name: Install Lua 5.3 for exact Lua module evaluation
         run: sudo apt-get update && sudo apt-get install -y lua5.3
 
-      - name: Run CI tooling unit tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
-
       - name: Generate and validate site/data.json and site/data.js
         run: |
-          python scripts/generate-site-data.py --require-lua
+          python scripts/generate-site-data.py --require-lua --launcher-dir .launcher-repo --strict-actions
           node --check site/data.js
+          node --check site/app.js
+
+      - name: Run CI tooling and Soul action wiki unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: Upload validated wiki data for main publication
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) || github.event_name == 'repository_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: validated-wiki-data
@@ -76,7 +105,7 @@ jobs:
 
   publish-wiki-data:
     needs: validate-wiki-data
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) || github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -86,6 +115,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 100
+
+      - name: Checkout launcher repository for fresh regeneration fallback
+        uses: actions/checkout@v7
+        with:
+          repository: Infomatictek/overlordsxi-launcher
+          ref: ${{ github.event.inputs.launcher_ref || github.event.client_payload.launcher_sha || 'main' }}
+          path: .launcher-repo
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -116,7 +153,7 @@ jobs:
 
           regenerate_fresh() {
             ensure_lua
-            python scripts/generate-site-data.py --require-lua
+            python scripts/generate-site-data.py --require-lua --launcher-dir .launcher-repo --strict-actions
             node --check site/data.js
           }
 
