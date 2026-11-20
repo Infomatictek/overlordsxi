@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 24/25. Current: Diviner. Blocked: none.
-- Latest pushed Soul implementation commits: server `b9b7babbac1bb75a587a90edb1ca27e2a901d637`, launcher `91cd730bc567cfb0074380a51d745cbc65fe1991`. The server branch also carries this tracker update.
+- Completed: 25/25. Current: none. Blocked: none.
+- Latest pushed Soul implementation commits: server `aa65c4f2418537497a8260562f46f5d14cc688b0`, launcher `f2ef25b79d92cf11ed8ed15699b190e9c51638a9`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -35,7 +35,7 @@
 | 22 | SMN | Primalist | primalist | Damage | Pushed. Manual verification required. |
 | 23 | SMN | Herald | herald | Support | Pushed. Manual verification required. |
 | 24 | GEO | Terramancer | terramancer | Damage | Pushed. Manual verification required. |
-| 25 | GEO | Diviner | diviner | Support | Current |
+| 25 | GEO | Diviner | diviner | Support | Pushed. Manual verification required. |
 
 ## Audit and shared patterns
 
@@ -101,4 +101,7 @@
 - **Herald architecture:** Snapshot in-range party IDs and bind the Accord to the exact avatar entity. Reserve each matching direct damage claim before application and settle on actual HP loss. Reserve only the ordinary portion of damage when another Soul adds a burst, and route pet damage through a scoped native callback.
 - **Terramancer checkpoint:** [Implementation report](completed/terramancer.md). Server `b9b7babbac1bb75a587a90edb1ca27e2a901d637`, launcher `91cd730bc567cfb0074380a51d745cbc65fe1991`. Four focused tests, 131 accessible regression tests, strict Lua wiki and roster, eight native syntax checks, HUD fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Terramancer architecture:** Commit elapsed ground casts on successful placement only. Bind the exact quarry spawn and fixed XYZ position and detonate through a cloned native Stone action after position, claim and instance checks. Keep both fault recasts in the native spell container.
-- **Next step:** Implement Diviner's approved ley corridor, native endpoints and movement-aware support. Verify the Lv. 10 loop, corridor behavior, role isolation and the complete 66-Soul roster.
+- **Diviner checkpoint:** [Implementation report](completed/diviner.md). Server `aa65c4f2418537497a8260562f46f5d14cc688b0`, launcher `f2ef25b79d92cf11ed8ed15699b190e9c51638a9`. Four focused tests, all 139 server tests including Combat Analytics, strict Lua wiki and roster, seven native syntax checks, Lua HUD fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Diviner architecture:** Sample a clamped segment between a stationary anchor and the player. Require a common party, zone, battle and instance. Apply modifier deltas for the strongest covering segment and expire stale coverage with short recipient leases. Reanchoring preserves expiry.
+- **Final verification:** Strict audit recognizes 66 implemented Souls, 0 incomplete and 0 planned. All 25 reports are indexed in this tracker. The last full test run included the four loopback tests that were restricted earlier.
+- **Next step:** No implementation remains in this queue. Run each report's **Manual Verification Required** checks on a test server and Ashita client before marking gameplay verification complete. The two feature branches are ready for that review.
