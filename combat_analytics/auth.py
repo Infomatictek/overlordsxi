@@ -70,6 +70,82 @@ def verify_password(password: str, stored_hash: str | None) -> bool:
     return hmac.compare_digest(derived, expected)
 
 
+def _verify_ffxi_password(password: str, stored_hash: str) -> bool:
+    if not password or not stored_hash:
+        return False
+    stored = stored_hash.strip()
+    if stored.startswith(("$2a$", "$2b$", "$2y$")):
+        import bcrypt
+
+        try:
+            return bool(bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8")))
+        except ValueError:
+            return False
+    # Legacy MariaDB PASSWORD() format: '*' + 40-char uppercase hex of SHA1(SHA1(password))
+    if len(stored) == 41 and stored.startswith("*"):
+        stage1 = hashlib.sha1(password.encode("utf-8")).digest()
+        stage2 = "*" + hashlib.sha1(stage1).hexdigest().upper()
+        return hmac.compare_digest(stage2, stored.upper())
+    return False
+
+
+def authenticate_ffxi_account(cfg: AnalyticsConfig, username: str, password: str) -> dict[str, Any] | None:
+    """Authenticate against the LandSandBoat/FFXI MariaDB accounts & chars tables (read-only)."""
+    if not cfg.ffxi_db_auth_enabled or not username or not password:
+        return None
+    import pymysql
+
+    conn = pymysql.connect(
+        host=cfg.ffxi_db_host,
+        port=cfg.ffxi_db_port,
+        user=cfg.ffxi_db_user,
+        password=cfg.ffxi_db_password,
+        database=cfg.ffxi_db_name,
+        charset="utf8mb4",
+        connect_timeout=5,
+        read_timeout=5,
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, login, password, status FROM accounts WHERE LOWER(login) = LOWER(%s) LIMIT 1",
+                (username,),
+            )
+            acct = cur.fetchone()
+            if not acct:
+                return None
+            # LandSandBoat status: 1 = normal/active
+            if int(acct.get("status") or 0) != 1:
+                return None
+            stored_pw = acct.get("password")
+            if isinstance(stored_pw, (bytes, bytearray)):
+                stored_pw = stored_pw.decode("utf-8", errors="ignore")
+            if not _verify_ffxi_password(password, str(stored_pw or "")):
+                return None
+
+            acc_id = int(acct["id"])
+            login_name = str(acct["login"])
+            cur.execute(
+                "SELECT charname, gmlevel FROM chars WHERE accid = %s ORDER BY charid ASC",
+                (acc_id,),
+            )
+            char_rows = cur.fetchall() or []
+            characters = [str(r["charname"]) for r in char_rows if r.get("charname")]
+            max_gm = max((int(r.get("gmlevel") or 0) for r in char_rows), default=0)
+            role = "admin" if max_gm >= cfg.ffxi_gm_admin_level else "player"
+            return {
+                "provider": "ffxi",
+                "subject": str(acc_id),
+                "username": login_name,
+                "display_name": login_name,
+                "role": role,
+                "characters": characters,
+            }
+    finally:
+        conn.close()
+
+
 class LoginRateLimiter:
     """Thread-safe sliding-window login throttle."""
 

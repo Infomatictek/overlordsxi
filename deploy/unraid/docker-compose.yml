@@ -168,6 +168,56 @@ services:
       mariadb:
         condition: service_healthy
 
+  # Combat Analytics & Parse Metrics API (private, proxied by SWAG on proxynet)
+  combat-analytics:
+    build:
+      context: ../..
+      dockerfile: combat_analytics/deploy/Dockerfile
+    image: soulspirexi/combat-analytics:latest
+    container_name: soulspirexi-combat-analytics
+    restart: unless-stopped
+    stop_grace_period: 15s
+    logging: *default-logging
+    labels:
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site/assets/logo.png"
+    networks:
+      - proxynet
+      - soulspire_db
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      TZ: "${TZ:-America/Chicago}"
+      OVERLORDS_ANALYTICS_HOST: "0.0.0.0"
+      OVERLORDS_ANALYTICS_PORT: "8765"
+      OVERLORDS_ANALYTICS_DB: "/data/analytics.db"
+      OVERLORDS_PG_LOG_DIR: "/pg_logs"
+      OVERLORDS_POLL_INTERVAL_SEC: "15"
+      OVERLORDS_RETENTION_PER_CHARACTER: "50"
+      OVERLORDS_PUBLIC_BASE_URL: "${COMBAT_PUBLIC_BASE_URL:-https://wiki.soulspirexi.com}"
+      OVERLORDS_ALLOWED_ORIGINS: "${COMBAT_ALLOWED_ORIGINS:-https://wiki.soulspirexi.com,https://soulspirexi.com,https://api.soulspirexi.com,https://infomatic.dev}"
+      OVERLORDS_COOKIE_SECURE: "1"
+      OVERLORDS_TRUST_PROXY_HEADERS: "1"
+      OVERLORDS_ENABLE_LOCAL_AUTH: "1"
+      OVERLORDS_SERVE_STATIC_SITE: "0"
+      SOULSPIRE_FFXI_DB_HOST: "soulspirexi-mariadb"
+      SOULSPIRE_FFXI_DB_PORT: "3306"
+      SOULSPIRE_FFXI_DB_NAME: "${MARIADB_DATABASE:-xidb}"
+      SOULSPIRE_FFXI_DB_USER: "${MARIADB_USER:-soulspire}"
+      SOULSPIRE_FFXI_DB_PASSWORD: "${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env}"
+      SOULSPIRE_FFXI_GM_ADMIN_LEVEL: "${SOULSPIRE_FFXI_GM_ADMIN_LEVEL:-1}"
+    volumes:
+      - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/analytics:/data"
+      - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/logs/proving_grounds:/pg_logs:ro"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/combat/health', timeout=3)"]
+      start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   soulspire_db:
     driver: bridge
+  proxynet:
+    external: true

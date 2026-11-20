@@ -19,6 +19,7 @@ from . import __version__
 from .auth import (
     LoginRateLimiter,
     OAuthStateStore,
+    authenticate_ffxi_account,
     build_oauth_authorize_url,
     exchange_oauth_code,
     hash_password,
@@ -505,8 +506,8 @@ class AnalyticsRequestHandler(BaseHTTPRequestHandler):
         )
 
     def _handle_login(self) -> None:
-        if not self.app.cfg.enable_local_auth:
-            self._send_json(403, {"error": "local_auth_disabled", "message": "Local password login is disabled."})
+        if not self.app.cfg.enable_local_auth and not self.app.cfg.ffxi_db_auth_enabled:
+            self._send_json(403, {"error": "local_auth_disabled", "message": "Password login is disabled."})
             return
         body = self._read_json_body()
         username = str(body.get("username") or "").strip()
@@ -521,26 +522,50 @@ class AnalyticsRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
-        row = self.app.db.get_user_with_secret_by_username(username) if username else None
-        if (
-            row is None
-            or not row["is_active"]
-            or row["auth_provider"] != "local"
-            or not verify_password(password, row["password_hash"])
-        ):
+        user: dict[str, Any] | None = None
+        audit_event = "login_local"
+
+        # 1. Try FFXI MariaDB account auth if configured
+        if self.app.cfg.ffxi_db_auth_enabled and username and password:
+            try:
+                ffxi_identity = authenticate_ffxi_account(self.app.cfg, username, password)
+            except Exception as exc:
+                self._send_json(503, {"error": "auth_db_unavailable", "message": f"Account database unavailable: {exc}"})
+                return
+            if ffxi_identity is not None:
+                user = self.app.db.upsert_ffxi_user(
+                    acc_id=ffxi_identity["subject"],
+                    username=ffxi_identity["username"],
+                    display_name=ffxi_identity["display_name"],
+                    role=ffxi_identity["role"],
+                    character_names=ffxi_identity["characters"],
+                )
+                audit_event = "login_ffxi"
+
+        # 2. Fallback to local SQLite scrypt accounts if enabled
+        if user is None and self.app.cfg.enable_local_auth:
+            row = self.app.db.get_user_with_secret_by_username(username) if username else None
+            if (
+                row is not None
+                and row["is_active"]
+                and row["auth_provider"] == "local"
+                and verify_password(password, row["password_hash"])
+            ):
+                user = self.app.db.get_user_by_id(int(row["id"]))
+
+        if user is None:
             self.app.rate_limiter.record_failure(throttle_key)
             self._send_json(401, {"error": "invalid_credentials", "message": "Invalid username or password."})
             return
 
         self.app.rate_limiter.reset(throttle_key)
         raw_tok, csrf = self.app.db.create_session(
-            int(row["id"]),
+            int(user["id"]),
             ttl_hours=self.app.cfg.session_ttl_hours,
             ip_hint=ip,
             user_agent=self.headers.get("User-Agent") or "",
         )
-        user = self.app.db.get_user_by_id(int(row["id"]))
-        self.app.db.record_audit("login_local", user_id=int(row["id"]), detail={"ip": ip})
+        self.app.db.record_audit(audit_event, user_id=int(user["id"]), detail={"ip": ip})
         cookie_hdr = self._make_cookie_header(raw_tok, max_age=self.app.cfg.session_ttl_hours * 3600)
         self._send_json(
             200,
