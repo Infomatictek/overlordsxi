@@ -60,6 +60,7 @@ cmd_init() {
         "${APPDATA_DIR}/logs/proving_grounds/events" \
         "${APPDATA_DIR}/logs/proving_grounds/snapshots" \
         "${APPDATA_DIR}/logs/proving_grounds/feedback" \
+        "${APPDATA_DIR}/logs/burrows_reborn" \
         "${APPDATA_DIR}/meshes/navmeshes" \
         "${APPDATA_DIR}/meshes/ximeshes" \
         "${APPDATA_DIR}/backups/daily" \
@@ -240,9 +241,14 @@ cmd_deploy() {
         exit 1
     fi
 
-    # Take pre-deploy DB backup if MariaDB is already running
+    # Take pre-deploy DB backup & apply idempotent Burrows instance SQL if MariaDB is already running
     if [ "$(docker inspect -f '{{.State.Running}}' soulspirexi-mariadb 2>/dev/null || true)" = "true" ]; then
         cmd_backup "pre-deploy-${tag}" "pre-deploy"
+        if [ -f "${REPO_ROOT}/modules/custom/sql/soulspire_burrows_first_descent.sql" ]; then
+            echo "==> Applying idempotent Burrows Reborn instance_list SQL..."
+            docker exec -i soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" \
+                < "${REPO_ROOT}/modules/custom/sql/soulspire_burrows_first_descent.sql"
+        fi
     fi
 
     echo "==> Recording active tag ${tag} in ${ENV_FILE}"

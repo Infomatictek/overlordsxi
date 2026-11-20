@@ -65,8 +65,24 @@ Inside **Ghoyu's Reverie**, an in-instance **Burrows Expedition Guide** stands a
 - `modules/custom/lua/soulspire_burrows_first_descent.lua` — Hub & in-instance NPCs, native `customMenu`, multi-instance session manager, Lv. 10 sync/restoration, encounter state machine, zero-reward safeguards, and disconnect/relog recovery.
 - `log/burrows_reborn/runs.jsonl` — Structured run telemetry (mode, party size, Souls, encounter outcomes, boss adaptations, duration, `rewards_suppressed: true`).
 
+## Docker Deployment (SoulspireXI Stack)
+
+All server patches, custom Lua modules, and SQL registrations are built and deployed directly through the SoulspireXI Docker stack (`deploy/unraid/`):
+
+```bash
+git fetch origin
+git checkout feat/burrows-reborn-lv10
+cd deploy/unraid
+./scripts/soulspire-ctl.sh build burrows-lv10-proto
+./scripts/soulspire-ctl.sh deploy burrows-lv10-proto
+```
+
+- `build` automatically applies `patches/0046-burrows-reborn-first-descent-instance.patch`, copies `modules/custom/**`, and updates `modules/init.txt`.
+- `deploy` automatically backs up MariaDB, applies idempotent `modules/custom/sql/soulspire_burrows_first_descent.sql` (`instance_list` `12901`), rolls out the containers, and runs `verify-deployment.sh`.
+- Telemetry logs persist to `${APPDATA_DIR}/logs/burrows_reborn/runs.jsonl`.
+
 ## Known Limitations
 
 1. **Native Meeble model placeholder in upstream LandSandBoat**: Stock LandSandBoat `Meeble_Augur` / `Snarling_Meeble` pools in Ghoyu's Reverie currently have `modelid = 0` (invisible placeholder). To avoid DAT edits or invisible enemies, The First Descent uses verified visible Zone 129 models (`Orcish_Hexspinner`, `Old_Quadav`, and `Gigas_Flanker`) with `HP = 0` for authentic Level 10 scaling.
-2. **Client-side visual verification pending**: Automated tests validate the full Lua state machine, menus, level sync, multi-instance isolation, encounter adaptations, disconnect/failure recovery, and reward suppression; a live in-game client playtest should still confirm sightlines and combat feel in Ghoyu's Reverie at `(458, 0, 416..446)`.
-3. **Database migration required on deploy**: Running `setup-local-server.ps1` / `apply-soulspire-overlay.sh` (or importing `modules/custom/sql/soulspire_burrows_first_descent.sql`) is required once so `instance_list` contains `12901`.
+2. **Client-side visual verification pending**: Automated tests validate the full Lua state machine, menus, level sync, multi-instance isolation, encounter adaptations, disconnect/failure recovery, and reward suppression; a live in-game client playtest on the Docker server should still confirm sightlines and combat feel in Ghoyu's Reverie at `(458, 0, 416..446)`.
+

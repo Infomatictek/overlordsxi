@@ -88,6 +88,20 @@ if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
     if [ -n "${SOULSPIRE_ZONE_IP:-}" ] && [ "${zone_ips}" != "${SOULSPIRE_ZONE_IP}" ]; then
         fail "zone_settings.zoneip (${zone_ips}) does not match SOULSPIRE_ZONE_IP (${SOULSPIRE_ZONE_IP})"
     fi
+
+    burrows_inst="$(docker exec soulspirexi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e \
+        "SELECT instance_name FROM instance_list WHERE instanceid = 12901;" 2>/dev/null || true)"
+    if [ "${burrows_inst}" = "the_first_descent" ]; then
+        pass "Burrows Reborn instance 12901 registered (${burrows_inst})"
+    else
+        fail "Burrows Reborn instance 12901 missing in instance_list (run soulspire-ctl.sh db-migrate or deploy)"
+    fi
+fi
+
+if docker exec soulspirexi-map test -f /server/scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua 2>/dev/null; then
+    pass "Burrows Reborn instance bridge present in soulspirexi-map"
+else
+    fail "Burrows Reborn instance bridge missing in soulspirexi-map"
 fi
 
 if [ "${RUN_LUA_TESTS}" = "--run-lua-tests" ]; then
