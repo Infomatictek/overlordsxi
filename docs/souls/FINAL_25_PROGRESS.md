@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 10/25. Current: Reaper. Blocked: none.
-- Latest pushed Soul implementation commits: server `b94e0547755cb75c3f2d0bd4acbadcbf61084eea`, launcher `7c372adf1535e52cc1699f8b0958f9cbce755a47`. The server branch also carries this tracker update.
+- Completed: 11/25. Current: Scourge. Blocked: none.
+- Latest pushed Soul implementation commits: server `48e28bad527f0b4b92480d95d07881c38eae6c83`, launcher `1622283d608cdefad89cb4aea43ec4d241c496dd`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -21,8 +21,8 @@
 | 8 | THF | Trickster | trickster | Support | Pushed. Manual verification required. |
 | 9 | THF | Phantom | phantom | Tank | Pushed. Manual verification required. |
 | 10 | PLD | Oathbreaker | oathbreaker | Damage | Pushed. Manual verification required. |
-| 11 | DRK | Reaper | reaper | Damage | Current |
-| 12 | DRK | Scourge | scourge | Support | Pending |
+| 11 | DRK | Reaper | reaper | Damage | Complete |
+| 12 | DRK | Scourge | scourge | Support | Current |
 | 13 | RNG | Sniper | sniper | Damage | Pending |
 | 14 | RNG | Arcane Archer | arcanearcher | Support | Pending |
 | 15 | NIN | Nightblade | nightblade | Support | Pending |
@@ -73,4 +73,6 @@
 - **Phantom architecture:** The opener uses the normal enmity and claim path with a scoped Steal-slot repurpose. Native regular melee misses drive enmity. The one-hit guard uses the shared pre-damage hook. Dagger/Katana restrictions, ordinary scoped Katanas and THF test gear follow the existing weapon path.
 - **Oathbreaker checkpoint:** [Implementation report](completed/oathbreaker.md). Server `b94e0547755cb75c3f2d0bd4acbadcbf61084eea`, launcher `7c372adf1535e52cc1699f8b0958f9cbce755a47`. Three focused tests, 79 accessible regression tests, strict roster and Lua wiki, 12 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Oathbreaker architecture:** Use Soul Action registry recast overrides for wiki output when a Soul reuses a native ability. Record retaliation from actual hostile HP lost after absorption.
-- **Next step:** Inspect Reaper's approved DRK loop and staged prototype, then implement its native actions, progression, HUD and focused tests.
+- **Reaper checkpoint:** [Implementation report](completed/reaper.md). Server `48e28bad527f0b4b92480d95d07881c38eae6c83`, launcher `1622283d608cdefad89cb4aea43ec4d241c496dd`. Three focused tests, 82 accessible regression tests, strict Lua wiki and roster, 12 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Reaper architecture:** Count one mob attack round or completed damaging action at the native callback boundary. Lua resolves target recovery and a Reaper's individual opportunity. Use cloned spell timings and costs to leave the native action unchanged for other Souls.
+- **Next step:** Implement Scourge's exclusive selected curses with boss resistance, party fallback, Native Soul Actions and the Lv. 10 support loop.
