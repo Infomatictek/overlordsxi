@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 19/25. Current: Untamed. Blocked: none.
-- Latest pushed Soul implementation commits: server `82024c6ef581560104acaf78d8ef4da60c5b792b`, launcher `8635bc3bad2ecaa39926bfb10230af096b2b5c54`. The server branch also carries this tracker update.
+- Completed: 20/25. Current: Beastspeaker. Blocked: none.
+- Latest pushed Soul implementation commits: server `94e00c9106d8fd95beabf0cde77356f4b536aaee`, launcher `fa55b23ba7d903e1e498486e6e3764880c572d74`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -30,8 +30,8 @@
 | 17 | DRG | Skyborn | skyborn | Tank | Pushed. Manual verification required. |
 | 18 | BLU | Warmage | warmage | Damage | Pushed. Manual verification required. |
 | 19 | SCH | Archivist | archivist | Support | Pushed. Manual verification required. |
-| 20 | BST | Untamed | untamed | Damage | Current |
-| 21 | BST | Beastspeaker | beastspeaker | Support | Pending |
+| 20 | BST | Untamed | untamed | Damage | Pushed. Manual verification required. |
+| 21 | BST | Beastspeaker | beastspeaker | Support | Current |
 | 22 | SMN | Primalist | primalist | Damage | Pending |
 | 23 | SMN | Herald | herald | Support | Pending |
 | 24 | GEO | Terramancer | terramancer | Damage | Pending |
@@ -91,4 +91,6 @@
 - **Warmage architecture:** Use an effective-level virtual Blue Magic kit to preserve native learned and saved spells. Suspend their set modifiers and traits while Warmage is active. Clone each spell's costs, timings and single-target settings; apply Assess Prey after resistance to the assessed target.
 - **Archivist checkpoint:** [Implementation report](completed/archivist.md). Server `82024c6ef581560104acaf78d8ef4da60c5b792b`, launcher `8635bc3bad2ecaa39926bfb10230af096b2b5c54`. Four focused tests, 111 accessible regression tests, strict Lua wiki and roster, 19 native syntax checks, LuaJIT HUD syntax and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Archivist architecture:** Differentiate spell, mob technique and weaponskill category plus native action ID and lifetime-unique spawn generation. A current action sequence preserves one winning page across all hits to the same victim.
-- **Next step:** Implement Untamed's approved master-and-beast tandem damage loop and native command identities from Lv. 10, including pet lifetime, gear and WS compatibility, HUD and tests.
+- **Untamed checkpoint:** [Implementation report](completed/untamed.md). Server `94e00c9106d8fd95beabf0cde77356f4b536aaee`, launcher `fa55b23ba7d903e1e498486e6e3764880c572d74`. Four focused tests, 115 accessible regression tests, strict Lua wiki and roster, 21 native syntax checks, Lua HUD layout fixture and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Untamed architecture:** The native Ready list can loan one pet command at Lv. 10. Validate the owner, current pet and both targets at execution. For real Ready hits, wrap the pet ability callback and confirm positive HP loss. Native pet command IDs of 512 or above go into the pet command table, separate from normal job abilities.
+- **Next step:** Implement Beastspeaker's approved offensive party support using native companion commands. Review the staged support contract, then prove its Lv. 10 loop and confirm isolation from Untamed and Alpha Warden.
