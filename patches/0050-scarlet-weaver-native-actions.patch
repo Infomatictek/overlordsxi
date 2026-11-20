@@ -1,0 +1,311 @@
+diff --git a/scripts/globals/spells/damage_spell.lua b/scripts/globals/spells/damage_spell.lua
+--- a/scripts/globals/spells/damage_spell.lua
++++ b/scripts/globals/spells/damage_spell.lua
+@@ -1176,6 +1176,11 @@
+         finalDamage = astro.adjustDamage(caster, target, spell, finalDamage)
+     end
+ 
++    local weaver = xi.soulspire and xi.soulspire.rdmScarletWeaverSpecs
++    if weaver and not absorb then
++        finalDamage = weaver.adjustDamage(caster, spell, finalDamage)
++    end
++
+     -- Handle "Nuke Wall". It must be handled after all previous calculations, but before clamp.
+     local nukeWallFactor = not absorb and calculateNukeWallFactor(target, spellElement, finalDamage) or 1
+     finalDamage          = math.floor(finalDamage * nukeWallFactor)
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -41,6 +41,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -131,6 +132,7 @@
+     m_valkyrieAbility = valkyrie::isActive(character);
+     m_astromancerAbility = astromancer::isActive(character);
+     m_channelerAbility = channeler::isActive(character);
++    m_scarletAbility = scarlet::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -305,8 +307,10 @@
+         const auto currentValkyrie = valkyrie::isActive(PChar);
+         const auto currentAstromancer = astromancer::isActive(PChar);
+         const auto currentChanneler = channeler::isActive(PChar);
++        const auto currentScarlet = scarlet::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
++            m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -53,5 +53,6 @@
+     bool                      m_valkyrieAbility{ false };
+     bool                      m_astromancerAbility{ false };
+     bool                      m_channelerAbility{ false };
++    bool                      m_scarletAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -44,6 +44,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -87,6 +88,7 @@
+     m_valkyrieCast = valkyrie::isActive(caster);
+     m_astromancerCast = astromancer::isActive(caster);
+     m_channelerCast = channeler::isActive(caster);
++    m_scarletCast = scarlet::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -433,7 +435,8 @@
+     const bool sameSoul = m_zealotCast == zealot::isActive(caster) &&
+                           m_valkyrieCast == valkyrie::isActive(caster) &&
+                           m_astromancerCast == astromancer::isActive(caster) &&
+-                          m_channelerCast == channeler::isActive(caster);
++                          m_channelerCast == channeler::isActive(caster) &&
++                          m_scarletCast == scarlet::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -72,6 +72,7 @@
+     bool                    m_valkyrieCast{ false };
+     bool                    m_astromancerCast{ false };
+     bool                    m_channelerCast{ false };
++    bool                    m_scarletCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -61,6 +61,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+ #include "utils/messageutils.h"
+ #include "utils/mobutils.h"
+@@ -3694,6 +3695,7 @@
+     /////////////////////////////////////////////////////////////////////////
+     const auto* character = dynamic_cast<const CCharEntity*>(this);
+     const bool trackStaffHit = zealot::isActive(character) && zealot::hasStaff(character);
++    const auto yangBonus = scarlet::yangBonus(character);
+     bool landedStaffHit = false;
+     while (attackRound.GetAttackSwingCount() && PTarget->isAlive() && this->isAlive())
+     {
+@@ -3893,7 +3895,12 @@
+                     actionResult.resolution = ActionResolution::Block;
+                 }
+ 
+-                const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), attack.GetDamage(), attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
++                int32 strikeDamage = attack.GetDamage();
++                if (yangBonus > 0 && strikeDamage > 0 && weaponSlot == SLOT_MAIN && attack.GetAttackType() == PHYSICAL_ATTACK_TYPE::NORMAL)
++                {
++                    strikeDamage = static_cast<int32>(static_cast<int64>(strikeDamage) * (100 + yangBonus) / 100);
++                }
++                const auto damage = battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), strikeDamage, attack.IsBlocked(), attack.GetWeaponSlot(), 1, attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
+                 if (damage < 0)
+                 {
+                     actionResult.param     = -damage;
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -110,6 +110,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/gardenutils.h"
+ #include "utils/messageutils.h"
+@@ -1474,6 +1475,13 @@
+             return level > 0 && GetMLevel() >= level &&
+                    !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+         }
++    }
++
++    if (scarlet::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto profile = scarlet::spellProfile(PSpell->getID());
++        return profile.level > 0 && GetMLevel() >= profile.level &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+     return charutils::hasSpell(this, static_cast<uint16>(PSpell->getID())) && CBattleEntity::CanUseSpell(PSpell);
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -29,6 +29,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_MAGIC_DATA::GP_SERV_COMMAND_MAGIC_DATA(const CCharEntity* PChar)
+@@ -40,7 +41,8 @@
+     const bool zealotActive = zealot::isActive(PChar);
+     const bool astroActive = astromancer::isActive(PChar);
+     const bool chnActive = channeler::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || valkyrie::isActive(PChar))
++    const bool scarletActive = scarlet::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -54,6 +56,7 @@
+             const auto unlock = zealotActive ? zealot::spellProfile(spellId, PChar->GetMLevel()).level
+                               : astroActive ? astromancer::spellProfile(spellId).level
+                                 : chnActive ? channeler::spellLevel(spellId)
++                                  : scarletActive ? scarlet::spellProfile(spellId).level
+                                             : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -27,6 +27,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_COMMAND_DATA::GP_SERV_COMMAND_COMMAND_DATA(const CCharEntity* PChar)
+@@ -40,7 +41,8 @@
+     const bool zealotActive = zealot::isActive(PChar);
+     const bool astroActive = astromancer::isActive(PChar);
+     const bool chnActive = channeler::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || valkyrie::isActive(PChar))
++    const bool scarletActive = scarlet::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -48,6 +50,7 @@
+             const bool allowed = zealotActive ? id == zealot::SealAbility
+                              : astroActive ? id == astromancer::GatherAether
+                                : chnActive ? id == channeler::ConduitLink
++                                 : scarletActive ? scarlet::isKitAbility(id)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -49,6 +49,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "data/datasets/animation_locks/dataset.h"
+ #include "data/datasets/skills/dataset.h"
+@@ -384,7 +385,8 @@
+ 
+     if (((zealot::isActive(PChar) || astromancer::isActive(PChar) || channeler::isActive(PChar)) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
+-        (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
++        (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)) ||
++        (scarlet::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword)))
+     {
+         return false;
+     }
+@@ -6233,6 +6235,14 @@
+     {
+         base = 4s;
+     }
++    if (scarlet::isActive(dynamic_cast<const CCharEntity*>(PEntity)))
++    {
++        const auto profile = scarlet::spellProfile(PSpell->getID());
++        if (profile.recast != 0)
++        {
++            base = std::chrono::seconds(profile.recast);
++        }
++    }
+     auto recast = base;
+ 
+     const auto recastReductionCap                 = settings::get<float>("map.SPELL_RECAST_REDUCTION_CAP");
+diff --git a/src/map/utils/scarlet_weaver_actions.h b/src/map/utils/scarlet_weaver_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/scarlet_weaver_actions.h
+@@ -0,0 +1,59 @@
++#pragma once
++
++#include "common/timer.h"
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++#include "spell.h"
++
++namespace scarlet
++{
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::RDM && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_SCW_ACTIVE") == 1;
++}
++
++inline auto isKitAbility(uint16 id) -> bool
++{
++    return id == 247 || id == 274;
++}
++
++struct SpellProfile
++{
++    uint8 level;
++    uint8 recast;
++};
++
++inline auto spellProfile(SpellID id) -> SpellProfile
++{
++    switch (id)
++    {
++        case SpellID::Fire:
++        case SpellID::Blizzard:
++        case SpellID::Aero:
++        case SpellID::Stone:
++        case SpellID::Thunder:
++        case SpellID::Water:
++            return { 10, 3 };
++        case SpellID::Fire_II:    return { 30, 6 };
++        case SpellID::Thunder_II: return { 50, 7 };
++        case SpellID::Aero_III:   return { 70, 12 };
++        default: return {};
++    }
++}
++
++inline auto yangBonus(const CCharEntity* character) -> uint32
++{
++    if (!isActive(character) || character->GetLocalVar("OX_SCW_ASPECT") != 2)
++    {
++        return 0;
++    }
++    const auto now = std::chrono::duration_cast<std::chrono::seconds>(timer::now().time_since_epoch()).count();
++    if (character->GetLocalVar("OX_SCW_RECOVERY_UNTIL") > now)
++    {
++        return 0;
++    }
++    const auto* weapon = dynamic_cast<const CItemWeapon*>(character->m_Weapons[SLOT_MAIN]);
++    return weapon && weapon->getSkillType() == xi::SkillType::Sword ? character->GetLocalVar("OX_SCW_POTENCY") : 0;
++}
++} // namespace scarlet

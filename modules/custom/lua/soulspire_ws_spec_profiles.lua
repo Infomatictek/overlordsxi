@@ -3003,6 +3003,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     necromancer    = { [S.SCYTHE or 7] = true },
     astromancer    = { [S.STAFF or 12] = true },
     channeler      = { [S.STAFF or 12] = true },
+    scarletweaver  = { [S.SWORD or 3] = true },
     bladewheel     = { [S.THROWING or 27] = true, [S.DAGGER or 2] = true, [S.SWORD or 3] = true }, -- DNC Bladewheel + BRD Adventurer
     ronin          = { [S.GREAT_KATANA or 10] = true },
     warlord        = { [S.GREAT_KATANA or 10] = true },
