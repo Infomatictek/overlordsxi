@@ -31,7 +31,7 @@ local R = xi.overlords.provingGrounds.registry
 R.SCHEMA_VERSION       = '1.0.0'
 R.RUNNER_CONTRACT      = 'overlordsxi-proving-grounds-v1'
 R.ARENA_ZONE_ID        = (xi.zone and xi.zone.GM_HOME) or 210
-R.NPC_POS              = { x = 5, y = 0, z = 5, rotation = 0 }
+R.NPC_POS              = { x = -5, y = 0, z = 5, rotation = 0 } -- separate from stock Menu Example NPC at (5,0,5)
 R.BOSS_POS             = { x = 5, y = 0, z = 25, rotation = 128 }
 R.PLAYER_START_POS     = { x = 5, y = 0, z = 18, rotation = 0 }
 R.DEFAULT_DURATION_SEC = 600
