@@ -29,6 +29,7 @@
     activePage: 'overview',
     selectedJobKey: 'ALL',
     crystalViewMode: 'full',
+    crystalStatusFilter: 'implemented',
     selectedSkillName: 'Hand-to-Hand',
     selectedWsId: 1,
     selectedWsSpec: 'berserker',
@@ -195,7 +196,13 @@
 
       jobSublist.querySelectorAll('[data-job-jump]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          state.selectedJobKey = btn.getAttribute('data-job-jump');
+          const jKey = btn.getAttribute('data-job-jump');
+          state.selectedJobKey = jKey;
+          const jobObj = (state.data.jobSpecs || []).find((x) => x.jobKey === jKey);
+          const hasImpl = jobObj && (jobObj.crystals || []).some((c) => !c.implementationStatus || c.implementationStatus === 'implemented');
+          if (!hasImpl) {
+            state.crystalStatusFilter = 'all';
+          }
           navigateTo('crystals');
         });
       });
@@ -670,10 +677,20 @@
   // ---------------------------------------------------------------------------
   function renderCrystalsPage() {
     const jobs = state.data.jobSpecs || [];
-    const filteredJobs =
+    const implOnly = state.crystalStatusFilter !== 'all';
+    const isImpl = (c) => !c.implementationStatus || c.implementationStatus === 'implemented';
+    const totalAll = jobs.reduce((acc, j) => acc + (j.crystals || []).length, 0);
+    const totalImpl = jobs.reduce((acc, j) => acc + (j.crystals || []).filter(isImpl).length, 0);
+    const filteredJobs = (
       state.selectedJobKey === 'ALL'
         ? jobs
-        : jobs.filter((j) => j.jobKey === state.selectedJobKey);
+        : jobs.filter((j) => j.jobKey === state.selectedJobKey)
+    )
+      .map((j) => ({
+        ...j,
+        crystals: implOnly ? (j.crystals || []).filter(isImpl) : (j.crystals || []),
+      }))
+      .filter((j) => j.crystals.length > 0);
     const guidesOnly = state.crystalViewMode === 'guides';
 
     return `
@@ -682,11 +699,17 @@
         <h1>Job Soul Crystals &amp; Specializations</h1>
         <p>
           At <strong>Level 10</strong> in any supported job, use <code>!spec</code> (or the Ashita v4 Equipment Crystal UI) to socket a Soul Crystal.
-          Each crystal leads with a plain-English <strong>How to Play</strong> guide (setup, rotation loop, and pitfalls), followed by its exact scaling passives, custom traits, and unlocked abilities.
+          Each implemented Soul leads with a plain-English <strong>How to Play</strong> guide (setup, rotation loop, and pitfalls), followed by its exact scaling passives, custom traits, and auto-generated Soul actions.
         </p>
       </section>
 
       <div class="view-mode-bar">
+        <button class="filter-chip ${implOnly ? 'active' : ''}" data-crystal-status="implemented">
+          ✅ Implemented Only (${totalImpl})
+        </button>
+        <button class="filter-chip ${!implOnly ? 'active' : ''}" data-crystal-status="all">
+          🗺️ All ${totalAll} Souls (${totalAll - totalImpl} Planned)
+        </button>
         <button class="filter-chip ${!guidesOnly ? 'active' : ''}" data-crystal-view="full">
           📚 Guides + Full Mechanics &amp; Stats
         </button>
@@ -697,26 +720,35 @@
 
       <div class="job-filter-bar">
         <button class="filter-chip ${state.selectedJobKey === 'ALL' ? 'active' : ''}" data-job-filter="ALL">
-          All Jobs (${jobs.reduce((acc, j) => acc + j.crystals.length, 0)} Crystals)
+          All Jobs (${implOnly ? totalImpl : totalAll} Souls)
         </button>
         ${jobs
-          .map(
-            (j) => `
+          .map((j) => {
+            const count = implOnly ? (j.crystals || []).filter(isImpl).length : (j.crystals || []).length;
+            return `
           <button class="filter-chip ${state.selectedJobKey === j.jobKey ? 'active' : ''}" data-job-filter="${escapeHtml(j.jobKey)}">
-            ${escapeHtml(j.jobKey)} &bull; ${escapeHtml(j.jobName)} (${j.crystals.length})
+            ${escapeHtml(j.jobKey)} &bull; ${escapeHtml(j.jobName)} (${count})
           </button>
-        `
-          )
+        `;
+          })
           .join('')}
       </div>
 
-      ${filteredJobs
-        .map((job) =>
-          job.crystals
-            .map((c) => renderSingleCrystalCard(job, c))
-            .join('')
-        )
-        .join('')}
+      ${
+        filteredJobs.length === 0
+          ? `<div class="wiki-card" style="padding:1.25rem;">
+               <p style="margin:0; color:var(--text-secondary);">
+                 No implemented Souls for this job yet. Switch to <strong>All ${totalAll} Souls</strong> above to view its planned roadmap Souls.
+               </p>
+             </div>`
+          : filteredJobs
+              .map((job) =>
+                job.crystals
+                  .map((c) => renderSingleCrystalCard(job, c))
+                  .join('')
+              )
+              .join('')
+      }
     `;
   }
 
@@ -935,6 +967,12 @@
   }
 
   function bindCrystalsEvents(container) {
+    container.querySelectorAll('[data-crystal-status]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.crystalStatusFilter = btn.getAttribute('data-crystal-status');
+        renderCurrentPage();
+      });
+    });
     container.querySelectorAll('[data-crystal-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.crystalViewMode = btn.getAttribute('data-crystal-view');
@@ -943,7 +981,15 @@
     });
     container.querySelectorAll('[data-job-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        state.selectedJobKey = btn.getAttribute('data-job-filter');
+        const jKey = btn.getAttribute('data-job-filter');
+        state.selectedJobKey = jKey;
+        if (jKey !== 'ALL' && state.crystalStatusFilter !== 'all') {
+          const jobObj = (state.data.jobSpecs || []).find((x) => x.jobKey === jKey);
+          const hasImpl = jobObj && (jobObj.crystals || []).some((c) => !c.implementationStatus || c.implementationStatus === 'implemented');
+          if (!hasImpl) {
+            state.crystalStatusFilter = 'all';
+          }
+        }
         renderCurrentPage();
       });
     });
