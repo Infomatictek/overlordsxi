@@ -65,5 +65,30 @@ location / {
 }
 ```
 
-With Option 3, **nothing lives on SWAG at all**—every push to `Infomatictek/overlordsxi` updates both the wiki data (`data.json`) and any future UI updates (`index.html`, `app.js`, `styles.css`) automatically.
+With Option 3, **nothing lives on SWAG at all**—every push to `Infomatictek/overlordsxi` updates both the wiki data (`data.json`) and any future UI updates (`index.html`, `app.js`, `styles.css`, `combat-reports.js`, `combat-reports.css`) automatically.
+
+---
+
+## Combat Reports Backend Proxy (SWAG / Nginx)
+
+To enable private authenticated **Combat Reports** (`/#reports`) and share links (`/#share/<token>`) without publishing private Proving Grounds logs or secrets to GitHub, run the lightweight Python backend (`combat_analytics/`) and add this block inside your existing SWAG `server { ... }` config **before** `location /`:
+
+```nginx
+location /api/combat/ {
+    # Replace with http://overlordsxi-combat-analytics:8765/api/combat/ if running in Docker on SWAG's network
+    proxy_pass http://127.0.0.1:8765/api/combat/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_buffering off;
+    proxy_no_cache 1;
+    proxy_cache_bypass 1;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+}
+```
+
+See `docs/combat-analytics-deployment.md` and `combat_analytics/.env.example` for full setup, local account creation, optional Discord/GitHub OAuth2, and retention configuration.
 
