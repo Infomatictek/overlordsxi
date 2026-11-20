@@ -3600,6 +3600,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'Scholar (Staff & Orphic Egg)' }
     elseif jobId == (j.GEO or 21) then
+        if specKey == 'terramancer' then
+            return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'GEO Terramancer (Seismic Faults)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'Geomancer (Club & Handbell)' }
     elseif jobId == (j.RUN or 22) then
         if specKey == 'inquisitor' then
@@ -3699,6 +3702,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.GEO or 21) and testGear.getActiveSpecKey(player, jobId) == 'terramancer' then
+        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    end
     if jobId == (xi.job.SMN or 15) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'primalist' or activeSpec == 'herald' then
