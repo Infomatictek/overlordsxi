@@ -1,0 +1,288 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -41,6 +41,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+@@ -133,6 +134,7 @@
+     m_astromancerAbility = astromancer::isActive(character);
+     m_channelerAbility = channeler::isActive(character);
+     m_scarletAbility = scarlet::isActive(character);
++    m_royalAbility = royal::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -308,9 +310,11 @@
+         const auto currentAstromancer = astromancer::isActive(PChar);
+         const auto currentChanneler = channeler::isActive(PChar);
+         const auto currentScarlet = scarlet::isActive(PChar);
++        const auto currentRoyal = royal::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
++            m_royalAbility != currentRoyal || (currentRoyal && PAbility->getID() != royal::IssueOrder) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -54,5 +54,6 @@
+     bool                      m_astromancerAbility{ false };
+     bool                      m_channelerAbility{ false };
+     bool                      m_scarletAbility{ false };
++    bool                      m_royalAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -44,6 +44,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+@@ -89,6 +90,7 @@
+     m_astromancerCast = astromancer::isActive(caster);
+     m_channelerCast = channeler::isActive(caster);
+     m_scarletCast = scarlet::isActive(caster);
++    m_royalCast = royal::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -371,6 +373,14 @@
+                 m_PEntity->addMP(m_actualMpSpent * m_valkyrieRefund / 100);
+             }
+             finishLink(true);
++            if (m_actualMpSpent > 0 && m_flags == 0 && !IsInstantCast() && m_castTime > 0ms)
++            {
++                const auto percent = royal::recomposePercent(dynamic_cast<CCharEntity*>(m_PEntity));
++                if (percent > 0)
++                {
++                    m_PEntity->addMP(m_actualMpSpent * percent / 100);
++                }
++            }
+             m_PEntity->PAI->EventHandler.triggerListener("MAGIC_USE", m_PEntity, PTarget, m_PSpell.get(), &action);
+             for (auto& actionTarget : action.targets)
+             {
+@@ -436,7 +446,8 @@
+                           m_valkyrieCast == valkyrie::isActive(caster) &&
+                           m_astromancerCast == astromancer::isActive(caster) &&
+                           m_channelerCast == channeler::isActive(caster) &&
+-                          m_scarletCast == scarlet::isActive(caster);
++                          m_scarletCast == scarlet::isActive(caster) &&
++                          m_royalCast == royal::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -73,6 +73,7 @@
+     bool                    m_astromancerCast{ false };
+     bool                    m_channelerCast{ false };
+     bool                    m_scarletCast{ false };
++    bool                    m_royalCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -110,6 +110,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/gardenutils.h"
+@@ -1481,6 +1482,13 @@
+     {
+         const auto profile = scarlet::spellProfile(PSpell->getID());
+         return profile.level > 0 && GetMLevel() >= profile.level &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
++    }
++
++    if (royal::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto level = royal::spellLevel(PSpell->getID());
++        return level > 0 && GetMLevel() >= level &&
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+diff --git a/src/map/lua/lua_spell.cpp b/src/map/lua/lua_spell.cpp
+--- a/src/map/lua/lua_spell.cpp
++++ b/src/map/lua/lua_spell.cpp
+@@ -48,6 +48,11 @@
+  *                                                                       *
+  ************************************************************************/
+ 
++auto CLuaSpell::getMessage() const -> MsgBasic
++{
++    return m_PLuaSpell->getMessage();
++}
++
+ void CLuaSpell::setMsg(MsgBasic messageID)
+ {
+     m_PLuaSpell->setMessage(messageID);
+@@ -209,6 +214,7 @@
+ {
+     SOL_USERTYPE("CSpell", CLuaSpell);
+     SOL_REGISTER("setMsg", CLuaSpell::setMsg);
++    SOL_REGISTER("getMessage", CLuaSpell::getMessage);
+     SOL_REGISTER("setModifier", CLuaSpell::setModifier);
+     SOL_REGISTER("setCritical", CLuaSpell::setCritical);
+     SOL_REGISTER("setAoE", CLuaSpell::setAoE);
+diff --git a/src/map/lua/lua_spell.h b/src/map/lua/lua_spell.h
+--- a/src/map/lua/lua_spell.h
++++ b/src/map/lua/lua_spell.h
+@@ -51,6 +51,7 @@
+ 
+     friend auto operator<<(std::ostream& out, const CLuaSpell& spell) -> std::ostream&;
+ 
++    auto getMessage() const -> MsgBasic;
+     void setMsg(MsgBasic messageID);
+     void setModifier(ActionModifier modifier) const;
+     void setCritical(bool isCritical) const;
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -29,6 +29,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+@@ -42,7 +43,8 @@
+     const bool astroActive = astromancer::isActive(PChar);
+     const bool chnActive = channeler::isActive(PChar);
+     const bool scarletActive = scarlet::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || valkyrie::isActive(PChar))
++    const bool royalActive = royal::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -57,6 +59,7 @@
+                               : astroActive ? astromancer::spellProfile(spellId).level
+                                 : chnActive ? channeler::spellLevel(spellId)
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
++                                    : royalActive ? royal::spellLevel(spellId)
+                                             : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -27,6 +27,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+@@ -42,7 +43,8 @@
+     const bool astroActive = astromancer::isActive(PChar);
+     const bool chnActive = channeler::isActive(PChar);
+     const bool scarletActive = scarlet::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || valkyrie::isActive(PChar))
++    const bool royalActive = royal::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -51,6 +53,7 @@
+                              : astroActive ? id == astromancer::GatherAether
+                                : chnActive ? id == channeler::ConduitLink
+                                  : scarletActive ? scarlet::isKitAbility(id)
++                                   : royalActive ? id == royal::IssueOrder
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -49,6 +49,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
++#include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "data/datasets/animation_locks/dataset.h"
+@@ -386,7 +387,7 @@
+     if (((zealot::isActive(PChar) || astromancer::isActive(PChar) || channeler::isActive(PChar)) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
+         (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)) ||
+-        (scarlet::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword)))
++        ((scarlet::isActive(PChar) || royal::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/royal_tactician_actions.h b/src/map/utils/royal_tactician_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/royal_tactician_actions.h
+@@ -0,0 +1,50 @@
++#pragma once
++
++#include "common/timer.h"
++#include "entities/char_entity.h"
++#include "spell.h"
++#include "utils/zoneutils.h"
++
++namespace royal
++{
++inline constexpr uint16 IssueOrder = 275;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::RDM && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_RYT_ACTIVE") == 1;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    switch (id)
++    {
++        case SpellID::Slow:
++        case SpellID::Paralyze:
++        case SpellID::Blind:
++        case SpellID::Silence: return 10;
++        case SpellID::Dispel: return 30;
++        default: return 0;
++    }
++}
++
++inline auto recomposePercent(CCharEntity* caster) -> int32
++{
++    const auto now = std::chrono::duration_cast<std::chrono::seconds>(timer::now().time_since_epoch()).count();
++    if (!caster || caster->GetLocalVar("OX_RYT_ORDER_KIND") != 2 || caster->GetLocalVar("OX_RYT_ORDER_UNTIL") <= now)
++    {
++        return 0;
++    }
++    const auto* owner = dynamic_cast<const CCharEntity*>(zoneutils::GetEntity(caster->GetLocalVar("OX_RYT_OWNER"), TYPE_PC));
++    if (!isActive(owner) || !owner->isAlive() || owner->loc.zone != caster->loc.zone ||
++        owner->GetLocalVar("OX_RYT_RECIPIENT") != caster->id ||
++        (caster != owner && (!caster->PParty || caster->PParty != owner->PParty)))
++    {
++        return 0;
++    }
++
++    caster->SetLocalVar("OX_RYT_ORDER_KIND", 0);
++    caster->SetLocalVar("OX_RYT_ORDER_UNTIL", 0);
++    return caster->GetLocalVar("OX_RYT_ORDER_PCT");
++}
++} // namespace royal
