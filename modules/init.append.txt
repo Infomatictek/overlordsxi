@@ -91,3 +91,6 @@ custom/cpp/soulspire_soul_action_peers.cpp
 custom/lua/soulspire_proving_grounds_registry.lua
 custom/lua/soulspire_proving_grounds_telemetry.lua
 custom/lua/soulspire_proving_grounds_lite.lua
+custom/sql/soulspire_burrows_first_descent.sql
+custom/lua/soulspire_burrows_config.lua
+custom/lua/soulspire_burrows_first_descent.lua
