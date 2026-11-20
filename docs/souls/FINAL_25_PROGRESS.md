@@ -3,16 +3,16 @@
 ## Checkpoint
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
-- Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Use `feat/final-25-souls` there when the first client changes are ready.
-- Completed: 0/25. Current: Zealot. Blocked: none identified in the initial audit.
-- Latest pushed Soul implementation commits: none. The branch history records this audit checkpoint.
+- Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
+- Completed: 1/25. Current: Valkyrie. Blocked: none.
+- Latest pushed Soul implementation commits: server `ce0e01338fd091a0d133b09649e3425f664a5471`, launcher `eac622c6f18d3443e8a04b37cde6f8c914eafe23`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
 | # | Job | Soul | Key | Role | Status |
 |---|---|---|---|---|---|
-| 1 | WHM | Zealot | zealot | Damage | Current |
-| 2 | WHM | Valkyrie | valkyrie | Support | Pending |
+| 1 | WHM | Zealot | zealot | Damage | Pushed. Manual verification required. |
+| 2 | WHM | Valkyrie | valkyrie | Support | Current |
 | 3 | BLM | Astromancer | astromancer | Damage | Pending |
 | 4 | BLM | Channeler | channeler | Support | Pending |
 | 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Pending |
@@ -53,4 +53,6 @@
 - Initial comparison: remote main is 15 commits ahead of local `3266e65`; registry and loader match. Local roster audit: `python tools/audit_soul_coverage.py . --strict`.
 - Per Soul: run focused mechanics and action checks, `python -m unittest discover -s tests -v`, strict roster audit, wiki action tests, and launcher action/manifest checks. Record commands, results and exact pushed commit hashes after each Soul.
 - **Manual Verification Required:** step through levels 10/30/50/75, zone/relogin, level sync, Soul switching, menu and error presentation, nearby-player action identity, and hard-boss combat. Use ordinary gear and zero talent points for the level-10 acceptance run.
-- **Next step:** port Zealot’s approved staff-hit MP/Divine Magic loop from the Sequence C reference. Verify the live attack, casting and cost APIs, then wire server-side gating, level grants, native action identity, Staff WS access, HUD, and wiki before the first Soul checkpoint.
+- **Zealot checkpoint:** [Implementation report](completed/zealot.md). Four focused tests and nine wiki tests passed. Strict roster audit: 42 registered, 24 planned. Strict wiki build: zero errors. Clean overlay verification and eight MSVC C++ syntax checks passed. Launcher TSVs and 1,109 manifest entries verified. Four unrelated Combat Analytics integration tests need loopback sockets, blocked on the local baseline too.
+- **Zealot architecture:** `whm_zealot_specs.lua` exposes its spell table to the wiki exporter and uses the existing Soul Action registry. `0046-zealot-native-actions.patch` handles virtual spell grants, filtered native menus, scoped action permission and cast/ability swap invalidation. It also exposes a staff-hit event after positive main-hand damage. Launcher rules require the corresponding branch for wiki verification.
+- **Next step:** inspect Valkyrie’s existing Sequence E prototype and approved polearm intervention design. Verify ally targeting/recasts and pick a native Lv.10 action that implements the intervention without Defender interception. Wire the first action through and test it before expanding the Valkyrie kit.
