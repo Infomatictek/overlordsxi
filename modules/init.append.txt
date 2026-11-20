@@ -83,6 +83,7 @@ custom/commands/shield.lua
 custom/lua/cor_specs.lua
 custom/sql/cor_specs.sql
 custom/lua/rng_specs.lua
+custom/lua/rng_sniper_specs.lua
 custom/sql/rng_specs.sql
 
 custom/lua/soulspire_soul_hud.lua

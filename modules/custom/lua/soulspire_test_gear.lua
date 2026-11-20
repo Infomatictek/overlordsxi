@@ -3537,6 +3537,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.BRD or 10) then
         return { role = 'caster', weapon = 'dagger', offhand = 'shield', ranged = 'instrument', ammo = 'none', label = 'Bard (Dagger & Instrument)' }
     elseif jobId == (j.RNG or 11) then
+        if specKey == 'sniper' then
+            return { role = 'ranged', weapon = 'dagger', offhand = 'none', ranged = 'crossbow', ammo = 'bolt', label = 'RNG Sniper (Crossbow)', specEntry = specEntry }
+        end
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'bow', ammo = 'arrow', label = 'Ranger (Dagger & Bow)' }
     elseif jobId == (j.SAM or 12) then
         if specKey == 'ronin' then
@@ -3671,6 +3674,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.RNG or 11) and testGear.getActiveSpecKey(player, jobId) == 'sniper' then
+        return wKey == 'crossbow' or wKey == 'gun' or wKey == 'dagger'
+    end
     if jobId == (xi.job.DRK or 8) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'reaper' or activeSpec == 'scourge' then return wKey == 'scythe' end
