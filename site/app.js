@@ -35,6 +35,7 @@
     wsSearchQuery: '',
     syncCfg: loadSyncConfig(),
     liveCommits: null,
+    reportsOpts: {},
   };
 
   function loadSyncConfig() {
@@ -156,7 +157,9 @@
     }
 
     updateSidebarMeta();
-    renderCurrentPage();
+    if (state.activePage !== 'reports') {
+      renderCurrentPage();
+    }
     setStatus(
       loadedRemoteJson
         ? `Live (${state.data?.headCommit || latestSha.slice(0, 7) || 'main'})`
@@ -208,6 +211,12 @@
     if (opts.skillName) state.selectedSkillName = opts.skillName;
     if (opts.wsId) state.selectedWsId = Number(opts.wsId);
     if (opts.wsSpec) state.selectedWsSpec = opts.wsSpec;
+    if (page === 'reports') {
+      state.reportsOpts = {
+        runId: opts.runId || null,
+        shareToken: opts.shareToken || null,
+      };
+    }
 
     document.querySelectorAll('.nav-item[data-page]').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-page') === page);
@@ -219,7 +228,18 @@
 
   function renderCurrentPage() {
     const main = document.getElementById('wikiMainContent');
-    if (!main || !state.data) return;
+    if (!main) return;
+
+    if (state.activePage === 'reports') {
+      if (window.OverlordsCombatReports && typeof window.OverlordsCombatReports.mount === 'function') {
+        window.OverlordsCombatReports.mount(main, state.reportsOpts || {});
+      } else {
+        main.innerHTML = '<div class="wiki-card">Combat Reports module failed to load.</div>';
+      }
+      return;
+    }
+
+    if (!state.data) return;
 
     switch (state.activePage) {
       case 'overview':
@@ -723,8 +743,7 @@
           ${escapeHtml(c.description)}
         </p>
 
-        <div class="crystal-columns">`
-        }
+        <div class="crystal-columns">
           <div>
             <h4 style="margin:0 0 0.6rem; color:var(--accent-cyan); text-transform:uppercase; font-size:0.78rem; letter-spacing:0.06em;">
               ✨ Key Mechanics &amp; Ability Transformations
@@ -1614,10 +1633,42 @@
     }
   }
 
+  function resolveInitialRoute() {
+    const params = new URLSearchParams(window.location.search || '');
+    const qShare = params.get('share');
+    if (qShare) {
+      navigateTo('reports', { shareToken: qShare });
+      return true;
+    }
+    const hash = (window.location.hash || '').replace(/^#/, '');
+    if (hash.startsWith('share/')) {
+      const token = decodeURIComponent(hash.slice('share/'.length));
+      if (token) {
+        navigateTo('reports', { shareToken: token });
+        return true;
+      }
+    }
+    if (hash === 'reports') {
+      navigateTo('reports');
+      return true;
+    }
+    if (hash.startsWith('reports/')) {
+      const runId = decodeURIComponent(hash.slice('reports/'.length));
+      navigateTo('reports', { runId });
+      return true;
+    }
+    return false;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     setupGlobalListeners();
     updateSidebarMeta();
-    renderCurrentPage();
+    if (!resolveInitialRoute()) {
+      renderCurrentPage();
+    }
+    window.addEventListener('hashchange', () => {
+      resolveInitialRoute();
+    });
     syncFromGitHub();
   });
 })();

@@ -1,0 +1,24 @@
+services:
+  overlordsxi-combat-analytics:
+    build:
+      context: ../..
+      dockerfile: combat_analytics/deploy/Dockerfile
+    container_name: overlordsxi-combat-analytics
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - analytics_data:/data
+      # Mount your LandSandBoat server's Proving Grounds logs read-only:
+      - /path/to/server/log/proving_grounds:/pg_logs:ro
+      - /path/to/server/log/proving_grounds_runs.jsonl:/pg_logs_legacy/proving_grounds_runs.jsonl:ro
+    networks:
+      - swag_net
+    # Do NOT publish port 8765 publicly; let SWAG reverse-proxy /api/combat/ over swag_net.
+
+volumes:
+  analytics_data:
+
+networks:
+  swag_net:
+    external: true
