@@ -88,4 +88,6 @@ custom/commands/soulhud.lua
 
 custom/cpp/overlords_soulhud_sync.cpp
 custom/cpp/overlords_soul_action_peers.cpp
+custom/lua/overlords_proving_grounds_registry.lua
+custom/lua/overlords_proving_grounds_telemetry.lua
 custom/lua/overlords_proving_grounds_lite.lua

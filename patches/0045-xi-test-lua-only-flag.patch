@@ -1,0 +1,28 @@
+﻿diff --git a/src/test/main.cpp b/src/test/main.cpp
+index 985820bd17..9711dfe1b1 100644
+--- a/src/test/main.cpp
++++ b/src/test/main.cpp
+@@ -35,6 +35,7 @@ auto main(int argc, char** argv) -> int
+ 
+     auto testApp = std::make_unique<TestApplication>(argc, argv);
+ 
++    if (!testApp->args().get<bool>("--lua-only"))
+     {
+         std::cout << "[----------] Running C++ unit tests with Catch2\n";
+ 
+diff --git a/src/test/test_application.cpp b/src/test/test_application.cpp
+index f90fba652c..1b1ce5c623 100644
+--- a/src/test/test_application.cpp
++++ b/src/test/test_application.cpp
+@@ -46,6 +46,11 @@ auto appConfig() -> ApplicationConfig
+                 .description = "Continue as much as possible after an error or failure.",
+                 .type        = ArgumentType::Flag,
+             },
++            ArgumentDefinition{
++                .name        = "--lua-only",
++                .description = "Skip C++ Catch2 unit tests and run the Lua integration suite directly.",
++                .type        = ArgumentType::Flag,
++            },
+             ArgumentDefinition{
+                 .name        = "--verbose",
+                 .description = "Verbose output of errors.",
