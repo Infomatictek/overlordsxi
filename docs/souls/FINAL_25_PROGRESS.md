@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 17/25. Current: Warmage. Blocked: none.
-- Latest pushed Soul implementation commits: server `fbade9188dfdd986a77e6aa7b9fedfea32943f63`, launcher `05c8d1be5f9d1db5a2972c4baf1245c608f06f78`. The server branch also carries this tracker update.
+- Completed: 18/25. Current: Archivist. Blocked: none.
+- Latest pushed Soul implementation commits: server `4f8416963ff11195a5992573c4dd79b574e79452`, launcher `d9d6ea9f15983611bff9b7b4d67da2e24bb5ab67`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -28,8 +28,8 @@
 | 15 | NIN | Nightblade | nightblade | Support | Pushed. Manual verification required. |
 | 16 | DRG | Lancer | lancer | Damage | Pushed. Manual verification required. |
 | 17 | DRG | Skyborn | skyborn | Tank | Pushed. Manual verification required. |
-| 18 | BLU | Warmage | warmage | Damage | Current |
-| 19 | SCH | Archivist | archivist | Support | Pending |
+| 18 | BLU | Warmage | warmage | Damage | Pushed. Manual verification required. |
+| 19 | SCH | Archivist | archivist | Support | Current |
 | 20 | BST | Untamed | untamed | Damage | Pending |
 | 21 | BST | Beastspeaker | beastspeaker | Support | Pending |
 | 22 | SMN | Primalist | primalist | Damage | Pending |
@@ -87,4 +87,6 @@
 - **Lancer architecture:** Scope custom position validation to the active Soul and its current enemy. Require the same battle and instance, a clear path and a legal navmesh landing before moving. Pass the follow-up through the native Jump damage calculation, and consume it on positive HP loss.
 - **Skyborn checkpoint:** [Implementation report](completed/skyborn.md). Server `fbade9188dfdd986a77e6aa7b9fedfea32943f63`, launcher `05c8d1be5f9d1db5a2972c4baf1245c608f06f78`. Four focused tests, 104 accessible regression tests, strict Lua wiki and roster, 16 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Skyborn architecture:** Clone the guard as self-only, preserve normal targetability, and settle the timer or absorbed hit once using its generation ID. The follow-up ward absorbs later qualified native damage. The staged tank kit has no companion requirement.
-- **Next step:** Implement Warmage's approved adaptive Blue Magic loop with a Lv. 10 native kit, verified spell identity and learning/setting isolation, progression, HUD and tests.
+- **Warmage checkpoint:** [Implementation report](completed/warmage.md). Server `4f8416963ff11195a5992573c4dd79b574e79452`, launcher `d9d6ea9f15983611bff9b7b4d67da2e24bb5ab67`. Three focused tests, 107 accessible regression tests, strict Lua wiki and roster, 19 native syntax checks, shared Blue Magic Lua syntax and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Warmage architecture:** Use an effective-level virtual Blue Magic kit to preserve native learned and saved spells. Suspend their set modifiers and traits while Warmage is active. Clone each spell's costs, timings and single-target settings; apply Assess Prey after resistance to the assessed target.
+- **Next step:** Implement Archivist's exact enemy-action records and countermeasures, its Lv. 10 party loop, action identities, HUD, tests and separate report.
