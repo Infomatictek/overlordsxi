@@ -3008,6 +3008,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     bandit         = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true },
     trickster      = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true },
     phantom        = { [S.DAGGER or 2] = true, [S.KATANA or 9] = true },
+    oathbreaker    = { [S.GREAT_SWORD or 4] = true },
     bladewheel     = { [S.THROWING or 27] = true, [S.DAGGER or 2] = true, [S.SWORD or 3] = true }, -- DNC Bladewheel + BRD Adventurer
     ronin          = { [S.GREAT_KATANA or 10] = true },
     warlord        = { [S.GREAT_KATANA or 10] = true },

@@ -3521,6 +3521,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'dagger', offhand = 'auto', ranged = 'throwing', ammo = 'none', label = 'Thief (Dagger TP)' }
     elseif jobId == (j.PLD or 7) then
+        if specKey == 'oathbreaker' then
+            return { role = 'tp', weapon = 'gsword', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'PLD Oathbreaker (Great Sword)', specEntry = specEntry }
+        end
         return { role = 'tank', weapon = 'sword', offhand = 'shield', ranged = 'none', ammo = 'ammo_tank', label = 'Paladin (Sword & Shield Tank)' }
     elseif jobId == (j.DRK or 8) then
         return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dark Knight (Scythe TP)' }
@@ -3663,6 +3666,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.PLD or 7) and testGear.getActiveSpecKey(player, jobId) == 'oathbreaker' then
+        return wKey == 'gsword'
+    end
     if jobId == (xi.job.THF or 6) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'phantom' then

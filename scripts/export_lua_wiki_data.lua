@@ -781,9 +781,23 @@ if type(xi.soulspire) == 'table' then
     end
 end
 
+-- Native ability recast overrides take precedence over the repurposed SQL action.
+local kitAbilityRecasts = {}
+local soulActions = require('modules/custom/lua/soulspire_soul_actions')
+for soulKey, definition in pairs(soulActions.definitions) do
+    local recasts = {}
+    for abilityId, action in pairs(definition.ability) do
+        if type(action.recastTime) == 'number' then
+            recasts[tostring(abilityId)] = action.recastTime
+        end
+    end
+    kitAbilityRecasts[soulKey] = recasts
+end
+
 local payload = {
     jobSpecs = #jobSpecsOut > 0 and jobSpecsOut or emptyArray(),
     kitSpells = kitSpellsOut,
+    kitAbilityRecasts = kitAbilityRecasts,
     weaponskills = #wsOut > 0 and wsOut or emptyArray(),
     tierGates = tierGatesOut,
     rankLevelTables = rankLevelTablesOut,

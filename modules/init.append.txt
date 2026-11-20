@@ -93,6 +93,7 @@ custom/lua/rdm_royal_tactician_specs.lua
 custom/lua/thf_bandit_specs.lua
 custom/lua/thf_trickster_specs.lua
 custom/lua/thf_phantom_specs.lua
+custom/lua/pld_oathbreaker_specs.lua
 custom/commands/soulhud.lua
 
 custom/cpp/soulspire_soulhud_sync.cpp
