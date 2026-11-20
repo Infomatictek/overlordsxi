@@ -3037,6 +3037,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     buccaneer      = { [S.SWORD or 3] = true },
     gambler        = { [S.MARKSMANSHIP or 26] = true, [S.DAGGER or 2] = true },
     sniper         = { [S.MARKSMANSHIP or 26] = true },
+    arcanearcher   = { [S.ARCHERY or 25] = true },
     huntsman       = { [S.ARCHERY or 25] = true, [S.MARKSMANSHIP or 26] = true },
 }
 
