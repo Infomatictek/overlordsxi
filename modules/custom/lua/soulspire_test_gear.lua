@@ -3553,6 +3553,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'gkatana', offhand = 'grip_melee', ranged = 'bow', ammo = 'arrow', label = 'Samurai (Great Katana TP)' }
     elseif jobId == (j.NIN or 13) then
+        if specKey == 'nightblade' then
+            return { role = 'caster', weapon = 'katana', offhand = 'auto', ranged = 'none', ammo = 'ammo_caster', label = 'NIN Nightblade (Katana Seals)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'katana', offhand = 'auto', ranged = 'none', ammo = 'shuriken', label = 'Ninja (Katana & Shuriken TP)' }
     elseif jobId == (j.DRG or 14) then
         return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dragoon (Polearm TP)' }
@@ -3676,6 +3679,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.NIN or 13) and testGear.getActiveSpecKey(player, jobId) == 'nightblade' then
+        return wKey == 'katana'
+    end
     if jobId == (xi.job.RNG or 11) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'sniper' then return wKey == 'crossbow' or wKey == 'gun' or wKey == 'dagger' end

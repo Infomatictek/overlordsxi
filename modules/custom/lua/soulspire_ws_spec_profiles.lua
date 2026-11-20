@@ -3019,6 +3019,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     dreadnought    = { [S.SCYTHE or 7] = true },
     kagemusha      = { [S.KATANA or 9] = true },
     kurogane       = { [S.KATANA or 9] = true },
+    nightblade     = { [S.KATANA or 9] = true },
     bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
     zealot         = { [S.STAFF or 12] = true },
     valkyrie       = { [S.POLEARM or 8] = true },
