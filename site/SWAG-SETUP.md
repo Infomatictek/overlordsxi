@@ -12,15 +12,15 @@ It contains:
 
 ## Option 1: Drop the Files into SWAG's `www` Folder (While Repo is Public)
 
-Copy the contents of `site/` (`index.html`, `styles.css`, `app.js`, `data.json`, `data.js`) into your SWAG container's web root (e.g. `/config/www/overlordsxi/` or `/config/www/`).
+Copy the contents of `site/` (`index.html`, `styles.css`, `app.js`, `data.json`, `data.js`) into your SWAG container's web root (e.g. `/config/www/soulspirexi/` or `/config/www/`).
 
 Every time a player opens the page:
 1. It immediately loads and renders the full wiki.
-2. In the background, `app.js` fetches the latest `site/data.json` and commit history directly from `https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site/data.json` and `api.github.com`—so **you never have to update any files on your SWAG server** when you push new Lua specs, weaponskill talent trees, or patches to GitHub.
+2. In the background, `app.js` fetches the latest `site/data.json` and commit history directly from `https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site/data.json` and `api.github.com`—so **you never have to update any files on your SWAG server** when you push new Lua specs, weaponskill talent trees, or patches to GitHub.
 
 ---
 
-## Option 2: When You Make `Infomatictek/overlordsxi` Private Before Release
+## Option 2: When You Make `Infomatictek/soulspirexi` Private Before Release
 
 When you switch the GitHub repository to **Private**, `raw.githubusercontent.com` will require a read-only token header. To keep your token 100% hidden on the server side (so players never see it in browser DevTools) and still never have to update files on SWAG, add this tiny proxy block inside your SWAG nginx site config (`/config/nginx/site-confs/default.conf` or your subdomain `.conf`):
 
@@ -29,13 +29,13 @@ When you switch the GitHub repository to **Private**, `raw.githubusercontent.com
 location = /data.json {
     proxy_ssl_server_name on;
     proxy_set_header Host raw.githubusercontent.com;
-    # Create a Fine-Grained GitHub Personal Access Token with ONLY "Contents: Read-only" on Infomatictek/overlordsxi
+    # Create a Fine-Grained GitHub Personal Access Token with ONLY "Contents: Read-only" on Infomatictek/soulspirexi
     proxy_set_header Authorization "Bearer github_pat_YOUR_READ_ONLY_TOKEN_HERE";
     proxy_hide_header Set-Cookie;
     proxy_ignore_headers Set-Cookie;
 
     # Optional: cache at SWAG for 2 minutes so 1000s of players hit SWAG cache instantly
-    proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site/data.json;
+    proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site/data.json;
 }
 ```
 
@@ -56,19 +56,19 @@ location / {
     proxy_ignore_headers Set-Cookie;
 
     rewrite ^/$ /index.html break;
-    proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site/;
+    proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site/;
 
-    location ~* \.html$ { add_header Content-Type "text/html; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.css$  { add_header Content-Type "text/css; charset=utf-8";  proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.js$   { add_header Content-Type "application/javascript; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.json$ { add_header Content-Type "application/json; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.png$  { add_header Content-Type "image/png"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.jpe?g$ { add_header Content-Type "image/jpeg"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
-    location ~* \.ico$  { add_header Content-Type "image/x-icon"; proxy_pass https://raw.githubusercontent.com/Infomatictek/overlordsxi/main/site$uri; }
+    location ~* \.html$ { add_header Content-Type "text/html; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.css$  { add_header Content-Type "text/css; charset=utf-8";  proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.js$   { add_header Content-Type "application/javascript; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.json$ { add_header Content-Type "application/json; charset=utf-8"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.png$  { add_header Content-Type "image/png"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.jpe?g$ { add_header Content-Type "image/jpeg"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
+    location ~* \.ico$  { add_header Content-Type "image/x-icon"; proxy_pass https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site$uri; }
 }
 ```
 
-With Option 3, **nothing lives on SWAG at all**—every push to `Infomatictek/overlordsxi` updates both the wiki data (`data.json`) and any future UI updates (`index.html`, `app.js`, `styles.css`, `combat-reports.js`, `combat-reports.css`) automatically.
+With Option 3, **nothing lives on SWAG at all**—every push to `Infomatictek/soulspirexi` updates both the wiki data (`data.json`) and any future UI updates (`index.html`, `app.js`, `styles.css`, `combat-reports.js`, `combat-reports.css`) automatically.
 
 ---
 

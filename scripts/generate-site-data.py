@@ -2679,7 +2679,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--launcher-dir",
         type=Path,
         default=None,
-        help="Path to Infomatictek/overlordsxi-launcher checkout containing Soul action TSVs.",
+        help="Path to Infomatictek/soulspirexi-launcher checkout containing Soul action TSVs.",
     )
     parser.add_argument(
         "--strict-actions",
@@ -2885,8 +2885,8 @@ def main(argv: list[str] | None = None) -> int:
 
     data = {
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "repo": "Infomatictek/overlordsxi",
-        "launcherRepo": "Infomatictek/overlordsxi-launcher",
+        "repo": "Infomatictek/soulspirexi",
+        "launcherRepo": "Infomatictek/soulspirexi-launcher",
         "branch": branch,
         "headCommit": head_hash,
         "stats": {

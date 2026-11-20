@@ -8,9 +8,9 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'overlordsxi_wiki_sync_cfg_v1';
+  const STORAGE_KEY = 'soulspirexi_wiki_sync_cfg_v1';
   const DEFAULT_CFG = {
-    repo: 'Infomatictek/overlordsxi',
+    repo: 'Infomatictek/soulspirexi',
     branch: 'main',
     customDataUrl: '',
     token: '',
@@ -1385,7 +1385,7 @@
 
       <div class="card-grid-3">
         <div class="wiki-card">
-          <h3><span>Overlords Talents UI</span><code>/talents</code></h3>
+          <h3><span>Soulspire Talents UI</span><code>/talents</code></h3>
           <p>
             Graphical 4-tier Weaponskill Talent Tree window in Ashita v4. Browse all 15 weapon categories across your active spec view,
             click nodes to invest or refund points, unlock WSs at Tier 1, and cycle Skillchains via the <code>0x1FD OXTL</code> binary packet.
