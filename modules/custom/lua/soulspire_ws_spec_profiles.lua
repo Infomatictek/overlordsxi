@@ -3014,6 +3014,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     warlord        = { [S.GREAT_KATANA or 10] = true },
     imperialarcher = { [S.GREAT_KATANA or 10] = true, [S.ARCHERY or 25] = true },
     aegistemplar   = { [S.CLUB or 11] = true },
+    reaper         = { [S.SCYTHE or 7] = true },
     dreadnought    = { [S.SCYTHE or 7] = true },
     kagemusha      = { [S.KATANA or 9] = true },
     kurogane       = { [S.KATANA or 9] = true },

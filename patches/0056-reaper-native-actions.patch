@@ -1,0 +1,359 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -43,6 +43,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -143,6 +144,7 @@
+     m_tricksterAbility = trickster::isActive(character);
+     m_phantomAbility = phantom::isActive(character);
+     m_oathbreakerAbility = oathbreaker::isActive(character);
++    m_reaperAbility = reaper::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -323,6 +325,7 @@
+         const auto currentTrickster = trickster::isActive(PChar);
+         const auto currentPhantom = phantom::isActive(PChar);
+         const auto currentOathbreaker = oathbreaker::isActive(PChar);
++        const auto currentReaper = reaper::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -331,6 +334,7 @@
+             m_tricksterAbility != currentTrickster || (currentTrickster && PAbility->getID() != trickster::PassTheBlame) ||
+             m_phantomAbility != currentPhantom || (currentPhantom && PAbility->getID() != phantom::Dare) ||
+             m_oathbreakerAbility != currentOathbreaker || (currentOathbreaker && !oathbreaker::isKitAbility(PAbility->getID())) ||
++            m_reaperAbility != currentReaper || (currentReaper && PAbility->getID() != reaper::Finality) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -59,5 +59,6 @@
+     bool                      m_tricksterAbility{ false };
+     bool                      m_phantomAbility{ false };
+     bool                      m_oathbreakerAbility{ false };
++    bool                      m_reaperAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -46,6 +46,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -99,6 +100,14 @@
+     m_tricksterCast = trickster::isActive(caster);
+     m_phantomCast = phantom::isActive(caster);
+     m_oathbreakerCast = oathbreaker::isActive(caster);
++    m_reaperCast = reaper::isActive(caster);
++
++    if (m_reaperCast && m_spellId == SpellID::Drain)
++    {
++        m_PSpell->setMPCost(12);
++        m_PSpell->setCastTime(1500ms);
++        m_PSpell->setRecastTime(12s);
++    }
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -459,7 +468,8 @@
+                           m_banditCast == bandit::isActive(caster) &&
+                           m_tricksterCast == trickster::isActive(caster) &&
+                           m_phantomCast == phantom::isActive(caster) &&
+-                          m_oathbreakerCast == oathbreaker::isActive(caster);
++                          m_oathbreakerCast == oathbreaker::isActive(caster) &&
++                          m_reaperCast == reaper::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -78,6 +78,7 @@
+     bool                    m_tricksterCast{ false };
+     bool                    m_phantomCast{ false };
+     bool                    m_oathbreakerCast{ false };
++    bool                    m_reaperCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -62,6 +62,7 @@
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+@@ -1150,6 +1151,11 @@
+     const auto hpBefore = health.hp;
+     const auto result = addHP(-amount);
+     const auto hpLost = hpBefore - health.hp;
++    if (hpLost > 0 && !isSkillchainDamage && allegiance == xi::Allegiance::Player && attacker &&
++        attacker->objtype == TYPE_MOB && attacker->GetLocalVar("OX_RPR_ACTION") == 1)
++    {
++        attacker->SetLocalVar("OX_RPR_ACTION", 2);
++    }
+     if (hpLost > 0 && isAlive() && !isSkillchainDamage && attacker && attacker->objtype == TYPE_MOB &&
+         (attackType == xi::AttackType::Physical || attackType == xi::AttackType::Magical ||
+          attackType == xi::AttackType::Ranged || attackType == xi::AttackType::Breath) &&
+@@ -4044,6 +4050,19 @@
+     {
+         PTarget->PAI->EventHandler.triggerListener("SOUL_MELEE_EVADE", PTarget, this);
+     }
++    if (objtype == TYPE_MOB && allegiance == xi::Allegiance::Mob &&
++        PTarget->allegiance == xi::Allegiance::Player && isAlive())
++    {
++        const auto rounds = GetLocalVar("OX_RPR_ROUNDS") + 1;
++        if (rounds >= 6)
++        {
++            reaper::openRecovery(*this);
++        }
++        else
++        {
++            SetLocalVar("OX_RPR_ROUNDS", rounds);
++        }
++    }
+     PAI->EventHandler.triggerListener("ATTACK", this, PTarget, &action);
+     PTarget->PAI->EventHandler.triggerListener("ATTACKED", PTarget, this, &action);
+     /////////////////////////////////////////////////////////////////////////////////////////////
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -112,6 +112,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1500,6 +1501,11 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (reaper::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return PSpell->getID() == SpellID::Drain &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (oathbreaker::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "mob_entity.h"
++#include "utils/reaper_actions.h"
+ 
+ #include "action/action.h"
+ #include "action/interrupts.h"
+@@ -726,6 +727,8 @@
+ void CMobEntity::Spawn()
+ {
+     TracyZoneScopedN("CMobEntity::Spawn");
++    SetLocalVar("OX_RPR_ROUNDS", 0);
++    SetLocalVar("OX_RPR_OPEN_UNTIL", 0);
+     SetLocalVar("OX_AST_SATURATION", 0);
+     SetLocalVar("OX_AST_ENCOUNTER_HP", 0);
+ 
+@@ -842,7 +845,10 @@
+ {
+     TracyZoneScopedN("CMobEntity::OnWeaponSkillFinished");
+ 
+-    CBattleEntity::OnWeaponSkillFinished(state, action);
++    {
++        const reaper::ObserveEnemyAction observe(*this);
++        CBattleEntity::OnWeaponSkillFinished(state, action);
++    }
+ 
+     TapDeaggroTime();
+ }
+@@ -851,7 +857,10 @@
+ {
+     TracyZoneScoped;
+ 
+-    CBattleEntity::OnMobSkillFinished(state, action);
++    {
++        const reaper::ObserveEnemyAction observe(*this);
++        CBattleEntity::OnMobSkillFinished(state, action);
++    }
+ 
+     TapDeaggroTime();
+ }
+@@ -1513,6 +1522,8 @@
+ void CMobEntity::OnDisengage(CAttackState& state)
+ {
+     TracyZoneScopedN("CMobEntity::OnDisengage");
++    SetLocalVar("OX_RPR_ROUNDS", 0);
++    SetLocalVar("OX_RPR_OPEN_UNTIL", 0);
+ 
+     PAI->PathFind->Clear();
+     PEnmityContainer->Clear();
+@@ -1535,7 +1546,10 @@
+ {
+     TracyZoneScopedN("CMobEntity::OnCastFinished");
+ 
+-    CBattleEntity::OnCastFinished(state, action);
++    {
++        const reaper::ObserveEnemyAction observe(*this);
++        CBattleEntity::OnCastFinished(state, action);
++    }
+ 
+     CMobController* mobController = dynamic_cast<CMobController*>(PAI->GetController());
+     if (mobController)
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -31,6 +31,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -50,8 +51,9 @@
+     const bool royalActive = royal::isActive(PChar);
+     const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar) || phantom::isActive(PChar);
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
++    const bool reaperActive = reaper::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -68,7 +70,8 @@
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
+                                     : royalActive ? royal::spellLevel(spellId)
+                                       : thfKitActive ? 0
+-                                            : (spellId == SpellID::Banish ? 10 : 0);
++                                        : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
++                                          : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+             {
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -29,6 +29,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -52,7 +53,8 @@
+     const bool tricksterActive = trickster::isActive(PChar);
+     const bool phantomActive = phantom::isActive(PChar);
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || valkyrie::isActive(PChar))
++    const bool reaperActive = reaper::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -66,6 +68,7 @@
+                                        : tricksterActive ? id == trickster::PassTheBlame
+                                          : phantomActive ? id == phantom::Dare
+                                            : oathbreakerActive ? oathbreaker::isKitAbility(id)
++                                             : reaperActive ? id == reaper::Finality
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -51,6 +51,7 @@
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
+ #include "utils/oathbreaker_actions.h"
++#include "utils/reaper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -397,7 +398,8 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger)) ||
+         (phantom::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+-        (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)))
++        (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)) ||
++        (reaper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/reaper_actions.h b/src/map/utils/reaper_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/reaper_actions.h
+@@ -0,0 +1,49 @@
++#pragma once
++
++#include "entities/char_entity.h"
++
++namespace reaper
++{
++inline constexpr uint16 Finality = 77;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::DRK && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_RPR_ACTIVE") == 1;
++}
++
++inline void openRecovery(CBattleEntity& mob)
++{
++    const auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
++    mob.SetLocalVar("OX_RPR_ROUNDS", 0);
++    mob.SetLocalVar("OX_RPR_OPEN_UNTIL", static_cast<uint32>(now + 5));
++}
++
++// A mob spell or TP action can hit several targets. Count actual hostile HP loss once,
++// after the action resolves. Ordinary melee and damage-over-time run outside this scope.
++class ObserveEnemyAction
++{
++public:
++    explicit ObserveEnemyAction(CBattleEntity& mob)
++    : mob_(mob)
++    {
++        if (mob_.objtype == TYPE_MOB && mob_.allegiance == xi::Allegiance::Mob)
++        {
++            mob_.SetLocalVar("OX_RPR_ACTION", 1);
++        }
++    }
++
++    ~ObserveEnemyAction()
++    {
++        const auto observed = mob_.GetLocalVar("OX_RPR_ACTION");
++        mob_.SetLocalVar("OX_RPR_ACTION", 0);
++        if (observed == 2 && mob_.isAlive())
++        {
++            openRecovery(mob_);
++        }
++    }
++
++private:
++    CBattleEntity& mob_;
++};
++} // namespace reaper
