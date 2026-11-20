@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 18/25. Current: Archivist. Blocked: none.
-- Latest pushed Soul implementation commits: server `4f8416963ff11195a5992573c4dd79b574e79452`, launcher `d9d6ea9f15983611bff9b7b4d67da2e24bb5ab67`. The server branch also carries this tracker update.
+- Completed: 19/25. Current: Untamed. Blocked: none.
+- Latest pushed Soul implementation commits: server `82024c6ef581560104acaf78d8ef4da60c5b792b`, launcher `8635bc3bad2ecaa39926bfb10230af096b2b5c54`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -29,8 +29,8 @@
 | 16 | DRG | Lancer | lancer | Damage | Pushed. Manual verification required. |
 | 17 | DRG | Skyborn | skyborn | Tank | Pushed. Manual verification required. |
 | 18 | BLU | Warmage | warmage | Damage | Pushed. Manual verification required. |
-| 19 | SCH | Archivist | archivist | Support | Current |
-| 20 | BST | Untamed | untamed | Damage | Pending |
+| 19 | SCH | Archivist | archivist | Support | Pushed. Manual verification required. |
+| 20 | BST | Untamed | untamed | Damage | Current |
 | 21 | BST | Beastspeaker | beastspeaker | Support | Pending |
 | 22 | SMN | Primalist | primalist | Damage | Pending |
 | 23 | SMN | Herald | herald | Support | Pending |
@@ -89,4 +89,6 @@
 - **Skyborn architecture:** Clone the guard as self-only, preserve normal targetability, and settle the timer or absorbed hit once using its generation ID. The follow-up ward absorbs later qualified native damage. The staged tank kit has no companion requirement.
 - **Warmage checkpoint:** [Implementation report](completed/warmage.md). Server `4f8416963ff11195a5992573c4dd79b574e79452`, launcher `d9d6ea9f15983611bff9b7b4d67da2e24bb5ab67`. Three focused tests, 107 accessible regression tests, strict Lua wiki and roster, 19 native syntax checks, shared Blue Magic Lua syntax and 1,109 launcher entries passed. Live gameplay requires manual verification.
 - **Warmage architecture:** Use an effective-level virtual Blue Magic kit to preserve native learned and saved spells. Suspend their set modifiers and traits while Warmage is active. Clone each spell's costs, timings and single-target settings; apply Assess Prey after resistance to the assessed target.
-- **Next step:** Implement Archivist's exact enemy-action records and countermeasures, its Lv. 10 party loop, action identities, HUD, tests and separate report.
+- **Archivist checkpoint:** [Implementation report](completed/archivist.md). Server `82024c6ef581560104acaf78d8ef4da60c5b792b`, launcher `8635bc3bad2ecaa39926bfb10230af096b2b5c54`. Four focused tests, 111 accessible regression tests, strict Lua wiki and roster, 19 native syntax checks, LuaJIT HUD syntax and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Archivist architecture:** Differentiate spell, mob technique and weaponskill category plus native action ID and lifetime-unique spawn generation. A current action sequence preserves one winning page across all hits to the same victim.
+- **Next step:** Implement Untamed's approved master-and-beast tandem damage loop and native command identities from Lv. 10, including pet lifetime, gear and WS compatibility, HUD and tests.
