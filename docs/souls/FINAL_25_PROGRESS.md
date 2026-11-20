@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 9/25. Current: Oathbreaker. Blocked: none.
-- Latest pushed Soul implementation commits: server `c91de0d5de647ce1c8f704171eaa58342590ee4e`, launcher `39e03537d8b4b0d3ceeb58afcce8062efd7bb4a0`. The server branch also carries this tracker update.
+- Completed: 10/25. Current: Reaper. Blocked: none.
+- Latest pushed Soul implementation commits: server `b94e0547755cb75c3f2d0bd4acbadcbf61084eea`, launcher `7c372adf1535e52cc1699f8b0958f9cbce755a47`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -20,8 +20,8 @@
 | 7 | THF | Bandit | bandit | Damage | Pushed. Manual verification required. |
 | 8 | THF | Trickster | trickster | Support | Pushed. Manual verification required. |
 | 9 | THF | Phantom | phantom | Tank | Pushed. Manual verification required. |
-| 10 | PLD | Oathbreaker | oathbreaker | Damage | Current |
-| 11 | DRK | Reaper | reaper | Damage | Pending |
+| 10 | PLD | Oathbreaker | oathbreaker | Damage | Pushed. Manual verification required. |
+| 11 | DRK | Reaper | reaper | Damage | Current |
 | 12 | DRK | Scourge | scourge | Support | Pending |
 | 13 | RNG | Sniper | sniper | Damage | Pending |
 | 14 | RNG | Arcane Archer | arcanearcher | Support | Pending |
@@ -71,4 +71,6 @@
 - **Trickster architecture:** Scoped native positional threat routing plus a weapon-skill-triggered Attack Down. Existing or rejected debuffs and missed hits preserve the cooldown.
 - **Phantom checkpoint:** [Implementation report](completed/phantom.md). Server `c91de0d5de647ce1c8f704171eaa58342590ee4e`, launcher `39e03537d8b4b0d3ceeb58afcce8062efd7bb4a0`. Three focused tests and 76 non-loopback regression tests passed. Audit found 50 registered, 16 planned. Strict wiki, 12 C++ units and 1,109 launcher manifest entries checked.
 - **Phantom architecture:** The opener uses the normal enmity and claim path with a scoped Steal-slot repurpose. Native regular melee misses drive enmity. The one-hit guard uses the shared pre-damage hook. Dagger/Katana restrictions, ordinary scoped Katanas and THF test gear follow the existing weapon path.
-- **Next step:** inspect Oathbreaker's offensive vow and liability window from Sequence D. Confirm its Great Sword baseline and native actions at Lv.10, preserving Defender's distinct shield and interception mechanics.
+- **Oathbreaker checkpoint:** [Implementation report](completed/oathbreaker.md). Server `b94e0547755cb75c3f2d0bd4acbadcbf61084eea`, launcher `7c372adf1535e52cc1699f8b0958f9cbce755a47`. Three focused tests, 79 accessible regression tests, strict roster and Lua wiki, 12 native syntax checks and 1,109 launcher entries passed. Live gameplay requires manual verification.
+- **Oathbreaker architecture:** Use Soul Action registry recast overrides for wiki output when a Soul reuses a native ability. Record retaliation from actual hostile HP lost after absorption.
+- **Next step:** Inspect Reaper's approved DRK loop and staged prototype, then implement its native actions, progression, HUD and focused tests.
