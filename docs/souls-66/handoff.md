@@ -1,0 +1,64 @@
+# Antigravity implementation handoff
+
+**Design package for Issue #20.** Use the [completion matrix](completion.csv) to locate each of the 66 cards. Start with the [source audit](audit.md), [allocation ledger](action-ids.md) and [permission rules](rules.md) and [event definitions](event-contracts.md). This is a design branch. No combat, DB, client binary or rollout change is included.
+
+## Ready-to-paste instruction
+
+> Work in Infomatictek/overlordsxi and Infomatictek/overlordsxi-launcher. Read docs/souls-66 from the design PR/branch before changing either repository. Use the named job card, common action rules and implementation class as the specification. Preserve active character data, learned spells, existing Soul keys, numeric branch IDs, aliases, crystal IDs, ability/WS/trait IDs, recast groups, inventory and client compatibility. Start a feature branch from each current main required by the batch. Treat main as the only playable environment. Commit validated, scoped changes to the feature branches. Do not merge, deploy, apply SQL or restart main as part of implementing a batch.
+>
+> First reconcile the recorded source and staging heads against current heads. If a planned mechanic appeared since the audit, test and preserve it. Write the action manifest and regression fixture before adding a missing signature. Route abilities and spell approvals through authoritative server checks; respect existing Soul-specific backports and native learned state. Bind the client-visible name/description and resource mapping from the same reviewed manifest. Select ordinary starter gear, write the level-10 opener and a recovery test. Keep implementation inside the Soul module unless a separately tested shared hook is required.
+>
+> Use the cohort order below. Finish each Soul's positive, negative, cleanup, level-sync and collision tests. Record file/commit and actual results per Soul, including remaining field tests. Preserve Chi Weaver, Black Belt, Sage and Shinobi. Use the staged THF/Untamed code, the staged Huntsman redesign and the current Shinobi handlers. Flintlock's owner retains all dual-pistol implementation. Do not change global haste, WS Evolution or talent UI. No global strict switch and no opportunistic numeric renumbering.
+
+## Build queue and scope
+
+| Sequence | Souls or boundary | Implementation result |
+|---|---|---|
+| A · compatibility fixtures | All 66 | Resolve 22 × 3 active keys against current server, launcher, per-character values and profile IDs. Include retired DNC slot in persistence fixtures only. Add opt-in action observation and compare normal/RNG/PUP/DNC/NIN cases, without changing outcomes. |
+| B · staged | THF Trickster, Bandit, Phantom; BST Untamed | Start from the recorded feature heads. Register additively after shared spec/job load; THF/BST loader additions must not wipe Alpha Warden or other job entries. Gate on resolved hit/same target, implement missing 10 starter entitlements, verify timers and a cold threat opener. Each Soul gets its own acceptance record. |
+| C · isolated casters | Zealot, Astromancer, Scarlet Weaver | Implement staff-hit MP recovery, per-enemy Ancient saturation and mutually exclusive Yin/Yang in separate small changes. Shared resolution hooks need cross-Soul negative tests for Bishop, Sage, Spellblade and existing melee. Do not globalize Yin/Yang. |
+| D · offensive openings | Oathbreaker, Reaper, Sniper, Lancer, Warmage, Primalist, Terramancer | Reuse existing damage, hit and resist resolution. Implement commitment, recovery, single-shot aim, launch range, Blue spell selection, pact commitment and delayed target-owned ground damage respectively. Test movement, resists and cancellation. |
+| E · targeted defense and support | Valkyrie, Channeler, Royal Tactician, Scourge, Arcane Archer, Nightblade, Skyborn, Archivist, Beastspeaker, Herald, Diviner | Implement per card. Unit-test exclusive marks, recorded actions, cast interruption, immune fallbacks, entity identity, overlapping party bonuses and geometry. Skyborn keeps targetability and hate while guarding. |
+| F · independently progressing kits | Huntsman, Flintlock | Reconcile Huntsman server and client redesign together. Validate both pets and old equipment; regenerate the wiki from accepted source. For Flintlock run only black-box compatibility against the owner's build. No secondary implementation, guessed timers or borrowed IDs. |
+| G · existing gameplay | 37 integrated rows and the two owner-confirmed MNK rows | Exercise existing actions and progression. Only fix a reproduced defect or a specified onboarding/tuning gap in an isolated change. Do not deliver speculative replacements. Diff the before/after character snapshot. Preserve subclass identity through all common hooks. |
+
+Every Soul is covered by one implementation class. The overlapping caster/THF comparison fixtures do not authorize changing unrelated kits. Focus first on ordinary single-boss fights with no compulsory adds. Existing optional area abilities still need their own range/claim regression.
+
+## Source changes discovered during the audit
+
+Initial launcher snapshot was d386532. At final reconciliation launcher main advanced eleven commits to [4f6b4dc](https://github.com/Infomatictek/overlordsxi-launcher/tree/4f6b4dc4481edc3679f9cbcde673cdc4d781f097). Read the six changed files. The launcher now adds the Soul Actions addon to startup. The addon reads the existing HUD identity message and has a Crystal Jobs DLL fallback. Its packet path normalizes kurogane to shinobi. The fallback table still encodes PUP 2/3 in the old order, DNC Mirage at 1 and BST Soulbeast at 2. The same-key manifest icon findings and native header were unchanged. Use a single explicit storage-key-to-display/profile-key mapping on both identity paths. Verify packet, stale/absent packet, login, zone and fallback separately. An auto-loaded addon does not establish complete native UI remapping.
+
+## Data contract and verification
+
+1. For each effective-level band emit a concrete snapshot containing job, stored branch, canonical/legacy key, crystal item where present, action kind, private source ID, visible name/description, handler, grant vs allow, required raw level, equipment predicate, targeting, MP/TP cost, cast/recast group, client resource and validation state. Normalize server/launcher aliases before joins. Keep SQL level-255 dynamically granted JAs under their Soul gate.
+2. Pin the LandSandBoat/resource build used by the server host. Check existing SQL, patched enums, staged branches, shared status mappings and DAT limits before allocating new rows. Use strong identity (kind + namespace + ID + Soul). Read rather than write existing player data for regression snapshots. Restore a test copy to prove rollback if any future migration is unavoidable.
+3. Compare per-Soul allowed sets, including all existing special grants, to observed activity in WARN mode. Check learned and unlearned, subjob-only, item routes, macros, queued casts, duplicate callbacks, pet commands and same source under different Souls. Native actions intentionally kept in a card retain their requirements; a missing profile is a configuration error, never an accidental global lockout. Enable strict handling first on one new Soul with a complete validated profile.
+4. On the launcher, pair server mappings with localized DAT/override rows, action text, descriptions and job/search labels. Verify actual installed binary build and SHA-256 manifest entries via the repo's manifest validator. An ID-only overlay or a Metrics label cannot prove an equipment menu or native spell menu is correct.
+5. Implement the Soul's target selection, costs, hit rules, cooldowns, caps and cleanup before adding HUD rendering. Use existing subscription channels; send state deltas on change and bounded resync. Keep the normal parser focused on players. Use separate diagnostic capture tied to the same combat event IDs to reconcile server calculation, damage recipient, resisted amount, TP/MP before/after, CE/VE, actual heal/overheal and buff expiration.
+
+## Acceptance and rollback
+
+| Check | Passing result |
+|---|---|
+| Activation | Fresh Lv10 and existing level-75 character can select the intended Soul. Verify raw saved branch, key, aliases, ability and spell visibility, gear strip/re-equip, relog and job/sync transitions. Pre/post permanent learned bits and inventories match except ordinary authorized consumption. |
+| Level progression | Check 9/10, 29/30, 49/50, 69/70 and 74/75. Starter loop works in attainable gear. The named action stays within its cap; a level-down removes only conditional access. Keep actual three-band and intermediate unlocks. |
+| Targeting and lifecycle | Check invalid target, miss/resist, interrupted cast, target death, pet death, mob respawn/reused ID, rapid Soul swap, zone, disconnect and overlapping activations. Check two users resolving on the same tick. No inherited claims, duplicated TP, stale pets or stat accumulation. |
+| Role comparison | Same mob, effective level, ordinary weapon quality, comparable party and fight duration. Record a 10s opening/burst and at least three 5min samples per boss pattern: stationary single target, forced movement, unavoidable damage, appropriate resistance. Median and spread, not just best run. Use the named closest alternative and at least one opposite-pattern fight. |
+| DPS | Record sustained and brief damage, active uptime, MP/TP and owner/pet/DoT split. Test the chosen kit's favored condition and a real disadvantage. Provisional review trigger: if a Soul exceeds its role peer by >15% sustained in both favored and unfavorable trials while providing equal utility, review coefficients before release. |
+| Tanks | From zero TP and without /WAR, acquire and recover hate against a real opener/cure; report seconds to control, time retained, damage distribution, lethal spike survival and pet-loss recovery. Test normal threat logic with no GM locks. |
+| Healers/support | Use repeatable damage/status scripts. Log effective healing, overheal, time to save the endangered ally, useful prevention, dispels, mana slope, intervention opportunities and actual ally damage gained. A party-wide effect should not proc once per observer when only one event was earned. |
+| Client and wiki | Round-trip normal menus and macros, role/branch labels, resource text, pet/clone ownership, buff IDs and serialization. Regenerate the site from the accepted runtime; compare generated job/kit counts, Huntsman role and Shinobi text to accepted source before publishing. |
+| Rollback | Remove only the opt-in or revert the scoped change. Re-evaluate profile/HUD, restore the prior native presentation and verify saved Soul, known spells, equipment, recasts and client launch remain valid. Do not use a global SQL restore or learned-spell reset as normal rollback. |
+
+For design-only review, verify three active rows per job, distinct stored branches, one card per key, coverage of every same-role/sibling pair and all links. Run the repository's coverage and relevant CI checks when touching runtime; syntax/green workflow alone cannot certify Windows integration or feel. Because main is the only playable environment, run any host-dependent testing on an isolated local test process/database copy when available. Otherwise report the exact live validation that remains and wait for the owner's explicit deployment window.
+
+## Decision and dependency log
+
+| Subject | Design resolution | What remains before a gameplay release |
+|---|---|---|
+| Existing IDs and retired data | Freeze recorded IDs and preserve historical branch 1 for DNC. Scope display repairs to presentation. | Inspect installed rows, old save fixtures and current native binary; explicitly map a legacy character still holding a retired slot. |
+| Existing completed Souls | Chi Weaver/Black Belt retain their actual loops. 37 integrated rows keep their source mechanics. | Field results and bracket-specific tests; a failed test is a possible repair, not authorization for redesign. |
+| Two special projects | Huntsman uses the staged melee contract. Flintlock belongs to its independent owner. | Huntsman branch acceptance and wiki publication; authoritative twin-pistol build/profile for compatibility testing. |
+| Proposed tuning | Named values are design baselines. Caller pays the specified cost once and HUD displays confirmed state. | Measured parse results on tough bosses; adjust coefficients first, preserve selection trade-offs. |
+| Client capabilities | Use verified ID/visibility/presentation surfaces and current identity bridge. | Resource allocations, spell menus, search labels and locale/animations require actual client verification. |
+| Design decisions requiring the owner's input now | None. | Optional balance preferences can follow measured field results. No gameplay deployment is implied by this handoff. |
