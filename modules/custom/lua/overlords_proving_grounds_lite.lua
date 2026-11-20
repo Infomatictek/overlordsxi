@@ -33,7 +33,9 @@ end
 
 local function findCurrent()
     if active and active.mob and active.mob.isAlive and active.mob:isAlive() then
-        return active
+        if not active.mob.getStatus or active.mob:getStatus() ~= xi.status.DISAPPEAR then
+            return active
+        end
     end
     active = nil
     return nil
