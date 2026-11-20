@@ -1,6 +1,6 @@
-# OverlordsXI — Unraid Docker Deployment, Migration & Operations Guide
+# SoulspireXI — Unraid Docker Deployment, Migration & Operations Guide
 
-Covers **Phases 2, 3, 4, 5, and 9** of the OverlordsXI Unraid migration.
+Covers **Phases 2, 3, 4, 5, and 9** of the SoulspireXI Unraid migration.
 
 ---
 
@@ -21,7 +21,7 @@ Source code and compiled C++ binaries live inside versioned Docker images (`over
 /mnt/user/appdata/overlordsxi/
 ├── mariadb/                  # MariaDB 10.11 data directory (/var/lib/mysql)
 ├── config/
-│   ├── settings/             # Seeded with OverlordsXI main.lua, map.lua, etc.
+│   ├── settings/             # Seeded with SoulspireXI main.lua, map.lua, etc.
 │   └── certs/                # Persistent TLS login.key & login.cert
 ├── logs/                     # Server logs + proving_grounds/ JSONL telemetry
 ├── meshes/
@@ -44,7 +44,7 @@ Because Unraid array parity is not a backup against ransomware, fire, or acciden
 ## 3. Initial Staging Deployment on Unraid (Phases 2–4)
 
 ```bash
-# 1. Clone OverlordsXI on Unraid (e.g. /mnt/user/appdata/overlordsxi-src)
+# 1. Clone SoulspireXI on Unraid (e.g. /mnt/user/appdata/overlordsxi-src)
 git clone https://github.com/Infomatictek/overlordsxi.git /mnt/user/appdata/overlordsxi-src
 cd /mnt/user/appdata/overlordsxi-src
 git checkout feat/unraid-docker-migration   # until approved & merged to main
@@ -60,7 +60,7 @@ chmod 600 .env
 chmod +x scripts/*.sh
 ./scripts/overlords-ctl.sh init
 
-# 4. Build the custom OverlordsXI Docker image (compiles pinned LSB + all 50 patches + 4 C++ modules)
+# 4. Build the custom SoulspireXI Docker image (compiles pinned LSB + all 50 patches + 4 C++ modules)
 ./scripts/overlords-ctl.sh build v2026.11.19
 
 # 5. Copy staging DB export from Windows (created by windows-export-db.ps1)

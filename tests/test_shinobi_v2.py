@@ -78,8 +78,11 @@ class ShinobiV2RegressionTests(unittest.TestCase):
             1000: ('Phantom Assault', 10),
         }
 
-        actions_tsv = LAUNCHER_ROOT / 'addons' / 'ashita4' / 'overlords_soul_actions' / 'data' / 'soul_actions.tsv'
-        vis_tsv = LAUNCHER_ROOT / 'addons' / 'ashita4' / 'overlords_soul_actions' / 'data' / 'visibility.tsv'
+        addon_dir = LAUNCHER_ROOT / 'addons' / 'ashita4' / 'soulspire_soul_actions'
+        if not addon_dir.exists():
+            addon_dir = LAUNCHER_ROOT / 'addons' / 'ashita4' / 'overlords_soul_actions'
+        actions_tsv = addon_dir / 'data' / 'soul_actions.tsv'
+        vis_tsv = addon_dir / 'data' / 'visibility.tsv'
         self.assertTrue(actions_tsv.exists())
         self.assertTrue(vis_tsv.exists())
 
@@ -114,7 +117,7 @@ class ShinobiV2RegressionTests(unittest.TestCase):
     def test_tactical_cycle_commands_permissions_and_hud_in_luajit(self):
         clones_path = str(REPO_ROOT / 'modules' / 'custom' / 'lua' / 'kurogane_clones.lua').replace('\\', '\\\\')
         nin_path = str(REPO_ROOT / 'modules' / 'custom' / 'lua' / 'nin_specs.lua').replace('\\', '\\\\')
-        hud_path = str(REPO_ROOT / 'modules' / 'custom' / 'lua' / 'overlords_soul_hud.lua').replace('\\', '\\\\')
+        hud_path = str(REPO_ROOT / 'modules' / 'custom' / 'lua' / 'soulspire_soul_hud.lua').replace('\\', '\\\\')
 
         script = f"""
         -- Deterministic fake server environment for Shinobi 2.0 unit regression
@@ -194,7 +197,7 @@ class ShinobiV2RegressionTests(unittest.TestCase):
                 THIRD_EYE = 67, YONIN = 420, FUTAE = 443, MIGAWARI = 471, STUN = 10, SLOW = 13,
                 NINJUTSU_ELE_DEBUFF = 999,
             }},
-            overlords = {{
+            soulspire = {{
                 nowSec = function() return simNow end,
                 getStatusIcon = function(id) return id end,
                 spec = {{
@@ -234,8 +237,8 @@ class ShinobiV2RegressionTests(unittest.TestCase):
         dofile('{nin_path}')
         dofile('{hud_path}')
 
-        local K = xi.overlords.kurogane
-        local hud = xi.overlords.hud
+        local K = xi.soulspire.kurogane
+        local hud = xi.soulspire.hud
 
         local allEntities = {{}}
         local nextMobId = 90000

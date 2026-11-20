@@ -1,4 +1,4 @@
-# OverlordsXI — Phase 11 Final Cutover & Rollback Runbook
+# SoulspireXI — Phase 11 Final Cutover & Rollback Runbook
 
 > **RULE:** Perform final cutover **only** after explicit owner authorization and after Phases 2–10 have all passed staging validation. Never allow both the Windows server and Unraid server to accept player progress simultaneously.
 
@@ -54,7 +54,7 @@ All items must be verified before starting the cutover window:
 ## 3. Split-Brain-Safe Rollback Procedure
 
 ### Scenario A — Rollback Application Image Only (Unraid DB Healthy)
-If a new OverlordsXI Docker image has a regression:
+If a new SoulspireXI Docker image has a regression:
 ```bash
 ./scripts/overlords-ctl.sh rollback <previous-known-good-tag>
 ```

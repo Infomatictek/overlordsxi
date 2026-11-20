@@ -15,7 +15,7 @@ This is a deliberately limited first prototype for **Combo (WS #1)** and **Sangu
 
 ## Installation
 
-Deploy the server files from this branch **together** with the Ashita addon branch of the same name in `Infomatictek/overlordsxi-launcher`. Restart the game server, then reload `overlords_talents` in Ashita, use `/talents sync`, and select Combo or Sanguine Blade.
+Deploy the server files from this branch **together** with the Ashita addon branch of the same name in `Infomatictek/overlordsxi-launcher`. Restart the game server, then reload `soulspire_talents` in Ashita, use `/talents sync`, and select Combo or Sanguine Blade.
 
 ## Suggested tests
 

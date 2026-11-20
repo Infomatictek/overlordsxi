@@ -1,6 +1,6 @@
 """Telemetry schema normalization, 1-second series, rolling averages, and markers.
 
-Strictly integrates with OverlordsXI Soul Proving Grounds server-side JSONL logs
+Strictly integrates with SoulspireXI Soul Proving Grounds server-side JSONL logs
 (telemetry schema v1.0.0 and v2.0.0). Unsupported or unavailable metrics remain
 explicitly marked "unavailable" and are NEVER fabricated.
 """

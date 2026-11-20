@@ -1,4 +1,4 @@
--- OverlordsXI Paladin Crystal Specs (Aegis Templar)
+-- SoulspireXI Paladin Crystal Specs (Aegis Templar)
 -- 1. Un-gate merit ability Chivalry (158) so PLD can use it without merit gating.
 -- 2. Define custom PLD spec Job Abilities (439-440) with independent recast timers (177-178)
 --    and level = 255 so they stay hidden unless dynamically unlocked via patch 0007.

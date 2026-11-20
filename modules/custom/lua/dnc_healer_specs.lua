@@ -1,17 +1,17 @@
 -----------------------------------
--- OverlordsXI Dancer Crystal Spec: Vampire (VMP | Tier-4 Combat Healer)
+-- SoulspireXI Dancer Crystal Spec: Vampire (VMP | Tier-4 Combat Healer)
 -- Unlocks @ Lv. 10 (!spec set vampire)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('modules/custom/lua/dnc_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/dancer')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_dnc_healer_specs')
+local m = Module:new('soulspire_dnc_healer_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local VAMPIRE_KEY = 'vampire'
 
 -- Custom Trait ID (172; Crimson Waltz)
@@ -100,8 +100,8 @@ end)
 
 m:addOverride('xi.effects.sanguine_waltz.onEffectGain', function(target, effect)
     local total = effect:getPower() or 25
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.consumeEffectRegen then
-        total = xi.overlords.regen.consumeEffectRegen(target, effect, 25, 350)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.consumeEffectRegen then
+        total = xi.soulspire.regen.consumeEffectRegen(target, effect, 25, 350)
     end
     effect:addMod(xi.mod.REGEN, total)
 end)
@@ -145,9 +145,9 @@ local function attachVampireListeners(player)
             H.healPartyPct(caster, 10, 15, false, true)
         elseif WALTZ_ABILITIES[abilId] and caster:hasStatusEffect(xi.effect.CONTRADANCE) then
             H.forEachPartyMemberInRange(caster, 15, false, function(member)
-                H.applyCustomTimedEffect(member, EFFECT_CRIMSON_VEIL, 15, 10, caster, 0, xi.overlords.getStatusIcon(EFFECT_CRIMSON_VEIL), 1)
-                if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                    xi.overlords.slots.applyPartyWard(caster, member, -1500, 0, 10)
+                H.applyCustomTimedEffect(member, EFFECT_CRIMSON_VEIL, 15, 10, caster, 0, xi.soulspire.getStatusIcon(EFFECT_CRIMSON_VEIL), 1)
+                if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+                    xi.soulspire.slots.applyPartyWard(caster, member, -1500, 0, 10)
                 end
             end)
         end
@@ -212,12 +212,12 @@ m:addOverride('xi.actions.abilities.sanguine_waltz.onUseAbility', function(playe
     local total = H.healPartyPct(player, 30, 15, false, true)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.cleanseDebuffs(member, 2)
-        if xi.overlords and xi.overlords.regen and xi.overlords.regen.stampRegenContext then
-            xi.overlords.regen.stampRegenContext(player, member, 350)
+        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.stampRegenContext then
+            xi.soulspire.regen.stampRegenContext(player, member, 350)
         end
-        H.applyCustomTimedEffect(member, EFFECT_SANGUINE_WALTZ, 25, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_SANGUINE_WALTZ), 1)
-        if xi.overlords and xi.overlords.regen and xi.overlords.regen.clearRegenContext then
-            xi.overlords.regen.clearRegenContext(member)
+        H.applyCustomTimedEffect(member, EFFECT_SANGUINE_WALTZ, 25, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_SANGUINE_WALTZ), 1)
+        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.clearRegenContext then
+            xi.soulspire.regen.clearRegenContext(member)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_RECOVERS_HP)

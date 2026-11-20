@@ -1,4 +1,4 @@
-﻿# OverlordsXI Eos Companion
+﻿# SoulspireXI Eos Companion
 
 Custom LandSandBoat module package for a SCH job ability, **Call Eos**, which summons a faerie pet named **Eos**.
 
@@ -9,18 +9,18 @@ Eos is a real pet, not a trust. She maintains a stackable Regen on the master, p
 Most of the customization is packaged as LandSandBoat modules:
 
 - `modules/custom/lua/eos_companion.lua` defines the new ability behavior and the Eos-only Regen spell override.
-- `modules/custom/lua/overlords_job_specs.lua` defines the reusable Job Crystal / Spec registry, session-safe passive mod engine, item ID resolver, `[OXSPEC]` sync helpers, and Crystal Socket `0x11F`/`0x1FF` Lua bridge helpers (`getCrystalSnapshot`, `getCrystalCatalog`, `handleCrystalSelect`).
-- `modules/custom/lua/overlords_job_spec_runtime.lua` refreshes active job crystal passive mods across login, zoning, job changes, level changes, and level syncs (coordinated with `patches/0010-spec-trait-sync-and-unlocks.patch`).
-- `modules/custom/lua/overlords_ws_catalog.lua` stores the original LandSandBoat profiles (including skillchains, drains, debuffs, AoE, enmity, and RMEA flags) for all 207 implemented player weaponskills.
-- `modules/custom/lua/overlords_ws_talents.lua` defines the per-weaponskill 4-tier (56-point) talent tree engine, bespoke tree registration API, bit-packed `char_vars` persistence, and Ashita v4 sync protocol.
-- `modules/custom/lua/overlords_ws_tree_helpers.lua` & `modules/custom/lua/overlords_ws_trees_*.lua` define all 192 bespoke post-H2H (`#16`â€“`#235`) 4-tier job-themed weaponskill trees across Dagger, Sword, Great Sword, Axe, Great Axe, Scythe, Polearm, Katana, Great Katana, Club, Staff, and Archery/Marksmanship (plus `Maru Kala`).
-- `modules/custom/lua/overlords_ws_overrides.lua` normalizes base PC weaponskills to `fTP = 1.0` and `WSC = 0` and applies invested talent ranks, bespoke pre/post-WS node effects, unique WS traits, and dynamic skillchain bonuses dynamically.
+- `modules/custom/lua/soulspire_job_specs.lua` defines the reusable Job Crystal / Spec registry, session-safe passive mod engine, item ID resolver, `[OXSPEC]` sync helpers, and Crystal Socket `0x11F`/`0x1FF` Lua bridge helpers (`getCrystalSnapshot`, `getCrystalCatalog`, `handleCrystalSelect`).
+- `modules/custom/lua/soulspire_job_spec_runtime.lua` refreshes active job crystal passive mods across login, zoning, job changes, level changes, and level syncs (coordinated with `patches/0010-spec-trait-sync-and-unlocks.patch`).
+- `modules/custom/lua/soulspire_ws_catalog.lua` stores the original LandSandBoat profiles (including skillchains, drains, debuffs, AoE, enmity, and RMEA flags) for all 207 implemented player weaponskills.
+- `modules/custom/lua/soulspire_ws_talents.lua` defines the per-weaponskill 4-tier (56-point) talent tree engine, bespoke tree registration API, bit-packed `char_vars` persistence, and Ashita v4 sync protocol.
+- `modules/custom/lua/soulspire_ws_tree_helpers.lua` & `modules/custom/lua/soulspire_ws_trees_*.lua` define all 192 bespoke post-H2H (`#16`â€“`#235`) 4-tier job-themed weaponskill trees across Dagger, Sword, Great Sword, Axe, Great Axe, Scythe, Polearm, Katana, Great Katana, Club, Staff, and Archery/Marksmanship (plus `Maru Kala`).
+- `modules/custom/lua/soulspire_ws_overrides.lua` normalizes base PC weaponskills to `fTP = 1.0` and `WSC = 0` and applies invested talent ranks, bespoke pre/post-WS node effects, unique WS traits, and dynamic skillchain bonuses dynamically.
 - `modules/custom/lua/sch_specs.lua` defines the SCH Medic and Sage crystal behavior.
 - `modules/custom/lua/war_specs.lua` defines the WAR Commander, Berserker, and Gladiator crystal passives and ability transformations.
 - `modules/custom/lua/mnk_specs.lua` defines the MNK Sensei crystal passives, Staff Evasion/Parry/Counter engine, and ability transformations.
 - `modules/custom/lua/run_specs.lua` defines the RUN Inquisitor, Spellblade, and Lifebinder crystal passives, 3-rune Lv.10+ mastery, Runic Riposte/Brand/Lifetap engines, and ability/spell transformations.
 - `modules/custom/lua/dot_damage_log.lua` preserves DoT caster/pet `origin` attribution on `takeDamage` for Lua-ticked DoTs (`Helix` and Nightmare `Bio`) on mobs.
-- `modules/custom/lua/overlords_test_gear.lua` defines the level-appropriate 16-slot test gear resolver across all 22 jobs, OverlordsXI crystal specs, weapon types, and level brackets (`1`â€“`99`).
+- `modules/custom/lua/soulspire_test_gear.lua` defines the level-appropriate 16-slot test gear resolver across all 22 jobs, SoulspireXI crystal specs, weapon types, and level brackets (`1`â€“`99`).
 - `modules/custom/commands/spec.lua` adds `!spec` (`customMenu` crystal selector, CLI subcommands, and `[OXSPEC]` Ashita v4 sync protocol).
 - `modules/custom/commands/eos.lua` adds `!eos heal` and `!eos dismiss` (for both Eos and Titania).
 - `modules/custom/commands/talent.lua` adds `!talent` (`customMenu` UI, CLI subcommands, and Ashita v4 `[OXTAL]` protocol).
@@ -31,7 +31,7 @@ Most of the customization is packaged as LandSandBoat modules:
 - `modules/custom/sql/sch_specs.sql` sets both Addendum abilities to level 10 for this ruleset.
 - `modules/custom/sql/war_commander_abilities.sql` defines the 4 WAR Commander custom Job Abilities (`396`â€“`399`: `tactical_breach`, `formation_bulwark`, `battle_cadence`, `rallying_horn`) with independent recast timers (`186`â€“`189`) and dynamic Lv.10+ crystal unlocking.
 - `modules/custom/sql/run_specs.sql` backports RUN `Liement` (`373`), `One for All` (`374`), `Odyllic Subterfuge` (`378`), and `Regen IV` (`477`) to Lv.75, removes merit gating from `Rayke` (`375`) and `Battuta` (`376`), and defines the 7 RUN crystal Job Abilities (`412`â€“`418`: `iron_battuta`, `runic_aegis`, `runic_convergence`, `effusion_slash`, `overcharge_runes`, `font_of_life`, `sanctified_ward`) with recast IDs `198`, `199`, `201`â€“`205`.
-- Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`overlords_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
+- Client launcher, XIPivot DAT overlay (`dat-overlay/ROM`), and Ashita v4 UI addon (`soulspire_talents.lua`, `/talents` or `/tal`) live in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**.
 
 Twelve small engine patches are required:
 
@@ -41,22 +41,22 @@ Twelve small engine patches are required:
 - `patches/0004-dynamic-ws-skillchain-traits.patch` reads per-cast `OX_WS_SC1..3` localVars inside `CCharEntity::OnWeaponSkillFinished` so talent-upgraded skillchain properties apply dynamically on each weaponskill.
 - `patches/0005-clear-ws-skillchains-dynamically.patch` clears/overrides WS skillchain slots cleanly when `OX_WS_SC_SET` is present.
 - `patches/0006-eos-status-effect-params.patch` configures status effect IDs `789` (stackable Eos Regen) and `814` (hidden faerie Refresh/buff carrier) in C++.
-- `patches/0007-spec-ability-unlocks.patch` hooks `xi.overlords.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated JAs like **Call Eos**, **Call Titania**, Commander WAR's **Warcry** / custom JAs, and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
+- `patches/0007-spec-ability-unlocks.patch` hooks `xi.soulspire.spec.getExtraAbilities` into `charutils::BuildingCharAbilityTable` (so crystal-gated JAs like **Call Eos**, **Call Titania**, Commander WAR's **Warcry** / custom JAs, and Sensei MNK's **Counterstance** remain hidden until unlocked at Lv.10+) and syncs ability recasts in `recalculateAbilitiesTable()`.
 - `patches/0008-titania-sage-pet.patch` raises `MAX_PETID` to `130` (`PETID_FAERIE_TITANIA = 129`) and deterministically spawns Titania at the master's level with `BLM` main job and `RDM` subjob.
-- `patches/0009-crystal-socket-packets.patch` adds custom packets `0x11F` (`GP_CLI_COMMAND_CRYSTAL_SOCKET`, C2S) and `0x1FF` (`GP_SERV_COMMAND_CRYSTAL_COLLECTION` `CRYS` / `GP_SERV_COMMAND_CRYSTAL_CATALOG` `CRYC`, S2C) backed by `xi.overlords.spec` for the Ashita v4 `crystalsocket` Equipment UI.
-- `patches/0010-spec-trait-sync-and-unlocks.patch` expands `MAX_TRAIT_ID` / `CCharEntity::m_TraitList` to `256` (`32` bytes matching `GP_SERV_COMMAND_COMMAND_DATA`), overrides `CCharEntity::hasTrait`, refreshes spec crystal mods/listeners/UI on every `charutils::BuildingCharTraitsTable` rebuild (job change, subjob change, level change, level sync), and injects crystal-gated custom Job Traits (`xi.overlords.spec.getExtraTraits`) directly into the Traits menu.
+- `patches/0009-crystal-socket-packets.patch` adds custom packets `0x11F` (`GP_CLI_COMMAND_CRYSTAL_SOCKET`, C2S) and `0x1FF` (`GP_SERV_COMMAND_CRYSTAL_COLLECTION` `CRYS` / `GP_SERV_COMMAND_CRYSTAL_CATALOG` `CRYC`, S2C) backed by `xi.soulspire.spec` for the Ashita v4 `crystalsocket` Equipment UI.
+- `patches/0010-spec-trait-sync-and-unlocks.patch` expands `MAX_TRAIT_ID` / `CCharEntity::m_TraitList` to `256` (`32` bytes matching `GP_SERV_COMMAND_COMMAND_DATA`), overrides `CCharEntity::hasTrait`, refreshes spec crystal mods/listeners/UI on every `charutils::BuildingCharTraitsTable` rebuild (job change, subjob change, level change, level sync), and injects crystal-gated custom Job Traits (`xi.soulspire.spec.getExtraTraits`) directly into the Traits menu.
 - `patches/0011-commander-status-effects.patch` raises `MAX_EFFECTID` to `832` and configures custom status effect IDs `815`â€“`826` (`commander_breach`, `commander_bulwark`, `commander_cadence`, `commander_regroup`, `berserker_bloodlust`, `gladiator_bastion`, `inquisitor_battuta`, `inquisitor_aegis`, `inquisitor_converge`, `spellblade_overcharge`, `lifebinder_font`, `lifebinder_sanctuary`).
 - `patches/0012-dot-damage-log.patch` attributes player/pet/trust DoT ticks on mobs (`Dia`, `Bio`, `Poison`, `Burn`/`Frost`/`Choke`/`Rasp`/`Shock`/`Drown`, `Requiem`, `Kaustra`, `Geo-Poison`, `Helix`) and emits parser-friendly `0x017` `MESSAGE_SYSTEM_3` combat log lines (`"<Caster>'s <Effect> deals <Amount> point(s) of damage to <Mob>."`).
-- `patches/0037-crystal-swap-busy-state.patch` fixes the Crystal Socket UI falsely rejecting idle players as busy, and leaves combat-swap policy to `xi.overlords.spec.canSwap()`.
+- `patches/0037-crystal-swap-busy-state.patch` fixes the Crystal Socket UI falsely rejecting idle players as busy, and leaves combat-swap policy to `xi.soulspire.spec.canSwap()`.
 
 The pet and status patches keep Eos and Titania deterministic without editing LSB's jug-pet randomization globally. Patches `0003`â€“`0005` power the per-character weaponskill unlock and talent skillchain system. Patches `0007`, `0010`, and `0011` allow job crystals to dynamically grant and hide ability and trait menu entries per character, run custom crystal tactical status effects cleanly, and keep crystal passives synchronized across all job/level/sync transitions.
 
 ## Client Launcher & Client Files
 
-The distributable Windows client launcher (`OverlordsLauncher.exe`), XIPivot DAT overlay, and `overlords_talents` Ashita v4 addon are maintained in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**:
+The distributable Windows client launcher (`SoulspireLauncher.exe`), XIPivot DAT overlay, and `soulspire_talents` Ashita v4 addon are maintained in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)**:
 
-- **For Players**: Download `OverlordsLauncher.exe` from **[overlordsxi-launcher Releases](https://github.com/Infomatictek/overlordsxi-launcher/releases)** and click **PLAY OVERLORDSXI** (auto-installs Ashita v4, `xiloader.exe`, XIPivot, the OverlordsXI DAT overlay, and `overlords_talents`).
-- **For Server Hosts**: Place an `overlords-server.json` next to `OverlordsLauncher.exe` (generated via **Graphics & Settings -> Export Shareable overlords-server.json**) to point players to your server host/IP.
+- **For Players**: Download `SoulspireLauncher.exe` from **[overlordsxi-launcher Releases](https://github.com/Infomatictek/overlordsxi-launcher/releases)** and click **PLAY SOULSPIREXI** (auto-installs Ashita v4, `xiloader.exe`, XIPivot, the SoulspireXI DAT overlay, and `soulspire_talents`).
+- **For Server Hosts**: Place an `overlords-server.json` next to `SoulspireLauncher.exe` (generated via **Graphics & Settings -> Export Shareable overlords-server.json**) to point players to your server host/IP.
 
 ## Install
 
@@ -95,19 +95,19 @@ git apply C:\path\to\overlordsxi\patches\0009-crystal-socket-packets.patch
 git apply C:\path\to\overlordsxi\patches\0010-spec-trait-sync-and-unlocks.patch
 git apply C:\path\to\overlordsxi\patches\0011-commander-status-effects.patch
 git apply C:\path\to\overlordsxi\patches\0012-dot-damage-log.patch
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_specs.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_catalog.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_talents.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_tree_helpers.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_trees_*.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_ws_overrides.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_job_specs.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_ws_catalog.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_ws_talents.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_ws_tree_helpers.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_ws_trees_*.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_ws_overrides.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\eos_companion.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\sch_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\war_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\mnk_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\run_specs.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\dot_damage_log.lua .\modules\custom\lua\
-Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\overlords_job_spec_runtime.lua .\modules\custom\lua\
+Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\lua\soulspire_job_spec_runtime.lua .\modules\custom\lua\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\spec.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\eos.lua .\modules\custom\commands\
 Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\commands\talent.lua .\modules\custom\commands\
@@ -122,17 +122,17 @@ Copy-Item -Recurse -Force C:\path\to\overlordsxi\modules\custom\sql\run_specs.sq
 Add these lines to `modules/init.txt`:
 
 ```text
-custom/lua/overlords_job_specs.lua
-custom/lua/overlords_ws_catalog.lua
-custom/lua/overlords_ws_talents.lua
-custom/lua/overlords_ws_overrides.lua
+custom/lua/soulspire_job_specs.lua
+custom/lua/soulspire_ws_catalog.lua
+custom/lua/soulspire_ws_talents.lua
+custom/lua/soulspire_ws_overrides.lua
 custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/lua/war_specs.lua
 custom/lua/mnk_specs.lua
 custom/lua/run_specs.lua
 custom/lua/dot_damage_log.lua
-custom/lua/overlords_job_spec_runtime.lua
+custom/lua/soulspire_job_spec_runtime.lua
 custom/cpp/eos_companion.cpp
 custom/cpp/kazenoeye_sync.cpp
 custom/sql/eos_companion.sql
@@ -154,7 +154,7 @@ cmd /c '"C:\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64 && c
 
 ## Client DAT overlay
 
-The DAT overlay lives in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)** under `dat-overlay\ROM` and is synced automatically by `OverlordsLauncher.exe` (or can be copied manually into your custom DAT loader path such as `C:\DATs\Overlords`).
+The DAT overlay lives in **[Infomatictek/overlordsxi-launcher](https://github.com/Infomatictek/overlordsxi-launcher)** under `dat-overlay\ROM` and is synced automatically by `SoulspireLauncher.exe` (or can be copied manually into your custom DAT loader path such as `C:\DATs\Overlords`).
 
 The overlay updates:
 
@@ -171,7 +171,7 @@ The server enforces the real 5 minute recast.
 
 ## Job Specs / Crystals
 
-The package includes a reusable **Job Crystal / Spec** system (`overlords_job_specs.lua`) with session-safe scaling passive modifiers (`overlords_job_spec_runtime.lua`), an interactive `customMenu` crystal selector (`!spec`), and a silent `[OXSPEC]` sync protocol for custom Ashita v4 UIs. Spec choices are persisted as character variables, one per job (`OX_SPEC_<JOB>`, e.g. `OX_SPEC_WAR`, `OX_SPEC_SCH`, `OX_SPEC_RUN`).
+The package includes a reusable **Job Crystal / Spec** system (`soulspire_job_specs.lua`) with session-safe scaling passive modifiers (`soulspire_job_spec_runtime.lua`), an interactive `customMenu` crystal selector (`!spec`), and a silent `[OXSPEC]` sync protocol for custom Ashita v4 UIs. Spec choices are persisted as character variables, one per job (`OX_SPEC_<JOB>`, e.g. `OX_SPEC_WAR`, `OX_SPEC_SCH`, `OX_SPEC_RUN`).
 
 - **Level 10 Baseline Unlock:** All job crystals / souls require **Lv10** (`DEFAULT_REQ_LEVEL = 10`) in that job to unlock, socket, and activate. If a player level-syncs below Lv10, their socketed crystal remains saved in `OX_SPEC_<JOB>` while its passives and spec hooks are safely suspended until Lv10+ is restored.
 
@@ -226,16 +226,16 @@ Players can use:
 Spell and ability modules can branch with:
 
 ```lua
-xi.overlords.spec.is(player, xi.job.WAR, 'commander')
-xi.overlords.spec.is(player, xi.job.MNK, 'sensei')
-xi.overlords.spec.is(player, xi.job.SAM, 'ronin')
-xi.overlords.spec.is(player, xi.job.SAM, 'imperialarcher')
-xi.overlords.spec.is(player, xi.job.SAM, 'warlord')
-xi.overlords.spec.is(player, xi.job.SCH, 'medic')
-xi.overlords.spec.is(player, xi.job.SCH, 'sage')
-xi.overlords.spec.is(player, xi.job.RUN, 'inquisitor')
-xi.overlords.spec.is(player, xi.job.RUN, 'spellblade')
-xi.overlords.spec.is(player, xi.job.RUN, 'lifebinder')
+xi.soulspire.spec.is(player, xi.job.WAR, 'commander')
+xi.soulspire.spec.is(player, xi.job.MNK, 'sensei')
+xi.soulspire.spec.is(player, xi.job.SAM, 'ronin')
+xi.soulspire.spec.is(player, xi.job.SAM, 'imperialarcher')
+xi.soulspire.spec.is(player, xi.job.SAM, 'warlord')
+xi.soulspire.spec.is(player, xi.job.SCH, 'medic')
+xi.soulspire.spec.is(player, xi.job.SCH, 'sage')
+xi.soulspire.spec.is(player, xi.job.RUN, 'inquisitor')
+xi.soulspire.spec.is(player, xi.job.RUN, 'spellblade')
+xi.soulspire.spec.is(player, xi.job.RUN, 'lifebinder')
 ```
 
 ### Ashita v4 Custom Crystal Addon Protocol (`[OXSPEC]`)

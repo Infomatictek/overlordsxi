@@ -2,7 +2,7 @@
 -- func: spec
 -- desc: Job crystal / spec selector (customMenu UI, CLI, and [OXSPEC] Ashita protocol).
 -----------------------------------
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 -----------------------------------
 ---@type TCommand
 local commandObj = {}
@@ -13,7 +13,7 @@ commandObj.cmdprops =
     parameters = 'sss',
 }
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local function tell(player, message)
     player:printToPlayer(message, xi.msg.channel.SYSTEM_3, '')
@@ -228,8 +228,8 @@ commandObj.onTrigger = function(player, action, value, extra)
     end
 
     if cmd == 'boost' then
-        if xi.overlords and xi.overlords.mnk and xi.overlords.mnk.sendChiBoostSync then
-            xi.overlords.mnk.sendChiBoostSync(player, true)
+        if xi.soulspire and xi.soulspire.mnk and xi.soulspire.mnk.sendChiBoostSync then
+            xi.soulspire.mnk.sendChiBoostSync(player, true)
         end
         return
     end
@@ -323,8 +323,8 @@ commandObj.onTrigger = function(player, action, value, extra)
             tell(player, '!spec resetspells is only available while BLU Magus (Lv. 10+) is active.')
             return
         end
-        if xi.overlords.bluHealerSpecs and xi.overlords.bluHealerSpecs.resetMagusSpells then
-            xi.overlords.bluHealerSpecs.resetMagusSpells(player)
+        if xi.soulspire.bluHealerSpecs and xi.soulspire.bluHealerSpecs.resetMagusSpells then
+            xi.soulspire.bluHealerSpecs.resetMagusSpells(player)
             tell(player, 'Restored Magus baseline Blue Magic spell loadout.')
         else
             tell(player, 'Magus spell sync helper is not loaded.')

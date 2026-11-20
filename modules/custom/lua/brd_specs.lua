@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Bard Crystal Specs
+-- SoulspireXI Bard Crystal Specs
 -- Registers Bard crystals:
 --   1) Adventurer (ADV) - Melee Damage (Dagger/Sword + Cadence & Encore)
 --   2) Musician   (MUS) - Magical Song Nuker (Threnody/Requiem + Magic Burst)
@@ -11,15 +11,15 @@
 --     buffs reliable while offensive songs & JAs drive damage/enmity.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/basic/magic_burst')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/spells/damage_spell')
 -----------------------------------
-local m = Module:new('overlords_brd_specs')
+local m = Module:new('soulspire_brd_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local ADVENTURER_KEY = 'adventurer'
 local MUSICIAN_KEY   = 'musician'
@@ -156,7 +156,7 @@ local function applyTimedBrdEffect(target, effectId, power, duration, origin, ic
         power    = power or 1,
         duration = duration or 15,
         origin   = origin or target,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
     })
 
     local leftover = pendingBrdEffectMods[targetId]

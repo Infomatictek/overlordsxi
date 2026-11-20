@@ -1,4 +1,4 @@
--- OverlordsXI WAR Berserker Custom Job Abilities (400-401)
+-- SoulspireXI WAR Berserker Custom Job Abilities (400-401)
 -- Level set to 255 so these abilities stay hidden unless dynamically unlocked
 -- at Lv.10+ for WAR Berserker via patch 0007 (extraAbilities).
 -- AnimationTime = 2000ms provides natural JA attack lockout.

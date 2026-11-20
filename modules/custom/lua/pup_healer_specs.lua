@@ -1,19 +1,19 @@
 -----------------------------------
--- OverlordsXI Puppetmaster Crystal Spec: Animist (ANM | Tier-4 Combat Healer)
+-- SoulspireXI Puppetmaster Crystal Spec: Animist (ANM | Tier-4 Combat Healer)
 -- Unlocks @ Lv. 10 (!spec set animist)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('modules/custom/lua/pup_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/puppetmaster')
 require('scripts/globals/pets/automaton')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_pup_healer_specs')
+local m = Module:new('soulspire_pup_healer_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local ANIMIST_KEY = 'animist'
 
 -- Custom Trait ID (174; Clockwork Medic)
@@ -227,8 +227,8 @@ local function syncAutomatonHealerMods(player)
     if spec.syncPetRoleMods then
         spec.syncPetRoleMods(player, pet)
     end
-    if xi.overlords.pupSpecs and xi.overlords.pupSpecs.syncSpecPetDamageMods then
-        xi.overlords.pupSpecs.syncSpecPetDamageMods(player, pet)
+    if xi.soulspire.pupSpecs and xi.soulspire.pupSpecs.syncSpecPetDamageMods then
+        xi.soulspire.pupSpecs.syncSpecPetDamageMods(player, pet)
     end
 
     applyAnimistBacklineMode(pet)
@@ -418,7 +418,7 @@ local function attachAnimistListeners(player)
         end
 
         local charId    = caster.getID and caster:getID() or 0
-        local now       = xi.overlords.nowSec()
+        local now       = xi.soulspire.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if not isPrimary then
             return
@@ -698,7 +698,7 @@ for _, hateName in ipairs({ 'ventriloquy', 'cooldown' }) do
             end
             addAetherCell(player, 1)
             local pet = player:getPet()
-            for _, mob in ipairs(xi.overlords.getNearbyMobs(player, 20, target)) do
+            for _, mob in ipairs(xi.soulspire.getNearbyMobs(player, 20, target)) do
                 if mob.lowerEnmity then
                     mob:lowerEnmity(player, 40)
                     if pet ~= nil then
@@ -769,9 +769,9 @@ m:addOverride('xi.actions.abilities.clockwork_aegis.onUseAbility', function(play
     for _, member in ipairs(getPartyMembersAround(player, 15, false)) do
         local skin = math.max(1, math.floor((member:getMaxHP() or 0) * 0.18))
         H.applyStoneskinBarrier(member, skin, skin * 2, 15, player)
-        H.applyCustomTimedEffect(member, EFFECT_CLOCKWORK_AEGIS, 15, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_CLOCKWORK_AEGIS), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15)
+        H.applyCustomTimedEffect(member, EFFECT_CLOCKWORK_AEGIS, 15, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_CLOCKWORK_AEGIS), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1200, 30, 15)
         end
     end
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

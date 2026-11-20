@@ -1,6 +1,6 @@
-# OverlordsXI Server Wiki — SWAG Deployment Guide
+# SoulspireXI Server Wiki — SWAG Deployment Guide
 
-The `site/` folder is a **zero-maintenance static web encyclopedia** for OverlordsXI.
+The `site/` folder is a **zero-maintenance static web encyclopedia** for SoulspireXI.
 
 It contains:
 - `index.html` — The main Wiki shell

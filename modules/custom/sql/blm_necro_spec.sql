@@ -1,4 +1,4 @@
--- OverlordsXI BLM Necromancer Spec Data
+-- SoulspireXI BLM Necromancer Spec Data
 -- Custom Job Abilities (405-411, 419-428), Undead Pets (130-133), Spell Lists (601-602),
 -- and Scythe equipment eligibility for BLM (job bit 8).
 

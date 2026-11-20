@@ -1,4 +1,4 @@
-# OverlordsXI unified haste attack-rate foundation (experimental)
+# SoulspireXI unified haste attack-rate foundation (experimental)
 
 **Branch:** `feature/combat-haste-aps-foundation-20261119`  
 **Scope:** melee attack scheduling, custom ranged autoattack, Chi Weaver, server player haste baseline.  

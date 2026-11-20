@@ -1,6 +1,6 @@
 #!/usr/sbin/nft -f
 ###############################################################################
-# OverlordsXI — VPS Gateway nftables Firewall & Game Traffic Forwarding
+# SoulspireXI — VPS Gateway nftables Firewall & Game Traffic Forwarding
 #
 # Copy to /etc/nftables.conf on the Ubuntu LTS VPS and replace:
 #   WAN_IF          -> public NIC (e.g. eth0 / ens3 — verify with `ip route`)

@@ -2,11 +2,11 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Unraid Deployment & Operations CLI
+# SoulspireXI — Unraid Deployment & Operations CLI
 #
 # Commands:
 #   init                 Create persistent Unraid appdata layout & pull meshes
-#   build <tag>          Build versioned OverlordsXI Docker image from Git HEAD
+#   build <tag>          Build versioned SoulspireXI Docker image from Git HEAD
 #   deploy <tag>         Pre-deploy DB backup + controlled rollout + health check
 #   update <tag>         Build <tag> then deploy <tag>
 #   backup [label]       Create consistent gzipped MariaDB backup + SHA256
@@ -66,7 +66,7 @@ cmd_init() {
         "${APPDATA_DIR}/backups/weekly" \
         "${APPDATA_DIR}/backups/pre-deploy"
 
-    # Seed OverlordsXI customized gameplay settings if not yet present
+    # Seed SoulspireXI customized gameplay settings if not yet present
     for cfg in main.lua map.lua; do
         if [ ! -f "${APPDATA_DIR}/config/settings/${cfg}" ] && [ -f "${DEPLOY_DIR}/config/settings/${cfg}" ]; then
             cp "${DEPLOY_DIR}/config/settings/${cfg}" "${APPDATA_DIR}/config/settings/${cfg}"
@@ -248,7 +248,7 @@ cmd_deploy() {
     echo "==> Recording active tag ${tag} in ${ENV_FILE}"
     update_env_tag "${tag}"
 
-    echo "==> Rolling out OverlordsXI ${tag}..."
+    echo "==> Rolling out SoulspireXI ${tag}..."
     dc up -d --remove-orphans
 
     echo "==> Waiting for health checks..."
@@ -264,7 +264,7 @@ cmd_deploy() {
 cmd_rollback() {
     require_env
     local tag="${1:?Usage: $0 rollback <previous-tag>}"
-    echo "==> Rolling back OverlordsXI application image to ${tag} (persistent data untouched)..."
+    echo "==> Rolling back SoulspireXI application image to ${tag} (persistent data untouched)..."
     cmd_deploy "${tag}"
 }
 

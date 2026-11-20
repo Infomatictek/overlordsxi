@@ -2,7 +2,7 @@
 -- func: eos
 -- desc: Controls the player's Eos or Titania faerie companion.
 -----------------------------------
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 -----------------------------------
 ---@type TCommand
 local commandObj = {}

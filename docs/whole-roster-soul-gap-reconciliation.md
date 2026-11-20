@@ -1,4 +1,4 @@
-# OverlordsXI — Corrected Whole-Roster Soul Design and Implementation Queue
+# SoulspireXI — Corrected Whole-Roster Soul Design and Implementation Queue
 
 **Updated:** 2026-11-19. **Purpose:** Correct the misleading 13-Soul scope; cover all active Souls without redesigning already playable work.
 

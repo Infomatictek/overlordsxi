@@ -1,4 +1,4 @@
--- OverlordsXI Puppetmaster Crystal Spec (Animist - Healer)
+-- SoulspireXI Puppetmaster Crystal Spec (Animist - Healer)
 -- Define custom PUP Animist Job Abilities (466-467; recastIds 166-167) with level = 255:
 --   - Aether Overhaul (466, 45s CD, Self / Party 15y, recastId 166)
 --   - Clockwork Aegis (467, 75s CD, Self / Party 15y, recastId 167)

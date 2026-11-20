@@ -1,21 +1,21 @@
 -----------------------------------
--- OverlordsXI Corsair Crystal Specs:
+-- SoulspireXI Corsair Crystal Specs:
 --   1. Flintlock (FLT | Tier 1 Pure Damage)
 --   2. Gambler   (GMB | Tier 3 Pure Support)
 --   3. Buccaneer (BUC | Tier 6 Pure Tank)
 -- Unlocks @ Lv. 10
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/corsair')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_cor_specs')
+local m = Module:new('soulspire_cor_specs')
 
-local spec  = xi.overlords.spec
-local slots = xi.overlords.slots
+local spec  = xi.soulspire.spec
+local slots = xi.soulspire.slots
 
 local FLINTLOCK_KEY = 'flintlock'
 local GAMBLER_KEY   = 'gambler'
@@ -325,9 +325,9 @@ local function triggerJackpotCashout(caster, abilityId)
     return cdr
 end
 
-xi.overlords = xi.overlords or {}
-xi.overlords.cor = xi.overlords.cor or {}
-function xi.overlords.cor.getGamblerHudState(player)
+xi.soulspire = xi.soulspire or {}
+xi.soulspire.cor = xi.soulspire.cor or {}
+function xi.soulspire.cor.getGamblerHudState(player)
     if player == nil or not player.getID then
         return nil
     end
@@ -650,7 +650,7 @@ m:addOverride('xi.job_utils.corsair.useDoubleUp', function(caster, target, abili
                 power    = 25,
                 duration = 12,
                 origin   = caster,
-                icon     = xi.overlords.getStatusIcon(EFFECT_HOUSE_DEBT),
+                icon     = xi.soulspire.getStatusIcon(EFFECT_HOUSE_DEBT),
             })
             setRollLock(caster, 15)
         elseif roll == 11 then
@@ -981,7 +981,7 @@ m:addOverride('xi.job_utils.corsair.useElementalShot', function(actor, target, a
             power    = CARD_COUNT_FIRE_LIGHT,
             duration = 10,
             origin   = actor,
-            icon     = xi.overlords.getStatusIcon(EFFECT_CARD_COUNTING),
+            icon     = xi.soulspire.getStatusIcon(EFFECT_CARD_COUNTING),
         })
     elseif abilityId == ABIL_ICE_SHOT or abilityId == ABIL_WATER_SHOT then
         actor:delStatusEffectSilent(EFFECT_CARD_COUNTING)
@@ -989,7 +989,7 @@ m:addOverride('xi.job_utils.corsair.useElementalShot', function(actor, target, a
             power    = CARD_COUNT_ICE_WATER,
             duration = 10,
             origin   = actor,
-            icon     = xi.overlords.getStatusIcon(EFFECT_CARD_COUNTING),
+            icon     = xi.soulspire.getStatusIcon(EFFECT_CARD_COUNTING),
         })
     end
 
@@ -1110,7 +1110,7 @@ m:addOverride('xi.actions.abilities.house_advantage.onUseAbility', function(cast
             power    = 1,
             duration = 30,
             origin   = caster,
-            icon     = xi.overlords.getStatusIcon(EFFECT_HOUSE_ADVANTAGE),
+            icon     = xi.soulspire.getStatusIcon(EFFECT_HOUSE_ADVANTAGE),
         })
 
         forEachPartyMemberInRange(caster, 15, function(member)
@@ -1308,10 +1308,10 @@ end)
 -----------------------------------
 -- Global C++ Hook & WS Listeners (Flintlock Powder Mark & Buccaneer Point-Blank Pistol)
 -----------------------------------
-xi.overlords = xi.overlords or {}
+xi.soulspire = xi.soulspire or {}
 
-local prevCorPreTakeDamage = xi.overlords.onPreTakeDamage
-xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
+local prevCorPreTakeDamage = xi.soulspire.onPreTakeDamage
+xi.soulspire.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
     if prevCorPreTakeDamage then
         amount = prevCorPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end

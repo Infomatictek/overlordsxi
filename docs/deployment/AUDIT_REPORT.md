@@ -1,4 +1,4 @@
-# OverlordsXI — Phase 1 Environment Audit Report
+# SoulspireXI — Phase 1 Environment Audit Report
 
 **Audit Date:** 2026-11-19  
 **Source Environment:** Windows (`C:\overlordsxi` + `C:\dev\server` + `C:\dev\mariadb` + `C:\overlordsxi-launcher`)  
@@ -10,8 +10,8 @@
 
 | Path / Repo | Remote | Branch / Commit | Role |
 |---|---|---|---|
-| `C:\overlordsxi` | `https://github.com/Infomatictek/overlordsxi.git` | `main` (`ad8bb88`) — *current live playable server*<br>(`C:\overlordsxi` working tree is currently on `feat/shinobi-2-combat` with uncommitted WIP; migration work is isolated in worktree `feat/unraid-docker-migration` off `main`) | **Authoritative source of truth** for all OverlordsXI patches, custom modules, SQL, commands, telemetry, combat analytics, and docs |
-| `C:\dev\server` | `https://github.com/landsandboat/server.git` | `base` @ `091e7409d1c9d702f366dc374115f939393c46ab` (2026-11-12, PR #11980) | Windows build/runtime checkout of upstream LandSandBoat with OverlordsXI patches & modules overlaid |
+| `C:\overlordsxi` | `https://github.com/Infomatictek/overlordsxi.git` | `main` (`ad8bb88`) — *current live playable server*<br>(`C:\overlordsxi` working tree is currently on `feat/shinobi-2-combat` with uncommitted WIP; migration work is isolated in worktree `feat/unraid-docker-migration` off `main`) | **Authoritative source of truth** for all SoulspireXI patches, custom modules, SQL, commands, telemetry, combat analytics, and docs |
+| `C:\dev\server` | `https://github.com/landsandboat/server.git` | `base` @ `091e7409d1c9d702f366dc374115f939393c46ab` (2026-11-12, PR #11980) | Windows build/runtime checkout of upstream LandSandBoat with SoulspireXI patches & modules overlaid |
 | `C:\overlordsxi-launcher` | `https://github.com/Infomatictek/overlordsxi-launcher.git` | `main` (working tree currently on `feat/shinobi-2-client-hud`) | Ashita v4 client launcher, manifest, addons, and DAT overlay |
 
 ---
@@ -31,12 +31,12 @@
 
 ---
 
-## 3. Inventory of Custom OverlordsXI Systems (`main`)
+## 3. Inventory of Custom SoulspireXI Systems (`main`)
 
 | Category | Count | Highlights |
 |---|---:|---|
 | Native Engine Patches (`patches/*.patch`) | **50** | Custom pet/effect IDs, Eos/Titania, all WS unlock & dynamic skillchains, crystal socket packets (`0x11f`/`0x1ff`), spec ability/trait unlocks, DoT damage log, throwing WS, auto-ranged attack, DNC ranged dances, BLM necromancer pets, search job labels, talent WS gating, AoE healing on pets, shared OX status slots, polearm+buckler, `MAX_EFFECTID=1024`, Kurogane authoritative look/appearance/regression tests, unified attack-rate haste, `xi_test --lua-only` |
-| Custom C++ Modules (`modules/custom/cpp/`) | **4** | `eos_companion.cpp`, `kazenoeye_sync.cpp`, `overlords_soulhud_sync.cpp`, `overlords_soul_action_peers.cpp` |
+| Custom C++ Modules (`modules/custom/cpp/`) | **4** | `eos_companion.cpp`, `kazenoeye_sync.cpp`, `soulspire_soulhud_sync.cpp`, `soulspire_soul_action_peers.cpp` |
 | Custom Lua Modules (`modules/custom/lua/`) | **64** | All 66 Soul specializations across all 22 jobs, Soul Action System, Soul HUD, Kurogane shadow clones (`kurogane_clones.lua`), WS talent trees & overrides, Boss-like combat & EXP, Proving Grounds Lite (`registry`, `telemetry`, `lite`), Eos companion, Regen scaling, Polearm/Buckler, Shared slots, Status registry & mob status sync |
 | Custom Commands (`modules/custom/commands/`) | **9** | `buckler.lua`, `camp.lua`, `eos.lua`, `gear.lua`, `kurogane.lua`, `shield.lua`, `soulhud.lua`, `spec.lua`, `talent.lua` |
 | Custom SQL Modules (`modules/custom/sql/`) | **30** | Spec abilities/spells/traits for all jobs, `custom_status_effects_sync.sql` (71 custom status effects, IDs ≥ 600), `eos_companion.sql` |
@@ -132,7 +132,7 @@ These exist in `C:\dev\server` but were **not tracked in `C:\overlordsxi`**:
 |---|---|---|
 | Custom C++ Modules (4 files) | **Compatible** | Zero Windows-only headers (`windows.h`, `_WIN32`, etc.) found. Uses standard C++ / LandSandBoat headers. |
 | Native Engine Patches (50 files) | **Compatible** | Standard C++/Lua/CMake diffs; verified against pinned LSB commit `091e7409d1`. |
-| Custom Lua Modules (64 files) | **Compatible** | `overlords_proving_grounds_telemetry.lua` uses LuaJIT FFI `CreateDirectoryA` on Windows and falls back cleanly to `mkdir -p` on Linux. |
+| Custom Lua Modules (64 files) | **Compatible** | `soulspire_proving_grounds_telemetry.lua` uses LuaJIT FFI `CreateDirectoryA` on Windows and falls back cleanly to `mkdir -p` on Linux. |
 | MariaDB Case Sensitivity | **Low Risk (Mitigated)** | Windows MariaDB uses `lower_case_table_names=1`. Linux defaults to `0`. Mitigated by setting `lower_case_table_names=1` in `overlordsxi.cnf` on fresh container initialization. |
 | Dual-Protocol Port `54230` | **Medium Risk (Mitigated)** | `xi_connect` = TCP 54230, `xi_map` = UDP 54230. Handled explicitly in Docker Compose and VPS `nftables` rules. |
 | Asymmetric Routing / IP Leak | **High Risk (Mitigated)** | If Unraid replies directly via residential WAN instead of WireGuard, players receive packets from the residential IP and FFXI drops/leaks. Mitigated via VPS SNAT (`masquerade` on `wg0`) or dedicated policy routing table on Unraid; documented in Phase 6 guide. |

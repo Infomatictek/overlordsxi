@@ -1,4 +1,4 @@
--- OverlordsXI Scholar spec data.
+-- SoulspireXI Scholar spec data.
 
 -- Addendum: White is already level 10 upstream, but keep both explicit for this ruleset.
 UPDATE `abilities`

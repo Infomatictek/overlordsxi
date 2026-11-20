@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Phase 10 Security & Origin-IP Privacy Verification
+# SoulspireXI — Phase 10 Security & Origin-IP Privacy Verification
 #
 # Run from an external machine (NOT home LAN) to verify:
 #   1. play.<domain> resolves ONLY to VPS_PUBLIC_IP (not RESIDENTIAL_IP)

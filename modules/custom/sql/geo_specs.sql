@@ -1,4 +1,4 @@
--- OverlordsXI Geomancer Crystal Spec (Verdant - Healer)
+-- SoulspireXI Geomancer Crystal Spec (Verdant - Healer)
 -- 1. Un-gate merit ability Life Cycle (349) so Verdant can use it without merit gating.
 -- 2. Define custom GEO Verdant Job Abilities (468-469; recastIds 164-165) with level = 255:
 --      - Verdant Renewal       (468, 20s CD, Self / Party 15y, recastId 164)

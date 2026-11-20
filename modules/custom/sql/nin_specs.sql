@@ -1,4 +1,4 @@
--- OverlordsXI Ninja Crystal Specs (Shinobi & Kagemusha)
+-- SoulspireXI Ninja Crystal Specs (Shinobi & Kagemusha)
 -- 1. Clear expansion content_tag gating on Yonin (248) and Futae (259), and backport Futae to Lv.75
 --    so Kagemusha can unlock both at Lv.10+ via extraAbilities.
 -- 2. Define Kagemusha's custom Job Abilities with level = 255 so they stay hidden unless

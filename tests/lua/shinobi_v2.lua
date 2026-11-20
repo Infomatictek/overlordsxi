@@ -1,12 +1,12 @@
 -----------------------------------
--- OverlordsXI Shinobi 2.0 — Real Engine Integration & Combat Benchmark Suite
+-- SoulspireXI Shinobi 2.0 — Real Engine Integration & Combat Benchmark Suite
 -- Runs inside xi_test.exe against live LandSandBoat map engine, MariaDB,
 -- C++ battleutils (patch 0045), kurogane_clones.lua, nin_specs.lua,
--- boss_like_combat_and_exp.lua, and overlords_soul_hud.lua.
+-- boss_like_combat_and_exp.lua, and soulspire_soul_hud.lua.
 -----------------------------------
-local spec = xi.overlords.spec
-local K    = xi.overlords.kurogane
-local hud  = xi.overlords.hud
+local spec = xi.soulspire.spec
+local K    = xi.soulspire.kurogane
+local hud  = xi.soulspire.hud
 
 local simClock = 100000
 
@@ -77,9 +77,9 @@ describe('Shinobi 2.0 real-engine integration', function()
     local origNowSec
 
     before_each(function()
-        origNowSec = xi.overlords.nowSec
+        origNowSec = xi.soulspire.nowSec
         simClock = 100000
-        xi.overlords.nowSec = function()
+        xi.soulspire.nowSec = function()
             return simClock
         end
         K.ENABLE_EXPERIMENTAL_CLONES = true
@@ -96,7 +96,7 @@ describe('Shinobi 2.0 real-engine integration', function()
             target:setUnkillable(false)
         end
         if origNowSec then
-            xi.overlords.nowSec = origNowSec
+            xi.soulspire.nowSec = origNowSec
         end
     end)
 

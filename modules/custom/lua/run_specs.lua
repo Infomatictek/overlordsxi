@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Rune Fencer Crystal Specs
+-- SoulspireXI Rune Fencer Crystal Specs
 -- Registers Rune Fencer crystals (Inquisitor, Spellblade, Lifebinder) and
 -- implements their scaling passive stats, custom Job Abilities (412-418),
 -- and base RUN ability/spell transformations.
@@ -10,7 +10,7 @@
 --   Rune Edge for 12s) -> Stronger enchanted attacks.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/basic/damage_multipliers')
 require('scripts/combat/basic/magic_aoe')
 require('scripts/combat/basic/magic_burst')
@@ -20,9 +20,9 @@ require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/rune_fencer')
 require('scripts/globals/spells/damage_spell')
 -----------------------------------
-local m = Module:new('overlords_run_specs')
+local m = Module:new('soulspire_run_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local INQUISITOR_KEY = 'inquisitor'
 local SPELLBLADE_KEY = 'spellblade'
@@ -587,7 +587,7 @@ local function applyTimedEffectWithMods(target, effectId, power, duration, origi
         duration = duration or 15,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
     }
 
     local actualId = effectId
@@ -701,9 +701,9 @@ local function addConductionStacks(player, delta)
     return setConductionStacks(player, math.min(3, cur + (delta or 1)), false)
 end
 
-xi.overlords = xi.overlords or {}
-xi.overlords.runSpecs = xi.overlords.runSpecs or {}
-xi.overlords.runSpecs.addConduction = addConductionStacks
+xi.soulspire = xi.soulspire or {}
+xi.soulspire.runSpecs = xi.soulspire.runSpecs or {}
+xi.soulspire.runSpecs.addConduction = addConductionStacks
 
 local function hasEdgeflare(player, activeElement)
     local eff = getRunCustomEffect(player, EFFECT_EDGEFLARE)
@@ -2042,8 +2042,8 @@ m:addOverride('xi.job_utils.rune_fencer.useVivaciousPulse', function(player, tar
         end
 
         if luxCount > 0 and member.addStatusEffect then
-            if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
-                xi.overlords.regen.applyHybridRegen(player, member, xi.effect.REGEN, 12 * luxCount, 150 * luxCount, 30, 3, 1)
+            if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.applyHybridRegen then
+                xi.soulspire.regen.applyHybridRegen(player, member, xi.effect.REGEN, 12 * luxCount, 150 * luxCount, 30, 3, 1)
             else
                 local memberRegen = math.max(luxMin, math.floor(maxHp * luxPct / 100)) * luxCount
                 member:addStatusEffect(xi.effect.REGEN, { power = memberRegen, duration = 30, origin = player, tick = 3, tier = 1 })
@@ -2934,8 +2934,8 @@ end, function(player, target, _ability)
 
     local maxHp     = recipient.getMaxHP and recipient:getMaxHP() or 100
     local regenTick = 25
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
-        regenTick = xi.overlords.regen.computeHybridTick(player, recipient, 25, 350)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.computeHybridTick then
+        regenTick = xi.soulspire.regen.computeHybridTick(player, recipient, 25, 350)
     else
         regenTick = math.max(regenMin, math.floor(maxHp * regenPct / 100))
     end
@@ -2966,8 +2966,8 @@ end, function(player, target, _ability)
         }
     )
 
-    if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-        xi.overlords.slots.applyPartyWard(player, recipient, dtBps, mevaBonus, 15, iconId)
+    if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+        xi.soulspire.slots.applyPartyWard(player, recipient, dtBps, mevaBonus, 15, iconId)
     end
 
     return EFFECT_SANCTIFIED_WARD

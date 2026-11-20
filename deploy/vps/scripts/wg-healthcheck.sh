@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — WireGuard Tunnel Health Check
+# SoulspireXI — WireGuard Tunnel Health Check
 # Run on VPS (or Unraid with TARGET_IP=10.77.0.1) via cron / systemd timer.
 ###############################################################################
 

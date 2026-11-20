@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Sets up or updates a local LandSandBoat test server with OverlordsXI customizations on Windows.
+    Sets up or updates a local LandSandBoat test server with SoulspireXI customizations on Windows.
 
 .DESCRIPTION
-    Applies OverlordsXI patches idempotently, syncs custom modules/DAT/addon files only when contents
+    Applies SoulspireXI patches idempotently, syncs custom modules/DAT/addon files only when contents
     changed (preserving C++ file timestamps), and runs CMake builds only for executables whose C++
     or CMake inputs actually changed since the last build.
 
@@ -38,7 +38,7 @@ $LogFile = Join-Path $LogDir "setup-$Timestamp.log"
 $LatestLogFile = Join-Path $LogDir 'setup-latest.log'
 Start-Transcript -Path $LogFile -Force | Out-Null
 
-Write-Host "==> OverlordsXI root: $RepoRoot" -ForegroundColor Cyan
+Write-Host "==> SoulspireXI root: $RepoRoot" -ForegroundColor Cyan
 Write-Host "==> Target LandSandBoat dir: $ServerDir" -ForegroundColor Cyan
 Write-Host "==> Logging output to: $LogFile" -ForegroundColor Cyan
 
@@ -219,7 +219,7 @@ if (-not (Test-Path $ServerDir)) {
 
 Push-Location $ServerDir
 try {
-    # 2. Apply OverlordsXI engine patches idempotently
+    # 2. Apply SoulspireXI engine patches idempotently
     $patchFiles = Get-ChildItem -Path (Join-Path $RepoRoot 'patches') -Filter '*.patch' | Sort-Object Name
     $newlyAppliedPatchTargetFiles = [System.Collections.Generic.List[string]]::new()
 
@@ -299,7 +299,7 @@ try {
     }
 
     if ($patchNeedsCleanReapply) {
-        Write-Host '==> Validating OverlordsXI patch series in a disposable worktree before modifying server files...' -ForegroundColor Yellow
+        Write-Host '==> Validating SoulspireXI patch series in a disposable worktree before modifying server files...' -ForegroundColor Yellow
         $tmpWorktree = Join-Path ([System.IO.Path]::GetTempPath()) ("ox-patch-validate-" + [guid]::NewGuid().ToString('N'))
         $prevEap = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
@@ -307,7 +307,7 @@ try {
         $wtAddCode = $LASTEXITCODE
         $ErrorActionPreference = $prevEap
         if ($wtAddCode -ne 0) {
-            throw 'Failed to create disposable worktree to validate OverlordsXI patches.'
+            throw 'Failed to create disposable worktree to validate SoulspireXI patches.'
         }
 
         try {
@@ -373,7 +373,7 @@ try {
             if ($trackedList.Count -gt 0) {
                 git checkout -- @($trackedList)
                 if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to reset tracked server files before re-applying OverlordsXI patches."
+                    throw "Failed to reset tracked server files before re-applying SoulspireXI patches."
                 }
             }
             foreach ($tf in $allTargets) {
@@ -452,7 +452,7 @@ try {
     }
 
     # 3. Sync custom modules (lua, cpp, sql, commands) without clobbering timestamps on unchanged files
-    Write-Host '==> Syncing OverlordsXI modules...' -ForegroundColor Cyan
+    Write-Host '==> Syncing SoulspireXI modules...' -ForegroundColor Cyan
     $srcModules = Join-Path $RepoRoot 'modules\custom'
     $dstModules = Join-Path $ServerDir 'modules\custom'
     $changedCppFiles = [System.Collections.Generic.List[string]]::new()
@@ -503,7 +503,7 @@ try {
         'custom/sql/ws_strip_skillchains.sql',
         'custom/sql/war_specs.sql',
         'custom/sql/mnk_specs.sql',
-        'custom/lua/overlords_regen_potency.lua'
+        'custom/lua/soulspire_regen_potency.lua'
     )
     $existingLines = [System.Collections.Generic.List[string]]::new()
     $removedStale = $false
@@ -551,9 +551,9 @@ try {
 
     # 6. Sync Ashita v4 addon if present and target specified
     if ($AshitaAddonsDir -ne '') {
-        $srcAddon = Join-Path $RepoRoot 'addons\ashita4\overlords_talents'
+        $srcAddon = Join-Path $RepoRoot 'addons\ashita4\soulspire_talents'
         if (Test-Path $srcAddon) {
-            $dstAddon = Join-Path $AshitaAddonsDir 'overlords_talents'
+            $dstAddon = Join-Path $AshitaAddonsDir 'soulspire_talents'
             $changedAddon = Sync-DirectoryChangedOnly -SourceDir $srcAddon -DestDir $dstAddon
             Write-Host "==> Synced Ashita v4 addon to $dstAddon ($($changedAddon.Count) file(s) updated)" -ForegroundColor Green
         }
@@ -874,6 +874,6 @@ Write-Host "1. Configure settings in $ServerDir\settings\ (copy from settings\de
 Write-Host "2. Run 'python tools\dbtool.py' inside $ServerDir (if you haven't already) to create/migrate xidb and apply custom SQL modules."
 Write-Host "3. Start the server executables from $ServerDir`: xi_connect.exe, xi_world.exe, xi_search.exe, xi_map.exe"
 if ($AshitaAddonsDir -eq '') {
-    Write-Host "4. Copy addons\ashita4\overlords_talents into your Ashita addons\ folder."
+    Write-Host "4. Copy addons\ashita4\soulspire_talents into your Ashita addons\ folder."
 }
-Write-Host '5. In-game: /addon load overlords_talents -> /talents (or !talent without the addon).'
+Write-Host '5. In-game: /addon load soulspire_talents -> /talents (or !talent without the addon).'

@@ -1,4 +1,4 @@
--- OverlordsXI Red Mage Crystal Specs (Crimson Duelist)
+-- SoulspireXI Red Mage Crystal Specs (Crimson Duelist)
 -- Define custom RDM spec Job Abilities (447-448) with independent recast timers (179-180)
 -- and level = 255 so they stay hidden unless dynamically unlocked via patch 0007.
 

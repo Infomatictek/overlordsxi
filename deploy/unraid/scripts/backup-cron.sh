@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Automated Scheduled MariaDB Backup (Unraid User Scripts / cron)
+# SoulspireXI — Automated Scheduled MariaDB Backup (Unraid User Scripts / cron)
 #
 # Runs daily (e.g. 04:00):
 #   - Creates consistent gzipped dump + SHA256 checksum

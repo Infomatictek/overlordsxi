@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ###############################################################################
-# OverlordsXI — Multi-Stage Production Linux x86_64 Dockerfile
+# SoulspireXI — Multi-Stage Production Linux x86_64 Dockerfile
 #
 # Builds the actual customized OverlordsXI server from the pinned upstream
 # LandSandBoat commit + all 50 OverlordsXI native patches + custom C++/Lua/SQL
@@ -172,7 +172,7 @@ ARG OVERLORDS_VERSION=dev
 ARG OVERLORDS_COMMIT=unknown
 ARG LSB_COMMIT=091e7409d1c9d702f366dc374115f939393c46ab
 
-LABEL org.opencontainers.image.title="OverlordsXI Server" \
+LABEL org.opencontainers.image.title="SoulspireXI Server" \
       org.opencontainers.image.description="Custom Final Fantasy XI private server built on LandSandBoat with 66 Souls and native patches" \
       org.opencontainers.image.source="https://github.com/Infomatictek/overlordsxi" \
       org.opencontainers.image.version="${OVERLORDS_VERSION}" \

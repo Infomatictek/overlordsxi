@@ -20,8 +20,8 @@ commandObj.onTrigger = function(player, sub)
         if player.setLocalVar then
             player:setLocalVar('OX_HUD_SUB', 1)
         end
-        if xi.overlords and xi.overlords.hud and xi.overlords.hud.sync then
-            xi.overlords.hud.sync(player, true)
+        if xi.soulspire and xi.soulspire.hud and xi.soulspire.hud.sync then
+            xi.soulspire.hud.sync(player, true)
         end
     else
         player:printToPlayer('Usage: !soulhud sync', xi.msg.channel.SYSTEM_3)

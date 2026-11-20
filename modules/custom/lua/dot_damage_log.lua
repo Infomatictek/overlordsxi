@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI DoT Attribution Helper (Mobs)
+-- SoulspireXI DoT Attribution Helper (Mobs)
 --
 -- Passes the DoT origin entity to target:takeDamage() for Lua-ticked DoTs
 -- (Helix and Nightmare Bio tier >= 11) when ticking on mobs so kill credit,
@@ -7,7 +7,7 @@
 -----------------------------------
 require('modules/module_utils')
 -----------------------------------
-local m = Module:new('overlords_dot_damage_log')
+local m = Module:new('soulspire_dot_damage_log')
 
 local function resolveDotOrigin(target, effect)
     if target == nil or effect == nil or effect.getOriginID == nil then

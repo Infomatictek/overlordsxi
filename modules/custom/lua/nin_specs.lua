@@ -1,13 +1,13 @@
 -----------------------------------
--- OverlordsXI Ninja Crystal Spec (Kagemusha)
+-- SoulspireXI Ninja Crystal Spec (Kagemusha)
 -- Registers the Ninja (job 13) Soul Crystal specialization:
 --   1. Kagemusha (KGM): Decoy-Detonating Shadow & Ninjutsu Tank (Dual Katanas)
 --
 -- Unlocks @ Lv. 10 (!spec set kagemusha)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/globals/job_utils/ninja')
 require('scripts/globals/spells/enhancing_ninjutsu')
 require('scripts/globals/spells/damage_spell')
@@ -17,12 +17,12 @@ require('scripts/globals/ability')
 require('scripts/globals/canusespell_override')
 require('scripts/utils/combat_utils')
 -----------------------------------
-local m = Module:new('overlords_nin_specs')
+local m = Module:new('soulspire_nin_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.ninSpecs = xi.overlords.ninSpecs or {}
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.ninSpecs = xi.soulspire.ninSpecs or {}
 
 local KAGEMUSHA_KEY = 'kagemusha'
 local KUROGANE_KEY  = 'kurogane'
@@ -80,7 +80,7 @@ local SHINOBI_KIT_SPELLS =
 local SHINOBI_COMMAND_SPELL_IDS = { 320, 323, 326, 329, 332, 335 }
 local SHINOBI_ALL_SPELL_IDS     = { 338, 320, 323, 326, 329, 339, 332, 335 }
 
-xi.overlords.ninSpecs.SHINOBI_KIT_SPELLS = SHINOBI_KIT_SPELLS
+xi.soulspire.ninSpecs.SHINOBI_KIT_SPELLS = SHINOBI_KIT_SPELLS
 
 xi.jobAbility = xi.jobAbility or {}
 xi.jobAbility.KAGE_BUNSHIN    = ABIL_KAGE_BUNSHIN
@@ -335,7 +335,7 @@ local function applySharedCripple(target, origin, stacks, durationSec)
     local s     = math.max(1, math.min(4, math.floor(stacks or 1)))
     local dur   = durationSec or 15
     local effId = (xi.effect and xi.effect.EFF_OX_DEB_CRIPPLE) or 880
-    local slots = xi.overlords and xi.overlords.slots
+    local slots = xi.soulspire and xi.soulspire.slots
     local mods  =
     {
         { xi.mod.ATTP, -4 * s },
@@ -374,7 +374,7 @@ local function applyShadowSmoke(attacker, defender, stacksToAdd)
         power    = newStacks,
         duration = 15,
         origin   = defender,
-        icon     = xi.overlords.getStatusIcon(EFFECT_SHADOW_SMOKE),
+        icon     = xi.soulspire.getStatusIcon(EFFECT_SHADOW_SMOKE),
     })
     applySharedCripple(attacker, defender, newStacks, 15)
 end
@@ -401,10 +401,10 @@ end
 -----------------------------------
 -- Global C++ Hook Callbacks
 -----------------------------------
-xi.overlords = xi.overlords or {}
+xi.soulspire = xi.soulspire or {}
 
-local prevOnUtsusemiShadowBroken = xi.overlords.onUtsusemiShadowBroken
-xi.overlords.onUtsusemiShadowBroken = function(defender, attacker, shadowsBroken)
+local prevOnUtsusemiShadowBroken = xi.soulspire.onUtsusemiShadowBroken
+xi.soulspire.onUtsusemiShadowBroken = function(defender, attacker, shadowsBroken)
     if prevOnUtsusemiShadowBroken then
         prevOnUtsusemiShadowBroken(defender, attacker, shadowsBroken)
     end
@@ -412,8 +412,8 @@ xi.overlords.onUtsusemiShadowBroken = function(defender, attacker, shadowsBroken
     triggerShadowDetonation(defender, attacker, shadowsBroken)
 end
 
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
-xi.overlords.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
+xi.soulspire.onPreTakeDamage = function(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end
@@ -508,7 +508,7 @@ for _, utsuName in ipairs({ 'utsusemi_ichi', 'utsusemi_ni' }) do
             if effLvl < shinobiEntry.unlockLvl then
                 return xi.msg.basic.CANNOT_CAST_SPELL
             end
-            local api = xi.overlords and xi.overlords.kurogane
+            local api = xi.soulspire and xi.soulspire.kurogane
             if not api or not api.canSpawn then
                 return xi.msg.basic.CANNOT_CAST_SPELL
             end
@@ -539,7 +539,7 @@ for _, cmdSpellId in ipairs(SHINOBI_COMMAND_SPELL_IDS) do
             if effLvl < entry.unlockLvl then
                 return xi.msg.basic.CANNOT_CAST_SPELL
             end
-            local api = xi.overlords and xi.overlords.kurogane
+            local api = xi.soulspire and xi.soulspire.kurogane
             if not api or not api.canCommand then
                 return xi.msg.basic.CANNOT_CAST_SPELL
             end
@@ -558,7 +558,7 @@ for _, cmdSpellId in ipairs(SHINOBI_COMMAND_SPELL_IDS) do
     m:addOverride(baseKey .. '.onSpellCast', function(caster, target, spell)
         if isShinobi(caster) then
             local effLvl = caster:getMainLvl() or 1
-            local api = xi.overlords and xi.overlords.kurogane
+            local api = xi.soulspire and xi.soulspire.kurogane
             if effLvl < entry.unlockLvl or not api or not api[entry.execFn] then
                 spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)
                 return 0
@@ -587,7 +587,7 @@ m:addOverride('xi.spells.enhancing.useEnhancingNinjutsu', function(caster, targe
         local entry = SHINOBI_KIT_SPELLS[spellId]
         local effLvl = caster:getMainLvl() or 1
         local count = (entry and entry.summonCount) or ((spellId == xi.magic.spell.UTSUSEMI_NI) and 3 or 2)
-        local api   = xi.overlords and xi.overlords.kurogane
+        local api   = xi.soulspire and xi.soulspire.kurogane
         if entry and effLvl >= entry.unlockLvl and api and api.spawn then
             local ok, result = api.spawn(caster, count)
             if ok then
@@ -804,7 +804,7 @@ local function handleKagemushaNinjutsuCast(caster, target, spell, hadFutae)
             target:addStatusEffect(xi.effect.STUN, { power = 1, duration = 2, origin = caster })
         end
         local exposeId = (xi.effect and xi.effect.EFF_OX_DEB_EXPOSE) or 881
-        local slots    = xi.overlords and xi.overlords.slots
+        local slots    = xi.soulspire and xi.soulspire.slots
         if slots and slots.applySlot then
             slots.applySlot(target, exposeId, 25, 15, caster, { { xi.mod.MEVA, -25 } }, exposeId)
         else
@@ -859,7 +859,7 @@ m:addOverride('xi.actions.abilities.kage_bunshin.onUseAbility', function(player,
     end
 
     player:delStatusEffectSilent(EFFECT_KAGE_BUNSHIN)
-    player:addStatusEffect(EFFECT_KAGE_BUNSHIN, { power = 1, duration = 6, origin = player, icon = xi.overlords.getStatusIcon(EFFECT_KAGE_BUNSHIN) })
+    player:addStatusEffect(EFFECT_KAGE_BUNSHIN, { power = 1, duration = 6, origin = player, icon = xi.soulspire.getStatusIcon(EFFECT_KAGE_BUNSHIN) })
     ability:setMsg(xi.msg.basic.GAINS_EFFECT_OF_STATUS)
     return EFFECT_KAGE_BUNSHIN
 end)
@@ -895,7 +895,7 @@ m:addOverride('xi.actions.abilities.shadow_legion.onAbilityCheck', function(play
     if not isShinobi(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
-    local api = xi.overlords and xi.overlords.kurogane
+    local api = xi.soulspire and xi.soulspire.kurogane
     if not api or not api.hasLivingClones then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
@@ -910,7 +910,7 @@ m:addOverride('xi.actions.abilities.shadow_legion.onAbilityCheck', function(play
 end)
 
 m:addOverride('xi.actions.abilities.shadow_legion.onUseAbility', function(player, target, ability)
-    local api = xi.overlords and xi.overlords.kurogane
+    local api = xi.soulspire and xi.soulspire.kurogane
     if not api or not api.executeShadowLegion then
         ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
         return 0
@@ -945,7 +945,7 @@ m:addOverride('xi.actions.abilities.phantom_assault.onAbilityCheck', function(pl
     if not isShinobi(player) then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
-    local api = xi.overlords and xi.overlords.kurogane
+    local api = xi.soulspire and xi.soulspire.kurogane
     if not api or not api.hasLivingClones then
         return xi.msg.basic.UNABLE_TO_USE_JA, 0
     end
@@ -957,7 +957,7 @@ m:addOverride('xi.actions.abilities.phantom_assault.onAbilityCheck', function(pl
 end)
 
 m:addOverride('xi.actions.abilities.phantom_assault.onUseAbility', function(player, _target, ability)
-    local api = xi.overlords and xi.overlords.kurogane
+    local api = xi.soulspire and xi.soulspire.kurogane
     if not api or not api.executePhantomAssault then
         ability:setMsg(xi.msg.basic.JA_NO_EFFECT)
         return 0
@@ -1047,7 +1047,7 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
 
         -- Primary-cast-gated Kawarimi Ash cashout (3 stacks -> +1 shadow & 8/10/12/14% Max HP heal)
         local charId = actor.getID and actor:getID() or 0
-        local now    = xi.overlords.nowSec()
+        local now    = xi.soulspire.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if isPrimary and charId > 0 then
             lastWsCastAtByChar[charId] = now
@@ -1179,8 +1179,8 @@ if xi.job and xi.job.NIN then
             end,
             onRemove = function(player)
                 -- Backend shutdown hook destroys owned clones and resets tactical state before clearing flags.
-                if xi.overlords.kurogane and xi.overlords.kurogane.dismissAll then
-                    xi.overlords.kurogane.dismissAll(player)
+                if xi.soulspire.kurogane and xi.soulspire.kurogane.dismissAll then
+                    xi.soulspire.kurogane.dismissAll(player)
                 end
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_SHINOBI_ACTIVE', 0)

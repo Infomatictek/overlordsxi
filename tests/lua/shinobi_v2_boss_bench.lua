@@ -1,13 +1,13 @@
 -----------------------------------
--- OverlordsXI Shinobi 2.0 — Real-Engine Boss Archetype & Tier-1 Balance Benchmark
+-- SoulspireXI Shinobi 2.0 — Real-Engine Boss Archetype & Tier-1 Balance Benchmark
 -- Runs inside xi_test.exe against live LandSandBoat combat formulas, dynamic clones,
 -- C++ battleutils patch 0045, and boss_like_combat_and_exp.lua.
 --
 -- Note: Automated engine combat trials complement, and do NOT replace, live
 -- in-game boss playtesting with a real client and party.
 -----------------------------------
-local spec = xi.overlords.spec
-local K    = xi.overlords.kurogane
+local spec = xi.soulspire.spec
+local K    = xi.soulspire.kurogane
 
 local simClock = 200000
 
@@ -305,9 +305,9 @@ describe('Shinobi 2.0 Boss Archetype & Balance Benchmark', function()
     local origNowSec
 
     before_each(function()
-        origNowSec = xi.overlords.nowSec
+        origNowSec = xi.soulspire.nowSec
         simClock = 200000
-        xi.overlords.nowSec = function()
+        xi.soulspire.nowSec = function()
             return simClock
         end
         K.ENABLE_EXPERIMENTAL_CLONES = true
@@ -316,7 +316,7 @@ describe('Shinobi 2.0 Boss Archetype & Balance Benchmark', function()
 
     after_each(function()
         if origNowSec then
-            xi.overlords.nowSec = origNowSec
+            xi.soulspire.nowSec = origNowSec
         end
     end)
 

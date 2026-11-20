@@ -1,12 +1,12 @@
 -----------------------------------
--- OverlordsXI Soul Proving Grounds — Comprehensive Engine Verification Suite
+-- SoulspireXI Soul Proving Grounds — Comprehensive Engine Verification Suite
 --
 -- Runs inside LandSandBoat's authoritative headless MapEngine (`xi_test.exe`).
 -- Proves:
 --   1. Arbiter NPC placement (-5, 0, 5), shared registry, no-progression safety,
 --      and single-session lock.
 --   2. Native Level Sync (xi.effect.LEVEL_RESTRICTION):
---      - Lv75 -> Lv10 stats, subjob cap (<=5), OverlordsXI Soul & BASE_HP rescaling,
+--      - Lv75 -> Lv10 stats, subjob cap (<=5), SoulspireXI Soul & BASE_HP rescaling,
 --        pet/clone level enforcement, and clean restoration on reset/exit.
 --      - Rejects invalid upward sync (Lv10 -> Lv50).
 --   3. All Difficulty (+0, +3, +5, +8) & Classification (Normal, NM) combinations
@@ -22,11 +22,11 @@
 --      - Native feedback persistence (feedback/<run_id>.json).
 --      - No listener leaks across repeated trials.
 -----------------------------------
-local R    = xi.overlords.provingGrounds.registry
-local T    = xi.overlords.provingGrounds.telemetry
-local A    = xi.overlords.provingGrounds.arena
-local spec = xi.overlords.spec
-local gear = xi.overlords.testGear
+local R    = xi.soulspire.provingGrounds.registry
+local T    = xi.soulspire.provingGrounds.telemetry
+local A    = xi.soulspire.provingGrounds.arena
+local spec = xi.soulspire.spec
+local gear = xi.soulspire.testGear
 
 local function selectLv10WeaponskillForPlayer(player)
     local skillType = player.getWeaponSkillType and player:getWeaponSkillType(xi.slot.MAIN) or 0
@@ -208,7 +208,7 @@ describe('Soul Proving Grounds Lite — NPC, Level Sync & Difficulty Selection',
         assert(nin:getMainLvl() == 10, 'NIN was not synced to Lv10')
 
         -- Verify Kurogane clone summoned during Lv10 synced trial spawns at Lv10 (not Lv75).
-        local K = xi.overlords.kurogane
+        local K = xi.soulspire.kurogane
         local prevClonesFlag = K.ENABLE_EXPERIMENTAL_CLONES
         K.ENABLE_EXPERIMENTAL_CLONES = true
         nin.actions:move(R.BOSS_POS.x, R.BOSS_POS.y, R.BOSS_POS.z - 2, 192)
@@ -278,7 +278,7 @@ describe('Soul Proving Grounds — Full Timeline, Timing, Feedback & Real Combat
 
         xi.customBossServer.applyPlayerCombatPace(player, true)
         local wsId = selectLv10WeaponskillForPlayer(player)
-        local wsTalents = xi.overlords and xi.overlords.wsTalents or nil
+        local wsTalents = xi.soulspire and xi.soulspire.wsTalents or nil
         if wsTalents and wsTalents.getTreeForWS and wsTalents.invest then
             local tree = wsTalents.getTreeForWS(wsId, player, xi.job.WAR)
             if tree and tree.nodes then

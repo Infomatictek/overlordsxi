@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Automated Linux/Unraid Deployment Verification
+# SoulspireXI — Automated Linux/Unraid Deployment Verification
 #
 # Checks:
 #   1. All 6 containers running & healthy
@@ -63,7 +63,7 @@ else
     pass "MariaDB :3306 is loopback-only (127.0.0.1)"
 fi
 
-echo "=== 4. Database Schema & Custom OverlordsXI Parity ==="
+echo "=== 4. Database Schema & Custom SoulspireXI Parity ==="
 if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
     db_info="$(docker exec overlordsxi-mariadb mariadb -uroot "-p${MARIADB_ROOT_PASSWORD}" -N -B "${MARIADB_DATABASE}" -e "
         SELECT @@version, @@character_set_server, @@collation_server, @@lower_case_table_names;

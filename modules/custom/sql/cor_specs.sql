@@ -1,4 +1,4 @@
--- OverlordsXI Corsair Crystal Specs (Flintlock, Buccaneer, Gambler)
+-- SoulspireXI Corsair Crystal Specs (Flintlock, Buccaneer, Gambler)
 -- 1. Un-gate merit abilities Snake Eye (177) and Fold (178) so Gambler can unlock/use them at Lv. 10+.
 -- 2. Define custom COR Job Abilities (472-477; recastIds 168-173) with level = 255:
 --      - House Advantage     (472, 30s CD, Self / Party 15y, recastId 168) [Gambler]

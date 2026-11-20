@@ -1,4 +1,4 @@
--- OverlordsXI Beastmaster Crystal Spec Data (Alpha Warden)
+-- SoulspireXI Beastmaster Crystal Spec Data (Alpha Warden)
 -- 1. Ensure core BST abilities (Familiar 77, Reward 78, Call Beast 85, Snarl 225,
 --    Bestial Loyalty 387) are not gated behind expansion content tags.
 -- 2. Define Alpha Warden's two crystal-unlocked Job Abilities (level = 255 so they

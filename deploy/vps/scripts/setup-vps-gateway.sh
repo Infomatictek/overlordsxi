@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# OverlordsXI — Ubuntu LTS VPS Gateway Setup Script
+# SoulspireXI — Ubuntu LTS VPS Gateway Setup Script
 #
 # Installs WireGuard + nftables, enables IPv4 forwarding, configures sysctl
 # hardening, and installs the WireGuard healthcheck systemd timer.

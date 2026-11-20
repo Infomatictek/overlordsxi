@@ -1,6 +1,6 @@
-# OverlordsXI Crystal Spec Guides
+# SoulspireXI Crystal Spec Guides
 
-Every `.md` file in `docs/guides/` maps cleanly by crystal `key` (for example `bishop.md`, `celestial.md`, `spartan.md`) into the OverlordsXI Wiki's **"How to Play"** panel on each Crystal card.
+Every `.md` file in `docs/guides/` maps cleanly by crystal `key` (for example `bishop.md`, `celestial.md`, `spartan.md`) into the SoulspireXI Wiki's **"How to Play"** panel on each Crystal card.
 
 To add a guide for a new class/crystal, drop `<spec_key>.md` here using these five headings:
 

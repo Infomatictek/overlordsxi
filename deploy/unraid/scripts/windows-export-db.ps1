@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Non-destructive Windows MariaDB export for OverlordsXI staging & final cutover.
+    Non-destructive Windows MariaDB export for SoulspireXI staging & final cutover.
 
 .DESCRIPTION
     Creates a consistent, full dump of `xidb` (including all custom tables, triggers,

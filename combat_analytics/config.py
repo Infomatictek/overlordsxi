@@ -1,4 +1,4 @@
-"""Environment-driven configuration for the OverlordsXI Combat Analytics backend.
+"""Environment-driven configuration for the SoulspireXI Combat Analytics backend.
 
 All secrets and deployment-specific settings are supplied via environment
 variables (or a local, gitignored .env file). Never hardcode secrets or

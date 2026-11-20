@@ -1,16 +1,16 @@
 -----------------------------------
--- OverlordsXI Geomancer Crystal Spec: Verdant (VRD | Tier-5 Pure Healer)
+-- SoulspireXI Geomancer Crystal Spec: Verdant (VRD | Tier-5 Pure Healer)
 -- Unlocks @ Lv. 10 (!spec set verdant)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+require('modules/custom/lua/soulspire_job_specs')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/geomancer')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_geo_specs')
+local m = Module:new('soulspire_geo_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local VERDANT_KEY = 'verdant'
 
 -- Custom Trait ID (175; Sylvan Bloom)
@@ -188,8 +188,8 @@ m:addOverride('xi.actions.abilities.verdant_renewal.onUseAbility', function(play
     local total = H.healPartyPct(player, 30, 15, false, false)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.cleanseDebuffs(member, 3)
-        if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
-            xi.overlords.regen.applyHybridRegen(player, member, xi.effect.REGEN, 25, 350, 15, 3, 3)
+        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.applyHybridRegen then
+            xi.soulspire.regen.applyHybridRegen(player, member, xi.effect.REGEN, 25, 350, 15, 3, 3)
         else
             member:addStatusEffect(xi.effect.REGEN, { power = 25, duration = 15, origin = player, tier = 3 })
         end
@@ -208,9 +208,9 @@ end)
 
 m:addOverride('xi.actions.abilities.canopy_of_the_ancients.onUseAbility', function(player, _target, ability)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
-        H.applyCustomTimedEffect(member, EFFECT_CANOPY_OF_THE_ANCIENTS, 18, 12, player, 0, xi.overlords.getStatusIcon(EFFECT_CANOPY_OF_THE_ANCIENTS), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1500, 0, 12)
+        H.applyCustomTimedEffect(member, EFFECT_CANOPY_OF_THE_ANCIENTS, 18, 12, player, 0, xi.soulspire.getStatusIcon(EFFECT_CANOPY_OF_THE_ANCIENTS), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1500, 0, 12)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

@@ -1,4 +1,4 @@
-# OverlordsXI Wiki Combat Analytics — Deployment & Operations Guide
+# SoulspireXI Wiki Combat Analytics — Deployment & Operations Guide
 
 This guide covers running the **Combat Reports** backend locally and deploying it behind your existing **SWAG / Nginx** reverse proxy without exposing private logs or secrets through GitHub Pages or `site/data.json`.
 

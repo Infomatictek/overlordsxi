@@ -1,4 +1,4 @@
-"""Lightweight ThreadingHTTPServer API for OverlordsXI Combat Analytics.
+"""Lightweight ThreadingHTTPServer API for SoulspireXI Combat Analytics.
 
 Deployable directly behind SWAG/Nginx (`location /api/combat/` -> `http://127.0.0.1:8765`)
 or standalone for local prototyping (`--serve-site`). Uses Python 3.11 stdlib only.
@@ -661,7 +661,7 @@ class AnalyticsRequestHandler(BaseHTTPRequestHandler):
                 200,
                 csv_text.encode("utf-8"),
                 "text/csv; charset=utf-8",
-                extra_headers=[("Content-Disposition", 'attachment; filename="overlordsxi_combat_reports.csv"')],
+                extra_headers=[("Content-Disposition", 'attachment; filename="soulspirexi_combat_reports.csv"')],
             )
             return
         res["retention_per_character"] = self.app.cfg.retention_per_character

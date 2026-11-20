@@ -1,6 +1,6 @@
-# OverlordsXI — Soul-Approved Spells and Abilities + Astromancer Ancient Magic
+# SoulspireXI — Soul-Approved Spells and Abilities + Astromancer Ancient Magic
 
-**Design decision, 2026-11-19; not implemented.** Reviewed current `modules/custom/lua/overlords_job_specs.lua` and `patches/0007-spec-ability-unlocks.patch`. They expose `extraAbilities` / `getExtraAbilities` (granting extra actions), **not a demonstrated centralized denylist** for normal job spells and abilities. Never claim this is already enforced.
+**Design decision, 2026-11-19; not implemented.** Reviewed current `modules/custom/lua/soulspire_job_specs.lua` and `patches/0007-spec-ability-unlocks.patch`. They expose `extraAbilities` / `getExtraAbilities` (granting extra actions), **not a demonstrated centralized denylist** for normal job spells and abilities. Never claim this is already enforced.
 
 ## Policy: every active Soul owns an explicit action kit
 1. **Base job grants are not automatically approved.** On an active Lv10+ Soul, maintain explicit `allowedSpells`, `allowedAbilities`, `allowedWeaponSkills` (if needed), `extraSpells` and `extraAbilities`, plus intentionally approved universal exceptions. Do not reinterpret existing `extraAbilities` (additive) as permission filtering.
@@ -71,7 +71,7 @@
 - A second boss remains unsaturated; other Souls' attacks/spells are unchanged.
 - Use weak/normal/high-MEVA bosses; test cast interruptions, elemental resistance, MP economy, resists, party burst phases and damage cap.
 - Compare sustained 5–10min encounters with Sage + Titania and focused phase damage with Primalist and Zealot.
-- No unintended AoE (very dangerous on OverlordsXI).
+- No unintended AoE (very dangerous on SoulspireXI).
 
 ## Cross-Soul scope
 Action approval profiles should eventually cover **all 66 active Souls**, not just Astromancer. First implement central permission evaluation and auditing, then migrate **new Souls first**, then independently test/convert existing Souls. This prevents accidental deletion of Chi Weaver, Black Belt, Flintlock, Shinobi and other already functional rotations.

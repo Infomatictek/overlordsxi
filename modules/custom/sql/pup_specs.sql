@@ -1,4 +1,4 @@
--- OverlordsXI Puppetmaster Crystal Specs (Vanguard & Pugilist)
+-- SoulspireXI Puppetmaster Crystal Specs (Vanguard & Pugilist)
 -- 1. Un-gate merit/expansion abilities Ventriloquy (180), Cooldown (309), and Deus Ex Automata (310)
 --    so all PUP specs can unlock them at Lv.10+ via patch 0007.
 UPDATE `abilities`

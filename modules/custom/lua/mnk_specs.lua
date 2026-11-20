@@ -1,18 +1,18 @@
 -----------------------------------
--- OverlordsXI Monk Crystal Specs
+-- SoulspireXI Monk Crystal Specs
 -- Registers Monk crystals:
 --   1) Sensei     (Staff Evasion & Counter Tank)
 --   2) Black Belt (Hand-to-Hand Martial DPS)
 --   3) Chi Weaver (Unarmed Ranged Chi & Pulse Healer)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/combat/physical_utilities')
 require('scripts/globals/job_utils/monk')
 -----------------------------------
-local m = Module:new('overlords_mnk_specs')
+local m = Module:new('soulspire_mnk_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
 local SENSEI_KEY    = 'sensei'
 local BLACKBELT_KEY = 'blackbelt'
@@ -53,8 +53,8 @@ xi.effects = xi.effects or {}
 xi.effects.chiweaver_lotus   = xi.effects.chiweaver_lotus or {}
 xi.effects.chiweaver_harmony = xi.effects.chiweaver_harmony or {}
 
-xi.overlords = xi.overlords or {}
-xi.overlords.mnk = xi.overlords.mnk or {}
+xi.soulspire = xi.soulspire or {}
+xi.soulspire.mnk = xi.soulspire.mnk or {}
 
 local pendingMantraMods    = {}
 local pendingChiEffectMods = {}
@@ -259,7 +259,7 @@ local function applyTimedChiEffect(target, effectId, power, duration, origin, ic
         power    = power or 1,
         duration = duration or 15,
         origin   = origin or target,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
     })
 
     local leftover = pendingChiEffectMods[targetId]
@@ -459,7 +459,7 @@ local function sendChiBoostSync(player, force)
     )
 end
 
-xi.overlords.mnk.sendChiBoostSync = sendChiBoostSync
+xi.soulspire.mnk.sendChiBoostSync = sendChiBoostSync
 
 local function setChiBoostStacks(player, newStacks, notifyMilestones)
     if player == nil then
@@ -717,7 +717,7 @@ end
 -----------------------------------
 -- Chi Weaver Ranged Chi Auto-Attack Entry Point (C++ Patch 0021)
 -----------------------------------
-function xi.overlords.mnk.executeChiRangedAttack(player, target, swingIndex)
+function xi.soulspire.mnk.executeChiRangedAttack(player, target, swingIndex)
     if
         player == nil or
         target == nil or
@@ -1371,8 +1371,8 @@ m:addOverride('xi.job_utils.monk.useChakra', function(player, target, ability)
         if player:hasStatusEffect(xi.effect.REGEN) then
             player:delStatusEffect(xi.effect.REGEN)
         end
-        if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
-            xi.overlords.regen.applyHybridRegen(player, player, xi.effect.REGEN, 18, 250, 30, 3, 1)
+        if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.applyHybridRegen then
+            xi.soulspire.regen.applyHybridRegen(player, player, xi.effect.REGEN, 18, 250, 30, 3, 1)
         else
             local maxHp = player.getMaxHP and math.max(0, player:getMaxHP() or 0) or 0
             player:addStatusEffect(xi.effect.REGEN, { power = 18 + math.floor(maxHp * 250 / 10000), duration = 30, origin = player, tier = 1 })
@@ -1678,8 +1678,8 @@ end, function(player, target, _ability)
     local lvl       = player.getMainLvl and (player:getMainLvl() or 10) or 10
     local healPct   = scaleTier(lvl, 12, 16, 20, 24)
     local regenVal  = 25
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
-        regenVal = xi.overlords.regen.computeHybridTick(player, recipient, 25, 350)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.computeHybridTick then
+        regenVal = xi.soulspire.regen.computeHybridTick(player, recipient, 25, 350)
     end
     local cureRcvd  = scaleTier(lvl, 10, 15, 20, 25)
     local enmityRed = scaleTier(lvl, -10, -14, -18, -22)
@@ -1738,8 +1738,8 @@ end, function(player, _target, _ability)
     local magBonus  = scaleTier(lvl, 20, 30, 45, 60)
     local abilHaste = scaleTier(lvl, 500, 800, 1100, 1500)
     local regenVal  = 25
-    if xi.overlords and xi.overlords.regen and xi.overlords.regen.computeHybridTick then
-        regenVal = xi.overlords.regen.computeHybridTick(player, player, 25, 350)
+    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.computeHybridTick then
+        regenVal = xi.soulspire.regen.computeHybridTick(player, player, 25, 350)
     end
     local iconId    = (xi.effect and xi.effect.AFFLATUS_SOLACE) or (xi.effect and xi.effect.ENLIGHT) or EFFECT_INNER_HARMONY
 

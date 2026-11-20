@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Dark Knight Crystal Specs
+-- SoulspireXI Dark Knight Crystal Specs
 -- Registers the Dark Knight (job 8) Soul Crystal specialization:
 --   1. Dreadnought (DRK): Blood-Pool & Dread Spikes Tank (Scythe)
 --
@@ -8,21 +8,21 @@
 -- Vampiric Scythe WS sustain, and Abyssal Cleave dynamically require a Scythe.
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/globals/job_utils/dark_knight')
 require('scripts/globals/canusespell_override')
 require('scripts/globals/spells/absorb_spell')
 require('scripts/globals/spells/enhancing_spell')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_drk_specs')
+local m = Module:new('soulspire_drk_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.drkSpecs = xi.overlords.drkSpecs or {}
-local drkSpecs        = xi.overlords.drkSpecs
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.drkSpecs = xi.soulspire.drkSpecs or {}
+local drkSpecs        = xi.soulspire.drkSpecs
 
 local DREADNOUGHT_KEY = 'dreadnought'
 
@@ -129,7 +129,7 @@ local function applySharedSlot(target, effectId, power, duration, origin, modsTa
     if target == nil or not target.isAlive or not target:isAlive() then
         return
     end
-    local slots = xi.overlords and xi.overlords.slots
+    local slots = xi.soulspire and xi.soulspire.slots
     if slots and slots.applySlot then
         slots.applySlot(target, effectId, power, duration, origin, modsTable, effectId)
         return
@@ -200,7 +200,7 @@ local function applyCustomTimedEffect(target, effectId, power, durationSec, orig
         duration = durationSec or 10,
         origin   = origin or target,
         subPower = subPower or 0,
-        icon     = (xi.overlords and xi.overlords.getStatusIcon and xi.overlords.getStatusIcon(effectId, iconId)) or iconId or effectId,
+        icon     = (xi.soulspire and xi.soulspire.getStatusIcon and xi.soulspire.getStatusIcon(effectId, iconId)) or iconId or effectId,
         tick     = tickSec or 0,
         tier     = tier or 0,
     })
@@ -361,9 +361,9 @@ end
 -----------------------------------
 -- Dread Spikes Blood-Shield (Pre-Take-Damage Hook)
 -----------------------------------
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
 
-function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+function xi.soulspire.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
     local curAmount = amount or 0
     if prevOnPreTakeDamage ~= nil then
         curAmount = prevOnPreTakeDamage(defender, curAmount, attacker, attackType, damageType)
@@ -621,7 +621,7 @@ m:addOverride('xi.effects.dread_bastion.onEffectTick', function(target, _effect)
     if target == nil or not isDrkSpec(target, DREADNOUGHT_KEY) then
         return
     end
-    for _, ent in ipairs(xi.overlords.getNearbyMobs(target, 8)) do
+    for _, ent in ipairs(xi.soulspire.getNearbyMobs(target, 8)) do
         if ent.isEngaged and ent:isEngaged() and ent.addEnmity then
             ent:addEnmity(target, 0, 260)
         end
@@ -659,7 +659,7 @@ m:addOverride('xi.effects.arcane_circle.onEffectGain', function(target, effect)
     super(target, effect)
     local origin = effect.getOriginator and effect:getOriginator() or nil
     if isDrkSpec(origin or target, DREADNOUGHT_KEY) then
-        local slots = xi.overlords and xi.overlords.slots
+        local slots = xi.soulspire and xi.soulspire.slots
         if slots and slots.applyPartyWard then
             slots.applyPartyWard(origin or target, target, -1000, 25, 15)
         else
@@ -834,7 +834,7 @@ local function attachDrkListeners(player)
         end
 
         local charId = actor.getID and actor:getID() or 0
-        local now    = xi.overlords.nowSec()
+        local now    = xi.soulspire.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if isPrimary and charId > 0 then
             lastWsCastAtByChar[charId] = now

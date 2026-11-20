@@ -1,4 +1,4 @@
--- OverlordsXI Dark Knight Crystal Specs (Dreadnought)
+-- SoulspireXI Dark Knight Crystal Specs (Dreadnought)
 -- Define custom DRK spec Job Abilities (449-450) with independent recast timers (224-225)
 -- and level = 255 so they stay hidden unless dynamically unlocked via patch 0007.
 

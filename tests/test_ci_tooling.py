@@ -1,4 +1,4 @@
-"""Unit tests for OverlordsXI CI tooling: Soul coverage audit & Wiki data generator."""
+"""Unit tests for SoulspireXI CI tooling: Soul coverage audit & Wiki data generator."""
 from __future__ import annotations
 
 import importlib.util
@@ -50,9 +50,9 @@ def _build_synthetic_repo(tmp: Path, *, extra_lua: dict[str, str] | None = None,
         "local KEY_ALIASES =\n{\n    waralias = 'warsoul1',\n}\n"
         "return spec\n"
     )
-    (lua_dir / "overlords_job_specs.lua").write_text(catalog_lua, encoding="utf-8")
+    (lua_dir / "soulspire_job_specs.lua").write_text(catalog_lua, encoding="utf-8")
 
-    default_init = ["custom/lua/overlords_job_specs.lua"]
+    default_init = ["custom/lua/soulspire_job_specs.lua"]
     for rel, content in (extra_lua or {}).items():
         p = lua_dir / rel
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -154,7 +154,7 @@ class SoulCoverageAuditTests(unittest.TestCase):
                         "spec.registerCrystal(xi.job.WAR, { id = 1, key = 'warsoul1', mods = function() return {} end })\n"
                     ),
                 },
-                init_lines=["custom/lua/overlords_job_specs.lua"],
+                init_lines=["custom/lua/soulspire_job_specs.lua"],
             )
             report = audit_mod.analyze(tmp)
             self.assertTrue(any("requires missing module" in e for e in report["errors"]))

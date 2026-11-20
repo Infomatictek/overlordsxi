@@ -1,5 +1,5 @@
 ###############################################################################
-# OverlordsXI — Unraid Production Docker Compose Stack
+# SoulspireXI — Unraid Production Docker Compose Stack
 #
 # Networking Architecture:
 #   - MariaDB runs on an isolated bridge network and binds ONLY to 127.0.0.1:3306

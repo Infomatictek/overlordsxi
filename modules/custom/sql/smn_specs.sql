@@ -1,4 +1,4 @@
--- OverlordsXI Summoner Crystal Spec (Celestial - Healer)
+-- SoulspireXI Summoner Crystal Spec (Celestial - Healer)
 -- Define custom SMN Celestial Job Abilities (464-465; recastIds 141, 145) with level = 255:
 --   - Astral Benediction    (464, 22s CD, Self / Party 15y, recastId 141)
 --   - Celestial Convergence (465, 25s CD, Self / Party 15y, recastId 145)

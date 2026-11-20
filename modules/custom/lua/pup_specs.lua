@@ -1,26 +1,26 @@
 -----------------------------------
--- OverlordsXI Puppetmaster Crystal Specs
+-- SoulspireXI Puppetmaster Crystal Specs
 -- Registers Puppetmaster (job 18) Soul Crystal specializations:
 --   1. Vanguard (VNG | Tier 6 Pure Tank): Valoredge Proxy-Tank & Tactical Link
 --   3. Pugilist (PGL | Tier 1 Pure DPS): Tandem Combo Striker (Valoredge/Sharpshot)
 -- (Animist [ANM | Tier 4 Healer] is registered in pup_healer_specs.lua)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
 require('scripts/globals/job_utils/puppetmaster')
 require('scripts/globals/pets/automaton')
 require('scripts/globals/automaton')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_pup_specs')
+local m = Module:new('soulspire_pup_specs')
 
-local spec  = xi.overlords.spec
-local slots = xi.overlords.slots
+local spec  = xi.soulspire.spec
+local slots = xi.soulspire.slots
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.pupSpecs = xi.overlords.pupSpecs or {}
-local pupSpecs        = xi.overlords.pupSpecs
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.pupSpecs = xi.soulspire.pupSpecs or {}
+local pupSpecs        = xi.soulspire.pupSpecs
 
 local VANGUARD_KEY = 'vanguard'
 local PUGILIST_KEY = 'pugilist'
@@ -625,9 +625,9 @@ end
 -----------------------------------
 -- Vanguard Pet AoE/Conal Immunity & Clockwork Bulwark 50% Split
 -----------------------------------
-local prevOnPreTakeDamage = xi.overlords.onPreTakeDamage
+local prevOnPreTakeDamage = xi.soulspire.onPreTakeDamage
 
-function xi.overlords.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
+function xi.soulspire.onPreTakeDamage(defender, amount, attacker, attackType, damageType)
     if prevOnPreTakeDamage ~= nil then
         amount = prevOnPreTakeDamage(defender, amount, attacker, attackType, damageType)
     end
@@ -713,7 +713,7 @@ local function attachPupListeners(player)
         end
 
         local charId = actor.getID and actor:getID() or 0
-        local now    = xi.overlords.nowSec()
+        local now    = xi.soulspire.nowSec()
         if charId > 0 and (now - (lastWsCastAtByChar[charId] or 0)) <= 0.1 then
             return
         end

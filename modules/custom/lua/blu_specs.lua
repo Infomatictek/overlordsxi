@@ -1,22 +1,22 @@
 -----------------------------------
--- OverlordsXI Blue Mage Crystal Spec (Azure Bastion)
+-- SoulspireXI Blue Mage Crystal Spec (Azure Bastion)
 -- Registers the Blue Mage (job 16) Soul Crystal specialization:
 --   1. Azure Bastion (BLU): Monster-Core Assimilator & Dual-Wield Tank
 --
 -- Unlocks @ Lv. 10 (!spec set azurebastion)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
+require('modules/custom/lua/soulspire_job_specs')
 require('scripts/globals/job_utils/blue_mage')
 require('scripts/globals/bluemagic')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_blu_specs')
+local m = Module:new('soulspire_blu_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 
-xi.overlords          = xi.overlords or {}
-xi.overlords.bluSpecs = xi.overlords.bluSpecs or {}
+xi.soulspire          = xi.soulspire or {}
+xi.soulspire.bluSpecs = xi.soulspire.bluSpecs or {}
 
 local AZURE_BASTION_KEY = 'azurebastion'
 
@@ -127,7 +127,7 @@ local function grantChitinCarapaceStacks(player, delta, duration)
         power    = nextStacks,
         duration = duration or 15,
         origin   = player,
-        icon     = xi.overlords.getStatusIcon(EFFECT_CHITIN_CARAPACE),
+        icon     = xi.soulspire.getStatusIcon(EFFECT_CHITIN_CARAPACE),
     })
     return nextStacks
 end
@@ -254,7 +254,7 @@ local function attachBluListeners(player)
             power    = 1,
             duration = 6,
             origin   = actor,
-            icon     = xi.overlords.getStatusIcon(EFFECT_AZURE_SURGE),
+            icon     = xi.soulspire.getStatusIcon(EFFECT_AZURE_SURGE),
         })
     end)
 
@@ -578,7 +578,7 @@ m:addOverride('xi.actions.abilities.diamond_shell.onUseAbility', function(player
         power    = 1,
         duration = 10,
         origin   = player,
-        icon     = xi.overlords.getStatusIcon(EFFECT_DIAMOND_SHELL),
+        icon     = xi.soulspire.getStatusIcon(EFFECT_DIAMOND_SHELL),
     })
 
     local maxHp = player.getMaxHP and player:getMaxHP() or 0

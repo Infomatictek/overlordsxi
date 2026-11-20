@@ -1,4 +1,4 @@
-"""Authentication and security helpers for OverlordsXI Combat Analytics.
+"""Authentication and security helpers for SoulspireXI Combat Analytics.
 
 Supports:
   1. Securely managed local accounts (scrypt password hashing + HttpOnly sessions + CSRF).
@@ -193,14 +193,14 @@ def exchange_oauth_code(cfg: AnalyticsConfig, provider: str, code: str) -> dict[
         token_resp = _http_json(
             "https://discord.com/api/oauth2/token",
             data=form,
-            headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "OverlordsXI-Analytics/1.0"},
+            headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "SoulspireXI-Analytics/1.0"},
         )
         access_token = token_resp.get("access_token")
         if not access_token:
             raise ValueError("Discord OAuth token exchange failed")
         me = _http_json(
             "https://discord.com/api/users/@me",
-            headers={"Authorization": f"Bearer {access_token}", "User-Agent": "OverlordsXI-Analytics/1.0"},
+            headers={"Authorization": f"Bearer {access_token}", "User-Agent": "SoulspireXI-Analytics/1.0"},
         )
         sub = str(me.get("id") or "")
         if not sub:
@@ -224,14 +224,14 @@ def exchange_oauth_code(cfg: AnalyticsConfig, provider: str, code: str) -> dict[
         token_resp = _http_json(
             "https://github.com/login/oauth/access_token",
             data=form,
-            headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "OverlordsXI-Analytics/1.0"},
+            headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "SoulspireXI-Analytics/1.0"},
         )
         access_token = token_resp.get("access_token")
         if not access_token:
             raise ValueError("GitHub OAuth token exchange failed")
         me = _http_json(
             "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/vnd.github+json", "User-Agent": "OverlordsXI-Analytics/1.0"},
+            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/vnd.github+json", "User-Agent": "SoulspireXI-Analytics/1.0"},
         )
         sub = str(me.get("id") or "")
         login = str(me.get("login") or "")

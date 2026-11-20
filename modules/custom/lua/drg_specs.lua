@@ -1,17 +1,17 @@
 -----------------------------------
--- OverlordsXI Dragoon Crystal Spec: Wyvernheart (WYV | Tier-4 Combat Healer)
+-- SoulspireXI Dragoon Crystal Spec: Wyvernheart (WYV | Tier-4 Combat Healer)
 -- Unlocks @ Lv. 10 (!spec set wyvernheart)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-require('modules/custom/lua/overlords_shared_slots')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_shared_slots')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/dragoon')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_drg_specs')
+local m = Module:new('soulspire_drg_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local WYVERNHEART_KEY = 'wyvernheart'
 
 -- Custom Trait ID (176; Wyrmblood Breath)
@@ -228,7 +228,7 @@ local function attachWyvernheartListeners(player)
         end
 
         local charId    = caster.getID and caster:getID() or 0
-        local now       = xi.overlords.nowSec()
+        local now       = xi.soulspire.nowSec()
         local isPrimary = (charId == 0) or ((now - (lastWsCastAtByChar[charId] or 0)) > 0.05)
         if not isPrimary then
             return
@@ -461,9 +461,9 @@ m:addOverride('xi.actions.abilities.dragonscale_sanctuary.onUseAbility', functio
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         local skin = math.max(1, math.floor((member:getMaxHP() or 0) * 0.15))
         H.applyStoneskinBarrier(member, skin, skin * 2, 15, player)
-        H.applyCustomTimedEffect(member, EFFECT_DRAGONSCALE_SANCTUARY, 15, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_DRAGONSCALE_SANCTUARY), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15)
+        H.applyCustomTimedEffect(member, EFFECT_DRAGONSCALE_SANCTUARY, 15, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_DRAGONSCALE_SANCTUARY), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1200, 30, 15)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

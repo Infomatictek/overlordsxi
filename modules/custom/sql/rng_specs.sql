@@ -1,4 +1,4 @@
--- OverlordsXI RNG Huntsman Spec Data
+-- SoulspireXI RNG Huntsman Spec Data
 -- Custom Job Abilities (480-486), Modal Beast Pets (134-137), Mob Pools (6026-6029),
 -- and 100% Single-Target Mob Skill Lists (6026-6027).
 

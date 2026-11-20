@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unraid-friendly entrypoint for OverlordsXI LandSandBoat containers.
+# Unraid-friendly entrypoint for SoulspireXI LandSandBoat containers.
 # Preserves LandSandBoat's XI_* environment variable convention, ensures
 # persistent directories exist, seeds default settings if a fresh bind mount
 # is empty, and hands off PID 1 signal handling to tini.

@@ -1,6 +1,6 @@
 -----------------------------------
 -- func: camp
--- desc: Party-size-aware leveling & Lv.75 merit camp warp menu for OverlordsXI.
+-- desc: Party-size-aware leveling & Lv.75 merit camp warp menu for SoulspireXI.
 --       Checks party size (Solo / Duo / Trio) and player level before
 --       displaying optimal camps that stay below the +8 IT++ wall.
 -----------------------------------

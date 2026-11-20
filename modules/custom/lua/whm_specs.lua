@@ -1,16 +1,16 @@
 -----------------------------------
--- OverlordsXI White Mage Crystal Spec: Bishop (BSH | Tier-5 Pure Healer)
+-- SoulspireXI White Mage Crystal Spec: Bishop (BSH | Tier-5 Pure Healer)
 -- Unlocks @ Lv. 10 (!spec set bishop)
 -----------------------------------
 require('modules/module_utils')
-require('modules/custom/lua/overlords_job_specs')
-local H = require('modules/custom/lua/overlords_healer_helpers')
+require('modules/custom/lua/soulspire_job_specs')
+local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/white_mage')
 require('scripts/globals/player')
 -----------------------------------
-local m = Module:new('overlords_whm_specs')
+local m = Module:new('soulspire_whm_specs')
 
-local spec = xi.overlords.spec
+local spec = xi.soulspire.spec
 local BISHOP_KEY = 'bishop'
 
 -- Custom Trait ID (169; Solace Conduit)
@@ -102,7 +102,7 @@ local function grantSacredGrace(player, delta)
     local eff = player:getStatusEffect(EFFECT_SACRED_GRACE)
     local cur = eff and (eff:getPower() or 0) or 0
     local nxt = math.min(3, cur + (delta or 1))
-    H.applyCustomTimedEffect(player, EFFECT_SACRED_GRACE, nxt, 30, player, 0, xi.overlords.getStatusIcon(EFFECT_SACRED_GRACE), 1)
+    H.applyCustomTimedEffect(player, EFFECT_SACRED_GRACE, nxt, 30, player, 0, xi.soulspire.getStatusIcon(EFFECT_SACRED_GRACE), 1)
     return nxt
 end
 
@@ -197,8 +197,8 @@ local function attachBishopListeners(player)
             if grace and (grace:getPower() or 0) >= 3 then
                 caster:delStatusEffectSilent(EFFECT_SACRED_GRACE)
                 H.forEachPartyMemberInRange(caster, 15, false, function(member)
-                    if xi.overlords and xi.overlords.regen and xi.overlords.regen.applyHybridRegen then
-                        xi.overlords.regen.applyHybridRegen(caster, member, xi.effect.REGEN, 15, 220, 10, 3, 3)
+                    if xi.soulspire and xi.soulspire.regen and xi.soulspire.regen.applyHybridRegen then
+                        xi.soulspire.regen.applyHybridRegen(caster, member, xi.effect.REGEN, 15, 220, 10, 3, 3)
                     else
                         member:addStatusEffect(xi.effect.REGEN, { power = 15, duration = 10, origin = caster, tier = 3 })
                     end
@@ -218,7 +218,7 @@ local function attachBishopListeners(player)
             local applySolace = function(unit)
                 local cap = math.floor(unit:getMaxHP() * 0.30)
                 H.applyStoneskinBarrier(unit, barrier, cap, 8, caster)
-                H.applyCustomTimedEffect(unit, EFFECT_SOLACE_WARD, 8, 8, caster, 0, xi.overlords.getStatusIcon(EFFECT_SOLACE_WARD), 1)
+                H.applyCustomTimedEffect(unit, EFFECT_SOLACE_WARD, 8, 8, caster, 0, xi.soulspire.getStatusIcon(EFFECT_SOLACE_WARD), 1)
             end
 
             if caster:hasStatusEffect(EFFECT_DIVINE_VEIL) then
@@ -318,9 +318,9 @@ m:addOverride('xi.actions.abilities.benediction.onUseAbility', function(player, 
             member:setHP(member:getMaxHP())
             H.cleanseDebuffs(member, 10)
             H.restoreMpPct(member, 50)
-            H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 25, 15, player, 0, xi.overlords.getStatusIcon(EFFECT_DIVINE_VEIL), 2)
-            if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-                xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 15)
+            H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 25, 15, player, 0, xi.soulspire.getStatusIcon(EFFECT_DIVINE_VEIL), 2)
+            if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+                xi.soulspire.slots.applyPartyWard(player, member, -1200, 30, 15)
             end
         end)
         return 0
@@ -342,9 +342,9 @@ m:addOverride('xi.actions.abilities.divine_veil.onUseAbility', function(player, 
     local skinAmt = math.floor(player:getMaxHP() * 0.22)
     H.forEachPartyMemberInRange(player, 15, false, function(member)
         H.applyStoneskinBarrier(member, skinAmt, skinAmt * 2, 10, player)
-        H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 12, 10, player, 0, xi.overlords.getStatusIcon(EFFECT_DIVINE_VEIL), 1)
-        if xi.overlords and xi.overlords.slots and xi.overlords.slots.applyPartyWard then
-            xi.overlords.slots.applyPartyWard(player, member, -1200, 30, 10)
+        H.applyCustomTimedEffect(member, EFFECT_DIVINE_VEIL, 12, 10, player, 0, xi.soulspire.getStatusIcon(EFFECT_DIVINE_VEIL), 1)
+        if xi.soulspire and xi.soulspire.slots and xi.soulspire.slots.applyPartyWard then
+            xi.soulspire.slots.applyPartyWard(player, member, -1200, 30, 10)
         end
     end)
     ability:setMsg(xi.msg.basic.JA_GAIN_EFFECT)

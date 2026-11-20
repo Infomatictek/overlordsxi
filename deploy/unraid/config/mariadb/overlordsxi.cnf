@@ -1,4 +1,4 @@
-# OverlordsXI MariaDB 10.11 Configuration for Unraid Docker
+# SoulspireXI MariaDB 10.11 Configuration for Unraid Docker
 # Matches Windows MariaDB 10.11.10 charset, collation, sql_mode, and case-insensitivity.
 
 [mysqld]

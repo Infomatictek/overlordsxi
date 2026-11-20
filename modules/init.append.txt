@@ -1,13 +1,13 @@
-custom/lua/overlords_status_registry.lua
-custom/lua/overlords_mob_status_sync.lua
+custom/lua/soulspire_status_registry.lua
+custom/lua/soulspire_mob_status_sync.lua
 custom/sql/custom_status_effects_sync.sql
 custom/lua/boss_like_combat_and_exp.lua
-custom/lua/overlords_job_specs.lua
-custom/lua/overlords_ws_catalog.lua
-custom/lua/overlords_ws_talents.lua
-custom/lua/overlords_ws_trees_throwing.lua
-custom/lua/overlords_throwing_ws.lua
-custom/lua/overlords_ws_overrides.lua
+custom/lua/soulspire_job_specs.lua
+custom/lua/soulspire_ws_catalog.lua
+custom/lua/soulspire_ws_talents.lua
+custom/lua/soulspire_ws_trees_throwing.lua
+custom/lua/soulspire_throwing_ws.lua
+custom/lua/soulspire_ws_overrides.lua
 custom/lua/eos_companion.lua
 custom/lua/sch_specs.lua
 custom/lua/war_specs.lua
@@ -24,10 +24,10 @@ custom/lua/kurogane_clones.lua
 custom/lua/nin_specs.lua
 custom/lua/blu_specs.lua
 custom/lua/pup_specs.lua
-custom/lua/overlords_job_spec_runtime.lua
-custom/lua/overlords_test_gear.lua
-custom/lua/overlords_regen_scaling.lua
-custom/lua/overlords_shared_slots.lua
+custom/lua/soulspire_job_spec_runtime.lua
+custom/lua/soulspire_test_gear.lua
+custom/lua/soulspire_regen_scaling.lua
+custom/lua/soulspire_shared_slots.lua
 custom/cpp/eos_companion.cpp
 custom/cpp/kazenoeye_sync.cpp
 custom/sql/eos_companion.sql
@@ -58,7 +58,7 @@ custom/sql/rdm_specs.sql
 
 custom/lua/drk_specs.lua
 custom/sql/drk_specs.sql
-custom/lua/overlords_healer_helpers.lua
+custom/lua/soulspire_healer_helpers.lua
 custom/lua/whm_specs.lua
 custom/lua/pld_healer_specs.lua
 custom/lua/blu_healer_specs.lua
@@ -75,7 +75,7 @@ custom/sql/smn_specs.sql
 custom/sql/pup_healer_specs.sql
 custom/sql/geo_specs.sql
 custom/sql/drg_specs.sql
-custom/lua/overlords_polearm_buckler.lua
+custom/lua/soulspire_polearm_buckler.lua
 custom/commands/buckler.lua
 custom/commands/shield.lua
 custom/lua/cor_specs.lua
@@ -83,11 +83,11 @@ custom/sql/cor_specs.sql
 custom/lua/rng_specs.lua
 custom/sql/rng_specs.sql
 
-custom/lua/overlords_soul_hud.lua
+custom/lua/soulspire_soul_hud.lua
 custom/commands/soulhud.lua
 
-custom/cpp/overlords_soulhud_sync.cpp
-custom/cpp/overlords_soul_action_peers.cpp
-custom/lua/overlords_proving_grounds_registry.lua
-custom/lua/overlords_proving_grounds_telemetry.lua
-custom/lua/overlords_proving_grounds_lite.lua
+custom/cpp/soulspire_soulhud_sync.cpp
+custom/cpp/soulspire_soul_action_peers.cpp
+custom/lua/soulspire_proving_grounds_registry.lua
+custom/lua/soulspire_proving_grounds_telemetry.lua
+custom/lua/soulspire_proving_grounds_lite.lua
