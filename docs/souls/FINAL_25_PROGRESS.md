@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 8/25. Current: Phantom. Blocked: none.
-- Latest pushed Soul implementation commits: server `67c11d47fb93c1347218f8b6cedab001b3a2a960`, launcher `860f5cacf6c17ec5c264b34a2d9cad85e3449648`. The server branch also carries this tracker update.
+- Completed: 9/25. Current: Oathbreaker. Blocked: none.
+- Latest pushed Soul implementation commits: server `c91de0d5de647ce1c8f704171eaa58342590ee4e`, launcher `39e03537d8b4b0d3ceeb58afcce8062efd7bb4a0`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -19,8 +19,8 @@
 | 6 | RDM | Royal Tactician | royaltactician | Support | Pushed. Manual verification required. |
 | 7 | THF | Bandit | bandit | Damage | Pushed. Manual verification required. |
 | 8 | THF | Trickster | trickster | Support | Pushed. Manual verification required. |
-| 9 | THF | Phantom | phantom | Tank | Current |
-| 10 | PLD | Oathbreaker | oathbreaker | Damage | Pending |
+| 9 | THF | Phantom | phantom | Tank | Pushed. Manual verification required. |
+| 10 | PLD | Oathbreaker | oathbreaker | Damage | Current |
 | 11 | DRK | Reaper | reaper | Damage | Pending |
 | 12 | DRK | Scourge | scourge | Support | Pending |
 | 13 | RNG | Sniper | sniper | Damage | Pending |
@@ -69,4 +69,6 @@
 - **Bandit architecture:** At the native weapon-skill start event, Bandit snapshots an existing Defense Down or private opening. A landed qualifying weapon skill refunds TP. Find the Gap provides the solo Lv.10 path. It gives no allied debuff or bonus.
 - **Trickster checkpoint:** [Implementation report](completed/trickster.md). Server `67c11d47fb93c1347218f8b6cedab001b3a2a960`, launcher `860f5cacf6c17ec5c264b34a2d9cad85e3449648`. Three focused tests and 73 non-loopback regression tests passed. Audit found 49 registered, 17 planned. Wiki, 12 C++ units and 1,109 manifest entries verified. The planned-Soul wiki test uses an explicit planned fixture so it remains useful as the roster fills out.
 - **Trickster architecture:** Scoped native positional threat routing plus a weapon-skill-triggered Attack Down. Existing or rejected debuffs and missed hits preserve the cooldown.
-- **Next step:** inspect Phantom's accepted Sequence B cold-start and evasion threat. Confirm a scoped native target opener and one-hit guard at Lv.10 without /WAR. Integrate and verify it without using Bandit or Trickster effects.
+- **Phantom checkpoint:** [Implementation report](completed/phantom.md). Server `c91de0d5de647ce1c8f704171eaa58342590ee4e`, launcher `39e03537d8b4b0d3ceeb58afcce8062efd7bb4a0`. Three focused tests and 76 non-loopback regression tests passed. Audit found 50 registered, 16 planned. Strict wiki, 12 C++ units and 1,109 launcher manifest entries checked.
+- **Phantom architecture:** The opener uses the normal enmity and claim path with a scoped Steal-slot repurpose. Native regular melee misses drive enmity. The one-hit guard uses the shared pre-damage hook. Dagger/Katana restrictions, ordinary scoped Katanas and THF test gear follow the existing weapon path.
+- **Next step:** inspect Oathbreaker's offensive vow and liability window from Sequence D. Confirm its Great Sword baseline and native actions at Lv.10, preserving Defender's distinct shield and interception mechanics.
