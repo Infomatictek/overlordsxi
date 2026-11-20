@@ -84,6 +84,7 @@ custom/lua/rng_specs.lua
 custom/sql/rng_specs.sql
 
 custom/lua/soulspire_soul_hud.lua
+custom/lua/whm_zealot_specs.lua
 custom/commands/soulhud.lua
 
 custom/cpp/soulspire_soulhud_sync.cpp
