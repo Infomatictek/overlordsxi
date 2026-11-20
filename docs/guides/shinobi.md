@@ -12,20 +12,7 @@
 
 ## Complete Shinobi Action Kit
 
-All eight Shinobi Ninjutsu spells require **zero Ninja tools** on Shinobi and unlock dynamically at their effective level (level sync enforced server-side and reflected in the native Ninjutsu menu).
-
-| Player-Facing Action | Server Mapping | Unlock Lv | Cast | Recast | Effect |
-| --- | --- | --- | --- | --- | --- |
-| **Shadow Squadron: Ichi** | Spell 338 (`Utsusemi: Ichi`) | 10 | 1.5s | 20s | Summon **2** offensive shadow clones against your engaged enemy (max 5 active, 25–30s, zero defensive shadows). |
-| **False Assault** | Spell 320 (`Katon: Ichi`) | 10 | 0.5s | 12s | Lead clone feint strike + establishes **Opening** on owner for **12s** (+25% potency or +2s duration on your next *different* squad command). No enemy debuff. |
-| **Mirror Step** | Spell 323 (`Hyoton: Ichi`) | 10 | 0.5s | 16s | Shifts living clones into an alternating fast/heavy attack rhythm for **10s** (12s w/ Opening), rewarding multiple living clones (+4% melee per extra clone, up to +16% at 5). |
-| **Crosscut** | Spell 326 (`Huton: Ichi`) | 10 | 0.5s | 14s | Rapid staggered single-target physical strikes (90ms stagger) from every living clone (bounded total cap, owner-attributed once, no AoE/skillchain). |
-| **Shadow Pin** | Spell 329 (`Doton: Ichi`) | 30 | 0.5s | 18s | Locks living clones onto your engaged target for **12s** (14s w/ Opening): refreshes engagement/facing on mobile bosses, extends active tactical phase by +4s (cap 20s), and grants living clones +ACC / +melee damage. No enemy debuff or tank enmity. |
-| **Shadow Squadron: Ni** | Spell 339 (`Utsusemi: Ni`) | 37 | 1.2s | 30s | Summons **3** offensive shadow clones against your engaged enemy (max 5 active, transactional replacement of oldest copies). |
-| **Thunder Relay** | Spell 332 (`Raiton: Ichi`) | 50 | 0.5s | 22s | High-tempo escalating sequential strikes (60ms cadence) across living clones. Requires **2+ living clones** for the full escalating relay chain (bounded cap, no AoE/extra TP). |
-| **Final Mirage** | Spell 335 (`Suiton: Ichi`) | 70 | 1.0s | 45s | High-commitment single-target squad finisher scaling with living clones (1–5) and consuming your active tactical phase (and Opening) for peak capped burst. |
-| **Shadow Legion** | JA 487 (Client ID 999, Recast 238) | 10 | Instant | 90s | Every surviving clone launches one staggered (120ms) coordinated physical strike (~1× Katana WS at 5 clones). Integrates with Opening and the tactical cycle. |
-| **Phantom Assault** | JA 488 (Client ID 1000, Recast 239) | 10 | Instant | 30s | Accelerates currently living clones by **-25% native autoattack interval** for **8s** while preserving staggered timing. Integrates with the tactical cycle. |
+Shinobi's Ninjutsu spells and Job Abilities (including zero-tool Ninjutsu casting, level-sync unlock progression, cast times, recasts, and descriptions) are generated automatically from the live server definitions and launcher Soul action catalog in the **Soul Actions & Level Progression** section of the wiki.
 
 ## The Tactical Cycle: Feint → Switch → Cascade
 

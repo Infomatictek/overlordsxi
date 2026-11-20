@@ -398,7 +398,11 @@
                   (c) =>
                     `<li><strong>${escapeHtml(c.name)}</strong> — <span style="color:var(--accent-gold)">${escapeHtml(
                       c.role
-                    )}</span></li>`
+                    )}</span>${
+                      c.implementationStatus && c.implementationStatus !== 'implemented'
+                        ? ' <span class="badge" style="font-size:0.68rem; opacity:0.8;">Planned</span>'
+                        : ''
+                    }</li>`
                 )
                 .join('')}
             </ul>
@@ -709,11 +713,97 @@
     `;
   }
 
+  function renderSoulActionsSection(c) {
+    const actions = c.soulActions || [];
+    if (actions.length === 0) {
+      const abils = c.customAbilities || [];
+      if (abils.length === 0) return '';
+      return `
+        <h4 style="margin:1.4rem 0 0.4rem; color:#fff; text-transform:uppercase; font-size:0.78rem; letter-spacing:0.06em;">
+          ⚡ Crystal-Unlocked Active Job Abilities (${abils.length})
+        </h4>
+        <div class="ability-grid">
+          ${abils
+            .map(
+              (a) => `
+            <div class="ability-box">
+              <div class="ability-box-top">
+                <span class="ability-box-name">${escapeHtml(a.name)}</span>
+                <span class="ability-box-meta">CD: ${escapeHtml(a.cd)} &bull; ${escapeHtml(a.target)}</span>
+              </div>
+              <div style="font-size:0.84rem; color:var(--text-secondary);">${escapeHtml(a.desc)}</div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      `;
+    }
+
+    const catBadgeClass = (kind) => {
+      if (kind === 'spell') return 'badge-cyan';
+      if (kind === 'weaponskill') return 'badge-gold';
+      return 'badge-emerald';
+    };
+
+    const formatMeta = (a) => {
+      const parts = [];
+      if (a.cost) parts.push(escapeHtml(a.cost));
+      if (a.castTime) parts.push(`Cast: ${escapeHtml(a.castTime)}`);
+      if (a.recast) parts.push(`Recast: ${escapeHtml(a.recast)}`);
+      if (a.target) parts.push(escapeHtml(a.target));
+      return parts.length > 0 ? parts.join(' &bull; ') : '—';
+    };
+
+    const statusLabel = (s) => {
+      if (s === 'implemented') return '<span class="badge badge-emerald">Implemented</span>';
+      if (s === 'incomplete') return '<span class="badge badge-gold">In Progress</span>';
+      return '<span class="badge">Planned</span>';
+    };
+
+    return `
+      <h4 style="margin:1.4rem 0 0.55rem; color:#fff; text-transform:uppercase; font-size:0.78rem; letter-spacing:0.06em;">
+        ⚡ Soul Actions &amp; Level Progression (${actions.length})
+      </h4>
+      <div class="wiki-table-wrap">
+        <table class="wiki-table">
+          <thead>
+            <tr>
+              <th style="width:72px;">Unlock</th>
+              <th>Action</th>
+              <th style="width:110px;">Category</th>
+              <th>Cost / Timing</th>
+              <th>Description</th>
+              <th style="width:110px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${actions
+              .map(
+                (a) => `
+              <tr>
+                <td><code>Lv. ${escapeHtml(String(a.unlockLevel || 10))}</code></td>
+                <td><strong>${escapeHtml(a.name)}</strong></td>
+                <td><span class="badge ${catBadgeClass(a.kind)}">${escapeHtml(a.category || 'Action')}</span></td>
+                <td style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">${formatMeta(a)}</td>
+                <td style="font-size:0.84rem; color:var(--text-secondary);">${escapeHtml(a.description || '')}</td>
+                <td>${statusLabel(a.implementationStatus)}</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   function renderSingleCrystalCard(job, c) {
     const mods = c.passiveMods || [];
-    const abils = c.customAbilities || [];
     const traits = c.customTraits || [];
     const guidesOnly = state.crystalViewMode === 'guides';
+    const isImplemented = !c.implementationStatus || c.implementationStatus === 'implemented';
+    const specCmdKey = c.actionKey || c.key;
 
     return `
       <article class="crystal-card" id="crystal-${escapeHtml(job.jobKey)}-${escapeHtml(c.key)}">
@@ -728,11 +818,22 @@
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-            <span class="badge badge-gold">Unlocks @ Lv. ${c.reqLevel || 10}</span>
-            <code>!spec set ${escapeHtml(c.key)}</code>
+            ${
+              isImplemented
+                ? `<span class="badge badge-emerald">Implemented</span>
+                   <span class="badge badge-gold">Unlocks @ Lv. ${c.reqLevel || 10}</span>
+                   <code>!spec set ${escapeHtml(specCmdKey)}</code>`
+                : `<span class="badge">Planned &bull; Not Yet Implemented</span>`
+            }
           </div>
         </div>
 
+        ${
+          !isImplemented
+            ? `<p style="font-size:0.92rem; color:var(--text-muted); margin:0.4rem 0 0;">
+                 ${escapeHtml(c.description || `${c.name} is part of the 66-Soul roster and is not yet implemented on the live server.`)}
+               </p>`
+            : `
         ${renderCrystalGuideBox(c)}
 
         ${
@@ -817,29 +918,8 @@
           </div>
         </div>
 
-        ${
-          abils.length > 0
-            ? `
-          <h4 style="margin:1.4rem 0 0.4rem; color:#fff; text-transform:uppercase; font-size:0.78rem; letter-spacing:0.06em;">
-            ⚡ Crystal-Unlocked Active Job Abilities (${abils.length})
-          </h4>
-          <div class="ability-grid">
-            ${abils
-              .map(
-                (a) => `
-              <div class="ability-box">
-                <div class="ability-box-top">
-                  <span class="ability-box-name">${escapeHtml(a.name)}</span>
-                  <span class="ability-box-meta">CD: ${escapeHtml(a.cd)} &bull; ${escapeHtml(a.target)}</span>
-                </div>
-                <div style="font-size:0.84rem; color:var(--text-secondary);">${escapeHtml(a.desc)}</div>
-              </div>
-            `
-              )
-              .join('')}
-          </div>
+        ${renderSoulActionsSection(c)}
         `
-            : ''
         }
         `
         }
@@ -1438,7 +1518,8 @@
       for (const c of job.crystals || []) {
         const g = c.guide || {};
         const guideHay = `${g.atAGlance || ''} ${(g.setup || []).join(' ')} ${(g.loop || []).join(' ')} ${(g.mechanics || []).join(' ')} ${(g.tips || []).join(' ')}`;
-        const hay = `${job.jobKey} ${job.jobName} ${c.name} ${c.role} ${c.description} ${(c.highlights || []).join(' ')} ${guideHay}`.toLowerCase();
+        const aliasHay = `${c.key || ''} ${c.actionKey || ''} ${(c.aliases || []).join(' ')}`;
+        const hay = `${job.jobKey} ${job.jobName} ${c.name} ${aliasHay} ${c.role} ${c.description} ${(c.highlights || []).join(' ')} ${guideHay}`.toLowerCase();
         if (hay.includes(q)) {
           results.push({
             title: `${job.jobKey}: ${c.name} Crystal`,
@@ -1447,12 +1528,21 @@
             action: () => navigateTo('crystals', { jobKey: job.jobKey }),
           });
         }
-        for (const ab of c.customAbilities || []) {
-          if (`${ab.name} ${ab.desc}`.toLowerCase().includes(q)) {
+        const searchableActions = (c.soulActions && c.soulActions.length > 0)
+          ? c.soulActions
+          : (c.customAbilities || []).map((ab) => ({
+              name: ab.name,
+              category: 'Job Ability',
+              unlockLevel: ab.unlockLevel || c.reqLevel || 10,
+              recast: ab.cd,
+              description: ab.desc,
+            }));
+        for (const act of searchableActions) {
+          if (`${act.name} ${act.description || ''}`.toLowerCase().includes(q)) {
             results.push({
-              title: `${ab.name} (${job.jobKey} ${c.name} JA)`,
-              sub: `${ab.cd} CD • ${ab.desc.slice(0, 90)}...`,
-              tag: 'Custom JA',
+              title: `${act.name} (${job.jobKey} ${c.name} ${act.category || 'Action'})`,
+              sub: `Lv.${act.unlockLevel || 10}${act.recast ? ` • ${act.recast} recast` : ''} • ${(act.description || '').slice(0, 90)}...`,
+              tag: act.category || 'Soul Action',
               action: () => navigateTo('crystals', { jobKey: job.jobKey }),
             });
           }

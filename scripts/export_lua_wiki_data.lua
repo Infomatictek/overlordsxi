@@ -404,6 +404,20 @@ local function makeFakePlayer(jobId, lvl, entry, jKey)
         end,
         getLocalVar = function() return 0 end,
         setLocalVar = function() end,
+        hasSpell = function() return false end,
+        addSpell = function(self, sid)
+            if self._recordedSpells and type(sid) == 'number' and sid >= 0 and sid <= 1023 then
+                self._recordedSpells[sid] = true
+            end
+        end,
+        delSpell = function() end,
+        addStatusEffect = function() end,
+        delStatusEffect = function() end,
+        delStatusEffectSilent = function() end,
+        getStatusEffect = function() return nil end,
+        setMod = function() end,
+        addMod = function() end,
+        delMod = function() end,
         getWeaponSkillType = function(_, slot)
             if slot == xi.slot.RANGED then
                 if jobId == xi.job.COR then return xi.skill.MARKSMANSHIP end
@@ -491,17 +505,47 @@ for _, jid in ipairs(sortedJobIds) do
             })
         end
 
-        -- Evaluate extraAbilities (table or function(player, lvl))
+        -- Evaluate extraAbilities (table or function(player, lvl)) across levels 1..75
+        local reqLvl = tonumber(entry.reqLevel) or spec.DEFAULT_REQ_LEVEL or 10
         local extraAbils = {}
+        local abilityUnlockLevels = {}
         local rawAbils = entry.extraAbilities
         if type(rawAbils) == 'function' then
-            local ok, res = pcall(rawAbils, makeFakePlayer(jid, 75, entry, jKey), 75)
-            if ok and type(res) == 'table' then rawAbils = res else rawAbils = {} end
-        end
-        if type(rawAbils) == 'table' then
+            local seenAbil = {}
+            for lvl = 1, 75 do
+                local ok, res = pcall(rawAbils, makeFakePlayer(jid, lvl, entry, jKey), lvl)
+                if ok and type(res) == 'table' then
+                    for _, aid in ipairs(res) do
+                        if type(aid) == 'number' and aid >= 0 and aid < 50000 and not seenAbil[aid] then
+                            seenAbil[aid] = true
+                            table.insert(extraAbils, aid)
+                            abilityUnlockLevels[tostring(aid)] = math.max(reqLvl, lvl)
+                        end
+                    end
+                end
+            end
+        elseif type(rawAbils) == 'table' then
             for _, aid in ipairs(rawAbils) do
                 if type(aid) == 'number' then
                     table.insert(extraAbils, aid)
+                    abilityUnlockLevels[tostring(aid)] = reqLvl
+                end
+            end
+        end
+
+        -- Probe onApply(fakePlayer, lvl) across levels 1..75 to capture authoritative addSpell grants
+        local spellGrants = {}
+        if type(entry.onApply) == 'function' then
+            local seenSpell = {}
+            for lvl = reqLvl, 75 do
+                local fp = makeFakePlayer(jid, lvl, entry, jKey)
+                fp._recordedSpells = {}
+                pcall(entry.onApply, fp, lvl)
+                for sid, _ in pairs(fp._recordedSpells) do
+                    if not seenSpell[sid] then
+                        seenSpell[sid] = true
+                        spellGrants[tostring(sid)] = lvl
+                    end
                 end
             end
         end
@@ -531,11 +575,13 @@ for _, jid in ipairs(sortedJobIds) do
             name = tostring(entry.name or ''),
             role = tostring(entry.role or ''),
             icon = tostring(entry.icon or ''),
-            reqLevel = tonumber(entry.reqLevel) or spec.DEFAULT_REQ_LEVEL or 10,
+            reqLevel = reqLvl,
             description = tostring(entry.description or ''),
             highlights = #highlights > 0 and highlights or emptyArray(),
             evaluatedMods = #evaluatedMods > 0 and evaluatedMods or emptyArray(),
             extraAbilities = #extraAbils > 0 and extraAbils or emptyArray(),
+            abilityUnlockLevels = abilityUnlockLevels,
+            spellGrants = spellGrants,
             extraTraits = #extraTraits > 0 and extraTraits or emptyArray(),
         })
     end
@@ -700,8 +746,40 @@ local bossOut = {
     breath = bossCfg.breath or {},
 }
 
+-- Discover authoritative *_KIT_SPELLS tables exposed under xi.soulspire.*Specs
+local kitSpellsOut = {}
+if type(xi.soulspire) == 'table' then
+    for nsName, nsTbl in pairs(xi.soulspire) do
+        if type(nsTbl) == 'table' and tostring(nsName):match('Specs$') then
+            for tblName, tblVal in pairs(nsTbl) do
+                local soulPrefix = type(tblName) == 'string' and tblName:match('^([A-Z0-9_]+)_KIT_SPELLS$')
+                if soulPrefix and type(tblVal) == 'table' then
+                    local soulKey = string.lower(soulPrefix)
+                    local entries = {}
+                    for sid, info in pairs(tblVal) do
+                        if type(sid) == 'number' and type(info) == 'table' then
+                            local rec = { id = sid }
+                            if type(info.name) == 'string' then rec.name = info.name end
+                            if type(info.script) == 'string' then rec.script = info.script end
+                            if type(info.unlockLvl) == 'number' then rec.unlockLvl = info.unlockLvl end
+                            if type(info.castMs) == 'number' then rec.castMs = info.castMs end
+                            if type(info.recastSec) == 'number' then rec.recastSec = info.recastSec end
+                            if type(info.mpCost) == 'number' then rec.mpCost = info.mpCost end
+                            if type(info.tpCost) == 'number' then rec.tpCost = info.tpCost end
+                            if type(info.summonCount) == 'number' then rec.summonCount = info.summonCount end
+                            entries[tostring(sid)] = rec
+                        end
+                    end
+                    kitSpellsOut[soulKey] = entries
+                end
+            end
+        end
+    end
+end
+
 local payload = {
     jobSpecs = #jobSpecsOut > 0 and jobSpecsOut or emptyArray(),
+    kitSpells = kitSpellsOut,
     weaponskills = #wsOut > 0 and wsOut or emptyArray(),
     tierGates = tierGatesOut,
     rankLevelTables = rankLevelTablesOut,
