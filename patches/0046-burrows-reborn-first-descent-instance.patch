@@ -1,0 +1,67 @@
+diff --git a/scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua b/scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua
+new file mode 100644
+index 0000000000..8b4c92d10a
+--- /dev/null
++++ b/scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua
+@@ -0,0 +1,52 @@
++-----------------------------------
++-- SoulspireXI — Burrows Reborn: The First Descent
++-- Instance bridge for Ghoyu's Reverie (instanceId 12901).
++-- Delegates all lifecycle callbacks to modules/custom/lua/soulspire_burrows_first_descent.lua.
++-----------------------------------
++local instanceObject = {}
++
++local function getHandler()
++    return xi and xi.soulspire and xi.soulspire.burrows and xi.soulspire.burrows.instance or nil
++end
++
++instanceObject.onInstanceCreated = function(instance)
++    local h = getHandler()
++    if h and h.onInstanceCreated then
++        h.onInstanceCreated(instance)
++    end
++end
++
++instanceObject.onInstanceCreatedCallback = function(player, instance)
++    local h = getHandler()
++    if h and h.onInstanceCreatedCallback then
++        h.onInstanceCreatedCallback(player, instance)
++    end
++end
++
++instanceObject.afterInstanceRegister = function(player)
++    local h = getHandler()
++    if h and h.afterInstanceRegister then
++        h.afterInstanceRegister(player)
++    end
++end
++
++instanceObject.onInstanceTimeUpdate = function(instance, elapsed)
++    local h = getHandler()
++    if h and h.onInstanceTimeUpdate then
++        h.onInstanceTimeUpdate(instance, elapsed)
++    end
++end
++
++instanceObject.onInstanceProgressUpdate = function(instance, progress)
++    local h = getHandler()
++    if h and h.onInstanceProgressUpdate then
++        h.onInstanceProgressUpdate(instance, progress)
++    end
++end
++
++instanceObject.onInstanceComplete = function(instance)
++    local h = getHandler()
++    if h and h.onInstanceComplete then
++        h.onInstanceComplete(instance)
++    end
++end
++
++instanceObject.onInstanceFailure = function(instance)
++    local h = getHandler()
++    if h and h.onInstanceFailure then
++        h.onInstanceFailure(instance)
++    end
++end
++
++return instanceObject

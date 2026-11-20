@@ -29,11 +29,12 @@ if [ -d /server/settings ] && [ -d /server/settings.image-defaults ]; then
     fi
 fi
 
-# Ensure Proving Grounds telemetry directories exist on persistent log mount
+# Ensure Proving Grounds & Burrows Reborn telemetry directories exist on persistent log mount
 if [ -d /server/log ] && [ -w /server/log ]; then
     mkdir -p /server/log/proving_grounds/events \
              /server/log/proving_grounds/snapshots \
-             /server/log/proving_grounds/feedback || true
+             /server/log/proving_grounds/feedback \
+             /server/log/burrows_reborn || true
 fi
 
 exec tini -- "$@"
