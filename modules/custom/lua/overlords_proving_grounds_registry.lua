@@ -1,5 +1,5 @@
 -----------------------------------
--- OverlordsXI Soul Proving Grounds — Shared Encounter Registry
+-- OverlordsXI Soul Proving Grounds — Shared Encounter Registry & Level Sync
 --
 -- Single source of truth shared by:
 --   1. The in-game NPC Testing Arena (overlords_proving_grounds_lite.lua)
@@ -8,11 +8,15 @@
 --
 -- Design guarantees:
 --   - Zero duplicate encounter tables between manual and automated testing.
---   - Uses existing FFXI mob groups (HP=0 so level scaling is authentic),
---     existing models, and verified single-role ability/spell whitelists.
---   - Integrates directly with xi.customBossServer (boss_like_combat_and_exp)
---     without creating competing balance multipliers or double-scaling.
---   - Enforces defense-in-depth no-progression safeguards on every trial mob.
+--   - Native non-destructive level synchronization via xi.effect.LEVEL_RESTRICTION
+--     (which invokes C++ CLuaBaseEntity::levelRestriction, never mutating DB job
+--     levels or permanent genkai caps).
+--   - Immediate OverlordsXI rescaling after level sync / restoration:
+--     Soul crystal mods/abilities/traits, player combat pace BASE_HP, pets, and
+--     Shinobi clone dismissal so clones inherit the effective combat level.
+--   - Supports all 4 difficulties (+0 EM, +3 VT, +5 IT, +8 Extreme non-baseline)
+--     and Normal / NM classifications, including boss levels above 75 (up to 83).
+--   - Defense-in-depth no-progression safeguards on every trial mob.
 -----------------------------------
 local hasServerRuntime = (Module ~= nil and Module.new ~= nil)
 if hasServerRuntime then
@@ -28,15 +32,17 @@ xi.overlords.provingGrounds.registry = xi.overlords.provingGrounds.registry or {
 
 local R = xi.overlords.provingGrounds.registry
 
-R.SCHEMA_VERSION       = '1.0.0'
-R.RUNNER_CONTRACT      = 'overlordsxi-proving-grounds-v1'
+R.SCHEMA_VERSION       = '2.0.0'
+R.RUNNER_CONTRACT      = 'overlordsxi-proving-grounds-v2'
 R.ARENA_ZONE_ID        = (xi.zone and xi.zone.GM_HOME) or 210
-R.NPC_POS              = { x = -5, y = 0, z = 5, rotation = 0 } -- separate from stock Menu Example NPC at (5,0,5)
+-- Positioned at (-5, 0, 5) to remain 10 yalms clear of GM Home's Menu Example NPC at (5, 0, 5).
+R.NPC_POS              = { x = -5, y = 0, z = 5, rotation = 0 }
 R.BOSS_POS             = { x = 5, y = 0, z = 25, rotation = 128 }
-R.PLAYER_START_POS     = { x = 5, y = 0, z = 18, rotation = 0 }
+R.PLAYER_START_POS     = { x = 5, y = 0, z = 18, rotation = 192 }
 R.DEFAULT_DURATION_SEC = 600
 R.MIN_LEVEL            = 10
 R.MAX_LEVEL            = 75
+R.MAX_BOSS_LEVEL       = 83 -- Lv75 effective player + 8 Extreme Challenge
 
 R.LEVELS = { 10, 30, 50, 75 }
 
@@ -50,43 +56,78 @@ R.DIFFICULTIES =
         standardBaseline = true,
         extremeChallenge = false,
     },
-    boss_plus_3 =
+    very_tough =
     {
-        id               = 'boss_plus_3',
-        label            = 'Boss +3 Levels',
+        id               = 'very_tough',
+        label            = 'Very Tough (+3)',
         levelDelta       = 3,
         standardBaseline = true,
         extremeChallenge = false,
     },
-    boss_plus_8 =
+    incredibly_tough =
     {
-        id               = 'boss_plus_8',
-        label            = 'Extreme Challenge (+8 Wall)',
+        id               = 'incredibly_tough',
+        label            = 'Incredibly Tough (+5)',
+        levelDelta       = 5,
+        standardBaseline = true,
+        extremeChallenge = false,
+    },
+    extreme =
+    {
+        id               = 'extreme',
+        label            = 'Extreme (+8) [Non-Baseline]',
         levelDelta       = 8,
         standardBaseline = false,
         extremeChallenge = true,
     },
 }
 
-R.DIFFICULTY_ORDER = { 'even_match', 'boss_plus_3', 'boss_plus_8' }
+-- Canonical aliases for backward compatibility with Stage A/B configs.
+R.DIFFICULTY_ALIASES =
+{
+    even_match       = 'even_match',
+    em               = 'even_match',
+    very_tough       = 'very_tough',
+    vt               = 'very_tough',
+    boss_plus_3      = 'very_tough',
+    incredibly_tough = 'incredibly_tough',
+    it               = 'incredibly_tough',
+    boss_plus_5      = 'incredibly_tough',
+    extreme          = 'extreme',
+    boss_plus_8      = 'extreme',
+    extreme_plus_8   = 'extreme',
+}
+
+R.DIFFICULTY_ORDER = { 'even_match', 'very_tough', 'incredibly_tough', 'extreme' }
+
+function R.resolveDifficulty(key)
+    local norm = string.lower(tostring(key or 'even_match'))
+    local canonical = R.DIFFICULTY_ALIASES[norm]
+    if canonical and R.DIFFICULTIES[canonical] then
+        return R.DIFFICULTIES[canonical], canonical
+    end
+    return nil, nil
+end
 
 R.BOSS_PRESETS =
 {
     normal =
     {
         id         = 'normal',
-        label      = 'Standard Boss Scaling',
+        label      = 'Normal',
         isNM       = false,
         configPath = 'xi.customBossServer.config.normalMob',
     },
     nm =
     {
         id         = 'nm',
-        label      = 'NM Boss Scaling',
+        label      = 'NM (Notorious Monster)',
         isNM       = true,
         configPath = 'xi.customBossServer.config.nm',
     },
 }
+
+R.BOSS_PRESET_ORDER = { 'normal', 'nm' }
 
 -- Accessible, level-appropriate equipment profiles mapped to xi.overlords.testGear.
 -- Never uses Lv75 best-in-slot gear to evaluate lower-level brackets.
@@ -137,6 +178,15 @@ R.PARTY_COMPOSITIONS =
         stage       = 'B',
         implemented = true,
     },
+    party =
+    {
+        id          = 'party',
+        label       = 'Manual Party Session',
+        size        = 6,
+        roles       = { 'party' },
+        stage       = 'manual',
+        implemented = true,
+    },
     trio_standard =
     {
         id          = 'trio_standard',
@@ -145,14 +195,13 @@ R.PARTY_COMPOSITIONS =
         roles       = { 'tank', 'healer', 'dps' },
         stage       = 'C',
         implemented = false,
-        gateReason  = 'Gated behind Milestone C single-actor Lv10 real combat proof.',
+        gateReason  = 'Stage C automated party suite pending Milestone C review.',
     },
 }
 
 -- Standardized encounter archetypes.
 -- Every NPC-selectable archetype uses verified existing mob_groups (HP=0 so level
--- stats scale authentically) with strict behavior enforcement so a Physical Bruiser
--- never secretly casts spells or AoE moves.
+-- stats scale authentically) for BOTH Normal (mobType=0) and NM (mobType=2) presets.
 R.ARCHETYPES =
 {
     physical_bruiser =
@@ -165,11 +214,10 @@ R.ARCHETYPES =
         npcAvailable        = true,
         automatedAvailable  = true,
         defaultDurationSec  = 180,
-        -- Orcish_Guard: WAR/WAR, mobType=0 (Normal), HP=0, spellList=0, delay=240, dmgMult=100
+        -- Normal: Orcish_Guard (WAR/WAR, mobType=0, HP=0, spellList=0, delay=240, dmgMult=100)
         groupId             = 3723,
         groupZoneId         = 86,
-        -- NM variant uses verified mobType=2 physical melee pool (Undead_Leech / Ashu_Talif_Marine)
-        -- restricted strictly to physical single-target skills via allowedSkills below.
+        -- NM: Ashu_Talif_Marine (WAR, mobType=2, HP=0, spellList=0)
         nmGroupId           = 2017,
         nmGroupZoneId       = 60,
         behavior =
@@ -180,12 +228,9 @@ R.ARCHETYPES =
             noMove          = false,
             unkillable      = false,
             refillHpOnLow   = false,
-            -- Verified single-target physical skills only:
-            --   606 = shoulder_attack (1-hit physical slashing, single target)
-            --   607 = slam_dunk (1-hit physical H2H, single target)
-            -- Explicitly excludes battle_dance (AoE), howl (buff), aerial_wheel (ranged).
-            allowedSkills   = { 606, 607 },
-            nmAllowedSkills = { 246 }, -- shackled_fists (single-target physical)
+            -- Single-target physical skills only (no AoE, no spells):
+            allowedSkills   = { 606, 607 }, -- shoulder_attack, slam_dunk
+            nmAllowedSkills = { 246 },      -- shackled_fists
             magicCool       = nil,
             spellList       = 0,
             summary         = 'Pure physical autoattacks + single-target physical TP moves only. No spells, no AoE.',
@@ -202,11 +247,12 @@ R.ARCHETYPES =
         npcAvailable        = true,
         automatedAvailable  = true,
         defaultDurationSec  = 180,
-        -- Orcish_Hexspinner: BLM/BLM, mobType=0, HP=0, spellList=21 (Beastmen_BLM: Lv10..75 spells)
+        -- Normal: Orcish_Hexspinner (BLM/BLM, mobType=0, HP=0, spellList=21 Beastmen_BLM)
         groupId             = 3724,
         groupZoneId         = 86,
-        nmGroupId           = nil,
-        nmGroupZoneId       = nil,
+        -- NM: Living_Staves (BLM, mobType=2, HP=0, spellList=21 Beastmen_BLM)
+        nmGroupId           = 30,
+        nmGroupZoneId       = 56,
         behavior =
         {
             autoAttack      = true,
@@ -218,7 +264,7 @@ R.ARCHETYPES =
             allowedSkills   = {},
             magicCool       = 10,
             spellList       = 21,
-            summary         = 'BLM spell list (Beastmen_BLM, Lv10-75) with rapid cast cadence; mob TP abilities disabled.',
+            summary         = 'BLM spell list (Beastmen_BLM, Lv10-75+) with rapid cast cadence; mob TP abilities disabled.',
         },
     },
 
@@ -232,11 +278,12 @@ R.ARCHETYPES =
         npcAvailable        = true,
         automatedAvailable  = true,
         defaultDurationSec  = 180,
-        -- Gigas_Flanker: WAR/WAR, mobType=0, HP=0, spellList=0
+        -- Normal: Gigas_Flanker (WAR/WAR, mobType=0, HP=0, spellList=0)
         groupId             = 16,
         groupZoneId         = 129,
-        nmGroupId           = nil,
-        nmGroupZoneId       = nil,
+        -- NM: Kraken_assault (WAR, mobType=2, HP=0, spellList=0)
+        nmGroupId           = 32,
+        nmGroupZoneId       = 55,
         behavior =
         {
             autoAttack      = true,
@@ -245,13 +292,12 @@ R.ARCHETYPES =
             noMove          = false,
             unkillable      = false,
             refillHpOnLow   = false,
-            -- Verified AoE damage skills only (no instant-death/suicide/sleep-lock):
-            --   665 = grand_slam (physical AoE around mob)
-            --   664 = impact_roar (fan-shaped AoE physical blunt)
-            allowedSkills   = { 665, 664 },
+            -- Verified AoE damage skills only (no suicide/instant-death/sleep-lock):
+            allowedSkills   = { 665, 664 }, -- grand_slam, impact_roar
+            nmAllowedSkills = { 462, 463 }, -- maelstrom, whirlwind
             magicCool       = nil,
             spellList       = 0,
-            summary         = 'Physical autoattacks + strictly whitelisted AoE mobskills (Grand Slam / Impact Roar). No spells.',
+            summary         = 'Physical autoattacks + strictly whitelisted AoE mobskills. No spells.',
         },
     },
 
@@ -265,11 +311,10 @@ R.ARCHETYPES =
         npcAvailable        = true,
         automatedAvailable  = true,
         defaultDurationSec  = 180,
-        -- Orcish_Guard: standard WAR DEF/EVA/level scaling without offensive actions
         groupId             = 3723,
         groupZoneId         = 86,
-        nmGroupId           = nil,
-        nmGroupZoneId       = nil,
+        nmGroupId           = 2017,
+        nmGroupZoneId       = 60,
         behavior =
         {
             autoAttack      = false,
@@ -298,6 +343,8 @@ R.ARCHETYPES =
         defaultDurationSec  = 180,
         groupId             = 3723,
         groupZoneId         = 86,
+        nmGroupId           = 2017,
+        nmGroupZoneId       = 60,
         behavior =
         {
             autoAttack      = true,
@@ -307,6 +354,7 @@ R.ARCHETYPES =
             unkillable      = false,
             refillHpOnLow   = false,
             allowedSkills   = { 606, 607 },
+            nmAllowedSkills = { 246 },
             moveIntervalSec = 15,
             moveRadius      = 10,
             spellList       = 0,
@@ -327,6 +375,8 @@ R.ARCHETYPES =
         defaultDurationSec  = 300,
         groupId             = 3723,
         groupZoneId         = 86,
+        nmGroupId           = 2017,
+        nmGroupZoneId       = 60,
         behavior =
         {
             autoAttack      = true,
@@ -336,6 +386,7 @@ R.ARCHETYPES =
             unkillable      = false,
             refillHpOnLow   = false,
             allowedSkills   = { 606, 607 },
+            nmAllowedSkills = { 246 },
             extraHppPct     = 100,
             spellList       = 0,
             summary         = 'Planned: extended 300s encounter testing MP/TP sustainability and cooldown cycling.',
@@ -355,19 +406,22 @@ R.ARCHETYPES =
         defaultDurationSec  = 90,
         groupId             = 3723,
         groupZoneId         = 86,
+        nmGroupId           = 2017,
+        nmGroupZoneId       = 60,
         behavior =
         {
-            autoAttack      = true,
-            magicCasting    = false,
-            mobAbility      = true,
-            noMove          = false,
-            unkillable      = false,
-            refillHpOnLow   = false,
-            allowedSkills   = { 606, 607 },
+            autoAttack       = true,
+            magicCasting     = false,
+            mobAbility       = true,
+            noMove           = false,
+            unkillable       = false,
+            refillHpOnLow    = false,
+            allowedSkills    = { 606, 607 },
+            nmAllowedSkills  = { 246 },
             burstIntervalSec = 30,
             burstDurationSec = 10,
-            spellList       = 0,
-            summary         = 'Planned: short 90s encounter with periodic vulnerability/damage spikes.',
+            spellList        = 0,
+            summary          = 'Planned: short 90s encounter with periodic vulnerability/damage spikes.',
         },
     },
 }
@@ -409,6 +463,7 @@ function R.snapshotCombatRules()
         bossScalingModule  = 'boss_like_combat_and_exp',
         bossScalingLoaded  = bossCfg ~= nil,
         levelCap           = R.MAX_LEVEL,
+        maxBossLevel       = R.MAX_BOSS_LEVEL,
         normalMobBaseMult  = bossCfg and bossCfg.levelGap and bossCfg.levelGap.normalMobBaseDmgMult or 1.65,
         nmBaseMult         = bossCfg and bossCfg.levelGap and bossCfg.levelGap.nmBaseDmgMult or 1.85,
         wallStartDiff      = bossCfg and bossCfg.levelGap and bossCfg.levelGap.wallStartDiff or 8,
@@ -421,6 +476,8 @@ function R.snapshotCombatRules()
 end
 
 -- Builds and validates a canonical encounter config shared by NPC & automated tests.
+-- Boss level is ALWAYS derived from effective playerLevel + difficulty.levelDelta
+-- (never against an unsynced higher player level).
 function R.buildEncounterConfig(opts)
     opts = opts or {}
 
@@ -430,13 +487,12 @@ function R.buildEncounterConfig(opts)
         return nil, string.format('Unknown bossType: %s', bossType)
     end
 
-    local difficultyKey = tostring(opts.difficulty or 'even_match')
-    local difficulty = R.DIFFICULTIES[difficultyKey]
+    local difficulty, difficultyKey = R.resolveDifficulty(opts.difficulty or 'even_match')
     if not difficulty then
-        return nil, string.format('Unknown difficulty: %s', difficultyKey)
+        return nil, string.format('Unknown difficulty: %s', tostring(opts.difficulty))
     end
 
-    local bossPresetKey = tostring(opts.bossPreset or 'normal')
+    local bossPresetKey = string.lower(tostring(opts.bossPreset or 'normal'))
     local bossPreset = R.BOSS_PRESETS[bossPresetKey]
     if not bossPreset then
         return nil, string.format('Unknown bossPreset: %s', bossPresetKey)
@@ -446,12 +502,18 @@ function R.buildEncounterConfig(opts)
         return nil, string.format('Archetype %s does not yet have a verified NM mob group.', bossType)
     end
 
-    local playerLevel = math.floor(tonumber(opts.playerLevel) or tonumber(opts.bossLevel) or 10)
-    playerLevel = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, playerLevel))
+    local rawPlayerLvl = math.floor(tonumber(opts.playerLevel) or tonumber(opts.effectivePlayerLevel) or tonumber(opts.bossLevel) or 10)
+    if rawPlayerLvl < R.MIN_LEVEL or rawPlayerLvl > R.MAX_LEVEL then
+        return nil, string.format('Unsupported playerLevel: %s (expected %d..%d)', tostring(rawPlayerLvl), R.MIN_LEVEL, R.MAX_LEVEL)
+    end
+    local playerLevel = rawPlayerLvl
 
-    local bossLevel = opts.bossLevel ~= nil and math.floor(tonumber(opts.bossLevel) or 0) or (playerLevel + difficulty.levelDelta)
-    if bossLevel < R.MIN_LEVEL or bossLevel > (R.MAX_LEVEL + 8) then
-        return nil, string.format('Unsupported bossLevel: %s (expected %d..%d)', tostring(bossLevel), R.MIN_LEVEL, R.MAX_LEVEL + 8)
+    local bossLevel = opts.bossLevel ~= nil
+        and math.floor(tonumber(opts.bossLevel) or 0)
+        or (playerLevel + difficulty.levelDelta)
+
+    if bossLevel < R.MIN_LEVEL or bossLevel > R.MAX_BOSS_LEVEL then
+        return nil, string.format('Unsupported bossLevel: %s (expected %d..%d)', tostring(bossLevel), R.MIN_LEVEL, R.MAX_BOSS_LEVEL)
     end
 
     local partyKey = tostring(opts.partyComposition or 'solo')
@@ -477,27 +539,295 @@ function R.buildEncounterConfig(opts)
 
     return
     {
-        encounterId       = encounterId,
-        version           = R.SCHEMA_VERSION,
-        bossType          = bossType,
-        bossLabel         = archetype.label,
-        bossLevel         = bossLevel,
-        playerLevel       = playerLevel,
-        levelGap          = levelGap,
-        difficulty        = difficultyKey,
-        difficultyMeta    = difficulty,
-        bossPreset        = bossPresetKey,
-        isNM              = bossPreset.isNM,
-        behaviorProfile   = archetype.behavior,
-        archetype         = archetype,
-        durationSec       = durationSec,
-        gearProfile       = gearProfile.id,
-        gearProfileMeta   = gearProfile,
-        partyComposition  = partyKey,
-        partyMeta         = partyComp,
-        seed              = seed,
-        combatRules       = R.snapshotCombatRules(),
+        encounterId          = encounterId,
+        version              = R.SCHEMA_VERSION,
+        bossType             = bossType,
+        bossLabel            = archetype.label,
+        bossLevel            = bossLevel,
+        playerLevel          = playerLevel,
+        effectivePlayerLevel = playerLevel,
+        levelGap             = levelGap,
+        difficulty           = difficultyKey,
+        difficultyLabel      = difficulty.label,
+        difficultyMeta       = difficulty,
+        standardBaseline     = difficulty.standardBaseline == true,
+        extremeChallenge     = difficulty.extremeChallenge == true,
+        bossPreset           = bossPresetKey,
+        bossPresetLabel      = bossPreset.label,
+        isNM                 = bossPreset.isNM,
+        behaviorProfile      = archetype.behavior,
+        archetype            = archetype,
+        durationSec          = durationSec,
+        gearProfile          = gearProfile.id,
+        gearProfileMeta      = gearProfile,
+        partyComposition     = partyKey,
+        partyMeta            = partyComp,
+        seed                 = seed,
+        combatRules          = R.snapshotCombatRules(),
     }, nil
+end
+
+-----------------------------------
+-- Native Level Synchronization (xi.effect.LEVEL_RESTRICTION)
+-----------------------------------
+
+local function dismissActorClones(player)
+    if xi and xi.overlords and xi.overlords.kurogane and xi.overlords.kurogane.dismissAll then
+        pcall(function()
+            xi.overlords.kurogane.dismissAll(player)
+        end)
+    end
+end
+
+local function resyncActorOverlordsSystems(player, refillResources)
+    if player == nil then
+        return
+    end
+
+    -- Refresh Soul Crystal mods, extra abilities, extra traits, and pet role mods for effective level.
+    if xi and xi.overlords and xi.overlords.spec and xi.overlords.spec.refreshPlayer then
+        pcall(function()
+            xi.overlords.spec.refreshPlayer(player)
+        end)
+    end
+
+    -- Recalculate OverlordsXI BASE_HP & combat pace from the current effective level's Base HP.
+    if xi and xi.customBossServer and xi.customBossServer.applyPlayerCombatPace then
+        pcall(function()
+            xi.customBossServer.applyPlayerCombatPace(player, true)
+        end)
+    end
+
+    if player.updateHealth then
+        pcall(function()
+            player:updateHealth()
+        end)
+    end
+
+    -- Resync active pet/companion so pet pace & Soul pet mods match the effective level
+    -- (C++ levelRestriction calls PPet->restoreModifiers(), so clear PetPaceApplied cleanly).
+    if player.hasPet and player:hasPet() and player.getPet then
+        local pet = player:getPet()
+        if pet ~= nil then
+            pcall(function()
+                if pet.setLocalVar then
+                    pet:setLocalVar('[CustomBoss]PetPaceApplied', 0)
+                end
+                if xi and xi.overlords and xi.overlords.spec and xi.overlords.spec.syncPetRoleMods then
+                    xi.overlords.spec.syncPetRoleMods(player, pet)
+                end
+                if pet.updateHealth then
+                    pet:updateHealth()
+                end
+                if refillResources and pet.setHP and pet.getMaxHP then
+                    pet:setHP(pet:getMaxHP())
+                end
+            end)
+        end
+    end
+
+    if refillResources then
+        pcall(function()
+            if player.setHP and player.getMaxHP then
+                player:setHP(player:getMaxHP())
+            end
+            if player.setMP and player.getMaxMP then
+                player:setMP(player:getMaxMP())
+            end
+        end)
+    end
+end
+
+-- Returns a player's true unsynced main job level (accounting for any existing Proving Grounds sync).
+function R.getUnsyncedLevel(player)
+    if player == nil then
+        return 0
+    end
+    local saved = player.getLocalVar and player:getLocalVar('[ProvingGrounds]OrigLvl') or 0
+    if saved > 0 then
+        return saved
+    end
+    if player.getMainLvl then
+        return player:getMainLvl() or 0
+    end
+    return 0
+end
+
+-- Verifies that a player (and their subjob & active pet) genuinely obey targetLevel.
+function R.verifyLevelSync(player, targetLevel)
+    local result =
+    {
+        valid              = false,
+        original_level     = 0,
+        expected_level     = math.floor(tonumber(targetLevel) or 0),
+        effective_level    = 0,
+        sub_job            = 0,
+        sub_level          = 0,
+        max_allowed_sub    = 0,
+        restriction_active = false,
+        restriction_power  = 0,
+        pet_level          = nil,
+        warnings           = {},
+    }
+
+    if player == nil or not player.getMainLvl then
+        result.warnings[#result.warnings + 1] = 'invalid_player_entity'
+        return result
+    end
+
+    local expected = result.expected_level
+    local origLvl  = R.getUnsyncedLevel(player)
+    local effLvl   = player:getMainLvl() or 0
+    local sJob     = player.getSubJob and player:getSubJob() or 0
+    local sLvl     = player.getSubLvl and player:getSubLvl() or 0
+    local maxSub   = math.floor(expected / 2)
+    local restPow  = (player.levelRestriction and player:levelRestriction()) or 0
+
+    result.original_level     = origLvl
+    result.effective_level    = effLvl
+    result.sub_job            = sJob
+    result.sub_level          = sLvl
+    result.max_allowed_sub    = maxSub
+    result.restriction_power  = restPow
+    result.restriction_active = (restPow > 0) or (player.hasStatusEffect and xi.effect and xi.effect.LEVEL_RESTRICTION and player:hasStatusEffect(xi.effect.LEVEL_RESTRICTION) or false)
+
+    if effLvl ~= expected then
+        result.warnings[#result.warnings + 1] = string.format('effective_level_mismatch:expected=%d,actual=%d', expected, effLvl)
+    end
+    if origLvl > expected and not result.restriction_active then
+        result.warnings[#result.warnings + 1] = string.format('missing_level_restriction:orig=%d,expected=%d', origLvl, expected)
+    end
+    if sJob > 0 and sLvl > maxSub then
+        result.warnings[#result.warnings + 1] = string.format('subjob_exceeds_cap:sub=%d,max=%d', sLvl, maxSub)
+    end
+
+    if player.hasPet and player:hasPet() and player.getPet then
+        local pet = player:getPet()
+        if pet ~= nil and (not pet.isAlive or pet:isAlive()) and pet.getMainLvl then
+            local pLvl = pet:getMainLvl() or 0
+            result.pet_level = pLvl
+            if pLvl > expected then
+                result.warnings[#result.warnings + 1] = string.format('pet_exceeds_effective_level:pet=%d,expected=%d', pLvl, expected)
+            end
+        end
+    end
+
+    result.valid = (#result.warnings == 0)
+    return result
+end
+
+-- Applies native non-destructive level sync via xi.effect.LEVEL_RESTRICTION.
+-- Never modifies database job levels or genkai caps; rejects upward sync cleanly.
+function R.applyLevelSync(player, targetLevel)
+    if player == nil or not player.isPC or not player:isPC() then
+        return false, 'invalid_player', nil
+    end
+
+    local expected = math.floor(tonumber(targetLevel) or 0)
+    if expected < R.MIN_LEVEL or expected > R.MAX_LEVEL then
+        return false, string.format('Unsupported effective level: %d (expected %d-%d).', expected, R.MIN_LEVEL, R.MAX_LEVEL), nil
+    end
+
+    -- If already carrying an older Proving Grounds sync, restore cleanly first to read true level.
+    if player:getLocalVar('[ProvingGrounds]SyncApplied') == 1 then
+        R.restoreLevelSync(player)
+    end
+
+    -- Clear any pre-existing party LEVEL_SYNC so it cannot conflict with our benchmark sync.
+    if player.hasStatusEffect and xi.effect and xi.effect.LEVEL_SYNC and player:hasStatusEffect(xi.effect.LEVEL_SYNC) then
+        player:delStatusEffectSilent(xi.effect.LEVEL_SYNC)
+        if player.disableLevelSync then
+            pcall(function()
+                player:disableLevelSync()
+            end)
+        end
+    end
+
+    local origLvl = player:getMainLvl() or 0
+    if origLvl < expected then
+        return false, string.format(
+            '%s is Lv.%d and cannot level-sync upward to Lv.%d. Select Match Current Level or <= Lv.%d.',
+            player.getName and player:getName() or 'Player',
+            origLvl,
+            expected,
+            origLvl
+        ), nil
+    end
+
+    -- Dismiss any pre-existing Shinobi clones before level change so high-level clones cannot leak in.
+    dismissActorClones(player)
+
+    player:setLocalVar('[ProvingGrounds]OrigLvl', origLvl)
+    player:setLocalVar('[ProvingGrounds]SyncTargetLvl', expected)
+    player:setLocalVar('[ProvingGrounds]SyncApplied', 1)
+    if player.setCharVar then
+        player:setCharVar('[ProvingGrounds]SyncActive', 1)
+    end
+
+    if origLvl > expected then
+        if player.delStatusEffectSilent and xi.effect and xi.effect.LEVEL_RESTRICTION then
+            player:delStatusEffectSilent(xi.effect.LEVEL_RESTRICTION)
+        end
+        if player.addStatusEffect and xi.effect and xi.effect.LEVEL_RESTRICTION then
+            player:addStatusEffect(xi.effect.LEVEL_RESTRICTION, {
+                power    = expected,
+                duration = 0,
+                origin   = player,
+            })
+        elseif player.levelRestriction then
+            player:levelRestriction(expected)
+        end
+    end
+
+    -- Resync OverlordsXI Soul scaling, combat pace BASE_HP, and active pets to effective level.
+    resyncActorOverlordsSystems(player, true)
+
+    local verification = R.verifyLevelSync(player, expected)
+    if not verification.valid then
+        -- Never silently allow an invalid level-sync benchmark: roll back cleanly.
+        R.restoreLevelSync(player)
+        return false, 'Level sync verification failed: ' .. table.concat(verification.warnings, '; '), verification
+    end
+
+    return true, nil, verification
+end
+
+-- Restores a player's original unsynced state cleanly without leaving any lingering restriction.
+function R.restoreLevelSync(player)
+    if player == nil or not player.isPC or not player:isPC() then
+        return false
+    end
+
+    local wasApplied = (player.getLocalVar and player:getLocalVar('[ProvingGrounds]SyncApplied') == 1)
+    local charActive = (player.getCharVar and player:getCharVar('[ProvingGrounds]SyncActive') == 1)
+    local hasEffect  = (player.hasStatusEffect and xi.effect and xi.effect.LEVEL_RESTRICTION and player:hasStatusEffect(xi.effect.LEVEL_RESTRICTION))
+    local curRestr   = (player.levelRestriction and player:levelRestriction()) or 0
+
+    if not wasApplied and not charActive and not hasEffect and curRestr == 0 then
+        return false
+    end
+
+    -- Dismiss clones summoned at synced level before restoring original level.
+    dismissActorClones(player)
+
+    if player.delStatusEffectSilent and xi.effect and xi.effect.LEVEL_RESTRICTION then
+        player:delStatusEffectSilent(xi.effect.LEVEL_RESTRICTION)
+    end
+    if player.levelRestriction and player:levelRestriction() ~= 0 then
+        player:levelRestriction(0)
+    end
+
+    if player.setLocalVar then
+        player:setLocalVar('[ProvingGrounds]SyncApplied', 0)
+        player:setLocalVar('[ProvingGrounds]OrigLvl', 0)
+        player:setLocalVar('[ProvingGrounds]SyncTargetLvl', 0)
+    end
+    if player.setCharVar then
+        player:setCharVar('[ProvingGrounds]SyncActive', 0)
+    end
+
+    resyncActorOverlordsSystems(player, true)
+    return true
 end
 
 -- Applies or removes -100% combat & magic skill-up rate cleanly without stacking.
@@ -597,10 +927,6 @@ function R.applyBehaviorProfile(mob, encounter)
 end
 
 -- Shared spawner used by BOTH the in-game Arbiter NPC and automated tests.
--- Guarantees:
---   1. Exact mob level is set via minLevel/maxLevel BEFORE spawn().
---   2. xi.customBossServer.applyMobScaling runs ONCE (never double-applied).
---   3. Behavior profile and no-progression flags are strictly enforced.
 function R.spawnTrialMob(zone, encounter, callbacks)
     if zone == nil then
         return nil, 'Arena zone is unavailable.'
@@ -622,7 +948,7 @@ function R.spawnTrialMob(zone, encounter, callbacks)
     {
         objtype               = xi.objType.MOB,
         name                  = arch.entityName,
-        packetName            = arch.packetName,
+        packetName            = encounter.isNM and (arch.packetName .. ' (NM)') or arch.packetName,
         groupId               = groupId,
         groupZoneId           = groupZn,
         minLevel              = encounter.bossLevel,
@@ -642,11 +968,9 @@ function R.spawnTrialMob(zone, encounter, callbacks)
             end
         end,
         onMobFight = function(m, target)
-            -- Keep Training Dummy above 50% HP so unbounded DPS tests never sit at 1 HP.
             if behavior.refillHpOnLow and m:getHPP() < 50 then
                 m:setHP(m:getMaxHP())
             end
-            -- Re-assert CallForHelp so combat claim transitions never clear no-reward safety.
             if m.setCallForHelpFlag and m.getCallForHelpFlag and not m:getCallForHelpFlag() then
                 m:setCallForHelpFlag(true)
             end
@@ -674,7 +998,11 @@ function R.spawnTrialMob(zone, encounter, callbacks)
         def.onMobMobskillChoose = function(m, target, skillId)
             local idx = (m:getLocalVar('[ProvingGrounds]SkillIdx') % #allowed) + 1
             m:setLocalVar('[ProvingGrounds]SkillIdx', idx)
-            return allowed[idx]
+            local chosen = allowed[idx]
+            if callbacks.onMobSkillChosen then
+                pcall(callbacks.onMobSkillChosen, m, target, chosen)
+            end
+            return chosen
         end
     end
 
@@ -687,26 +1015,20 @@ function R.spawnTrialMob(zone, encounter, callbacks)
     mob:setSpawn(pos.x, pos.y, pos.z, pos.rotation or 128)
     mob:spawn(lifetime)
 
-    -- Verify exact boss level was materialized before confirming scaling.
     if mob.getMainLvl and mob:getMainLvl() ~= encounter.bossLevel and mob.setMobLevel then
         mob:setMobLevel(encounter.bossLevel)
     end
 
-    -- Apply OverlordsXI live boss scaling ONCE.
-    -- xi.mob.onMobSpawnEx already invokes applyMobScaling(mob) and sets [CustomBoss]Applied = 1;
-    -- calling it here only catches cases where onMobSpawnEx did not run and never double-applies.
+    -- Apply OverlordsXI live boss scaling ONCE (never double-apply).
     if xi.customBossServer and xi.customBossServer.applyMobScaling then
         if mob:getLocalVar('[CustomBoss]Applied') ~= 1 then
             xi.customBossServer.applyMobScaling(mob)
         end
     end
 
-    -- Re-apply strict behavior profile and no-progression flags AFTER spawn + boss scaling
-    -- so boss_like_combat_and_exp's magicCoolMultiplier / listeners respect our locked profile.
     R.applyBehaviorProfile(mob, encounter)
     R.applyNoProgressionMobFlags(mob)
 
-    -- Re-sync HP to full after all scaling/modifiers are finalized.
     if mob.updateHealth then
         mob:updateHealth()
     end
@@ -725,8 +1047,7 @@ if hasServerRuntime then
         R._moduleRegistered = true
         local m = Module:new('overlords_proving_grounds_registry')
 
-        -- Belt-and-suspenders EXP suppression: even if CallForHelp were somehow cleared,
-        -- Proving Grounds mobs ALWAYS calculate 0 EXP and never extend EXP chains.
+        -- Belt-and-suspenders EXP suppression: Proving Grounds mobs ALWAYS yield 0 EXP.
         m:addOverride('xi.experiencePoints.calculate', function(member, mob, data)
             if mob ~= nil and mob.getLocalVar and mob:getLocalVar('[ProvingGrounds]TrialMob') == 1 then
                 return { exp = 0, chainActive = false, chainWindow = 0 }

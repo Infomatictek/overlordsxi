@@ -1,67 +1,58 @@
-# Soul Proving Grounds Lite — NPC Testing Arena
+# Soul Proving Grounds Lite — NPC Testing Arena, Level Sync & Combat Recorder
 
-Status: **Implemented and server-validated on `feat/soul-proving-grounds-lite` (awaiting manual in-game client playtest before merge to `main`)**.
+Status: **Implemented and server-validated on `feat/soul-proving-grounds-lite` (not merged to `main`)**.
 
 No custom DATs, custom animations, new monster models, custom graphical interfaces, or player-facing chat commands are used.
 
 ## Architecture & Files
 
-- `modules/custom/lua/overlords_proving_grounds_registry.lua` — Shared versioned encounter registry (`schemaVersion = 1.0.0`), strict behavior enforcement, boss scaling guard, and no-progression safeguards. Used identically by the NPC arena and the automated combat runner.
-- `modules/custom/lua/overlords_proving_grounds_telemetry.lua` — Dedicated server-authoritative combat telemetry logger (separate from player parsers). Emits JSONL records to `log/proving_grounds_runs.jsonl` and explicitly reports `"unavailable"` for unsupported metrics.
-- `modules/custom/lua/overlords_proving_grounds_lite.lua` — Native `customMenu` NPC controller (**The Arbiter**, existing look ID `2433`) in GM Home (zone 210) at `(5, 0, 5)`.
-- `modules/init.append.txt` — Registers the registry, telemetry library, and arena module cleanly after `boss_like_combat_and_exp.lua`.
+- `modules/custom/lua/overlords_proving_grounds_registry.lua` — Shared versioned encounter registry (`schemaVersion = 2.0.0`), native level synchronization (`xi.effect.LEVEL_RESTRICTION`), OverlordsXI Soul/HP/pet/clone rescaling, Normal & NM pools, and no-progression safeguards.
+- `modules/custom/lua/overlords_proving_grounds_telemetry.lua` — Full server-authoritative combat recorder (`telemetry_schema_version = 2.0.0`) producing summary index, millisecond chronological event logs, 1-second combat snapshots, and gameplay feedback files with explicit write-failure detection.
+- `modules/custom/lua/overlords_proving_grounds_lite.lua` — Native `customMenu` NPC controller (**The Arbiter**, existing look ID `2433`) in GM Home (zone 210) at `(-5, 0, 5)` (10 yalms clear of GM Home's sample `Menu Example` NPC at `(5, 0, 5)`).
 
-## Implemented NPC Capabilities
+## Native NPC Menu Flow (The Arbiter)
 
-### Encounter Types (Verified Single-Role Behavior)
-1. **Physical Bruiser** (`Orcish_Guard`, group `3723` / zone `86`, `HP=0`):
-   - Pure physical autoattacks + strictly whitelisted single-target physical mobskills (`606` Shoulder Attack, `607` Slam Dunk via `onMobMobskillChoose`).
-   - Magic casting disabled; AoE skills excluded.
-2. **Magic-heavy Caster** (`Orcish_Hexspinner`, group `3724` / zone `86`, `HP=0`):
-   - Verified `Beastmen_BLM` spell list (`21`, spells spanning Lv10 through Lv75) with rapid cast cadence (`MAGIC_COOL = 10`, scaled by `boss_like_combat_and_exp.lua`); mob TP abilities disabled.
-3. **AoE Boss** (`Gigas_Flanker`, group `16` / zone `129`, `HP=0`):
-   - Physical autoattacks + strictly whitelisted AoE damage mobskills (`665` Grand Slam, `664` Impact Roar via `onMobMobskillChoose`); magic disabled, no suicide/instant-death/sleep-lock moves.
-4. **Training Dummy** (`Orcish_Guard`, group `3723` / zone `86`, `HP=0`):
-   - Stationary (`NO_MOVE = 1`), unkillable with automatic HP refill below 50% so DPS runs never stall at 1 HP; autoattacks, magic, and mobskills disabled.
-5. **Unavailable Matrix Archetypes** (`Mobile Boss`, `Endurance Boss`, `Burst Boss`):
-   - Explicitly marked unavailable in the menu info option with clear reasons rather than substituting misleading encounters.
+1. **Encounter Type**:
+   - **Physical Bruiser** (Normal: `Orcish_Guard` 3723/86; NM: `Ashu_Talif_Marine` 2017/60) — pure physical autoattacks + single-target physical TP skills only; magic disabled.
+   - **Magic-heavy Caster** (Normal: `Orcish_Hexspinner` 3724/86; NM: `Living_Staves` 30/56) — `Beastmen_BLM` spell list (`21`, Lv10–75+) with rapid cast cadence; mob TP abilities disabled.
+   - **AoE Boss** (Normal: `Gigas_Flanker` 16/129; NM: `Kraken_assault` 32/55) — physical autoattacks + strictly whitelisted AoE damage mobskills; magic disabled.
+   - **Training Dummy** (Normal: `Orcish_Guard` 3723/86; NM: `Ashu_Talif_Marine` 2017/60) — stationary (`NO_MOVE = 1`), unkillable with automatic HP refill below 50%; offensive actions disabled.
+   - **Unavailable Archetypes Info** — explicitly explains why `Mobile Boss`, `Endurance Boss`, and `Burst Boss` are unavailable rather than substituting misleading encounters.
+2. **Effective Player Level**: `10`, `30`, `50`, `75`, or `Match Current Level (10-75)`.
+3. **Difficulty** (offset applied to effective synced player level):
+   - `Even Match (+0)` (standard baseline)
+   - `Very Tough (+3)` (standard baseline)
+   - `Incredibly Tough (+5)` (standard baseline)
+   - `Extreme (+8) [Non-Baseline]` (explicitly excluded from standard Soul balance averages)
+4. **Enemy Classification**: `Normal` or `NM (Notorious Monster)` — supports boss levels above 75 (`Lv78`, `Lv80`, `Lv83`).
+5. **Controls**: `Start Encounter`, `Reset Active Encounter`, `Repeat Previous Encounter` (preserves boss type, effective level, difficulty, and Normal/NM preset), `Record Feedback (Last Run)` (`Felt Great`, `Damage Felt Weak`, `Survival Felt Bad`, `Resource Problems`, `Mechanics Felt Unfair`, `Skip Feedback`), and `Exit Proving Grounds`.
 
-### Selectable Levels
-- Level 10, Level 30, Level 50, Level 75, and **Match Player Level** (clamped 10–75).
-- Exact `minLevel`/`maxLevel` are set before `mob:spawn()` so base stats and `xi.customBossServer.applyMobScaling(mob)` compute accurately for the chosen level without double-application (`[CustomBoss]Applied == 1` guard verified).
+## Native Level Synchronization
 
-### Encounter Controls
-- **Start Encounter** -> Encounter Type -> Level.
-- **Reset Active Encounter** -> Finalizes telemetry, despawns trial mob, removes skill-up lock, releases session lock.
-- **Repeat Previous Encounter** -> Remembers the tester's last `{ bossType, bossLevel, matchPlayerLevel }` selection for 1-click repeat.
-- **Exit Proving Grounds** -> Cleans up any owned active session, clears skill-up lock, and warps safely to Ru'Lude Gardens `(0, 3, 2, 192)`.
+- Uses LandSandBoat's native `xi.effect.LEVEL_RESTRICTION` (`CLuaBaseEntity::levelRestriction`), **never** `setLevelCap` (which permanently writes DB genkai) and **never** mutating permanent job levels or learned abilities.
+- Enforces native stats, subjob cap (`floor(effectiveLevel / 2)`), equipment restrictions, skills, traits, spells, BLU spell validation, and pet stat recalculation.
+- Immediately refreshes OverlordsXI systems to the effective combat level:
+  - `xi.overlords.spec.refreshPlayer(player)` (Soul mods/abilities/traits)
+  - `xi.customBossServer.applyPlayerCombatPace(player, true)` (rescales `BASE_HP` from effective level's Base HP)
+  - Dismisses high-level Kurogane Shinobi clones before/after sync so clones summoned in combat inherit `owner:getMainLvl() == effectiveLevel`
+  - Resets `[CustomBoss]PetPaceApplied` and re-syncs Soul pet role mods
+- Rejects upward sync (`originalLevel < effectivePlayerLevel`) cleanly across solo and party sessions (`cannot_sync_upward`) so invalid level-sync benchmarks never silently run.
+- Guaranteed restoration on victory, defeat, reset, timeout, repeat, exit, disconnect (`DESPAWN`), zoning out, and post-crash/relog recovery via `[ProvingGrounds]SyncActive` charVar in `xi.player.onGameIn`.
 
-## Testing Safety & Session Isolation
+## Persistent Combat Records & Timing
 
-- **Zero Progression (Defense in Depth)**:
-  - `mob:setCallForHelpFlag(true)` — skips EXP, Capacity Points, Gil, Item Drops, Records of Eminence kill credit, and Blue Mage spell learning in `CMobEntity::DistributeRewards()` without altering combat damage, enmity, TP, or scaling formulas.
-  - `mob:setDropID(0)`, `xi.mobMod.NO_DROPS = 1`, `xi.mobMod.GIL_MAX = -1`, `xi.mobMod.EXP_BONUS = -100`.
-  - `xi.experiencePoints.calculate` override returns `{ exp = 0, chainActive = false, chainWindow = 0 }` for any mob marked `[ProvingGrounds]TrialMob = 1`.
-  - Temporary `-100` `COMBAT_SKILLUP_RATE` and `-100` `MAGIC_SKILLUP_RATE` lock applied to trial participants and cleanly removed on victory, defeat, reset, exit, disconnect, or zoning out.
-- **Single-Session Lock & Cleanup**:
-  - One locked session per arena; concurrent players cannot start a second trial or reset another player's active encounter.
-  - Reliable cleanup on boss death (`onMobDeath`), player death (`xi.player.onPlayerDeath`), timeout (`onMobDespawn` / 600s lifetime), manual reset, repeat, player disconnect/zone-out (`DESPAWN` listener + `xi.player.onGameIn` safety net), server restart, and spawn failure rollback.
+Files stored under `C:\dev\server\log\proving_grounds\`:
+- `runs.jsonl` — compact summary index (also mirrored to `C:\dev\server\log\proving_grounds_runs.jsonl` for compatibility)
+- `events/<run_id>.jsonl` — millisecond-precision monotonic chronological combat events
+- `snapshots/<run_id>.jsonl` — 1-second combat state snapshots (HP/MP/TP, boss HP%, threat owner, pets/clones, interval & cumulative damage/healing)
+- `feedback/<run_id>.json` — optional NPC or CLI gameplay feedback correlated by `run_id`
 
-## Validation Performed
+Timing isolates `arena_entry_ms`, `prep_start_ms`, `combat_start_ms` (first hostile action), and `combat_end_ms`. Preparation time is recorded in `prep_duration_sec` and never inflates combat duration or DPS. Write errors are detected explicitly and surfaced in `logging_status` and in-game chat warnings.
 
-1. **LuaJIT Syntax & Load Check (`libluajit_64.dll`)**: All 3 Lua modules parse cleanly.
-2. **Live `xi_map` Startup via RPC (`service.restart`)**: `overlords_proving_grounds_registry` and `overlords_proving_grounds_lite` load with zero errors or warnings in `log/map-server.log`.
-3. **Headless MapEngine Integration Suite (`xi_test.exe --lua-only --file proving_grounds_combat --seed 12345`)**:
-   - Verified `DE_Crucible_Arbiter` exists in GM Home.
-   - Verified Lv10 Physical Bruiser exact level, single-application `xi.customBossServer` scaling (no double-scaling), zero EXP formula output, CallForHelp/NO_DROPS/GIL_MAX/EXP_BONUS/skill-up lock flags.
-   - Verified concurrent-player session lock rejection, owner reset, 1-click repeat, spawning of `magic_caster`/`aoe_boss`/`training_dummy`, and rejection of unavailable `mobile_boss`.
-   - Verified `test_npcs_in_gm_home` continues to pass (2/2).
+## Remaining Limitations & Manual In-Game Checklist
 
-## Remaining Limitations & Manual In-Game Testing Checklist
-
-1. Arena currently resides in **GM Home (zone 210)** for controlled validation; no public-city entrance NPC has been placed until manual playtesting confirms coordinates and flow.
-2. Manual client checks still recommended before merging to `main`:
-   - Visually verify **The Arbiter** at `(5, 0, 5)` and spawned bosses at `(5, 0, 25)` in the FFXI client.
-   - Walk through Start -> Physical Bruiser / Magic-heavy Caster / AoE Boss / Training Dummy -> Lv10/30/50/75/Match -> Reset -> Repeat -> Exit.
-   - Confirm combat chat log shows expected behavior isolation (no spells from Physical Bruiser, spells from Magic Caster, AoE from AoE Boss, stationary dummy).
-   - Confirm no EXP, gil, drops, skill-ups, or RoE progress occur on kill.
+1. Arena remains in GM Home (zone 210) for controlled validation before public hub placement.
+2. Manual client verification checklist:
+   - Confirm **The Arbiter** at `(-5, 0, 5)` is cleanly separated from `Menu Example` at `(5, 0, 5)`.
+   - Enter as Lv75, select `Physical Bruiser` -> `Effective Level 10` -> `Very Tough (+3)` -> `Normal` (Boss Lv13), verify Lv10 stats/subjob/gear/Soul scaling, fight, tag feedback, and verify full Lv75 restoration on victory/reset/exit.
+   - Verify `Repeat Previous Encounter` preserves effective level, difficulty, and Normal/NM preset.

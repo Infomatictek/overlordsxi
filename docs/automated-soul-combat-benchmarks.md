@@ -1,76 +1,56 @@
-# Automated Soul Combat Benchmarks — Implementation, Proof & Roadmap
+# Automated Soul Combat Benchmarks, Full Timeline Recorder & Historical Analysis
 
 Status:
-- **Stage A (Formula, Matrix & Regression Suite)**: Implemented and verified (10/10 formula checks, 24/24 Python unit tests, 66-Soul matrix across 22 jobs excluding retired Freelancer).
-- **Stage B / Milestone C (Real Server Combat Automation Proof of Concept)**: **Implemented and PROVEN** inside LandSandBoat's authoritative headless `MapEngine` (`xi_test.exe`) with bit-for-bit `--seed` determinism.
-- **Stage C (Controlled Trio Party Testing & Full 66-Soul Sweep)**: Intentionally gated per the milestone rule (*stop expanding the automated combat system until one server-controlled character fighting one level-10 boss using real combat mechanics is proven*).
+- **Stage A (Formula, Matrix & Regression Suite)**: Implemented and verified (10/10 formula checks, 25/25 Python unit tests, 66-Soul matrix across 22 jobs excluding retired `DNC:freelancer`, all 4 difficulties including bosses up to Lv83).
+- **Stage B / Milestone C (Real Server Combat Automation Proof + Level Sync + Full Combat Recorder)**: **Implemented and PROVEN** inside LandSandBoat's authoritative headless `MapEngine` (`xi_test.exe`) with bit-for-bit `--seed` determinism.
+- **Stage C (Controlled Trio Party Testing & Full 66-Soul Sweep)**: Gated pending review of Milestone C and manual NPC arena playtesting.
 
-## Shared Encounter Contract
+## Storage Layout (`C:\dev\server\log\proving_grounds\`)
 
-Both manual NPC trials and automated combat runs execute through `modules/custom/lua/overlords_proving_grounds_registry.lua` (`schemaVersion = 1.0.0`):
-- Canonical encounter fields: `encounterId`, `version`, `bossType`, `bossLevel`, `playerLevel`, `levelGap`, `difficulty` (`even_match` / `boss_plus_3` / `boss_plus_8`), `bossPreset` (`normal` / `nm`), `behaviorProfile`, `durationSec`, `gearProfile` (`accessible_lv10`..`accessible_lv75`), `partyComposition`, `seed`, and live `combatRules` snapshot from `boss_like_combat_and_exp.lua`.
-- **+8 Level Wall Separation**: `boss_plus_8` is explicitly flagged `standardBaseline = false, extremeChallenge = true` and excluded from standard Soul balancing baselines.
-- **Accessible Gear Rule**: Level-10 benchmarks use `accessible_lv10` equipment via `xi.overlords.testGear` (every equipped item verified `lvl <= 10`, never Lv75 BiS).
-- **Zero Balance Changes**: No Soul balance values were modified during benchmark implementation.
+- `runs.jsonl` — summary records with `original_character_level`, `effective_combat_level`, `actual_boss_level`, `level_gap`, `difficulty`, `standard_baseline`, `extreme_challenge`, `boss_preset`, `level_sync` verification object, `valid_for_balance`, `warnings`, `timing`, `logging_status`, `files`, and full metrics.
+- `events/<run_id>.jsonl` — chronological millisecond-precision events (`seq`, `phase`, `session_ms`, `combat_ms`, `category`, `event_type`, `source_id`/`name`, `target_id`/`name`, `value`, `meta`), flushed in bounded batches (`FLUSH_BATCH_SIZE = 64`, cap `25,000` events/run with explicit `events_dropped` counter).
+- `snapshots/<run_id>.jsonl` — 1-second active-combat snapshots (`combat_sec`, `players` HP/MP/TP/buffs, `boss` HP%/target/threat/debuffs, `pets_and_clones`, 1-second interval & cumulative damage/healing).
+- `feedback/<run_id>.json` — gameplay feedback from The Arbiter menu or local CLI notes.
 
-## Stage A — Formula & Regression Runner
+## Measured vs Explicitly Unavailable Data
 
-Run:
+Authoritative server listeners capture autoattacks, misses, crits, Weapon Skills (without double-counting in `TAKE_DAMAGE`), TP spent, spells started/completed/interrupted, Job Abilities, boss AoE correlation (`meta.boss_action_seq`), HP thresholds (75%/50%/25%/0%), buff/debuff changes, pet & Shinobi clone lifecycle/damage attribution, incoming damage spikes, enmity, and 0-EXP safety verification.
+
+The following remain explicitly recorded as `"unavailable"` (never fabricated as `0`) until engine hooks expose them:
+- `raw_incoming_damage` / `mitigated_damage` (`TAKE_DAMAGE` provides post-mitigation final damage only)
+- Individual `block_rate` / `parry_rate` / `evasion_rate` split (`MELEE_SWING_MISS` aggregates avoidance)
+- `overhealing` (`MAGIC_USE` action param provides applied HP recovery without pre-cap amount)
+- `spell_resist_tier` (`MAGIC_USE` does not expose resist fraction directly)
+- `soul_specific_metrics` (per-Soul custom gauges not yet instrumented)
+
+## CLI Workflows (`tools/proving_grounds_benchmark.py`)
+
 ```powershell
+# Stage A formulas & 66-Soul matrix
 python tools/proving_grounds_benchmark.py --run-formula
 python tools/proving_grounds_benchmark.py --matrix-out logs/proving_grounds_matrix.json
-python -m unittest discover -s tests -v
-```
 
-Every Stage A output is explicitly labeled `test_mode = "formula"` and `combat_execution = "NO_REAL_COMBAT_EXECUTED"` so static math is never mistaken for measured combat. Covers:
-1. Enemy level scaling (`getMobLevelScale`, Normal vs NM stats at Lv10/30/50/75)
-2. Physical damage & level-gap penalties (EM, +3, +8 wall, hit-rate delta)
-3. Magical damage, MACC resist scaling & breath anti-one-shot caps
-4. Unified OverlordsXI attack-rate haste (`patches/0044`, melee/ranged, Snapshot, Slow)
-5. TP generation (base delay + Store TP + active-combat-only Regain)
-6. Mitigation & tank pressure (Normal 0.65 / NM 0.75 armor-piercing pDIF floor, Parry/Block caps, 35% min block bleedthrough)
-7. Healing effective vs overheal accounting
-8. MP sustainability model
-9. Defensive stacking & six-tier Soul classification across all 66 canonical Souls (22 jobs, retired `DNC:freelancer` excluded)
-10. Pet scaling (`petCombatPace`)
-
-## Stage B — Real Server Combat Automation (Milestone C Proof)
-
-### Engine Investigation & Solution
-- Live `xi_map.exe` Lua modules cannot synthesize a genuine `CCharEntity` without a client session; Trusts and Ally Mobs do not execute `player:isPC()` Soul crystal hooks.
-- LandSandBoat's native `xi_test.exe` embeds the real `MapEngine` + `WorldEngine` over `inproc://` IPC, loads all OverlordsXI custom modules from `modules/init.txt`, connects to MariaDB `xidb`, spawns real `CCharEntity` characters (`xi.test.world:spawnPlayer`), dispatches real client action packets (`0x01A` engage, Job Ability, Weapon Skill, Spell, Move), ticks real `PAI->Tick` / `CAttackState` / `CWeaponSkillState` / `CMobController` AI, and supports deterministic `--seed` PRNG + time acceleration (`skipTime`).
-- **Minimal C++ Patch (`patches/0045-xi-test-lua-only-flag.patch`)**: Adds a 6-line `--lua-only` flag exclusively to `src/test/main.cpp` and `src/test/test_application.cpp` (zero changes to `xi_map.exe` or production code) so Lua integration benchmarks run directly without being blocked by an upstream Catch2 `database_tests.cpp` failure on MariaDB 10.11.10.
-
-### Verified Milestone C Run (`--seed 12345`)
-
-Command:
-```powershell
+# Stage B real server combat suite (xi_test.exe --lua-only)
 python tools/proving_grounds_benchmark.py --run-stage-b --seed 12345
-# or directly in C:\dev\server:
-.\xi_test.exe --lua-only --file proving_grounds_combat --seed 12345
+
+# Historical analysis & summaries (excludes invalid level-sync & +8 Extreme from standard averages)
+python tools/proving_grounds_benchmark.py --summarize C:\dev\server\log\proving_grounds\runs.jsonl
+python tools/proving_grounds_benchmark.py --list-runs --soul berserker --level 10 --boss physical_bruiser
+python tools/proving_grounds_benchmark.py --show-run <run_id>
+python tools/proving_grounds_benchmark.py --timeline <run_id> --rolling 5 --export-csv logs/timeline.csv
+python tools/proving_grounds_benchmark.py --compare <run_id_1> <run_id_2>
+python tools/proving_grounds_benchmark.py --add-feedback <run_id> --tag damage_felt_weak --note "DPS dropped at 35s"
 ```
 
-- **Combat Policy (`lv10_war_berserker_v1`)**:
-  - Actor: Real `CCharEntity` Lv10 WAR, **Berserker** Soul (`Damage` tier), accessible Lv10 TP equipment (`lvl <= 10` verified), Tier-1 Weapon Skill unlocked via real `xi.overlords.wsTalents.invest`.
-  - Opponent: Shared-registry Lv10 **Physical Bruiser** (`Orcish_Guard`, scaled once via `xi.customBossServer.applyMobScaling`).
-  - Actions: Real `0x01A` engage packet, `Provoke` on 30s cooldown, matching Lv10 Weapon Skill whenever `TP >= 1000`, 1-second simulation steps.
-- **Measured Real Combat Results (identical bit-for-bit across repeated `--seed 12345` runs)**:
-  - `test_mode`: `automated_real` | `outcome`: `defeat` (Tier-1 Damage Soul solo with no healer succumbed to boss pressure at `30s`, consistent with OverlordsXI's fragile-DPS balance philosophy)
-  - `offense`: `total_damage = 130` (`sustained_dps = 4.3333`, `burst_dps_10s = 9.1`), `autoattack_damage = 112` (`5` hits, `1` miss, `hit_rate = 0.8333`), `weaponskill_uses = 1`, `weaponskill_damage = 18`, `ability_uses = 1`
-  - `defense`: `actual_incoming_damage = 478` (`10` boss hits, `1` miss, `max_damage_spike = 114`, `deaths = 1`)
-  - `threat`: `enmity_generation = 4414` (`max_ce = 293`, `max_ve = 4212`, `tank_aggro_uptime_pct = 100%`, `threat_samples = 58`)
-  - `resources`: `tp_generated = 1437`, `tp_spent = 1093`
-  - `safety`: `exp_events_observed = 0`, `exp_points_observed = 0`, `progression_clean = true`
+## Validation Summary
 
-### Telemetry Honesty (`unavailable` Fields)
-Metrics not exposed by authoritative Lua listeners are explicitly recorded as `"unavailable"` (with reasons in `metric_availability`):
-- `raw_incoming_damage` / `mitigated_damage`: `TAKE_DAMAGE` reports post-mitigation final damage only.
-- `block_rate` / `parry_rate` / `evasion_rate`: `MELEE_SWING_MISS` aggregates avoidance without a per-reaction split.
-- `overhealing`: `MAGIC_USE` action param reports applied HP recovery without pre-cap amount.
-- `soul_specific_metrics`: Per-Soul custom gauge hooks are not yet instrumented in Stage B POC.
-
-## Next Steps (Stage C — Gated Until Review)
-1. Add controlled 3-player party composition (`trio_standard`: Tank + Healer + DPS) using `xi.test.world:spawnPlayer` + real party formation packets and explicit per-role combat policies.
-2. Add repeatable multi-seed sweeps (`>=3` seeds per Soul) for statistical confidence and role-dominance comparison across all 66 Souls.
-3. Instrument optional pre-mitigation damage / overheal / block-parry-evade telemetry hooks only if needed for deeper Tank and Healer balancing.
-4. Client-verify GM Home navmesh coordinates before enabling `Mobile Boss` in the NPC menu.
+1. **Python Unit & Analyzer Suite (`python -m unittest discover -s tests -v`)**: 25/25 passed (66 Souls, no Freelancer, LuaJIT registry check, 4 difficulties including Lv78/80/83, invalid sync & `+8` exclusion, timeline spike/DPS-drop analysis, mismatched condition comparison warning, feedback & CSV export).
+2. **Real Engine Suite (`xi_test.exe --lua-only --file proving_grounds_combat --seed 12345`)**: 7/7 passed:
+   - Arbiter placement at `(-5, 0, 5)`.
+   - Lv75 -> Lv10 native `LEVEL_RESTRICTION` sync (subjob `<=5`, OverlordsXI HP & Soul rescaling, `+3` boss Lv13, Repeat preserving settings, clean Lv75 restoration on reset).
+   - Upward sync rejection (`cannot_sync_upward`) and Normal/NM combos across Lv10/30/50/75 including Lv78, Lv80, and Lv83 bosses.
+   - Lv75 -> Lv10 Shinobi clone level scaling and dismissal on reset.
+   - 30-second preparation phase isolation, monotonic `seq`/`session_ms`, non-double-counted WS, 1-second snapshots, and feedback persistence.
+   - Explicit file-write failure detection (`logging_status.ok == false` on invalid path).
+   - Multi-participant boss AoE correlation (`boss_action_seq`) and zero listener leak across repeated runs.
+3. **Live `xi_map` Restart via RPC**: Clean boot with zero Proving Grounds errors or warnings.

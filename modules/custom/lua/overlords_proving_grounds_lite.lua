@@ -2,18 +2,23 @@
 -- OverlordsXI Soul Proving Grounds Lite (NPC Testing Arena)
 --
 -- Features:
---   - Existing FFXI NPC model (look 2433, The Arbiter) in GM Home (zone 210).
+--   - Existing FFXI NPC model (look 2433, The Arbiter) in GM Home (zone 210)
+--     at (-5, 0, 5) — 10 yalms clear of GM Home's sample Menu Example NPC.
 --   - Native customMenu only: zero player-facing chat commands, zero DAT edits,
 --     zero custom animations, zero new monster models, zero custom UI.
---   - Driven 100% by the shared encounter registry (overlords_proving_grounds_registry.lua)
---     so manual and automated combat tests share identical encounters & rules.
---   - Full integration with xi.customBossServer (boss_like_combat_and_exp.lua).
---   - Defense-in-depth no-progression safeguards (0 EXP, 0 gil, 0 loot, 0 skill-ups,
---     0 RoE/BLU learning/quests/missions/titles).
---   - Single locked testing session preventing cross-group interference, with
---     reliable cleanup on victory, defeat, timeout, reset, repeat, disconnect,
---     zoning, server restart, and spawn failures.
---   - Server-authoritative telemetry logging (overlords_proving_grounds_telemetry.lua).
+--   - Complete native menu flow:
+--       1. Encounter Type (Physical Bruiser / Magic-heavy Caster / AoE Boss / Training Dummy)
+--       2. Effective Player Level (10 / 30 / 50 / 75 / Match Current Level)
+--       3. Difficulty (Even Match +0 / Very Tough +3 / Incredibly Tough +5 / Extreme +8)
+--       4. Enemy Classification (Normal / NM)
+--   - Native non-destructive level synchronization via xi.effect.LEVEL_RESTRICTION
+--     applied consistently across all participating party members before combat,
+--     with automatic OverlordsXI Soul/HP/Pet/Clone rescaling and guaranteed restoration
+--     on victory, defeat, reset, timeout, repeat, exit, disconnect, zoning, or relog.
+--   - Boss level calculated from Effective Player Level + Difficulty offset (supports
+--     boss levels above 75 up to Lv83).
+--   - Full chronological event log, 1s snapshots, accurate combat-start timing,
+--     explicit write-failure reporting, and native post-encounter feedback tagging.
 -----------------------------------
 require('modules/module_utils')
 require('scripts/globals/player')
@@ -38,6 +43,7 @@ local EXIT_DEST  = { x = 0, y = 3, z = 2, rot = 192, zone = (xi.zone and xi.zone
 
 local activeSession = nil
 local previousChoiceByChar = {}
+local lastCompletedRunByChar = {}
 
 local function tell(player, message)
     if player ~= nil and player.printToPlayer then
@@ -132,23 +138,31 @@ local function printSummaryToOwner(owner, record)
     local def = record.metrics.defense or {}
     local thr = record.metrics.threat or {}
     local saf = record.metrics.safety or {}
+    local logSt = record.logging_status or {}
 
-    local ok = pcall(function()
+    pcall(function()
         if owner:getZoneID() ~= ARENA_ZONE then
             return
         end
+        local dpsStr = type(off.sustained_dps) == 'number' and string.format('%.1f', off.sustained_dps) or tostring(off.sustained_dps)
+        local burstStr = type(off.burst_dps_10s) == 'number' and string.format('%.1f', off.burst_dps_10s) or tostring(off.burst_dps_10s)
         tell(owner, string.format(
-            'Result [%s] %s Lv.%d | Duration: %.1fs | Total Dmg: %d (%.1f DPS, Peak 10s: %.1f)',
+            'Run %s [%s] %s (%s) Lv.%d vs Synced Lv.%d (Orig Lv.%d) | Combat: %.1fs (Prep: %.1fs)',
+            tostring(record.run_id),
             tostring(record.outcome),
             tostring(record.boss_type),
-            tonumber(record.boss_level) or 0,
+            tostring(record.boss_preset),
+            tonumber(record.actual_boss_level) or 0,
+            tonumber(record.effective_combat_level) or 0,
+            tonumber(record.original_character_level) or 0,
             tonumber(record.encounter_duration_sec) or 0,
-            tonumber(off.total_damage) or 0,
-            tonumber(off.sustained_dps) or 0,
-            tonumber(off.burst_dps_10s) or 0
+            tonumber(record.prep_duration_sec) or 0
         ))
         tell(owner, string.format(
-            'Offense: Auto %d | WS %d (%d uses) | Spell %d | Pet %d | Incoming Dmg: %d (Max Spike %d) | Enmity: %d | Progression Clean: %s',
+            'Total Dmg: %d (DPS: %s, Peak 10s: %s) | Auto %d | WS %d (%d) | Spell %d | Pet/Clone %d | IncDmg: %d (Spike %d) | Enmity: %d | Clean: %s',
+            tonumber(off.total_damage) or 0,
+            dpsStr,
+            burstStr,
             tonumber(off.autoattack_damage) or 0,
             tonumber(off.weaponskill_damage) or 0,
             tonumber(off.weaponskill_uses) or 0,
@@ -159,13 +173,21 @@ local function printSummaryToOwner(owner, record)
             tonumber(thr.enmity_generation) or 0,
             tostring(saf.progression_clean)
         ))
+        if logSt.ok == false then
+            local errText = type(logSt.errors) == 'table' and table.concat(logSt.errors, '; ') or 'write_failed'
+            tell(owner, 'LOGGING WARNING: Incomplete combat recording! ' .. errText)
+            print('[ProvingGrounds][LOGGING_ERROR] run_id=' .. tostring(record.run_id) .. ' errors=' .. errText)
+        else
+            tell(owner, string.format(
+                'Saved log (%d events, %d snapshots). Speak to The Arbiter to tag gameplay feedback.',
+                tonumber(logSt.events_written) or 0,
+                tonumber(logSt.snapshots_written) or 0
+            ))
+        end
     end)
-    if not ok then
-        return
-    end
 end
 
--- Cleans up the active session safely under any exit condition.
+-- Restores level sync, skill-up locks, listeners, telemetry, and mob cleanup safely under any exit condition.
 function A.cleanupSession(reason, opts)
     opts = opts or {}
     local session = activeSession
@@ -173,23 +195,10 @@ function A.cleanupSession(reason, opts)
         return nil
     end
 
-    -- Clear module-level lock immediately to prevent re-entrant double cleanup.
+    -- Clear lock immediately to prevent re-entrant cleanup.
     activeSession = nil
 
-    -- Remove owner lifecycle listeners & skill-up locks on all participants.
-    if session.participants then
-        for _, actor in ipairs(session.participants) do
-            pcall(function()
-                R.applySkillupLock(actor, false)
-                if actor.removeListener then
-                    actor:removeListener(session.ownerDespawnTag)
-                    actor:removeListener(session.ownerTickTag)
-                end
-            end)
-        end
-    end
-
-    -- Finalize telemetry before despawning mob so final threat/resource readings exist.
+    -- Finalize telemetry BEFORE despawning mob or restoring level sync so final state matches combat level.
     local record = nil
     if session.telemetry then
         local ok, res = pcall(function()
@@ -200,13 +209,37 @@ function A.cleanupSession(reason, opts)
         end
     end
 
-    -- Despawn trial mob cleanly if still present.
+    if record ~= nil and session.ownerId ~= nil then
+        lastCompletedRunByChar[session.ownerId] =
+        {
+            run_id     = record.run_id,
+            soul_key   = record.soul_key,
+            boss_type  = record.boss_type,
+            boss_level = record.actual_boss_level,
+            outcome    = record.outcome,
+        }
+    end
+
+    -- Despawn trial mob cleanly if still alive/present.
     if opts.despawnMob ~= false and session.mob ~= nil then
         pcall(function()
             if session.mob.setStatus and xi.status and xi.status.DISAPPEAR then
                 session.mob:setStatus(xi.status.DISAPPEAR)
             end
         end)
+    end
+
+    -- Remove skill-up locks, disconnect listeners, AND restore native level sync for ALL participants.
+    if session.participants then
+        for _, actor in ipairs(session.participants) do
+            pcall(function()
+                R.applySkillupLock(actor, false)
+                R.restoreLevelSync(actor)
+                if actor.removeListener then
+                    actor:removeListener(session.ownerDespawnTag)
+                end
+            end)
+        end
     end
 
     if opts.notifyOwner ~= false and record ~= nil and session.owner ~= nil then
@@ -235,9 +268,52 @@ function A.getActiveSession()
     return findCurrent()
 end
 
+function A.getLastCompletedRun(player)
+    if player == nil or not player.getID then
+        return nil
+    end
+    return lastCompletedRunByChar[player:getID()]
+end
+
+function A.recordFeedback(player, tagKey, note)
+    local lastRun = A.getLastCompletedRun(player)
+    if not lastRun then
+        tell(player, 'No completed Proving Grounds run found to attach feedback to.')
+        return false, 'no_completed_run'
+    end
+
+    local label = tagKey
+    for _, opt in ipairs(T.FEEDBACK_OPTIONS) do
+        if opt.key == tagKey then
+            label = opt.label
+            break
+        end
+    end
+
+    local ok, err = T.saveFeedback(lastRun.run_id, {
+        source     = 'npc_menu',
+        tag        = tagKey,
+        label      = label,
+        note       = note,
+        soul_key   = lastRun.soul_key,
+        boss_type  = lastRun.boss_type,
+        boss_level = lastRun.boss_level,
+    })
+    if not ok then
+        tell(player, 'LOGGING WARNING: Failed to save feedback: ' .. tostring(err))
+        return false, err
+    end
+
+    tell(player, string.format('Recorded feedback [%s] for run %s.', tostring(label), tostring(lastRun.run_id)))
+    return true, nil
+end
+
 function A.resetTrial(player)
     local current = findCurrent()
     if not current then
+        -- Ensure no lingering sync/skillup lock even if no trial is active.
+        R.applySkillupLock(player, false)
+        R.restoreLevelSync(player)
         tell(player, 'No trial is currently active.')
         return false, 'no_active_trial'
     end
@@ -253,11 +329,16 @@ function A.resetTrial(player)
     end
 
     A.cleanupSession('reset', { despawnMob = true, notifyOwner = true })
-    tell(player, 'Trial cleared and arena lock released.')
+    tell(player, 'Trial cleared, level sync restored, and arena lock released.')
     return true, nil
 end
 
-function A.startTrial(player, bossType, level, opts)
+-- Starts a Proving Grounds trial with native level synchronization and full difficulty/preset config.
+-- Supports both new signature:
+--   A.startTrial(player, bossType, effectivePlayerLevel, { difficulty = 'very_tough', bossPreset = 'nm', ... })
+-- and legacy 3-arg call:
+--   A.startTrial(player, bossType, level) -> defaults to Even Match (+0), Normal preset.
+function A.startTrial(player, bossType, effectivePlayerLevel, opts)
     opts = opts or {}
     if not player or player:getZoneID() ~= ARENA_ZONE then
         return false, 'not_in_arena'
@@ -294,48 +375,102 @@ function A.startTrial(player, bossType, level, opts)
         return false, 'zone_unavailable'
     end
 
-    local playerLvl = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, player:getMainLvl()))
-    local selectedLvl = math.floor(tonumber(level) or playerLvl)
-    if selectedLvl < R.MIN_LEVEL or selectedLvl > (R.MAX_LEVEL + 8) then
-        tell(player, string.format('Unsupported level (%d). Supported range: %d-%d.', selectedLvl, R.MIN_LEVEL, R.MAX_LEVEL))
+    -- Resolve effective target player level (from unsynced level when matching current level).
+    local ownerOrigLvl = R.getUnsyncedLevel(player)
+    local targetPlayerLvl
+    if opts.matchPlayerLevel == true or effectivePlayerLevel == nil then
+        targetPlayerLvl = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, ownerOrigLvl))
+    else
+        targetPlayerLvl = math.floor(tonumber(effectivePlayerLevel) or 0)
+    end
+
+    if targetPlayerLvl < R.MIN_LEVEL or targetPlayerLvl > R.MAX_LEVEL then
+        tell(player, string.format('Unsupported effective player level (%d). Supported range: %d-%d.', targetPlayerLvl, R.MIN_LEVEL, R.MAX_LEVEL))
         return false, 'unsupported_level'
     end
 
-    local difficulty = 'even_match'
-    local gap = selectedLvl - playerLvl
-    if gap >= 8 then
-        difficulty = 'boss_plus_8'
-    elseif gap >= 3 then
-        difficulty = 'boss_plus_3'
+    local diffMeta, diffKey = R.resolveDifficulty(opts.difficulty or 'even_match')
+    if not diffMeta then
+        tell(player, 'Unsupported difficulty: ' .. tostring(opts.difficulty))
+        return false, 'unsupported_difficulty'
     end
+
+    local presetKey = string.lower(tostring(opts.bossPreset or 'normal'))
+    if not R.BOSS_PRESETS[presetKey] then
+        tell(player, 'Unsupported enemy classification: ' .. tostring(opts.bossPreset))
+        return false, 'unsupported_preset'
+    end
+
+    local participants = getParticipatingActors(player)
+    -- Pre-validate that NO participating player is below the requested effective player level
+    -- (never silently allow an invalid upward level-sync benchmark).
+    for _, actor in ipairs(participants) do
+        local aOrig = R.getUnsyncedLevel(actor)
+        if aOrig < targetPlayerLvl then
+            local msg = string.format(
+                '%s is Lv.%d and cannot sync upward to Lv.%d. Select Match Current Level or <= Lv.%d.',
+                actor.getName and actor:getName() or 'Participant',
+                aOrig,
+                targetPlayerLvl,
+                aOrig
+            )
+            tell(player, msg)
+            return false, 'cannot_sync_upward'
+        end
+    end
+
+    -- Boss level is ALWAYS calculated from effective synced player level + difficulty offset.
+    local computedBossLvl = targetPlayerLvl + diffMeta.levelDelta
+    local partyComp = (#participants > 1) and 'party' or 'solo'
 
     local encounter, err = R.buildEncounterConfig({
         bossType         = bossType,
-        bossLevel        = selectedLvl,
-        playerLevel      = playerLvl,
-        difficulty       = difficulty,
-        bossPreset       = opts.bossPreset or 'normal',
+        playerLevel      = targetPlayerLvl,
+        bossLevel        = computedBossLvl,
+        difficulty       = diffKey,
+        bossPreset       = presetKey,
         durationSec      = R.DEFAULT_DURATION_SEC,
-        partyComposition = 'solo',
+        partyComposition = partyComp,
     })
     if not encounter then
         tell(player, 'Encounter configuration error: ' .. tostring(err))
         return false, err
     end
 
-    local participants = getParticipatingActors(player)
+    -- Apply native level sync + skill-up lock to ALL participating party members BEFORE combat begins.
+    local syncedActors = {}
+    local primarySyncVerification = nil
     local participantIds = {}
-    for _, actor in ipairs(participants) do
-        participantIds[actor:getID()] = true
+    for idx, actor in ipairs(participants) do
+        local syncOk, syncErr, verification = R.applyLevelSync(actor, targetPlayerLvl)
+        if not syncOk then
+            -- Roll back any already-synced participants cleanly.
+            for _, prevActor in ipairs(syncedActors) do
+                R.applySkillupLock(prevActor, false)
+                R.restoreLevelSync(prevActor)
+            end
+            tell(player, 'Level sync failed: ' .. tostring(syncErr))
+            return false, syncErr or 'level_sync_failed'
+        end
         R.applySkillupLock(actor, true)
+        syncedActors[#syncedActors + 1] = actor
+        participantIds[actor:getID()] = true
+        if idx == 1 then
+            primarySyncVerification = verification
+        end
     end
 
     local ownerId = player:getID()
     local ownerDespawnTag = string.format('PG_OWNER_DESPAWN_%d', ownerId)
-    local ownerTickTag    = string.format('PG_OWNER_TICK_%d', ownerId)
 
+    local telemetryRef = nil
     local mob, spawnErr = R.spawnTrialMob(zone, encounter, {
         spawnLifetimeSec = R.DEFAULT_DURATION_SEC,
+        onMobSkillChosen = function(chosenMob, target, skillId)
+            if telemetryRef and telemetryRef.onBossSkillChosen then
+                telemetryRef.onBossSkillChosen(chosenMob, target, skillId)
+            end
+        end,
         onMobDeath = function(deadMob)
             if activeSession and activeSession.mob and activeSession.mob:getID() == deadMob:getID() then
                 A.cleanupSession('victory', { despawnMob = false, notifyOwner = true })
@@ -349,20 +484,24 @@ function A.startTrial(player, bossType, level, opts)
     })
 
     if not mob then
-        -- Roll back skill-up lock on spawn failure; never leave a stale lock.
-        for _, actor in ipairs(participants) do
+        for _, actor in ipairs(syncedActors) do
             R.applySkillupLock(actor, false)
+            R.restoreLevelSync(actor)
         end
         tell(player, 'Could not spawn trial opponent: ' .. tostring(spawnErr))
         return false, spawnErr
     end
 
     local telemetrySession = T.beginSession({
-        mob       = mob,
-        actors    = participants,
-        encounter = encounter,
-        testMode  = 'manual',
+        mob            = mob,
+        actors         = participants,
+        encounter      = encounter,
+        testMode       = 'manual',
+        originalLevel  = primarySyncVerification and primarySyncVerification.original_level or ownerOrigLvl,
+        effectiveLevel = primarySyncVerification and primarySyncVerification.effective_level or targetPlayerLvl,
+        levelSync      = primarySyncVerification,
     })
+    telemetryRef = telemetrySession
 
     activeSession =
     {
@@ -374,20 +513,20 @@ function A.startTrial(player, bossType, level, opts)
         participants    = participants,
         participantIds  = participantIds,
         telemetry       = telemetrySession,
+        levelSync       = primarySyncVerification,
         ownerDespawnTag = ownerDespawnTag,
-        ownerTickTag    = ownerTickTag,
     }
 
-    -- Save previous encounter selection for 1-click Repeat.
+    -- Persist FULL encounter settings for 1-click Repeat Previous Encounter.
     previousChoiceByChar[ownerId] =
     {
-        bossType         = bossType,
-        bossLevel        = selectedLvl,
-        matchPlayerLevel = opts.matchPlayerLevel == true,
-        bossPreset       = encounter.bossPreset,
+        bossType             = bossType,
+        effectivePlayerLevel = targetPlayerLvl,
+        matchPlayerLevel     = opts.matchPlayerLevel == true,
+        difficulty           = diffKey,
+        bossPreset           = presetKey,
     }
 
-    -- Attach cleanup listener for player disconnect / zone-out.
     if player.addListener then
         player:addListener('DESPAWN', ownerDespawnTag, function(leavingPlayer)
             if activeSession and activeSession.ownerId == leavingPlayer:getID() then
@@ -396,13 +535,21 @@ function A.startTrial(player, bossType, level, opts)
         end)
     end
 
+    local extremeTag = encounter.extremeChallenge and ' [EXTREME - NON-BASELINE]' or ''
     tell(player, string.format(
-        '%s (Lv.%d) spawned. %s',
+        '%s (%s) Lv.%d spawned vs Effective Lv.%d (Orig Lv.%d, %s)%s.',
         encounter.bossLabel,
+        encounter.bossPresetLabel,
         encounter.bossLevel,
+        targetPlayerLvl,
+        primarySyncVerification and primarySyncVerification.original_level or ownerOrigLvl,
+        encounter.difficultyLabel,
+        extremeTag
+    ))
+    tell(player, string.format(
+        '%s Live boss scaling active. Combat timer begins on first hostile action. Zero EXP/gil/loot/skill-ups.',
         encounter.behaviorProfile.summary or ''
     ))
-    tell(player, 'Live boss scaling active. Zero EXP/gil/loot/skill-ups. Auto-despawns in 10 minutes.')
     return true, activeSession
 end
 
@@ -426,11 +573,12 @@ function A.repeatTrial(player)
     end
 
     local targetLvl = prev.matchPlayerLevel
-        and math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, player:getMainLvl()))
-        or prev.bossLevel
+        and math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, R.getUnsyncedLevel(player)))
+        or prev.effectivePlayerLevel
 
     return A.startTrial(player, prev.bossType, targetLvl, {
         matchPlayerLevel = prev.matchPlayerLevel,
+        difficulty       = prev.difficulty,
         bossPreset       = prev.bossPreset,
     })
 end
@@ -444,37 +592,129 @@ function A.exitArena(player)
         A.cleanupSession('owner_exited', { despawnMob = true, notifyOwner = false })
     else
         R.applySkillupLock(player, false)
+        R.restoreLevelSync(player)
     end
-    tell(player, 'Exiting Soul Proving Grounds to Ru\'Lude Gardens.')
+    tell(player, 'Level sync restored. Exiting Soul Proving Grounds to Ru\'Lude Gardens.')
     if player.setPos then
         player:setPos(EXIT_DEST.x, EXIT_DEST.y, EXIT_DEST.z, EXIT_DEST.rot, EXIT_DEST.zone)
     end
 end
 
--- Native customMenu hierarchy (no chat commands required).
+-----------------------------------
+-- Native customMenu Hierarchy (Zero chat commands, zero custom UI/DATs)
+-----------------------------------
 local rootMenu
 local encounterTypeMenu
 local levelMenu
+local difficultyMenu
+local presetMenu
+local feedbackMenu
 
-levelMenu = function(player, bossType)
+presetMenu = function(player, bossType, effectiveLvl, matchPlayerLvl, difficultyKey)
     local arch = R.ARCHETYPES[bossType]
+    local diff = R.DIFFICULTIES[difficultyKey]
+    local bossLvl = effectiveLvl + (diff and diff.levelDelta or 0)
     local options = {}
-    for _, level in ipairs(R.LEVELS) do
-        local chosen = level
+
+    for _, pKey in ipairs(R.BOSS_PRESET_ORDER) do
+        local preset = R.BOSS_PRESETS[pKey]
+        local chosenPreset = pKey
         options[#options + 1] =
         {
-            string.format('Level %d', chosen),
+            string.format('%s (Boss Lv.%d)', preset.label, bossLvl),
             function(p)
-                A.startTrial(p, bossType, chosen, { matchPlayerLevel = false })
+                A.startTrial(p, bossType, effectiveLvl, {
+                    matchPlayerLevel = matchPlayerLvl,
+                    difficulty       = difficultyKey,
+                    bossPreset       = chosenPreset,
+                })
             end,
         }
     end
     options[#options + 1] =
     {
-        'Match Player Level (10-75)',
+        'Back',
         function(p)
-            local lvl = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, p:getMainLvl()))
-            A.startTrial(p, bossType, lvl, { matchPlayerLevel = true })
+            openLater(p, function(pl)
+                return difficultyMenu(pl, bossType, effectiveLvl, matchPlayerLvl)
+            end)
+        end,
+    }
+
+    return
+    {
+        title   = string.format('%s Lv.%d - Classification', arch and arch.label or bossType, bossLvl),
+        options = options,
+    }
+end
+
+difficultyMenu = function(player, bossType, effectiveLvl, matchPlayerLvl)
+    local arch = R.ARCHETYPES[bossType]
+    local options = {}
+
+    for _, dKey in ipairs(R.DIFFICULTY_ORDER) do
+        local diff = R.DIFFICULTIES[dKey]
+        local chosenDiff = dKey
+        local bossLvl = effectiveLvl + diff.levelDelta
+        options[#options + 1] =
+        {
+            string.format('%s -> Boss Lv.%d', diff.label, bossLvl),
+            function(p)
+                openLater(p, function(pl)
+                    return presetMenu(pl, bossType, effectiveLvl, matchPlayerLvl, chosenDiff)
+                end)
+            end,
+        }
+    end
+    options[#options + 1] =
+    {
+        'Back',
+        function(p)
+            openLater(p, function(pl)
+                return levelMenu(pl, bossType)
+            end)
+        end,
+    }
+
+    return
+    {
+        title   = string.format('%s (Sync Lv.%d) - Difficulty', arch and arch.label or bossType, effectiveLvl),
+        options = options,
+    }
+end
+
+levelMenu = function(player, bossType)
+    local arch = R.ARCHETYPES[bossType]
+    local curOrig = R.getUnsyncedLevel(player)
+    local options = {}
+
+    for _, level in ipairs(R.LEVELS) do
+        local chosen = level
+        local suffix = (curOrig < chosen) and ' [Too High]' or ''
+        options[#options + 1] =
+        {
+            string.format('Effective Level %d%s', chosen, suffix),
+            function(p)
+                if R.getUnsyncedLevel(p) < chosen then
+                    tell(p, string.format('Your character is Lv.%d and cannot sync upward to Lv.%d.', R.getUnsyncedLevel(p), chosen))
+                    return
+                end
+                openLater(p, function(pl)
+                    return difficultyMenu(pl, bossType, chosen, false)
+                end)
+            end,
+        }
+    end
+
+    local matchedLvl = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, curOrig))
+    options[#options + 1] =
+    {
+        string.format('Match Current Level (Lv.%d)', matchedLvl),
+        function(p)
+            local ml = math.max(R.MIN_LEVEL, math.min(R.MAX_LEVEL, R.getUnsyncedLevel(p)))
+            openLater(p, function(pl)
+                return difficultyMenu(pl, bossType, ml, true)
+            end)
         end,
     }
     options[#options + 1] =
@@ -484,9 +724,10 @@ levelMenu = function(player, bossType)
             openLater(p, encounterTypeMenu)
         end,
     }
+
     return
     {
-        title   = string.format('Crucible - %s Level', arch and arch.label or bossType),
+        title   = string.format('Crucible - %s Effective Level', arch and arch.label or bossType),
         options = options,
     }
 end
@@ -527,9 +768,45 @@ encounterTypeMenu = function(player)
             openLater(p, rootMenu)
         end,
     }
+
     return
     {
         title   = 'Crucible - Select Encounter Type',
+        options = options,
+    }
+end
+
+feedbackMenu = function(player)
+    local lastRun = A.getLastCompletedRun(player)
+    local options = {}
+    for _, opt in ipairs(T.FEEDBACK_OPTIONS) do
+        local chosenKey = opt.key
+        options[#options + 1] =
+        {
+            opt.label,
+            function(p)
+                if chosenKey == 'skip' then
+                    tell(p, 'Skipped feedback for last run.')
+                else
+                    A.recordFeedback(p, chosenKey)
+                end
+            end,
+        }
+    end
+    options[#options + 1] =
+    {
+        'Back',
+        function(p)
+            openLater(p, rootMenu)
+        end,
+    }
+
+    local title = lastRun
+        and string.format('Feedback (%s Lv.%d)', tostring(lastRun.boss_type), tonumber(lastRun.boss_level) or 0)
+        or 'Feedback (No Recent Run)'
+    return
+    {
+        title   = title,
         options = options,
     }
 end
@@ -539,44 +816,67 @@ rootMenu = function(player)
     local repeatLabel = 'Repeat Previous Encounter'
     if prev then
         local arch = R.ARCHETYPES[prev.bossType]
-        local lvlLabel = prev.matchPlayerLevel and 'Match' or ('Lv.' .. tostring(prev.bossLevel))
-        repeatLabel = string.format('Repeat: %s (%s)', arch and arch.label or prev.bossType, lvlLabel)
+        local diff = R.DIFFICULTIES[prev.difficulty]
+        local lvlLabel = prev.matchPlayerLevel and 'Match' or ('Lv.' .. tostring(prev.effectivePlayerLevel))
+        local presetTag = (prev.bossPreset == 'nm') and 'NM' or 'Norm'
+        repeatLabel = string.format(
+            'Repeat: %s (%s +%d %s)',
+            arch and arch.label or prev.bossType,
+            lvlLabel,
+            diff and diff.levelDelta or 0,
+            presetTag
+        )
     end
+
+    local options =
+    {
+        {
+            'Start Encounter',
+            function(p)
+                openLater(p, encounterTypeMenu)
+            end,
+        },
+        {
+            'Reset Active Encounter',
+            function(p)
+                A.resetTrial(p)
+            end,
+        },
+        {
+            repeatLabel,
+            function(p)
+                A.repeatTrial(p)
+            end,
+        },
+    }
+
+    if A.getLastCompletedRun(player) ~= nil then
+        options[#options + 1] =
+        {
+            'Record Feedback (Last Run)',
+            function(p)
+                openLater(p, feedbackMenu)
+            end,
+        }
+    end
+
+    options[#options + 1] =
+    {
+        'Exit Proving Grounds',
+        function(p)
+            A.exitArena(p)
+        end,
+    }
+    options[#options + 1] =
+    {
+        'Close',
+        function() end,
+    }
 
     return
     {
-        title = 'The Arbiter - Soul Proving Grounds',
-        options =
-        {
-            {
-                'Start Encounter',
-                function(p)
-                    openLater(p, encounterTypeMenu)
-                end,
-            },
-            {
-                'Reset Active Encounter',
-                function(p)
-                    A.resetTrial(p)
-                end,
-            },
-            {
-                repeatLabel,
-                function(p)
-                    A.repeatTrial(p)
-                end,
-            },
-            {
-                'Exit Proving Grounds',
-                function(p)
-                    A.exitArena(p)
-                end,
-            },
-            {
-                'Close',
-                function() end,
-            },
-        },
+        title   = 'The Arbiter - Soul Proving Grounds',
+        options = options,
     }
 end
 
@@ -601,7 +901,7 @@ m:addOverride('xi.zones.GM_Home.Zone.onInitialize', function(zone)
     })
 end)
 
--- Cleanup on player death inside GM Home if all participating players are dead.
+-- Cleanup and restore level sync on player death inside GM Home if all participating players are dead.
 m:addOverride('xi.player.onPlayerDeath', function(player)
     super(player)
     if activeSession == nil or player == nil or not isParticipant(activeSession, player) then
@@ -622,13 +922,28 @@ m:addOverride('xi.player.onPlayerDeath', function(player)
     end
 end)
 
--- Safety net: clear any leftover skill-up lock whenever a player zones anywhere outside GM Home.
+-- Safety net for zoning out, disconnect relog, and server-restart crash recovery:
+-- restores any lingering Proving Grounds level restriction or skill-up lock cleanly.
 m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
     super(player, firstLogin, zoning)
-    if player ~= nil and player.getZoneID and player:getZoneID() ~= ARENA_ZONE then
+    if player == nil or not player.getZoneID then
+        return
+    end
+    local inArena = (player:getZoneID() == ARENA_ZONE)
+    local isActiveParticipant = (activeSession ~= nil and isParticipant(activeSession, player))
+
+    if not inArena then
         R.applySkillupLock(player, false)
         if activeSession ~= nil and activeSession.ownerId == player:getID() then
             A.cleanupSession('owner_zoned_out', { despawnMob = true, notifyOwner = false })
+        else
+            R.restoreLevelSync(player)
+        end
+    elseif not isActiveParticipant then
+        -- Player logged back into GM Home after a disconnect or server restart with no active session.
+        if player.getCharVar and player:getCharVar('[ProvingGrounds]SyncActive') == 1 then
+            R.applySkillupLock(player, false)
+            R.restoreLevelSync(player)
         end
     end
 end)

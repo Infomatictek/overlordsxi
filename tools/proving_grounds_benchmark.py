@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import ctypes
 import datetime
 import json
@@ -53,9 +54,12 @@ MATRIX_ARCHETYPES = (
 )
 DIFFICULTIES = (
     {"id": "even_match", "label": "Even Match (+0)", "level_delta": 0, "standard_baseline": True, "extreme_challenge": False},
-    {"id": "boss_plus_3", "label": "Boss +3 Levels", "level_delta": 3, "standard_baseline": True, "extreme_challenge": False},
-    {"id": "boss_plus_8", "label": "Extreme Challenge (+8 Wall)", "level_delta": 8, "standard_baseline": False, "extreme_challenge": True},
+    {"id": "very_tough", "label": "Very Tough (+3)", "level_delta": 3, "standard_baseline": True, "extreme_challenge": False},
+    {"id": "incredibly_tough", "label": "Incredibly Tough (+5)", "level_delta": 5, "standard_baseline": True, "extreme_challenge": False},
+    {"id": "extreme", "label": "Extreme (+8) [Non-Baseline]", "level_delta": 8, "standard_baseline": False, "extreme_challenge": True},
 )
+DEFAULT_LOG_BASE_DIR = Path(r"C:\dev\server\log\proving_grounds")
+LEGACY_RUNS_LOG_PATH = Path(r"C:\dev\server\log\proving_grounds_runs.jsonl")
 
 TIER_OFFENSE = {
     "Damage": {"offense": 1.00, "physDmgDealt": 0, "rangedDmgDealt": 0, "magDmgDealt": 0},
@@ -201,11 +205,14 @@ assert(sampleEnc ~= nil, tostring(err))
 local out = {{
     schemaVersion = R.SCHEMA_VERSION,
     arenaZoneId = R.ARENA_ZONE_ID,
+    npcPos = R.NPC_POS,
     levels = R.LEVELS,
+    difficultyOrder = R.DIFFICULTY_ORDER,
     npcArchetypes = npcTypes,
     matrixOrder = R.MATRIX_ARCHETYPE_ORDER,
-    plus8Baseline = R.DIFFICULTIES.boss_plus_8.standardBaseline,
-    plus8Extreme = R.DIFFICULTIES.boss_plus_8.extremeChallenge,
+    plus8Baseline = R.DIFFICULTIES.extreme.standardBaseline,
+    plus8Extreme = R.DIFFICULTIES.extreme.extremeChallenge,
+    maxBossLevel = R.MAX_BOSS_LEVEL,
     sampleEncounterId = sampleEnc.encounterId,
     sampleGearProfile = sampleEnc.gearProfile,
 }}
@@ -567,40 +574,138 @@ def build_balance_test_matrix() -> dict[str, Any]:
     }
 
 
-def summarize_jsonl_runs(jsonl_path: Path) -> dict[str, Any]:
-    """Summarize actual combat JSONL runs, separating real combat from static formula tests."""
-    if not jsonl_path.is_file():
-        return {"error": f"Run log not found: {jsonl_path}", "total_runs": 0}
+def _is_run_level_sync_valid(rec: dict[str, Any]) -> bool:
+    ls = rec.get("level_sync")
+    if isinstance(ls, dict) and ls.get("valid") is False:
+        return False
+    if rec.get("valid_for_balance") is False and "invalid_level_sync" in (rec.get("warnings") or []):
+        return False
+    return True
 
-    records: list[dict[str, Any]] = []
-    for raw in jsonl_path.read_text(encoding="utf-8", errors="replace").splitlines():
+
+def _is_run_extreme(rec: dict[str, Any]) -> bool:
+    if rec.get("extreme_challenge") is True:
+        return True
+    diff = str(rec.get("difficulty", "")).lower()
+    return diff in ("extreme", "boss_plus_8", "extreme_plus_8")
+
+
+def load_jsonl_records(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = raw.strip()
         if not line:
             continue
-        records.append(json.loads(line))
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
+def resolve_runs_index_path(base_dir: Path = DEFAULT_LOG_BASE_DIR) -> Path:
+    idx = base_dir / "runs.jsonl"
+    if idx.is_file():
+        return idx
+    if LEGACY_RUNS_LOG_PATH.is_file():
+        return LEGACY_RUNS_LOG_PATH
+    return idx
+
+
+def filter_runs(
+    records: list[dict[str, Any]],
+    *,
+    soul: str | None = None,
+    level: int | None = None,
+    boss: str | None = None,
+    difficulty: str | None = None,
+    preset: str | None = None,
+    date_prefix: str | None = None,
+    include_invalid: bool = False,
+    include_extreme: bool = False,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for r in records:
+        if not include_invalid and not _is_run_level_sync_valid(r):
+            continue
+        if not include_extreme and _is_run_extreme(r):
+            continue
+        if soul and str(r.get("soul_key", "")).lower() != soul.lower():
+            continue
+        if level is not None:
+            eff = r.get("effective_combat_level", r.get("character_level"))
+            if eff != level:
+                continue
+        if boss and str(r.get("boss_type", "")).lower() != boss.lower():
+            continue
+        if difficulty and str(r.get("difficulty", "")).lower() != difficulty.lower():
+            continue
+        if preset and str(r.get("boss_preset", "")).lower() != preset.lower():
+            continue
+        if date_prefix and not str(r.get("timestamp_utc", "")).startswith(date_prefix):
+            continue
+        out.append(r)
+    return out
+
+
+def summarize_jsonl_runs(jsonl_path: Path) -> dict[str, Any]:
+    """Summarize actual combat JSONL runs, excluding invalid level-sync and +8 Extreme runs from standard averages."""
+    if not jsonl_path.is_file():
+        return {"error": f"Run log not found: {jsonl_path}", "total_runs": 0}
+
+    records = load_jsonl_records(jsonl_path)
 
     by_mode: dict[str, int] = {}
     by_role_soul: dict[tuple[str, str], list[float]] = {}
+    by_bucket: dict[str, list[float]] = {}
     struggled: list[str] = []
     performed_well: list[str] = []
     balance_concerns: list[str] = []
 
+    excluded_invalid_sync = 0
+    excluded_extreme_plus8 = 0
+    excluded_never_started = 0
+    excluded_logging_errors = 0
+    included_for_balance = 0
+
     for r in records:
         mode = str(r.get("test_mode", "unknown"))
         by_mode[mode] = by_mode.get(mode, 0) + 1
-        off = r.get("metrics", {}).get("offense", {})
         saf = r.get("metrics", {}).get("safety", {})
+        log_st = r.get("logging_status", {})
+
+        if saf.get("progression_clean") is False:
+            balance_concerns.append(f"SAFETY VIOLATION in {r.get('run_id')}: EXP observed ({saf.get('exp_points_observed')})")
+        if isinstance(log_st, dict) and log_st.get("ok") is False:
+            excluded_logging_errors += 1
+            balance_concerns.append(f"LOGGING ERROR in {r.get('run_id')}: {log_st.get('errors')}")
+
+        if not _is_run_level_sync_valid(r):
+            excluded_invalid_sync += 1
+            continue
+        if _is_run_extreme(r):
+            excluded_extreme_plus8 += 1
+            continue
+        if r.get("combat_started") is False:
+            excluded_never_started += 1
+            continue
+
+        included_for_balance += 1
+        off = r.get("metrics", {}).get("offense", {})
         dps = off.get("sustained_dps")
         role = str(r.get("role", "Unassigned"))
         skey = str(r.get("soul_key", "none"))
+        eff_lvl = r.get("effective_combat_level", r.get("character_level", 0))
+        bucket_key = f"{skey}|{r.get('boss_type')}|lv{eff_lvl}|{r.get('difficulty')}|{r.get('boss_preset')}|{r.get('gear_profile')}"
         if isinstance(dps, (int, float)):
             by_role_soul.setdefault((role, skey), []).append(float(dps))
+            by_bucket.setdefault(bucket_key, []).append(float(dps))
         if r.get("outcome") == "defeat":
-            struggled.append(f"{r.get('run_id')}: {skey} ({role}) defeated by {r.get('boss_type')} Lv.{r.get('boss_level')}")
+            struggled.append(f"{r.get('run_id')}: {skey} ({role}) defeated by {r.get('boss_type')} Lv.{r.get('actual_boss_level', r.get('boss_level'))}")
         elif r.get("outcome") == "victory":
-            performed_well.append(f"{r.get('run_id')}: {skey} ({role}) defeated {r.get('boss_type')} Lv.{r.get('boss_level')} ({dps} DPS)")
-        if saf.get("progression_clean") is False:
-            balance_concerns.append(f"SAFETY VIOLATION in {r.get('run_id')}: EXP observed ({saf.get('exp_points_observed')})")
+            performed_well.append(f"{r.get('run_id')}: {skey} ({role}) defeated {r.get('boss_type')} Lv.{r.get('actual_boss_level', r.get('boss_level'))} ({dps} DPS)")
 
     role_dominance: list[str] = []
     roles = sorted({role for role, _ in by_role_soul})
@@ -616,23 +721,310 @@ def summarize_jsonl_runs(jsonl_path: Path) -> dict[str, Any]:
             )
 
     min_samples = min((len(v) for v in by_role_soul.values()), default=0)
-    statistically_meaningful = (len(records) >= 5 and min_samples >= 3)
+    statistically_meaningful = (included_for_balance >= 5 and min_samples >= 3)
 
     return {
         "source_file": str(jsonl_path),
         "total_runs": len(records),
+        "included_for_balance": included_for_balance,
+        "excluded": {
+            "invalid_level_sync": excluded_invalid_sync,
+            "extreme_plus8_non_baseline": excluded_extreme_plus8,
+            "combat_never_started": excluded_never_started,
+            "logging_errors_flagged": excluded_logging_errors,
+        },
         "runs_by_test_mode": by_mode,
+        "bucket_avg_dps": {k: round(statistics.mean(v), 4) for k, v in sorted(by_bucket.items())},
         "statistically_meaningful": statistically_meaningful,
         "statistical_note": (
-            "Sufficient repeated samples (>=3 per Soul) for trend comparison."
+            "Sufficient repeated valid baseline samples (>=3 per Soul) for trend comparison."
             if statistically_meaningful
-            else "Insufficient sample size (<3 repeats per Soul); treat as smoke/POC measurement only."
+            else "Insufficient valid baseline sample size (<3 repeats per Soul); treat as smoke/POC measurement only."
         ),
         "performed_well": performed_well,
         "struggled": struggled,
         "balance_concerns": balance_concerns,
         "role_dominance_flags": role_dominance,
     }
+
+
+def load_run_bundle(run_id: str, base_dir: Path = DEFAULT_LOG_BASE_DIR) -> dict[str, Any]:
+    """Load summary, chronological event log, 1s snapshots, and optional feedback for one run_id."""
+    runs = load_jsonl_records(resolve_runs_index_path(base_dir))
+    summary = next((r for r in runs if r.get("run_id") == run_id), None)
+    events = load_jsonl_records(base_dir / "events" / f"{run_id}.jsonl")
+    snapshots = load_jsonl_records(base_dir / "snapshots" / f"{run_id}.jsonl")
+    fb_path = base_dir / "feedback" / f"{run_id}.json"
+    feedback = None
+    if fb_path.is_file():
+        try:
+            feedback = json.loads(fb_path.read_text(encoding="utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            feedback = {"error": "corrupt_feedback_json"}
+    return {
+        "run_id": run_id,
+        "summary": summary,
+        "events": events,
+        "snapshots": snapshots,
+        "feedback": feedback,
+    }
+
+
+def analyze_run_timeline(bundle: dict[str, Any], rolling_window: int = 5) -> dict[str, Any]:
+    """Build 1s intervals, rolling DPS averages, damage spikes, DPS drops, pet deaths, and resource changes."""
+    snapshots = bundle.get("snapshots") or []
+    events = bundle.get("events") or []
+    win = max(1, int(rolling_window))
+
+    intervals: list[dict[str, Any]] = []
+    dealt_hist: list[float] = []
+    taken_hist: list[float] = []
+    sudden_dps_drops: list[dict[str, Any]] = []
+
+    for snap in snapshots:
+        sec = int(snap.get("combat_sec", len(intervals)))
+        iv = snap.get("interval") or {}
+        dealt = float(iv.get("damage_dealt", 0))
+        taken = float(iv.get("damage_received", 0))
+        heal = float(iv.get("healing_done", 0))
+        dealt_hist.append(dealt)
+        taken_hist.append(taken)
+
+        roll_dealt = statistics.mean(dealt_hist[-win:])
+        roll_taken = statistics.mean(taken_hist[-win:])
+        prev_roll = statistics.mean(dealt_hist[-(win + 1) : -1]) if len(dealt_hist) > win else None
+        if prev_roll is not None and prev_roll >= 5.0 and roll_dealt <= (prev_roll * 0.5):
+            sudden_dps_drops.append({
+                "combat_sec": sec,
+                "rolling_dps": round(roll_dealt, 2),
+                "previous_rolling_dps": round(prev_roll, 2),
+            })
+
+        boss = snap.get("boss") or {}
+        players = snap.get("players") or []
+        p0 = players[0] if players else {}
+        intervals.append({
+            "combat_sec": sec,
+            "damage_dealt": dealt,
+            "player_damage": float(iv.get("player_damage", 0)),
+            "pet_clone_damage": float(iv.get("pet_clone_damage", 0)),
+            "damage_received": taken,
+            "healing_done": heal,
+            f"rolling_{win}s_dps": round(roll_dealt, 2),
+            f"rolling_{win}s_dtps": round(roll_taken, 2),
+            "player_hp": p0.get("hp"),
+            "player_mp": p0.get("mp"),
+            "player_tp": p0.get("tp"),
+            "boss_hp_pct": boss.get("hp_pct"),
+            "active_pets_clones": len(snap.get("pets_and_clones") or []),
+        })
+
+    spikes = [e for e in events if e.get("event_type") == "damage_spike"]
+    pet_events = [e for e in events if e.get("category") == "pet" and e.get("event_type") in ("pet_spawn", "clone_spawn", "pet_death", "clone_death", "pet_despawn", "clone_despawn")]
+    boss_thresholds = [e for e in events if e.get("event_type") == "boss_hp_threshold"]
+    status_changes = [e for e in events if e.get("event_type") in ("status_applied", "status_removed")]
+
+    return {
+        "run_id": bundle.get("run_id"),
+        "rolling_window_sec": win,
+        "summary": bundle.get("summary"),
+        "feedback": bundle.get("feedback"),
+        "interval_count": len(intervals),
+        "event_count": len(events),
+        "intervals": intervals,
+        "damage_spikes": spikes,
+        "sudden_dps_drops": sudden_dps_drops,
+        "pet_clone_lifecycle_events": pet_events,
+        "boss_hp_thresholds": boss_thresholds,
+        "status_change_count": len(status_changes),
+    }
+
+
+def render_ascii_timeline(analysis: dict[str, Any]) -> str:
+    """Render a compact 1-second ASCII timeline correlating DPS, incoming damage, spikes, and feedback."""
+    win = analysis["rolling_window_sec"]
+    roll_key = f"rolling_{win}s_dps"
+    intervals = analysis.get("intervals") or []
+    lines = [f"=== Timeline: {analysis['run_id']} ({len(intervals)}s snapshots, {analysis['event_count']} events) ==="]
+    fb = analysis.get("feedback")
+    if isinstance(fb, dict):
+        lines.append(f"Feedback: [{fb.get('tag')}] {fb.get('label') or ''} {fb.get('note') or ''}".strip())
+
+    max_val = max((max(iv["damage_dealt"], iv["damage_received"]) for iv in intervals), default=1.0)
+    max_val = max(1.0, max_val)
+    for iv in intervals:
+        bar_out = "#" * int((iv["damage_dealt"] / max_val) * 20)
+        bar_in = "!" * int((iv["damage_received"] / max_val) * 15)
+        lines.append(
+            f"t={iv['combat_sec']:3d}s | Out:{iv['damage_dealt']:5.0f} ({win}s:{iv[roll_key]:5.1f}) {bar_out:<20} | "
+            f"In:{iv['damage_received']:5.0f} {bar_in:<15} | Boss:{str(iv['boss_hp_pct']):>5}% TP:{str(iv['player_tp']):>4}"
+        )
+    if analysis["damage_spikes"]:
+        lines.append(f"Damage Spikes ({len(analysis['damage_spikes'])}): " + ", ".join(
+            f"t={int((e.get('combat_ms') or 0)/1000)}s dmg={e.get('value')}" for e in analysis["damage_spikes"][:10]
+        ))
+    if analysis["sudden_dps_drops"]:
+        lines.append(f"Sudden DPS Drops ({len(analysis['sudden_dps_drops'])}): " + ", ".join(
+            f"t={d['combat_sec']}s ({d['previous_rolling_dps']}->{d['rolling_dps']})" for d in analysis["sudden_dps_drops"][:10]
+        ))
+    if analysis["pet_clone_lifecycle_events"]:
+        lines.append("Pet/Clone Events: " + ", ".join(
+            f"t={int((e.get('combat_ms') or 0)/1000)}s:{e.get('event_type')}" for e in analysis["pet_clone_lifecycle_events"][:10]
+        ))
+    return "\n".join(lines)
+
+
+def compare_runs(run_ids: list[str], base_dir: Path = DEFAULT_LOG_BASE_DIR) -> dict[str, Any]:
+    """Compare 2+ runs while strictly checking that encounter conditions match."""
+    bundles = [load_run_bundle(rid, base_dir) for rid in run_ids]
+    missing = [b["run_id"] for b in bundles if b["summary"] is None]
+    if missing:
+        return {"ok": False, "error": f"Run IDs not found: {missing}"}
+
+    summaries = [b["summary"] for b in bundles]
+    cond_keys = ("effective_combat_level", "boss_type", "difficulty", "boss_preset", "gear_profile")
+    mismatches: list[str] = []
+    ref = summaries[0]
+    for other in summaries[1:]:
+        for k in cond_keys:
+            if other.get(k) != ref.get(k):
+                mismatches.append(f"{k}: {ref.get('run_id')}={ref.get(k)} vs {other.get('run_id')}={other.get(k)}")
+
+    rows = []
+    for s in summaries:
+        off = s.get("metrics", {}).get("offense", {})
+        dfn = s.get("metrics", {}).get("defense", {})
+        rows.append({
+            "run_id": s.get("run_id"),
+            "soul_key": s.get("soul_key"),
+            "tier": s.get("tier"),
+            "effective_level": s.get("effective_combat_level"),
+            "boss_type": s.get("boss_type"),
+            "boss_level": s.get("actual_boss_level", s.get("boss_level")),
+            "difficulty": s.get("difficulty"),
+            "boss_preset": s.get("boss_preset"),
+            "gear_profile": s.get("gear_profile"),
+            "outcome": s.get("outcome"),
+            "duration_sec": s.get("encounter_duration_sec"),
+            "total_damage": off.get("total_damage"),
+            "sustained_dps": off.get("sustained_dps"),
+            "burst_dps_10s": off.get("burst_dps_10s"),
+            "incoming_damage": dfn.get("actual_incoming_damage"),
+            "valid_for_balance": s.get("valid_for_balance"),
+        })
+
+    return {
+        "ok": True,
+        "comparable": (len(mismatches) == 0),
+        "condition_mismatches": mismatches,
+        "warning": (
+            None
+            if not mismatches
+            else "Runs do NOT share identical level/boss/difficulty/preset/gear conditions; do not treat as directly equivalent."
+        ),
+        "runs": rows,
+    }
+
+
+def export_runs_csv(records: list[dict[str, Any]], csv_path: Path) -> Path:
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    fields = [
+        "run_id", "timestamp_utc", "test_mode", "soul_key", "job", "tier",
+        "original_character_level", "effective_combat_level", "boss_type",
+        "actual_boss_level", "level_gap", "difficulty", "boss_preset", "gear_profile",
+        "outcome", "prep_duration_sec", "encounter_duration_sec", "total_damage",
+        "player_damage", "pet_and_clone_damage", "sustained_dps", "burst_dps_10s",
+        "actual_incoming_damage", "effective_healing", "enmity_generation",
+        "valid_for_balance",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        for r in records:
+            off = r.get("metrics", {}).get("offense", {})
+            dfn = r.get("metrics", {}).get("defense", {})
+            hel = r.get("metrics", {}).get("healing", {})
+            thr = r.get("metrics", {}).get("threat", {})
+            writer.writerow({
+                "run_id": r.get("run_id"),
+                "timestamp_utc": r.get("timestamp_utc"),
+                "test_mode": r.get("test_mode"),
+                "soul_key": r.get("soul_key"),
+                "job": r.get("job"),
+                "tier": r.get("tier"),
+                "original_character_level": r.get("original_character_level"),
+                "effective_combat_level": r.get("effective_combat_level", r.get("character_level")),
+                "boss_type": r.get("boss_type"),
+                "actual_boss_level": r.get("actual_boss_level", r.get("boss_level")),
+                "level_gap": r.get("level_gap"),
+                "difficulty": r.get("difficulty"),
+                "boss_preset": r.get("boss_preset"),
+                "gear_profile": r.get("gear_profile"),
+                "outcome": r.get("outcome"),
+                "prep_duration_sec": r.get("prep_duration_sec"),
+                "encounter_duration_sec": r.get("encounter_duration_sec"),
+                "total_damage": off.get("total_damage"),
+                "player_damage": off.get("player_damage"),
+                "pet_and_clone_damage": off.get("pet_and_clone_damage"),
+                "sustained_dps": off.get("sustained_dps"),
+                "burst_dps_10s": off.get("burst_dps_10s"),
+                "actual_incoming_damage": dfn.get("actual_incoming_damage"),
+                "effective_healing": hel.get("effective_healing"),
+                "enmity_generation": thr.get("enmity_generation"),
+                "valid_for_balance": r.get("valid_for_balance"),
+            })
+    return csv_path
+
+
+def export_timeline_csv(analysis: dict[str, Any], csv_path: Path) -> Path:
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    intervals = analysis.get("intervals") or []
+    if not intervals:
+        csv_path.write_text("", encoding="utf-8")
+        return csv_path
+    fields = list(intervals[0].keys())
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        for row in intervals:
+            writer.writerow(row)
+    return csv_path
+
+
+def add_feedback_to_run(
+    run_id: str,
+    tag: str,
+    note: str | None = None,
+    base_dir: Path = DEFAULT_LOG_BASE_DIR,
+) -> dict[str, Any]:
+    fb_dir = base_dir / "feedback"
+    fb_dir.mkdir(parents=True, exist_ok=True)
+    fb_path = fb_dir / f"{run_id}.json"
+    existing: dict[str, Any] = {}
+    if fb_path.is_file():
+        try:
+            existing = json.loads(fb_path.read_text(encoding="utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            existing = {}
+
+    notes = list(existing.get("notes") or [])
+    if note:
+        notes.append({
+            "recorded_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "text": note,
+        })
+
+    payload = {
+        **existing,
+        "run_id": run_id,
+        "recorded_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source": "cli_analysis",
+        "tag": tag or existing.get("tag") or "note",
+        "note": note if note is not None else existing.get("note"),
+        "notes": notes,
+    }
+    fb_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return {"ok": True, "path": str(fb_path), "feedback": payload}
 
 
 def run_stage_b_real_combat_poc(
@@ -644,7 +1036,7 @@ def run_stage_b_real_combat_poc(
     if not xi_test.is_file():
         return {"ok": False, "error": f"xi_test.exe not found at {xi_test}"}
 
-    runs_log = server_dir / "log" / "proving_grounds_runs.jsonl"
+    runs_log = server_dir / "log" / "proving_grounds" / "runs.jsonl"
     before_lines = len(runs_log.read_text(encoding="utf-8", errors="replace").splitlines()) if runs_log.is_file() else 0
 
     cmd = [
@@ -678,18 +1070,43 @@ def run_stage_b_real_combat_poc(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OverlordsXI Soul Proving Grounds Benchmark & Summarizer")
+    parser = argparse.ArgumentParser(description="OverlordsXI Soul Proving Grounds Benchmark & Historical Analyzer")
     parser.add_argument("--run-formula", action="store_true", help="Run Stage A formula & regression suite")
-    parser.add_argument("--run-stage-b", action="store_true", help="Run Stage B Milestone C real server combat proof via xi_test.exe")
+    parser.add_argument("--run-stage-b", action="store_true", help="Run Stage B real combat suite via xi_test.exe")
     parser.add_argument("--seed", type=int, default=12345, help="Deterministic PRNG seed for Stage B real combat")
     parser.add_argument("--server-dir", type=Path, default=Path(r"C:\dev\server"), help="LandSandBoat server directory")
+    parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_BASE_DIR, help="Proving Grounds structured log directory")
     parser.add_argument("--out", type=Path, default=None, help="Output JSON path for formula report")
     parser.add_argument("--matrix-out", type=Path, default=None, help="Output JSON path for 66-Soul matrix")
-    parser.add_argument("--summarize", type=Path, default=None, help="Summarize a proving_grounds_runs.jsonl log")
+    parser.add_argument("--summarize", type=Path, default=None, help="Summarize a runs.jsonl log (excludes invalid sync & +8)")
+
+    # Historical analysis options
+    parser.add_argument("--list-runs", action="store_true", help="List historical Proving Grounds runs")
+    parser.add_argument("--soul", type=str, default=None, help="Filter by Soul key")
+    parser.add_argument("--level", type=int, default=None, help="Filter by effective combat level")
+    parser.add_argument("--boss", type=str, default=None, help="Filter by boss archetype")
+    parser.add_argument("--difficulty", type=str, default=None, help="Filter by difficulty key")
+    parser.add_argument("--preset", type=str, default=None, help="Filter by boss preset (normal/nm)")
+    parser.add_argument("--date", type=str, default=None, help="Filter by UTC date prefix (YYYY-MM-DD)")
+    parser.add_argument("--include-invalid", action="store_true", help="Include invalid level-sync runs when listing")
+    parser.add_argument("--include-extreme", action="store_true", help="Include +8 Extreme Challenge runs when listing")
+    parser.add_argument("--show-run", type=str, default=None, help="Show full bundle summary for a run_id")
+    parser.add_argument("--timeline", type=str, default=None, help="Render 1s damage/event timeline for a run_id")
+    parser.add_argument("--rolling", type=int, default=5, help="Rolling average window in seconds (e.g. 5 or 10)")
+    parser.add_argument("--compare", nargs="+", default=None, help="Compare two or more run IDs under matching conditions")
+    parser.add_argument("--export-csv", type=Path, default=None, help="Export filtered runs or --timeline to CSV")
+    parser.add_argument("--add-feedback", type=str, default=None, help="Attach/update feedback on a run_id")
+    parser.add_argument("--tag", type=str, default="note", help="Feedback tag for --add-feedback")
+    parser.add_argument("--note", type=str, default=None, help="Text note for --add-feedback")
     args = parser.parse_args()
 
+    has_action = any([
+        args.run_formula, args.run_stage_b, args.matrix_out, args.summarize,
+        args.list_runs, args.show_run, args.timeline, args.compare, args.add_feedback,
+    ])
     exit_code = 0
-    if args.run_formula or (not args.matrix_out and not args.summarize and not args.run_stage_b):
+
+    if args.run_formula or not has_action:
         report = run_stage_a_formula_suite()
         reg_check = inspect_lua_registry_via_luajit()
         report["lua_registry_validation"] = reg_check
@@ -721,8 +1138,65 @@ def main() -> int:
         print(f"Wrote 66-Soul balance matrix ({matrix['total_soul_scenario_pairs']} pairs) to {args.matrix_out}")
 
     if args.summarize:
-        summary = summarize_jsonl_runs(args.summarize)
-        print(json.dumps(summary, indent=2))
+        print(json.dumps(summarize_jsonl_runs(args.summarize), indent=2))
+
+    if args.list_runs:
+        recs = filter_runs(
+            load_jsonl_records(resolve_runs_index_path(args.log_dir)),
+            soul=args.soul,
+            level=args.level,
+            boss=args.boss,
+            difficulty=args.difficulty,
+            preset=args.preset,
+            date_prefix=args.date,
+            include_invalid=args.include_invalid,
+            include_extreme=args.include_extreme,
+        )
+        if args.export_csv:
+            export_runs_csv(recs, args.export_csv)
+        print(json.dumps({
+            "count": len(recs),
+            "runs": [
+                {
+                    "run_id": r.get("run_id"),
+                    "timestamp_utc": r.get("timestamp_utc"),
+                    "soul_key": r.get("soul_key"),
+                    "orig_lvl": r.get("original_character_level"),
+                    "eff_lvl": r.get("effective_combat_level", r.get("character_level")),
+                    "boss_type": r.get("boss_type"),
+                    "boss_lvl": r.get("actual_boss_level", r.get("boss_level")),
+                    "difficulty": r.get("difficulty"),
+                    "boss_preset": r.get("boss_preset"),
+                    "outcome": r.get("outcome"),
+                    "dps": (r.get("metrics", {}).get("offense") or {}).get("sustained_dps"),
+                    "valid_for_balance": r.get("valid_for_balance"),
+                }
+                for r in recs
+            ],
+        }, indent=2))
+
+    if args.show_run:
+        bundle = load_run_bundle(args.show_run, args.log_dir)
+        print(json.dumps({
+            "run_id": bundle["run_id"],
+            "summary": bundle["summary"],
+            "event_count": len(bundle["events"]),
+            "snapshot_count": len(bundle["snapshots"]),
+            "feedback": bundle["feedback"],
+        }, indent=2))
+
+    if args.timeline:
+        bundle = load_run_bundle(args.timeline, args.log_dir)
+        analysis = analyze_run_timeline(bundle, rolling_window=args.rolling)
+        if args.export_csv:
+            export_timeline_csv(analysis, args.export_csv)
+        print(render_ascii_timeline(analysis))
+
+    if args.compare:
+        print(json.dumps(compare_runs(args.compare, args.log_dir), indent=2))
+
+    if args.add_feedback:
+        print(json.dumps(add_feedback_to_run(args.add_feedback, args.tag, args.note, args.log_dir), indent=2))
 
     return exit_code
 
