@@ -2,7 +2,7 @@ diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
 --- a/src/map/utils/battleutils.cpp
 +++ b/src/map/utils/battleutils.cpp
 @@ -2170,6 +2170,30 @@ auto isCrimsonFlowSpell(CSpell* PSpell) -> bool
-            PSpell->getID() == SpellID::Phalanx);
+             PSpell->getID() == SpellID::Phalanx);
  }
  
 +auto isShinobiSpec(CBattleEntity* PEntity) -> bool
