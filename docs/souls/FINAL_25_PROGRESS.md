@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 3/25. Current: Channeler. Blocked: none.
-- Latest pushed Soul implementation commits: server `4e1ee017c2e53e2b205771dabc7ab89823e780fb`, launcher `2966b5c5b0f2982ef3e25e80733e7d5500620454`. The server branch also carries this tracker update.
+- Completed: 4/25. Current: Scarlet Weaver. Blocked: none.
+- Latest pushed Soul implementation commits: server `35ba82c33de819c5b6653e382467758abf95efbb`, launcher `f46f5c1ea82c40730b16b313886f2a56bd20124f`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -14,8 +14,8 @@
 | 1 | WHM | Zealot | zealot | Damage | Pushed. Manual verification required. |
 | 2 | WHM | Valkyrie | valkyrie | Support | Pushed. Manual verification required. |
 | 3 | BLM | Astromancer | astromancer | Damage | Pushed. Manual verification required. |
-| 4 | BLM | Channeler | channeler | Support | Current |
-| 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Pending |
+| 4 | BLM | Channeler | channeler | Support | Pushed. Manual verification required. |
+| 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Current |
 | 6 | RDM | Royal Tactician | royaltactician | Support | Pending |
 | 7 | THF | Bandit | bandit | Damage | Pending |
 | 8 | THF | Trickster | trickster | Support | Pending |
@@ -59,4 +59,6 @@
 - **Valkyrie architecture:** `whm_valkyrie_specs.lua` registers Wingmate and Escort. `0047-valkyrie-native-actions.patch` records a hostile interruption, scopes one protected retry to the original spell and tracks actual MP spent. Scoped Polearm equipment/skill and `!gear` support are included. `!gear` also now selects Staff for Zealot.
 - **Astromancer checkpoint:** [Implementation report](completed/astromancer.md). Server `4e1ee017c2e53e2b205771dabc7ab89823e780fb`, launcher `2966b5c5b0f2982ef3e25e80733e7d5500620454`. Four focused tests and 58 local non-loopback tests passed. Strict roster audit: 44 registered, 22 planned. Wiki generated all 16 actions. Native patch checked and 11 C++ units syntax-checked. Launcher validator and 1,109 manifest entries passed.
 - **Astromancer architecture:** `blm_astromancer_specs.lua` owns probes, selection, cast presentation and Saturation. `0048-astromancer-native-actions.patch` validates virtual grants, costs and Ancient recovery. It applies the bonus in native damage calculation and confirms actual HP loss before claiming the shared target window. Mob spawn resets Saturation.
-- **Next step:** inspect Channeler's Sequence E Conduit Link prototype and compare its approved cast/MP support with the current magic init, cost, interruption and completion paths. Respect the exclusion of Ancient Magic and Channeler-to-Channeler links. Wire Lv.10 support without borrowing Astromancer or Cleric gameplay.
+- **Channeler checkpoint:** [Implementation report](completed/channeler.md). Server `35ba82c33de819c5b6653e382467758abf95efbb`, launcher `f46f5c1ea82c40730b16b313886f2a56bd20124f`. Three focused tests and 61 non-loopback regression tests passed. Strict roster audit: 45 registered, 21 planned. Exact wiki generation validated all three custom actions. Native overlay applied, 11 C++ units syntax-checked, and all 1,109 launcher manifest entries verified.
+- **Channeler architecture:** `blm_channeler_specs.lua` owns party targeting, level-dependent link progress and HUD. `0049-channeler-native-actions.patch` reserves benefits inside one native cast, uses the same discount in affordability and actual MP spending, and cleans up on finish/cancel. Shared native spell or ability slots retain the unrelated Soul's behavior.
+- **Next step:** reconcile Scarlet Weaver's approved signed Yin/Yang design and role with the Sequence C prototype. Audit emergency defensive actions and surviving penalties at Lv.10, then verify required Sword WS support and select native carriers for its offensive/defensive choices.
