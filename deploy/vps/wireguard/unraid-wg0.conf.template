@@ -1,0 +1,27 @@
+###############################################################################
+# OverlordsXI — Unraid WireGuard Client Template
+#
+# Configure via Unraid Settings -> VPN Manager (WireGuard) -> Add Tunnel
+# using "Remote tunneled access" / "Peer-to-Peer" mode, OR import this config.
+#
+# Unraid initiates the tunnel outbound to the VPS; NO inbound port forwarding
+# is required on the residential router.
+#
+# IMPORTANT:
+#   AllowedIPs = 10.77.0.1/32 keeps normal Unraid internet traffic on your
+#   local gateway while routing VPS-forwarded game traffic cleanly over wg0
+#   (paired with SNAT/masquerade on the VPS wg0 interface — see Phase 6 guide).
+###############################################################################
+
+[Interface]
+Address = 10.77.0.2/24
+PrivateKey = <UNRAID_PRIVATE_KEY>
+MTU = 1380
+
+[Peer]
+# Ubuntu LTS VPS Gateway
+PublicKey = <VPS_PUBLIC_KEY>
+PresharedKey = <PRESHARED_KEY>
+Endpoint = <VPS_PUBLIC_IPV4>:51820
+AllowedIPs = 10.77.0.1/32
+PersistentKeepalive = 25

@@ -11,3 +11,10 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+*.key
+*.cert
+*.pem
+deploy/vps/wireguard/*.conf
+deploy/vps/firewall/*.conf
+!deploy/vps/wireguard/*.template
+!deploy/vps/firewall/*.template
