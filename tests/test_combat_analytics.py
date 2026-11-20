@@ -1,6 +1,7 @@
 """Automated unit, HTTP API integration, security & UI tests for OverlordsXI Combat Analytics."""
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import shutil
@@ -574,6 +575,26 @@ class CombatAnalyticsApiIntegrationTests(unittest.TestCase):
         url = build_oauth_authorize_url(self.cfg, "discord", "state_nonce_123")
         self.assertIn("discord.com/api/oauth2/authorize", url)
         self.assertIn("state=state_nonce_123", url)
+
+        # Subfolder public_base_url (e.g. https://infomatic.dev/ffxi) preserves path on default OAuth return_to
+        orig_base = self.cfg.public_base_url
+        try:
+            self.cfg.public_base_url = "https://infomatic.dev/ffxi"
+            conn = http.client.HTTPConnection("127.0.0.1", self.server.server_address[1], timeout=10)
+            try:
+                conn.request("GET", "/api/combat/auth/oauth/discord/start")
+                resp = conn.getresponse()
+                resp.read()
+                self.assertEqual(resp.status, 302)
+                loc = resp.getheader("Location") or ""
+                parsed_q = urllib.parse.parse_qs(urllib.parse.urlparse(loc).query)
+                state_tok = parsed_q["state"][0]
+                return_to = self.server.app.oauth_states.consume(state_tok, "discord")
+                self.assertEqual(return_to, "/ffxi/#reports")
+            finally:
+                conn.close()
+        finally:
+            self.cfg.public_base_url = orig_base
 
     def test_player_scoping_filters_feedback_notes_shares_and_downloads(self):
         # 1. Player login sees ONLY HeroOne runs, NOT HeroTwo

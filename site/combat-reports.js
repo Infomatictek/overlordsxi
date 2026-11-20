@@ -1288,12 +1288,19 @@
 
           ${
             (hasDiscord || hasGithub) && crState.backendAvailable !== false
-              ? `
+              ? (() => {
+                  const basePath =
+                    typeof window !== 'undefined' && window.location && window.location.pathname
+                      ? window.location.pathname
+                      : '/';
+                  const returnTo = encodeURIComponent(`${basePath}#reports`);
+                  return `
               <div class="cr-oauth-row">
-                ${hasDiscord ? `<a class="btn-secondary" href="${escapeHtml(crState.apiBase)}/auth/oauth/discord/start">Sign in with Discord</a>` : ''}
-                ${hasGithub ? `<a class="btn-secondary" href="${escapeHtml(crState.apiBase)}/auth/oauth/github/start">Sign in with GitHub</a>` : ''}
+                ${hasDiscord ? `<a class="btn-secondary" href="${escapeHtml(crState.apiBase)}/auth/oauth/discord/start?return_to=${returnTo}">Sign in with Discord</a>` : ''}
+                ${hasGithub ? `<a class="btn-secondary" href="${escapeHtml(crState.apiBase)}/auth/oauth/github/start?return_to=${returnTo}">Sign in with GitHub</a>` : ''}
               </div>
-            `
+            `;
+                })()
               : ''
           }
 

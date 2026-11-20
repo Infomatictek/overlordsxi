@@ -562,10 +562,19 @@ class AnalyticsRequestHandler(BaseHTTPRequestHandler):
             self.app.db.delete_session(raw_tok)
         self._send_json(200, {"ok": True}, extra_headers=[self._make_cookie_header("", max_age=0)])
 
+    def _default_return_to(self) -> str:
+        if self.app.cfg.public_base_url:
+            parsed = urllib.parse.urlparse(self.app.cfg.public_base_url)
+            prefix = (parsed.path or "").rstrip("/")
+            if prefix and prefix.startswith("/") and not prefix.startswith("//"):
+                return f"{prefix}/#reports"
+        return "/#reports"
+
     def _handle_oauth_start(self, provider: str, qs: dict[str, list[str]]) -> None:
-        return_to = self._q(qs, "return_to") or "/#reports"
+        default_return = self._default_return_to()
+        return_to = self._q(qs, "return_to") or default_return
         if not return_to.startswith("/") or return_to.startswith("//"):
-            return_to = "/#reports"
+            return_to = default_return
         state = self.app.oauth_states.issue(provider, return_to=return_to)
         url = build_oauth_authorize_url(self.app.cfg, provider, state)
         self._send_redirect(url)
