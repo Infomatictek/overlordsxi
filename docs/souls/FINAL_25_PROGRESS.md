@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 4/25. Current: Scarlet Weaver. Blocked: none.
-- Latest pushed Soul implementation commits: server `35ba82c33de819c5b6653e382467758abf95efbb`, launcher `f46f5c1ea82c40730b16b313886f2a56bd20124f`. The server branch also carries this tracker update.
+- Completed: 5/25. Current: Royal Tactician. Blocked: none.
+- Latest pushed Soul implementation commits: server `6c145210406300a6052d2c5decfe9a42d3ad1bd6`, launcher `571a4da93dcd285c4c46b7d8fd2bb1442b3d9b74`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -15,8 +15,8 @@
 | 2 | WHM | Valkyrie | valkyrie | Support | Pushed. Manual verification required. |
 | 3 | BLM | Astromancer | astromancer | Damage | Pushed. Manual verification required. |
 | 4 | BLM | Channeler | channeler | Support | Pushed. Manual verification required. |
-| 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Current |
-| 6 | RDM | Royal Tactician | royaltactician | Support | Pending |
+| 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Pushed. Manual verification required. |
+| 6 | RDM | Royal Tactician | royaltactician | Support | Current |
 | 7 | THF | Bandit | bandit | Damage | Pending |
 | 8 | THF | Trickster | trickster | Support | Pending |
 | 9 | THF | Phantom | phantom | Tank | Pending |
@@ -61,4 +61,6 @@
 - **Astromancer architecture:** `blm_astromancer_specs.lua` owns probes, selection, cast presentation and Saturation. `0048-astromancer-native-actions.patch` validates virtual grants, costs and Ancient recovery. It applies the bonus in native damage calculation and confirms actual HP loss before claiming the shared target window. Mob spawn resets Saturation.
 - **Channeler checkpoint:** [Implementation report](completed/channeler.md). Server `35ba82c33de819c5b6653e382467758abf95efbb`, launcher `f46f5c1ea82c40730b16b313886f2a56bd20124f`. Three focused tests and 61 non-loopback regression tests passed. Strict roster audit: 45 registered, 21 planned. Exact wiki generation validated all three custom actions. Native overlay applied, 11 C++ units syntax-checked, and all 1,109 launcher manifest entries verified.
 - **Channeler architecture:** `blm_channeler_specs.lua` owns party targeting, level-dependent link progress and HUD. `0049-channeler-native-actions.patch` reserves benefits inside one native cast, uses the same discount in affordability and actual MP spending, and cleans up on finish/cancel. Shared native spell or ability slots retain the unrelated Soul's behavior.
-- **Next step:** reconcile Scarlet Weaver's approved signed Yin/Yang design and role with the Sequence C prototype. Audit emergency defensive actions and surviving penalties at Lv.10, then verify required Sword WS support and select native carriers for its offensive/defensive choices.
+- **Scarlet Weaver checkpoint:** [Implementation report](completed/scarletweaver.md). Server `6c145210406300a6052d2c5decfe9a42d3ad1bd6`, launcher `571a4da93dcd285c4c46b7d8fd2bb1442b3d9b74`. Three focused tests and 64 non-loopback regression tests passed. Strict roster audit: 46 registered, 20 planned. Wiki generated 11 native actions. Eleven C++ checks and 1,109 launcher manifest entries passed.
+- **Scarlet Weaver architecture:** The approved RDM design is an offensive two-form choice. `rdm_scarlet_weaver_specs.lua` owns form and timing, and `0050-scarlet-weaver-native-actions.patch` scopes Yang to normal main-hand Sword hits and Yin to the Soul's spell set. The signed defense-cost design belongs to the separate RUN Spellblade discussion.
+- **Next step:** review Royal Tactician’s Sequence E Advance/Recompose prototype. Confirm its single latest order, Dispel repeat, Lv.50 resistance fallback and strongest-wins handling. Bring up its Lv.10 native enfeeble-to-party-order loop before the next checkpoint.
