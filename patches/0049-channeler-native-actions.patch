@@ -1,0 +1,432 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -40,6 +40,7 @@
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -129,6 +130,7 @@
+     m_zealotAbility = zealot::isActive(character);
+     m_valkyrieAbility = valkyrie::isActive(character);
+     m_astromancerAbility = astromancer::isActive(character);
++    m_channelerAbility = channeler::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -302,8 +304,10 @@
+         const auto currentZealot = zealot::isActive(PChar);
+         const auto currentValkyrie = valkyrie::isActive(PChar);
+         const auto currentAstromancer = astromancer::isActive(PChar);
++        const auto currentChanneler = channeler::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+-            m_astromancerAbility != currentAstromancer ||
++            m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
++            (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+             (currentValkyrie && (!valkyrie::isKitAbility(PAbility->getID()) || !valkyrie::hasPolearm(PChar))))
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -52,5 +52,6 @@
+     bool                      m_zealotAbility{ false };
+     bool                      m_valkyrieAbility{ false };
+     bool                      m_astromancerAbility{ false };
++    bool                      m_channelerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -43,6 +43,7 @@
+ #include "utils/battleutils.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/zoneutils.h"
+ 
+@@ -85,11 +86,27 @@
+     m_zealotCast = zealot::isActive(caster);
+     m_valkyrieCast = valkyrie::isActive(caster);
+     m_astromancerCast = astromancer::isActive(caster);
++    m_channelerCast = channeler::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+     {
+         return refuseWithErrorMsg();
++    }
++
++    const auto nativeId = static_cast<uint16>(m_spellId);
++    const bool ancient = (nativeId >= 204 && nativeId <= 215) ||
++                         (m_astromancerCast && astromancer::spellProfile(m_spellId).ancient);
++    if (caster && !ancient && m_flags == 0 && m_PSpell->hasMPCost() && m_PSpell->getCastTime() > 0ms &&
++        !caster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::Manafont, xi::StatusEffect::Manawell }) &&
++        caster->GetLocalVar("OX_CHN_LINK_UNTIL") > channeler::nowSecond() &&
++        caster->GetLocalVar("OX_CHN_RESERVED") <= channeler::nowSecond())
++    {
++        if (const auto* owner = channeler::linkOwner(caster))
++        {
++            m_linkOwner = owner->id;
++            m_linkSavings = caster->GetLocalVar("OX_CHN_MP_SAVE");
++        }
+     }
+ 
+     if (!CanCastSpell(PTarget, false))
+@@ -118,6 +135,22 @@
+     }
+ 
+     m_castTime = battleutils::CalculateSpellCastTime(m_PEntity, this);
++    if (m_linkOwner != 0 && (m_castTime <= 0ms || IsInstantCast() || m_PSpell->getCastTime() <= 0ms))
++    {
++        m_linkOwner = 0;
++        m_linkSavings = 0;
++        if (!HasCost())
++        {
++            return refuseWithErrorMsg();
++        }
++    }
++    if (m_linkOwner != 0)
++    {
++        m_castTime = m_castTime * (100 - caster->GetLocalVar("OX_CHN_CAST_SAVE")) / 100;
++        const auto duration = std::chrono::ceil<std::chrono::seconds>(m_castTime).count();
++        m_PEntity->SetLocalVar("OX_CHN_RESERVED", channeler::nowSecond() + duration + 2);
++        m_LinkReserved = true;
++    }
+     m_startPos = m_PEntity->loc.p;
+ 
+     if (const auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity))
+@@ -325,6 +358,7 @@
+                 m_PEntity->SetLocalVar("OX_VLK_INTERRUPT_UNTIL", valkyrie::nowSecond() + 6);
+             }
+             m_PEntity->OnCastInterrupted(*this, action, msg, false);
++            finishLink(false);
+             m_PEntity->PAI->EventHandler.triggerListener("MAGIC_INTERRUPTED", m_PEntity, PTarget, m_PSpell.get(), &action);
+         }
+         else
+@@ -334,6 +368,7 @@
+             {
+                 m_PEntity->addMP(m_actualMpSpent * m_valkyrieRefund / 100);
+             }
++            finishLink(true);
+             m_PEntity->PAI->EventHandler.triggerListener("MAGIC_USE", m_PEntity, PTarget, m_PSpell.get(), &action);
+             for (auto& actionTarget : action.targets)
+             {
+@@ -373,6 +408,7 @@
+ 
+ void CMagicState::Cleanup(timer::time_point tick)
+ {
++    finishLink(false);
+     if (!IsCompleted())
+     {
+         action_t   action{};
+@@ -396,7 +432,8 @@
+     const auto* caster = dynamic_cast<const CCharEntity*>(m_PEntity);
+     const bool sameSoul = m_zealotCast == zealot::isActive(caster) &&
+                           m_valkyrieCast == valkyrie::isActive(caster) &&
+-                          m_astromancerCast == astromancer::isActive(caster);
++                          m_astromancerCast == astromancer::isActive(caster) &&
++                          m_channelerCast == channeler::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+@@ -502,7 +539,7 @@
+         }
+     }
+     // check has mp available
+-    else if (!battleutils::CanAffordSpell(m_PEntity, GetSpell(), m_flags))
++    else if (!battleutils::CanAffordSpell(m_PEntity, GetSpell(), m_flags, m_linkSavings))
+     {
+         if (m_PEntity->objtype == TYPE_MOB && m_PEntity->health.maxmp == 0)
+         {
+@@ -512,6 +549,34 @@
+         return false;
+     }
+     return true;
++}
++
++void CMagicState::finishLink(bool completed)
++{
++    if (!m_LinkReserved)
++    {
++        return;
++    }
++    m_LinkReserved = false;
++    if (m_PEntity->GetLocalVar("OX_CHN_OWNER") != m_linkOwner)
++    {
++        return;
++    }
++
++    auto* recipient = dynamic_cast<CCharEntity*>(m_PEntity);
++    auto* owner = channeler::linkOwner(recipient);
++    if (owner && completed && m_actualMpSpent > 0)
++    {
++        owner->addMP(m_actualMpSpent * recipient->GetLocalVar("OX_CHN_MP_RELAY") / 100);
++    }
++    if (auto* pendingOwner = channeler::playerById(m_linkOwner); pendingOwner &&
++        pendingOwner->GetLocalVar("OX_CHN_RECIPIENT") == m_PEntity->id)
++    {
++        pendingOwner->SetLocalVar("OX_CHN_RECIPIENT", 0);
++    }
++    m_PEntity->SetLocalVar("OX_CHN_OWNER", 0);
++    m_PEntity->SetLocalVar("OX_CHN_LINK_UNTIL", 0);
++    m_PEntity->SetLocalVar("OX_CHN_RESERVED", 0);
+ }
+ 
+ void CMagicState::SpendCost()
+@@ -542,6 +607,7 @@
+             cost = (int16)(cost * (xirand::GetRandomNumber(8.0f, 16.0f) / 16.0f));
+         }
+ 
++        cost = channeler::discountedCost(cost, m_linkSavings);
+         m_actualMpSpent = -m_PEntity->addMP(-cost);
+     }
+ }
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -57,6 +57,7 @@
+     auto Update(timer::time_point tick) -> bool override;
+     auto CanCastSpell(CBattleEntity* PTarget, bool isEndOfCast) -> bool;
+     auto HasCost() -> bool;
++    void finishLink(bool completed);
+     auto HasMoved() const -> bool;
+ 
+     // Shadows CState::m_PEntity
+@@ -70,6 +71,10 @@
+     bool                    m_zealotCast{ false };
+     bool                    m_valkyrieCast{ false };
+     bool                    m_astromancerCast{ false };
++    bool                    m_channelerCast{ false };
++    bool                    m_LinkReserved{ false };
++    uint32                  m_linkOwner{ 0 };
++    uint8                   m_linkSavings{ 0 };
+     bool                    m_hostileInterrupt{ false };
+     bool                    m_valkyrieRetry{ false };
+     int32                   m_valkyrieRefund{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -109,6 +109,7 @@
+ #include "utils/charutils.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "utils/gardenutils.h"
+ #include "utils/messageutils.h"
+@@ -1459,6 +1460,20 @@
+         return profile.level > 0 && GetMLevel() >= profile.level &&
+                (!profile.ancient || astromancer::ancientReady(this)) &&
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
++    }
++
++    if (channeler::isActive(this))
++    {
++        if (channeler::isHolding(this))
++        {
++            return false;
++        }
++        if (PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++        {
++            const auto level = channeler::spellLevel(PSpell->getID());
++            return level > 0 && GetMLevel() >= level &&
++                   !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
++        }
+     }
+ 
+     return charutils::hasSpell(this, static_cast<uint16>(PSpell->getID())) && CBattleEntity::CanUseSpell(PSpell);
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -28,6 +28,7 @@
+ #include "spell.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_MAGIC_DATA::GP_SERV_COMMAND_MAGIC_DATA(const CCharEntity* PChar)
+@@ -38,7 +39,8 @@
+ 
+     const bool zealotActive = zealot::isActive(PChar);
+     const bool astroActive = astromancer::isActive(PChar);
+-    if (zealotActive || astroActive || valkyrie::isActive(PChar))
++    const bool chnActive = channeler::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -51,6 +53,7 @@
+ 
+             const auto unlock = zealotActive ? zealot::spellProfile(spellId, PChar->GetMLevel()).level
+                               : astroActive ? astromancer::spellProfile(spellId).level
++                                : chnActive ? channeler::spellLevel(spellId)
+                                             : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -26,6 +26,7 @@
+ #include "entities/char_entity.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ 
+ GP_SERV_COMMAND_COMMAND_DATA::GP_SERV_COMMAND_COMMAND_DATA(const CCharEntity* PChar)
+@@ -38,13 +39,15 @@
+     std::memcpy(packet.CommandDataTbl.PetAbilities, PChar->m_PetCommands, sizeof(PChar->m_PetCommands));
+     const bool zealotActive = zealot::isActive(PChar);
+     const bool astroActive = astromancer::isActive(PChar);
+-    if (zealotActive || astroActive || valkyrie::isActive(PChar))
++    const bool chnActive = channeler::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+         {
+             const bool allowed = zealotActive ? id == zealot::SealAbility
+                              : astroActive ? id == astromancer::GatherAether
++                               : chnActive ? id == channeler::ConduitLink
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -48,6 +48,7 @@
+ #include "charutils.h"
+ #include "utils/zealot_actions.h"
+ #include "utils/astromancer_actions.h"
++#include "utils/channeler_actions.h"
+ #include "utils/valkyrie_actions.h"
+ #include "data/datasets/animation_locks/dataset.h"
+ #include "data/datasets/skills/dataset.h"
+@@ -381,7 +382,7 @@
+         return false;
+     }
+ 
+-    if (((zealot::isActive(PChar) || astromancer::isActive(PChar)) &&
++    if (((zealot::isActive(PChar) || astromancer::isActive(PChar) || channeler::isActive(PChar)) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
+         (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)))
+     {
+@@ -6117,7 +6118,7 @@
+     return std::clamp<int16>(cost, 0, 9999);
+ }
+ 
+-auto CanAffordSpell(CBattleEntity* PEntity, CSpell* PSpell, uint8 flags) -> bool
++auto CanAffordSpell(CBattleEntity* PEntity, CSpell* PSpell, uint8 flags, uint8 discount) -> bool
+ {
+     if (PEntity == nullptr)
+     {
+@@ -6144,7 +6145,7 @@
+     if (PSpell->hasMPCost())
+     {
+         uint16 spellCost = CalculateSpellCost(PEntity, PSpell);
+-        return PEntity->health.mp >= spellCost;
++        return PEntity->health.mp >= channeler::discountedCost(spellCost, discount);
+     }
+ 
+     return true; // No MP cost required
+@@ -6227,6 +6228,10 @@
+         {
+             base = std::chrono::seconds(profile.recastSeconds);
+         }
++    }
++    if (channeler::isActive(dynamic_cast<const CCharEntity*>(PEntity)) && PSpell->getID() == SpellID::Thunder)
++    {
++        base = 4s;
+     }
+     auto recast = base;
+ 
+diff --git a/src/map/utils/battleutils.h b/src/map/utils/battleutils.h
+--- a/src/map/utils/battleutils.h
++++ b/src/map/utils/battleutils.h
+@@ -259,7 +259,7 @@
+ auto CalculateSpellCastTime(CBattleEntity*, CMagicState*) -> timer::duration;
+ auto CalculateSpellCost(CBattleEntity*, CSpell*) -> uint16;
+ auto CalculateSpellRecastTime(CBattleEntity*, CSpell*) -> timer::duration;
+-auto CanAffordSpell(CBattleEntity* PEntity, CSpell* PSpell, uint8 flags = 0) -> bool;
++auto CanAffordSpell(CBattleEntity* PEntity, CSpell* PSpell, uint8 flags = 0, uint8 discount = 0) -> bool;
+ auto CalculateWeaponSkillTP(CBattleEntity*, CWeaponSkill*, int16) -> int16;
+ auto RemoveAmmo(CCharEntity*, int quantity = 1) -> bool;
+ auto GetMeritValue(CBattleEntity*, xi::Merit) -> int32;
+diff --git a/src/map/utils/channeler_actions.h b/src/map/utils/channeler_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/channeler_actions.h
+@@ -0,0 +1,66 @@
++#pragma once
++
++#include "common/timer.h"
++#include "entities/char_entity.h"
++#include "spell.h"
++#include "utils/zoneutils.h"
++
++namespace channeler
++{
++inline constexpr uint16 ConduitLink = 273;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::BLM && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_CHN_ACTIVE") == 1;
++}
++
++inline auto nowSecond() -> uint32
++{
++    return static_cast<uint32>(std::chrono::duration_cast<std::chrono::seconds>(timer::now().time_since_epoch()).count());
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    if (id == SpellID::Thunder)
++    {
++        return 10;
++    }
++    return id == SpellID::Aspir ? 30 : 0;
++}
++
++inline auto playerById(uint32 id) -> CCharEntity*
++{
++    return id == 0 ? nullptr : dynamic_cast<CCharEntity*>(zoneutils::GetEntity(id, TYPE_PC));
++}
++
++inline auto linkOwner(const CCharEntity* recipient) -> CCharEntity*
++{
++    auto* owner = playerById(recipient->GetLocalVar("OX_CHN_OWNER"));
++    if (!isActive(owner) || !owner->isAlive() || !recipient->isAlive() || owner->loc.zone != recipient->loc.zone ||
++        owner->GetLocalVar("OX_CHN_RECIPIENT") != recipient->id)
++    {
++        return nullptr;
++    }
++    const bool reserved = recipient->GetLocalVar("OX_CHN_RESERVED") > nowSecond();
++    if (owner != recipient && (isActive(recipient) || !owner->PParty || owner->PParty != recipient->PParty ||
++                              (!reserved && distance(owner->loc.p, recipient->loc.p) > recipient->GetLocalVar("OX_CHN_RANGE"))))
++    {
++        return nullptr;
++    }
++    return owner;
++}
++
++inline auto isHolding(const CCharEntity* owner) -> bool
++{
++    const auto* recipient = playerById(owner->GetLocalVar("OX_CHN_RECIPIENT"));
++    const auto now = nowSecond();
++    return recipient && recipient != owner && linkOwner(recipient) == owner &&
++           (recipient->GetLocalVar("OX_CHN_LINK_UNTIL") > now || recipient->GetLocalVar("OX_CHN_RESERVED") > now);
++}
++
++inline auto discountedCost(uint16 cost, uint8 percent) -> uint16
++{
++    return cost == 0 ? 0 : static_cast<uint16>(std::max<int32>(1, cost * (100 - percent) / 100));
++}
++} // namespace channeler

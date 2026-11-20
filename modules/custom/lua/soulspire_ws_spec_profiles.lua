@@ -3002,6 +3002,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     sage           = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true, [S.CLUB or 11] = true, [S.STAFF or 12] = true }, -- SCH + BRD Musician
     necromancer    = { [S.SCYTHE or 7] = true },
     astromancer    = { [S.STAFF or 12] = true },
+    channeler      = { [S.STAFF or 12] = true },
     bladewheel     = { [S.THROWING or 27] = true, [S.DAGGER or 2] = true, [S.SWORD or 3] = true }, -- DNC Bladewheel + BRD Adventurer
     ronin          = { [S.GREAT_KATANA or 10] = true },
     warlord        = { [S.GREAT_KATANA or 10] = true },
