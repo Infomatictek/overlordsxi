@@ -247,12 +247,14 @@ R.ARCHETYPES =
         npcAvailable        = true,
         automatedAvailable  = true,
         defaultDurationSec  = 180,
-        -- Normal: Orcish_Hexspinner (BLM/BLM, mobType=0, HP=0, spellList=21 Beastmen_BLM)
+        -- Normal: Orcish_Hexspinner (BLM/BLM, mobType=0, HP=0, modelId=637, spellList=21 Beastmen_BLM)
         groupId             = 3724,
         groupZoneId         = 86,
-        -- NM: Living_Staves (BLM, mobType=2, HP=0, spellList=21 Beastmen_BLM)
-        nmGroupId           = 30,
-        nmGroupZoneId       = 56,
+        -- NM: Arch_Ahriman (BLM/BLM, mobType=2 NM, HP=0, neutral SDT=0, modelId=265 classic Ahriman, entityFlags=0x0000)
+        -- Replaced Living_Staves (30/56, species 476 animated weapon modelId=462, entityFlags=0x0083 HIDE_MODEL)
+        -- which rendered invisible in GM Home despite functioning in combat.
+        nmGroupId           = 3707,
+        nmGroupZoneId       = 86,
         behavior =
         {
             autoAttack      = true,
@@ -926,6 +928,92 @@ function R.applyBehaviorProfile(mob, encounter)
     end
 end
 
+-- Clears hidden/untargetable entityFlags (e.g. HIDE_MODEL=0x0080 captured on
+-- Dynamis/Campaign/Assault mob_pools) so dynamically spawned Proving Grounds
+-- bosses always render visibly and remain targetable immediately upon spawn.
+R.VISIBILITY_CLEAR_MASK = 0x00000988 -- HIDE_NAME(0x008) | HIDE_MODEL(0x080) | HIDE_HP(0x100) | UNTARGETABLE(0x800)
+
+function R.ensureVisibleMobAppearance(mob)
+    if mob == nil then
+        return
+    end
+    if mob.getMobFlags and mob.setMobFlags then
+        local ok, flags = pcall(function() return mob:getMobFlags() end)
+        if ok and type(flags) == 'number' then
+            local cleaned = bit.band(flags, bit.bnot(R.VISIBILITY_CLEAR_MASK))
+            if cleaned ~= flags then
+                pcall(function() mob:setMobFlags(cleaned) end)
+            end
+        end
+    end
+    if mob.hideName then
+        pcall(function() mob:hideName(false) end)
+    end
+    if mob.hideHP then
+        pcall(function() mob:hideHP(false) end)
+    end
+    if mob.setUntargetable then
+        pcall(function() mob:setUntargetable(false) end)
+    end
+end
+
+-- Validates that a spawned trial mob has a client-visible model and valid flags.
+function R.validateMobAppearance(mob)
+    local report =
+    {
+        valid       = false,
+        model_id    = 0,
+        look_size   = nil,
+        mob_flags   = 0,
+        warnings    = {},
+    }
+    if mob == nil then
+        report.warnings[#report.warnings + 1] = 'nil_mob_entity'
+        return report
+    end
+
+    if mob.getModelId then
+        local ok, mid = pcall(function() return mob:getModelId() end)
+        if ok and type(mid) == 'number' then
+            report.model_id = mid
+        end
+    end
+    if mob.getLookSnapshot then
+        local ok, look = pcall(function() return mob:getLookSnapshot() end)
+        if ok and type(look) == 'table' then
+            report.look_size = look.size
+        end
+    end
+    if mob.getMobFlags then
+        local ok, flags = pcall(function() return mob:getMobFlags() end)
+        if ok and type(flags) == 'number' then
+            report.mob_flags = flags
+        end
+    end
+
+    if report.model_id <= 0 then
+        report.warnings[#report.warnings + 1] = 'missing_model_id'
+    end
+    if report.look_size ~= nil and report.look_size ~= 0 and report.look_size ~= 1 and report.look_size ~= 5 then
+        report.warnings[#report.warnings + 1] = string.format('invalid_look_size:%s', tostring(report.look_size))
+    end
+    if bit.band(report.mob_flags, 0x0080) ~= 0 then
+        report.warnings[#report.warnings + 1] = 'hide_model_flag_set'
+    end
+    if bit.band(report.mob_flags, 0x0800) ~= 0 then
+        report.warnings[#report.warnings + 1] = 'untargetable_flag_set'
+    end
+    if bit.band(report.mob_flags, 0x0008) ~= 0 then
+        report.warnings[#report.warnings + 1] = 'hide_name_flag_set'
+    end
+    if bit.band(report.mob_flags, 0x0100) ~= 0 then
+        report.warnings[#report.warnings + 1] = 'hide_hp_flag_set'
+    end
+
+    report.valid = (#report.warnings == 0)
+    return report
+end
+
 -- Shared spawner used by BOTH the in-game Arbiter NPC and automated tests.
 function R.spawnTrialMob(zone, encounter, callbacks)
     if zone == nil then
@@ -961,6 +1049,7 @@ function R.spawnTrialMob(zone, encounter, callbacks)
         releaseIdOnDisappear  = true,
         specialSpawnAnimation = false,
         onMobSpawn = function(m)
+            R.ensureVisibleMobAppearance(m)
             R.applyNoProgressionMobFlags(m)
             R.applyBehaviorProfile(m, encounter)
             if callbacks.onMobSpawn then
@@ -969,7 +1058,13 @@ function R.spawnTrialMob(zone, encounter, callbacks)
         end,
         onMobFight = function(m, target)
             if behavior.refillHpOnLow and m:getHPP() < 50 then
-                m:setHP(m:getMaxHP())
+                local beforeHp = m:getHP() or 0
+                local maxHp = m:getMaxHP() or beforeHp
+                local delta = math.max(0, maxHp - beforeHp)
+                if delta > 0 and m.getLocalVar and m.setLocalVar then
+                    m:setLocalVar('[ProvingGrounds]RefillHpTotal', (m:getLocalVar('[ProvingGrounds]RefillHpTotal') or 0) + delta)
+                end
+                m:setHP(maxHp)
             end
             if m.setCallForHelpFlag and m.getCallForHelpFlag and not m:getCallForHelpFlag() then
                 m:setCallForHelpFlag(true)
@@ -1011,6 +1106,7 @@ function R.spawnTrialMob(zone, encounter, callbacks)
         return nil, 'Failed to allocate dynamic trial mob entity.'
     end
 
+    R.ensureVisibleMobAppearance(mob)
     R.applyNoProgressionMobFlags(mob)
     mob:setSpawn(pos.x, pos.y, pos.z, pos.rotation or 128)
     mob:spawn(lifetime)
@@ -1026,6 +1122,7 @@ function R.spawnTrialMob(zone, encounter, callbacks)
         end
     end
 
+    R.ensureVisibleMobAppearance(mob)
     R.applyBehaviorProfile(mob, encounter)
     R.applyNoProgressionMobFlags(mob)
 
@@ -1038,6 +1135,18 @@ function R.spawnTrialMob(zone, encounter, callbacks)
 
     mob:setLocalVar('[ProvingGrounds]EncounterLevel', encounter.bossLevel)
     mob:setLocalVar('[ProvingGrounds]BossPresetNM', encounter.isNM and 1 or 0)
+    mob:setLocalVar('[ProvingGrounds]RefillHpTotal', 0)
+
+    local appearance = R.validateMobAppearance(mob)
+    if not appearance.valid then
+        print(string.format(
+            '[ProvingGrounds] WARNING: Spawned mob %s (group=%s/%s) failed appearance validation: %s',
+            tostring(arch.entityName),
+            tostring(groupId),
+            tostring(groupZn),
+            table.concat(appearance.warnings, ', ')
+        ))
+    end
 
     return mob, nil
 end

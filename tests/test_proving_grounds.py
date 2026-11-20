@@ -236,6 +236,91 @@ class ProvingGroundsStageATests(unittest.TestCase):
             pgb.export_timeline_csv(analysis, csv_tl)
             self.assertTrue(csv_tl.is_file() and csv_tl.stat().st_size > 0)
 
+    def test_timeline_diagnostics_detect_all_seven_warning_categories(self) -> None:
+        summary = {
+            "run_id": "pg_diag_test",
+            "soul_key": "shinobi",
+            "combat_started": True,
+            "encounter_duration_sec": 15.0,
+            "diagnostics": [
+                {
+                    "code": "unavailable_ws_under_level_sync",
+                    "severity": "warning",
+                    "detail": "1 participant had zero unlocked weapon skills under level sync",
+                }
+            ],
+            "metrics": {
+                "offense": {
+                    "total_damage": 200,
+                    "autoattack_damage": 100,
+                    "weaponskill_damage": 50,
+                    "spell_damage": 0,
+                    "ability_damage": 0,
+                    "other_damage": 0,
+                    "pet_and_clone_damage": 0,
+                    "weaponskill_uses": 0,
+                },
+                "resources_and_pets": {
+                    "tp_generated": 1500,
+                    "tp_spent": 0,
+                },
+            },
+        }
+        events = [
+            {"seq": 1, "phase": "combat", "combat_ms": 0, "category": "lifecycle", "event_type": "combat_start", "source_id": 99, "source_name": "Boss", "target_id": 99, "target_name": "Boss", "value": "boss_spell_start", "meta": {"verified_hostile": False}},
+            {"seq": 2, "phase": "combat", "combat_ms": 0, "category": "boss", "event_type": "boss_spell_start", "source_id": 99, "source_name": "Boss", "target_id": 99, "target_name": "Boss", "value": 249},
+            {"seq": 3, "phase": "combat", "combat_ms": 2000, "category": "defense", "event_type": "unattributed_hp_change", "target_name": "Eko", "value": 45},
+            {"seq": 4, "phase": "combat", "combat_ms": 3000, "category": "offense", "event_type": "damage_dealt", "source_id": 1, "source_name": "Eko", "value": 39, "meta": {"source_kind": "auto"}},
+            {"seq": 5, "phase": "combat", "combat_ms": 3000, "category": "offense", "event_type": "damage_dealt", "source_id": 1, "source_name": "Eko", "value": 39, "meta": {"source_kind": "ws"}},
+            {"seq": 6, "phase": "combat", "combat_ms": 5000, "category": "boss", "event_type": "boss_ability_complete", "value": 500, "meta": {"completed": False}},
+            {"seq": 7, "phase": "combat", "combat_ms": 6000, "category": "boss", "event_type": "boss_ability_complete", "value": 501, "meta": {"completed": False}},
+        ]
+        snapshots = [
+            {"combat_sec": s, "combat_ms": s * 1000, "players": [{"id": 1, "name": "Eko", "hp": 300, "max_hp": 400, "mp": 0, "tp": 1000}], "boss": {"hp_pct": 80}, "pets_and_clones": [], "interval": {"damage_dealt": 20, "player_damage": 20, "pet_clone_damage": 0, "damage_received": 10, "healing_done": 0}}
+            for s in range(7)
+        ]
+
+        analysis = pgb.analyze_run_timeline({"run_id": "pg_diag_test", "summary": summary, "events": events, "snapshots": snapshots})
+        codes = {d["code"] for d in analysis["diagnostics"]}
+        expected = {
+            "unexpected_combat_start_trigger",
+            "unattributed_hp_recovery",
+            "damage_attribution_mismatch",
+            "resource_generated_without_expenditure",
+            "unavailable_ws_under_level_sync",
+            "boss_ability_execution_failures",
+            "missing_companion_attribution",
+        }
+        self.assertTrue(expected.issubset(codes), f"Missing diagnostic codes: {expected - codes}")
+
+        rendered = pgb.render_ascii_timeline(analysis)
+        self.assertIn("Diagnostics & Warnings", rendered)
+        self.assertIn("[WARN:", rendered)
+        for code in expected:
+            self.assertIn(code, rendered)
+
+    def test_registry_spawn_appearance_config_guards_against_invisible_models(self) -> None:
+        reg = pgb.inspect_lua_registry_via_luajit()
+        if not reg.get("available"):
+            self.skipTest("libluajit_64.dll unavailable")
+
+        # HIDE_MODEL(0x80) | HIDE_NAME(0x100) | HIDE_HP(0x800) | UNTARGETABLE(0x8) = 0x988
+        self.assertEqual(reg.get("visibilityClearMask"), 0x00000988)
+
+        all_arch = {a["id"]: a for a in reg.get("allArchetypes") or []}
+        self.assertIn("magic_caster", all_arch)
+        mc = all_arch["magic_caster"]
+        # Must NOT use the broken invisible Living_Staves (30, 56) Periqia animated weapon group!
+        self.assertNotEqual((mc["nmGroupId"], mc["nmGroupZoneId"]), (30, 56))
+        # Must use verified visible Arch_Ahriman (3707, 86)
+        self.assertEqual((mc["nmGroupId"], mc["nmGroupZoneId"]), (3707, 86))
+
+        for arch_id, arch in all_arch.items():
+            self.assertGreater(arch["groupId"], 0, f"{arch_id} normal groupId invalid")
+            self.assertGreater(arch["groupZoneId"], 0, f"{arch_id} normal groupZoneId invalid")
+            self.assertGreater(arch["nmGroupId"], 0, f"{arch_id} nmGroupId invalid")
+            self.assertGreater(arch["nmGroupZoneId"], 0, f"{arch_id} nmGroupZoneId invalid")
+
 
 if __name__ == "__main__":
     unittest.main()

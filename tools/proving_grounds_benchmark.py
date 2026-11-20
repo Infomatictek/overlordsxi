@@ -189,9 +189,22 @@ for _, k in ipairs(R.NPC_ARCHETYPE_ORDER) do
         npcAvailable = a.npcAvailable,
         groupId = a.groupId,
         groupZoneId = a.groupZoneId,
+        nmGroupId = a.nmGroupId,
+        nmGroupZoneId = a.nmGroupZoneId,
         autoAttack = a.behavior.autoAttack,
         magicCasting = a.behavior.magicCasting,
         mobAbility = a.behavior.mobAbility,
+    }}
+end
+local allArchetypes = {{}}
+for k, a in pairs(R.ARCHETYPES) do
+    allArchetypes[#allArchetypes + 1] = {{
+        id = a.id,
+        groupId = a.groupId,
+        groupZoneId = a.groupZoneId,
+        nmGroupId = a.nmGroupId,
+        nmGroupZoneId = a.nmGroupZoneId,
+        npcAvailable = a.npcAvailable == true,
     }}
 end
 local sampleEnc, err = R.buildEncounterConfig({{
@@ -209,6 +222,8 @@ local out = {{
     levels = R.LEVELS,
     difficultyOrder = R.DIFFICULTY_ORDER,
     npcArchetypes = npcTypes,
+    allArchetypes = allArchetypes,
+    visibilityClearMask = R.VISIBILITY_CLEAR_MASK,
     matrixOrder = R.MATRIX_ARCHETYPE_ORDER,
     plus8Baseline = R.DIFFICULTIES.extreme.standardBaseline,
     plus8Extreme = R.DIFFICULTIES.extreme.extremeChallenge,
@@ -770,10 +785,233 @@ def load_run_bundle(run_id: str, base_dir: Path = DEFAULT_LOG_BASE_DIR) -> dict[
     }
 
 
+COMPANION_SOUL_KEYS = {
+    "shinobi", "kurogane", "medic", "sage", "necromancer", "untamed", "huntsman",
+}
+
+
+def detect_timeline_diagnostics(
+    summary: dict[str, Any] | None,
+    events: list[dict[str, Any]],
+    snapshots: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Collect and derive explicit diagnostic warnings tied to timeline timestamps/events."""
+    diagnostics: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, int | None, int | None]] = set()
+
+    def add_diag(
+        code: str,
+        message: str,
+        *,
+        severity: str = "warning",
+        combat_sec: int | None = None,
+        seq: int | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
+        key = (code, combat_sec, seq)
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        diagnostics.append({
+            "code": code,
+            "severity": severity,
+            "combat_sec": combat_sec,
+            "seq": seq,
+            "message": message,
+            "meta": meta,
+        })
+
+    # 1. Surface authoritative server-emitted diagnostics from summary
+    if isinstance(summary, dict):
+        for d in summary.get("diagnostics") or []:
+            if isinstance(d, dict) and d.get("code"):
+                add_diag(
+                    str(d["code"]),
+                    str(d.get("detail") or d.get("message") or d["code"]),
+                    severity=str(d.get("severity") or "warning"),
+                    combat_sec=d.get("combat_sec"),
+                    seq=d.get("seq"),
+                    meta=d.get("meta") if isinstance(d.get("meta"), dict) else None,
+                )
+
+    # 2. Unexpected combat-start triggers (self-targeted spell/buff or unverified trigger)
+    combat_start_ev = next((e for e in events if e.get("event_type") == "combat_start"), None)
+    if combat_start_ev is not None:
+        meta = combat_start_ev.get("meta") or {}
+        src_id = combat_start_ev.get("source_id")
+        tgt_id = combat_start_ev.get("target_id")
+        if meta.get("verified_hostile") is False or (src_id is not None and src_id == tgt_id):
+            add_diag(
+                "unexpected_combat_start_trigger",
+                f"Combat started from non-hostile/self-targeted trigger '{combat_start_ev.get('value')}' "
+                f"({combat_start_ev.get('source_name')} -> {combat_start_ev.get('target_name')})",
+                combat_sec=0,
+                seq=combat_start_ev.get("seq"),
+                meta=meta,
+            )
+    # Also check legacy logs where a self-targeted boss spell appeared at combat_ms == 0
+    for ev in events:
+        if ev.get("phase") == "combat" and ev.get("combat_ms") == 0 and ev.get("event_type") in ("boss_spell_start", "boss_spell_complete"):
+            if ev.get("source_id") is not None and ev.get("source_id") == ev.get("target_id"):
+                add_diag(
+                    "unexpected_combat_start_trigger",
+                    f"Boss self-targeted spell ({ev.get('value')}) occurred at combat_ms=0 (premature combat timer start)",
+                    combat_sec=0,
+                    seq=ev.get("seq"),
+                )
+
+    # 3. Unattributed HP recovery (explicit events + legacy snapshot reconciliation)
+    unattributed_ev_count = 0
+    for ev in events:
+        if ev.get("event_type") == "unattributed_hp_change":
+            unattributed_ev_count += 1
+            cm = ev.get("combat_ms")
+            csec = int(cm // 1000) if isinstance(cm, (int, float)) else None
+            add_diag(
+                "unattributed_hp_recovery",
+                f"{ev.get('target_name') or 'actor'} recovered +{ev.get('value')} HP without an authoritative attributed source",
+                combat_sec=csec,
+                seq=ev.get("seq"),
+                meta=ev.get("meta") if isinstance(ev.get("meta"), dict) else None,
+            )
+
+    if unattributed_ev_count == 0 and len(snapshots) >= 2:
+        prev_hp_by_id: dict[Any, tuple[int, int]] = {}
+        for snap in snapshots:
+            sec = int(snap.get("combat_sec", 0))
+            iv_heal = float((snap.get("interval") or {}).get("healing_done", 0))
+            total_pos_delta = 0
+            jump_actors: list[str] = []
+            for p in snap.get("players") or []:
+                pid = p.get("id")
+                hp = int(p.get("hp") or 0)
+                mhp = int(p.get("max_hp") or 0)
+                if pid in prev_hp_by_id:
+                    p_hp, p_mhp = prev_hp_by_id[pid]
+                    delta = hp - p_hp
+                    # Ignore Max HP shifts when checking unexplained snapshot HP gains
+                    if delta > 0 and mhp == p_mhp:
+                        total_pos_delta += delta
+                        jump_actors.append(f"{p.get('name')}(+{delta})")
+                prev_hp_by_id[pid] = (hp, mhp)
+            if total_pos_delta > iv_heal + 5:
+                add_diag(
+                    "unattributed_hp_recovery",
+                    f"Snapshot HP increased by +{total_pos_delta} ({', '.join(jump_actors)}) vs {iv_heal:.0f} attributed healing",
+                    combat_sec=sec,
+                )
+
+    # 4. Damage attribution mismatches (summary breakdown/boss HP + same-timestamp WS/auto duplicates)
+    if isinstance(summary, dict):
+        off = (summary.get("metrics") or {}).get("offense") or {}
+        recon = summary.get("reconciliation") or {}
+        if recon.get("damage_reconciled") is False:
+            add_diag(
+                "damage_attribution_mismatch",
+                f"Recorded damage ({recon.get('total_damage_recorded')}) did not match boss HP lost ({recon.get('boss_hp_lost')})",
+                meta=recon,
+            )
+        else:
+            tot = off.get("total_damage")
+            if isinstance(tot, (int, float)):
+                parts = sum(
+                    float(off.get(k) or 0)
+                    for k in ("autoattack_damage", "weaponskill_damage", "spell_damage", "ability_damage", "other_damage", "pet_and_clone_damage")
+                )
+                if abs(parts - float(tot)) > 0.5:
+                    add_diag(
+                        "damage_attribution_mismatch",
+                        f"Offense breakdown sum ({parts:.0f}) != total_damage ({tot:.0f})",
+                    )
+
+    # Legacy duplicate WS+auto check on event stream (exact same timestamp, attacker, value, one 'auto' & one 'ws')
+    ws_ev_index: set[tuple[Any, Any, Any]] = set()
+    for ev in events:
+        if ev.get("event_type") == "damage_dealt" and (ev.get("meta") or {}).get("source_kind") == "ws":
+            ws_ev_index.add((ev.get("combat_ms"), ev.get("source_id"), ev.get("value")))
+    for ev in events:
+        if ev.get("event_type") == "damage_dealt" and (ev.get("meta") or {}).get("source_kind") == "auto":
+            sig = (ev.get("combat_ms"), ev.get("source_id"), ev.get("value"))
+            if sig in ws_ev_index:
+                cm = ev.get("combat_ms")
+                add_diag(
+                    "damage_attribution_mismatch",
+                    f"Possible duplicate WS/auto damage ({ev.get('value')}) for {ev.get('source_name')} at combat_ms={cm}",
+                    combat_sec=int(cm // 1000) if isinstance(cm, (int, float)) else None,
+                    seq=ev.get("seq"),
+                )
+
+    # 5. Resource generation without expenditure
+    if isinstance(summary, dict):
+        res = (summary.get("metrics") or {}).get("resources_and_pets") or {}
+        off = (summary.get("metrics") or {}).get("offense") or {}
+        tp_gen = res.get("tp_generated") or 0
+        tp_spent = res.get("tp_spent") or 0
+        ws_uses = off.get("weaponskill_uses") or 0
+        if summary.get("combat_started") and isinstance(tp_gen, (int, float)) and tp_gen >= 1000 and tp_spent == 0 and ws_uses == 0:
+            add_diag(
+                "resource_generated_without_expenditure",
+                f"{tp_gen} TP generated with 0 TP spent and 0 weapon skills used",
+            )
+
+    # 6. Boss ability execution failures
+    failed_boss_abilities = [
+        e for e in events
+        if e.get("event_type") == "boss_ability_complete" and (e.get("meta") or {}).get("completed") is False
+    ]
+    chosen_boss_abilities = [e for e in events if e.get("event_type") == "boss_ability_choose"]
+    completed_boss_abilities = [
+        e for e in events
+        if e.get("event_type") == "boss_ability_complete" and (e.get("meta") or {}).get("completed") is True
+    ]
+    if len(failed_boss_abilities) >= 2 or (len(chosen_boss_abilities) >= 3 and len(completed_boss_abilities) == 0):
+        first_fail = failed_boss_abilities[0] if failed_boss_abilities else chosen_boss_abilities[0]
+        cm = first_fail.get("combat_ms")
+        add_diag(
+            "boss_ability_execution_failures",
+            f"Boss ability selections failed repeatedly (chosen={len(chosen_boss_abilities)}, "
+            f"completed={len(completed_boss_abilities)}, failed={len(failed_boss_abilities)})",
+            combat_sec=int(cm // 1000) if isinstance(cm, (int, float)) else None,
+            seq=first_fail.get("seq"),
+        )
+
+    # 7. Missing clone/pet attribution
+    for ev in events:
+        meta = ev.get("meta") or {}
+        if ev.get("event_type") == "pet_damage" and meta.get("owner_id") is None:
+            cm = ev.get("combat_ms")
+            add_diag(
+                "missing_companion_attribution",
+                f"Companion damage ({ev.get('value')}) from {ev.get('source_name')} is missing owner_id attribution",
+                combat_sec=int(cm // 1000) if isinstance(cm, (int, float)) else None,
+                seq=ev.get("seq"),
+            )
+        elif ev.get("event_type") == "damage_dealt" and meta.get("unattributed") is True:
+            cm = ev.get("combat_ms")
+            add_diag(
+                "missing_companion_attribution",
+                f"Unattributed damage ({ev.get('value')}) from {ev.get('source_name')} lacked participant/companion ownership",
+                combat_sec=int(cm // 1000) if isinstance(cm, (int, float)) else None,
+                seq=ev.get("seq"),
+            )
+    if isinstance(summary, dict):
+        skey = str(summary.get("soul_key") or "").lower()
+        dur = float(summary.get("encounter_duration_sec") or 0)
+        pet_ev_present = any(e.get("category") == "pet" for e in events)
+        if skey in COMPANION_SOUL_KEYS and summary.get("combat_started") and dur >= 5.0 and not pet_ev_present:
+            add_diag(
+                "missing_companion_attribution",
+                f"Companion Soul '{skey}' recorded no pet/clone events across {dur:.1f}s of combat",
+            )
+
+    return diagnostics
+
+
 def analyze_run_timeline(bundle: dict[str, Any], rolling_window: int = 5) -> dict[str, Any]:
-    """Build 1s intervals, rolling DPS averages, damage spikes, DPS drops, pet deaths, and resource changes."""
+    """Build 1s intervals, rolling DPS averages, damage spikes, DPS drops, pet deaths, resource changes, and diagnostics."""
     snapshots = bundle.get("snapshots") or []
     events = bundle.get("events") or []
+    summary = bundle.get("summary")
     win = max(1, int(rolling_window))
 
     intervals: list[dict[str, Any]] = []
@@ -823,11 +1061,14 @@ def analyze_run_timeline(bundle: dict[str, Any], rolling_window: int = 5) -> dic
     pet_events = [e for e in events if e.get("category") == "pet" and e.get("event_type") in ("pet_spawn", "clone_spawn", "pet_death", "clone_death", "pet_despawn", "clone_despawn")]
     boss_thresholds = [e for e in events if e.get("event_type") == "boss_hp_threshold"]
     status_changes = [e for e in events if e.get("event_type") in ("status_applied", "status_removed")]
+    hp_recovery_events = [e for e in events if e.get("event_type") in ("heal_applied", "regen_tick", "unattributed_hp_change")]
+    max_hp_changes = [e for e in events if e.get("event_type") == "max_hp_change"]
+    diagnostics = detect_timeline_diagnostics(summary, events, snapshots)
 
     return {
         "run_id": bundle.get("run_id"),
         "rolling_window_sec": win,
-        "summary": bundle.get("summary"),
+        "summary": summary,
         "feedback": bundle.get("feedback"),
         "interval_count": len(intervals),
         "event_count": len(events),
@@ -837,27 +1078,42 @@ def analyze_run_timeline(bundle: dict[str, Any], rolling_window: int = 5) -> dic
         "pet_clone_lifecycle_events": pet_events,
         "boss_hp_thresholds": boss_thresholds,
         "status_change_count": len(status_changes),
+        "hp_recovery_events": hp_recovery_events,
+        "max_hp_changes": max_hp_changes,
+        "diagnostics": diagnostics,
     }
 
 
 def render_ascii_timeline(analysis: dict[str, Any]) -> str:
-    """Render a compact 1-second ASCII timeline correlating DPS, incoming damage, spikes, and feedback."""
+    """Render a compact 1-second ASCII timeline correlating DPS, incoming damage, spikes, diagnostics, and feedback."""
     win = analysis["rolling_window_sec"]
     roll_key = f"rolling_{win}s_dps"
     intervals = analysis.get("intervals") or []
+    diagnostics = analysis.get("diagnostics") or []
     lines = [f"=== Timeline: {analysis['run_id']} ({len(intervals)}s snapshots, {analysis['event_count']} events) ==="]
     fb = analysis.get("feedback")
     if isinstance(fb, dict):
         lines.append(f"Feedback: [{fb.get('tag')}] {fb.get('label') or ''} {fb.get('note') or ''}".strip())
 
+    diag_by_sec: dict[int, list[str]] = {}
+    for d in diagnostics:
+        csec = d.get("combat_sec")
+        if isinstance(csec, int):
+            diag_by_sec.setdefault(csec, []).append(str(d.get("code")))
+
     max_val = max((max(iv["damage_dealt"], iv["damage_received"]) for iv in intervals), default=1.0)
     max_val = max(1.0, max_val)
     for iv in intervals:
+        sec = iv["combat_sec"]
         bar_out = "#" * int((iv["damage_dealt"] / max_val) * 20)
         bar_in = "!" * int((iv["damage_received"] / max_val) * 15)
+        warn_suffix = ""
+        if sec in diag_by_sec:
+            codes = ",".join(dict.fromkeys(diag_by_sec[sec]))
+            warn_suffix = f" [WARN: {codes}]"
         lines.append(
-            f"t={iv['combat_sec']:3d}s | Out:{iv['damage_dealt']:5.0f} ({win}s:{iv[roll_key]:5.1f}) {bar_out:<20} | "
-            f"In:{iv['damage_received']:5.0f} {bar_in:<15} | Boss:{str(iv['boss_hp_pct']):>5}% TP:{str(iv['player_tp']):>4}"
+            f"t={sec:3d}s | Out:{iv['damage_dealt']:5.0f} ({win}s:{iv[roll_key]:5.1f}) {bar_out:<20} | "
+            f"In:{iv['damage_received']:5.0f} {bar_in:<15} | Boss:{str(iv['boss_hp_pct']):>5}% TP:{str(iv['player_tp']):>4}{warn_suffix}"
         )
     if analysis["damage_spikes"]:
         lines.append(f"Damage Spikes ({len(analysis['damage_spikes'])}): " + ", ".join(
@@ -871,6 +1127,16 @@ def render_ascii_timeline(analysis: dict[str, Any]) -> str:
         lines.append("Pet/Clone Events: " + ", ".join(
             f"t={int((e.get('combat_ms') or 0)/1000)}s:{e.get('event_type')}" for e in analysis["pet_clone_lifecycle_events"][:10]
         ))
+    if diagnostics:
+        lines.append(f"Diagnostics & Warnings ({len(diagnostics)}):")
+        for d in diagnostics:
+            loc_parts = []
+            if d.get("combat_sec") is not None:
+                loc_parts.append(f"t={d['combat_sec']}s")
+            if d.get("seq") is not None:
+                loc_parts.append(f"seq={d['seq']}")
+            loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
+            lines.append(f"  - [{d.get('severity', 'warning').upper()}] {d.get('code')}{loc}: {d.get('message')}")
     return "\n".join(lines)
 
 

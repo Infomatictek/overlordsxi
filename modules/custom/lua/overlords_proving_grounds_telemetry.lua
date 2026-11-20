@@ -22,6 +22,7 @@
 local hasServerRuntime = (Module ~= nil and Module.new ~= nil)
 if hasServerRuntime then
     require('modules/module_utils')
+    require('scripts/globals/weaponskills')
     require('modules/custom/lua/overlords_proving_grounds_registry')
 end
 
@@ -42,6 +43,39 @@ T.FLUSH_BATCH_SIZE         = 64
 T.MAX_EVENTS_PER_RUN       = 25000
 T.MAX_SNAPSHOTS_PER_RUN    = 3600
 T.BOSS_HP_THRESHOLDS       = { 75, 50, 25, 0 }
+
+-- Active session registry & synchronous call-stack damage context
+-- (active only while a Proving Grounds recording session is running).
+T._activeSessions          = T._activeSessions or {}
+T._activeSessionCount      = T._activeSessionCount or 0
+T._damageContextStack      = T._damageContextStack or {}
+
+-- Verified C++ MsgBasic IDs that represent genuine HP recovery (never status effects like Shell=230).
+local HP_RECOVERY_MSG_IDS =
+{
+    [7]   = true, -- MagicRecoversHP
+    [24]  = true, -- TargetRecoversHPSimple
+    [102] = true, -- UsesRecoversHP
+    [103] = true, -- SkillRecoversHP
+    [238] = true, -- UsesSkillRecoversHPAreaOfEffect
+    [263] = true, -- TargetRecoversHP2
+    [306] = true, -- UsesItemRecoversHPAreaOfEffect
+    [318] = true, -- UsesItemRecoversHPAreaOfEffect2
+    [367] = true, -- TargetRecoversHP
+    [384] = true, -- AddEffectRecoversHP
+}
+
+-- Companion-oriented Souls used to detect missing pet/clone attribution diagnostics.
+local COMPANION_SOUL_KEYS =
+{
+    shinobi     = true,
+    kurogane    = true,
+    medic       = true,
+    sage        = true,
+    necromancer = true,
+    untamed     = true,
+    huntsman    = true,
+}
 
 T.FEEDBACK_OPTIONS =
 {
@@ -557,17 +591,26 @@ function T.beginSession(opts)
         lastTpByActor        = {},
         lastMpByActor        = {},
         lastHpByActor        = {},
+        hpStateByActor       = {}, -- [actorId] = { hp, maxHp, pendingDamage, preDamageHp }
+        lastRegenAttrMs      = {}, -- [actorId] = monotonicMs of last attributed regen tick
+        pendingMeleeSwings   = {}, -- [actorId] = count of unconsumed MELEE_SWING_HITs
+        lastWsCtxByAttacker  = {}, -- [actorId] = last synchronous WS damage context
+        castingActor         = {}, -- [actorId] = active spell_id while casting
+        wsAvailabilityIssues = {},
         lastEffectsByEntity  = {},
         lastHealMs           = nil,
         maxHealGapMs         = 0,
         lastThreatLeader     = nil,
         bossThresholdsHit    = {},
-        pendingWsCredit      = 0,
+        bossInitialHp        = (mob and mob.getHP and mob:getHP()) or (mob and mob.getMaxHP and mob:getMaxHP()) or 0,
+        bossMaxHp            = (mob and mob.getMaxHP and mob:getMaxHP()) or 0,
+        combatStartInfo      = nil,
         lastBossActionSeq    = nil,
         lastBossActionSkill  = nil,
         lastBossActionMs     = nil,
         lastSnapshotCombatSec = -1,
         prevSnapTotals       = { dmg = 0, pDmg = 0, petDmg = 0, inc = 0, heal = 0 },
+        diagnostics          = {},
 
         counters =
         {
@@ -577,12 +620,14 @@ function T.beginSession(opts)
             autoAttackDamage     = 0,
             weaponSkillDamage    = 0,
             spellDamage          = 0,
+            abilityDamage        = 0,
             petAndCloneDamage    = 0,
             otherDamage          = 0,
             meleeHits            = 0,
             meleeMisses          = 0,
             critHits             = 0,
             wsUses               = 0,
+            wsHitsAttributed     = 0,
             abilityUses          = 0,
             spellCasts           = 0,
             spellInterrupts      = 0,
@@ -597,11 +642,18 @@ function T.beginSession(opts)
             deaths               = 0,
             defensiveCdUses      = 0,
 
-            -- Healing
-            effectiveHealing     = 0,
-            healEvents           = 0,
-            mpConsumed           = 0,
-            mpRecovered          = 0,
+            -- Healing & HP Changes (strictly separated from Max HP adjustments)
+            effectiveHealing       = 0,
+            spellHealing           = 0,
+            abilityHealing         = 0,
+            regenHealing           = 0,
+            wsHealing              = 0,
+            unattributedHpRecovery = 0,
+            unattributedHpEvents   = 0,
+            maxHpChanges           = 0,
+            healEvents             = 0,
+            mpConsumed             = 0,
+            mpRecovered            = 0,
 
             -- Threat
             maxCe                = 0,
@@ -612,26 +664,88 @@ function T.beginSession(opts)
             threatLosses         = 0,
 
             -- Resources & Pets/Clones
-            tpGenerated          = 0,
-            tpSpent              = 0,
-            buffSamples          = 0,
-            activeBuffTotal      = 0,
-            activeDebuffTotal    = 0,
-            petSamples           = 0,
-            petAliveSamples      = 0,
-            petDeaths            = 0,
-            petSeen              = false,
-            cloneSeen            = false,
+            tpGenerated                = 0,
+            tpSpent                    = 0,
+            buffSamples                = 0,
+            activeBuffTotal            = 0,
+            activeDebuffTotal          = 0,
+            petSamples                 = 0,
+            petAliveSamples            = 0,
+            petDeaths                  = 0,
+            petSeen                    = false,
+            cloneSeen                  = false,
+            unattributedCompanionHits  = 0,
 
             -- Boss
-            bossAbilitiesUsed    = 0,
-            bossSpellsCast       = 0,
+            bossAbilitiesChosen   = 0,
+            bossAbilitiesUsed     = 0,
+            bossAbilitiesCompleted = 0,
+            bossAbilitiesFailed   = 0,
+            bossSpellsCast        = 0,
 
             -- Safety
             expEventsObserved    = 0,
             expPointsObserved    = 0,
         },
     }
+
+    -- Register active session for synchronous WS damage context attribution.
+    T._activeSessions[session.runId] = session
+    T._activeSessionCount = T._activeSessionCount + 1
+
+    local function recordDiagnostic(code, severity, detail, extra)
+        local entry =
+        {
+            code     = code,
+            severity = severity or 'warning',
+            detail   = tostring(detail or code),
+            meta     = extra,
+        }
+        session.diagnostics[#session.diagnostics + 1] = entry
+        session.warnings[#session.warnings + 1] = code
+    end
+
+    local function isBossEntity(ent)
+        if session.mob == nil or ent == nil then
+            return false
+        end
+        local eid = entityIdOf(ent)
+        local mid = entityIdOf(session.mob)
+        return eid ~= nil and mid ~= nil and eid == mid
+    end
+
+    local function isParticipantEntity(ent)
+        if ent == nil then
+            return false
+        end
+        local eid = entityIdOf(ent)
+        if eid ~= nil and session.actorMap[eid] ~= nil then
+            return true
+        end
+        local compKind = resolveCompanionOwnership(ent, session.actorMap)
+        return compKind ~= nil
+    end
+
+    -- Authoritative hostile interaction check:
+    -- Never relies on spell names; requires verified opposition between the
+    -- encounter boss and an encounter participant (player, pet, or clone).
+    local function isVerifiedHostileInteraction(source, target)
+        if source == nil or target == nil then
+            return false
+        end
+        local srcId = entityIdOf(source)
+        local tgtId = entityIdOf(target)
+        if srcId ~= nil and tgtId ~= nil and srcId == tgtId then
+            return false -- Self-targeted buff/action NEVER starts combat.
+        end
+        if isParticipantEntity(source) and isBossEntity(target) then
+            return true
+        end
+        if isBossEntity(source) and isParticipantEntity(target) then
+            return true
+        end
+        return false
+    end
 
     local function recordWriteError(errMsg)
         if errMsg and errMsg ~= '' then
@@ -679,32 +793,58 @@ function T.beginSession(opts)
         return ok
     end
 
-    local function markCombatStarted(triggerName)
+    local function markCombatStarted(triggerName, source, target)
         if session.combatStartMs ~= nil then
             return session.combatStartMs
         end
         local t = monotonicNowMs()
         session.combatStartMs = t
+        local verified = isVerifiedHostileInteraction(source, target)
+        local srcName = source ~= nil and entityNameOf(source) or entityNameOf(session.primaryActor)
+        local tgtName = target ~= nil and entityNameOf(target) or entityNameOf(session.mob)
+        session.combatStartInfo =
+        {
+            trigger_event    = tostring(triggerName or 'hostile_action'),
+            source_id        = entityIdOf(source) or entityIdOf(session.primaryActor),
+            source_name      = srcName,
+            target_id        = entityIdOf(target) or entityIdOf(session.mob),
+            target_name      = tgtName,
+            verified_hostile = verified,
+            prep_duration_ms = math.max(0, t - session.prepStartMs),
+        }
         -- Emit explicit combat_start lifecycle marker
         if session.eventSeq < T.MAX_EVENTS_PER_RUN then
             session.eventSeq = session.eventSeq + 1
             local ev =
             {
-                run_id     = session.runId,
-                seq        = session.eventSeq,
-                phase      = 'combat',
-                session_ms = math.max(0, t - session.arenaEntryMs),
-                combat_ms  = 0,
-                category   = 'lifecycle',
-                event_type = 'combat_start',
-                source_id  = entityIdOf(session.primaryActor),
-                source_name = entityNameOf(session.primaryActor),
-                target_id  = entityIdOf(session.mob),
-                target_name = entityNameOf(session.mob),
-                value      = tostring(triggerName or 'hostile_action'),
-                meta       = { prep_duration_ms = math.max(0, t - session.prepStartMs) },
+                run_id      = session.runId,
+                seq         = session.eventSeq,
+                phase       = 'combat',
+                session_ms  = math.max(0, t - session.arenaEntryMs),
+                combat_ms   = 0,
+                category    = 'lifecycle',
+                event_type  = 'combat_start',
+                source_id   = session.combatStartInfo.source_id,
+                source_name = srcName,
+                target_id   = session.combatStartInfo.target_id,
+                target_name = tgtName,
+                value       = tostring(triggerName or 'hostile_action'),
+                meta        =
+                {
+                    prep_duration_ms = session.combatStartInfo.prep_duration_ms,
+                    verified_hostile = verified,
+                    trigger_event    = session.combatStartInfo.trigger_event,
+                },
             }
             session.eventBuffer[#session.eventBuffer + 1] = T.encodeJson(ev)
+        end
+        if not verified then
+            recordDiagnostic(
+                'unexpected_combat_start_trigger',
+                'warning',
+                string.format('Combat started via unverified trigger %s (%s -> %s)', tostring(triggerName), tostring(srcName), tostring(tgtName)),
+                session.combatStartInfo
+            )
         end
         return t
     end
@@ -714,7 +854,7 @@ function T.beginSession(opts)
             return nil
         end
         if isHostile then
-            markCombatStarted(eventType)
+            markCombatStarted(eventType, source, target)
         end
 
         local t = monotonicNowMs()
@@ -760,6 +900,237 @@ function T.beginSession(opts)
         return session.eventSeq
     end
 
+    local function recordHealCounters(amount, sourceKind)
+        if amount <= 0 then
+            return
+        end
+        local c = session.counters
+        c.effectiveHealing = c.effectiveHealing + amount
+        c.healEvents = c.healEvents + 1
+        if sourceKind == 'spell_heal' then
+            c.spellHealing = c.spellHealing + amount
+        elseif sourceKind == 'ability_heal' then
+            c.abilityHealing = c.abilityHealing + amount
+        elseif sourceKind == 'regen_tick' then
+            c.regenHealing = c.regenHealing + amount
+        elseif sourceKind == 'ws_heal' then
+            c.wsHealing = c.wsHealing + amount
+        end
+        local tNow = monotonicNowMs()
+        if session.lastHealMs ~= nil then
+            local gap = tNow - session.lastHealMs
+            if gap > session.maxHealGapMs then
+                session.maxHealGapMs = gap
+            end
+        end
+        session.lastHealMs = tNow
+    end
+
+    -- Authoritative per-actor HP & Max HP change reconciliation.
+    -- Separates Max HP modifications from actual healing, attributes verified
+    -- spell/ability/WS/regen recovery without double-counting, and explicitly
+    -- labels unobservable recovery as `unattributed_hp_change`.
+    local function reconcileActorHp(actor, reasonKind, sourceEntity, extraMeta)
+        if actor == nil or not actor.getHP then
+            return 0
+        end
+        local id = entityIdOf(actor)
+        if id == nil then
+            return 0
+        end
+
+        local curHp = actor:getHP() or 0
+        local curMaxHp = (actor.getMaxHP and actor:getMaxHP()) or curHp
+        local st = session.hpStateByActor[id]
+        if st == nil then
+            session.hpStateByActor[id] = { hp = curHp, maxHp = curMaxHp, pendingDamage = 0, preDamageHp = curHp }
+            session.lastHpByActor[id] = curHp
+            return 0
+        end
+
+        local prevHp = st.hp
+        local prevMaxHp = st.maxHp
+        local pendingDmg = st.pendingDamage or 0
+        local preDmgHp = st.preDamageHp or prevHp
+        st.pendingDamage = 0
+        st.preDamageHp = curHp
+
+        -- Check authoritative Regen state early so pendingDamage reconciliation
+        -- knows if a real regen tick could have topped HP back to preDamageHp.
+        local regenMod = 0
+        if actor.getMod and xi and xi.mod and xi.mod.REGEN then
+            local ok, rVal = pcall(function() return actor:getMod(xi.mod.REGEN) end)
+            if ok and type(rVal) == 'number' and rVal > 0 then
+                regenMod = math.floor(rVal)
+            end
+        end
+        local hasRegenEff = false
+        if actor.hasStatusEffect and xi and xi.effect and xi.effect.REGEN then
+            local ok, has = pcall(function() return actor:hasStatusEffect(xi.effect.REGEN) end)
+            hasRegenEff = (ok and has == true)
+        end
+
+        local isExplicitHeal = (reasonKind == 'spell_heal' or reasonKind == 'ability_heal' or reasonKind == 'ws_heal')
+        local canAttrRegen = (reasonKind == 'regen_check' or reasonKind == 'sample' or reasonKind == 'pre_damage') and (regenMod > 0 or hasRegenEff)
+
+        local baselineHp = prevHp
+        if pendingDmg > 0 then
+            -- In C++ CBattleEntity::takeDamage, TAKE_DAMAGE fires BEFORE addHP(-amount).
+            -- If HP moved from preDmgHp (or an explicit heal/regen ran), deduct pendingDmg
+            -- so post-damage healing is measured accurately. If HP stayed identical with no
+            -- heal/regen (e.g. synthetic triggerListener without HP mutation), avoid false heals.
+            if curHp ~= preDmgHp or isExplicitHeal or canAttrRegen then
+                baselineHp = math.max(0, preDmgHp - pendingDmg)
+            else
+                baselineHp = preDmgHp
+            end
+        end
+
+        local maxHpChanged = (curMaxHp ~= prevMaxHp)
+        if maxHpChanged then
+            local maxDelta = curMaxHp - prevMaxHp
+            session.counters.maxHpChanges = session.counters.maxHpChanges + 1
+            emitEvent('resource', 'max_hp_change', sourceEntity or actor, actor, maxDelta, {
+                hp_before     = baselineHp,
+                hp_after      = curHp,
+                max_hp_before = prevMaxHp,
+                max_hp_after  = curMaxHp,
+                hp_delta      = curHp - baselineHp,
+                max_hp_delta  = maxDelta,
+                context       = reasonKind or 'sample',
+            }, false)
+
+            -- Separate Max HP clamp/scaling adjustments from actual healing:
+            -- If Max HP shrank, current HP clamping down is not damage.
+            -- If Max HP grew while at full HP and current HP shifted identically
+            -- (proportional refill/resync), do not mistake Max HP increase for healing.
+            if maxDelta < 0 and curHp <= baselineHp then
+                st.hp = curHp
+                st.maxHp = curMaxHp
+                session.lastHpByActor[id] = curHp
+                return 0
+            elseif maxDelta > 0 and baselineHp == prevMaxHp and curHp == curMaxHp then
+                st.hp = curHp
+                st.maxHp = curMaxHp
+                session.lastHpByActor[id] = curHp
+                return 0
+            elseif maxDelta > 0 and curHp == baselineHp then
+                st.maxHp = curMaxHp
+                return 0
+            end
+        end
+
+        local restored = curHp - baselineHp
+        st.hp = curHp
+        st.maxHp = curMaxHp
+        session.lastHpByActor[id] = curHp
+
+        if restored <= 0 then
+            return 0
+        end
+
+        local baseMeta =
+        {
+            hp_before       = baselineHp,
+            hp_after        = curHp,
+            actual_restored = restored,
+            max_hp_before   = prevMaxHp,
+            max_hp_after    = curMaxHp,
+            source_kind     = reasonKind or 'unattributed',
+        }
+        if type(extraMeta) == 'table' then
+            for k, v in pairs(extraMeta) do
+                baseMeta[k] = v
+            end
+        end
+
+        if isExplicitHeal then
+            recordHealCounters(restored, reasonKind)
+            emitEvent('defense', 'heal_applied', sourceEntity or actor, actor, restored, baseMeta, false)
+            return restored
+        end
+
+        -- Check verified drain/leech melee buffs on melee_trigger (Blood Weapon / Drain Samba)
+        if reasonKind == 'melee_trigger' and sourceEntity ~= nil and sourceEntity.hasStatusEffect and xi and xi.effect then
+            local hasBloodWeapon = xi.effect.BLOOD_WEAPON and pcall(function() return sourceEntity:hasStatusEffect(xi.effect.BLOOD_WEAPON) end)
+            local hasDrainSamba = xi.effect.DRAIN_SAMBA and pcall(function() return sourceEntity:hasStatusEffect(xi.effect.DRAIN_SAMBA) end)
+            local bwActive = false
+            local dsActive = false
+            if hasBloodWeapon then
+                local ok, v = pcall(function() return sourceEntity:hasStatusEffect(xi.effect.BLOOD_WEAPON) end)
+                bwActive = ok and v == true
+            end
+            if hasDrainSamba then
+                local ok, v = pcall(function() return sourceEntity:hasStatusEffect(xi.effect.DRAIN_SAMBA) end)
+                dsActive = ok and v == true
+            end
+            if bwActive or dsActive then
+                baseMeta.source_kind = 'ability_heal'
+                baseMeta.effect_source = bwActive and 'blood_weapon' or 'drain_samba'
+                recordHealCounters(restored, 'ability_heal')
+                emitEvent('defense', 'heal_applied', sourceEntity, actor, restored, baseMeta, false)
+                return restored
+            end
+        end
+
+        if canAttrRegen then
+            local nowMs = monotonicNowMs()
+            local lastRegMs = session.lastRegenAttrMs[id]
+            local regenWindowOk = (lastRegMs == nil) or ((nowMs - lastRegMs) >= 2000)
+            if regenWindowOk then
+                local maxRegenExpected = regenMod > 0 and regenMod or restored
+                local regenPart = math.min(restored, maxRegenExpected)
+                if regenPart > 0 then
+                    session.lastRegenAttrMs[id] = nowMs
+                    local regenMeta =
+                    {
+                        hp_before        = baselineHp,
+                        hp_after         = baselineHp + regenPart,
+                        actual_restored  = regenPart,
+                        max_hp_before    = prevMaxHp,
+                        max_hp_after     = curMaxHp,
+                        source_kind      = 'regen_tick',
+                        regen_mod        = regenMod,
+                        has_regen_effect = hasRegenEff,
+                    }
+                    recordHealCounters(regenPart, 'regen_tick')
+                    emitEvent('defense', 'regen_tick', actor, actor, regenPart, regenMeta, false)
+                end
+                local rem = restored - regenPart
+                if rem > 0 then
+                    session.counters.unattributedHpRecovery = session.counters.unattributedHpRecovery + rem
+                    session.counters.unattributedHpEvents = session.counters.unattributedHpEvents + 1
+                    emitEvent('defense', 'unattributed_hp_change', nil, actor, rem, {
+                        hp_before       = baselineHp + regenPart,
+                        hp_after        = curHp,
+                        actual_restored = rem,
+                        max_hp_before   = prevMaxHp,
+                        max_hp_after    = curMaxHp,
+                        context         = reasonKind or 'sample',
+                        note            = 'HP increased beyond xi.mod.REGEN tick cap without an attributed spell/ability/WS source',
+                    }, false)
+                end
+                return restored
+            end
+        end
+
+        -- Never guess: explicitly label unobservable HP recovery as unattributed_hp_change.
+        session.counters.unattributedHpRecovery = session.counters.unattributedHpRecovery + restored
+        session.counters.unattributedHpEvents = session.counters.unattributedHpEvents + 1
+        baseMeta.source_kind = 'unattributed_hp_change'
+        baseMeta.context = reasonKind or 'sample'
+        emitEvent('defense', 'unattributed_hp_change', nil, actor, restored, baseMeta, false)
+        return restored
+    end
+
+    local function reconcileAllActorsHp(reasonKind, sourceEntity, extraMeta)
+        local total = 0
+        for _, actor in ipairs(session.actors) do
+            total = total + reconcileActorHp(actor, reasonKind, sourceEntity, extraMeta)
+        end
+        return total
+    end
+
     local function bindListener(entity, eventName, suffix, fn)
         if entity == nil or not entity.addListener then
             return
@@ -791,6 +1162,36 @@ function T.beginSession(opts)
         }, false)
 
         local pfx = 'COMP_' .. tostring(comp.id) .. '_'
+
+        -- Companion engaging or swinging at the encounter boss is a verified hostile trigger!
+        bindListener(comp.entity, 'ENGAGE', pfx .. 'ENGAGE', function(engComp, targ)
+            if session.ended then return end
+            local isHostile = isVerifiedHostileInteraction(engComp, targ)
+            emitEvent('pet', comp.kind == 'pet' and 'pet_engage' or 'clone_engage', engComp, targ, 1, {
+                kind     = comp.kind,
+                owner_id = comp.ownerId,
+            }, isHostile)
+        end)
+
+        bindListener(comp.entity, 'MELEE_SWING_HIT', pfx .. 'HIT', function(att, targ, attack)
+            if session.ended then return end
+            local isHostile = isVerifiedHostileInteraction(att, targ)
+            emitEvent('pet', comp.kind == 'pet' and 'pet_melee_hit' or 'clone_melee_hit', att, targ, 1, {
+                kind        = comp.kind,
+                owner_id    = comp.ownerId,
+                is_critical = (attack and attack.isCritical and attack:isCritical()) or false,
+            }, isHostile)
+        end)
+
+        bindListener(comp.entity, 'MELEE_SWING_MISS', pfx .. 'MISS', function(att, targ)
+            if session.ended then return end
+            local isHostile = isVerifiedHostileInteraction(att, targ)
+            emitEvent('pet', comp.kind == 'pet' and 'pet_melee_miss' or 'clone_melee_miss', att, targ, 0, {
+                kind     = comp.kind,
+                owner_id = comp.ownerId,
+            }, isHostile)
+        end)
+
         bindListener(comp.entity, 'TAKE_DAMAGE', pfx .. 'TDMG', function(defender, amount, attacker, attackType)
             if session.ended then return end
             local dmg = math.max(0, math.floor(tonumber(amount) or 0))
@@ -800,7 +1201,8 @@ function T.beginSession(opts)
                 corrMeta.boss_action_seq = session.lastBossActionSeq
                 corrMeta.boss_skill_id = session.lastBossActionSkill
             end
-            emitEvent('pet', 'pet_damage_taken', attacker, defender, dmg, corrMeta, true)
+            local isHostile = isVerifiedHostileInteraction(attacker, defender)
+            emitEvent('pet', 'pet_damage_taken', attacker, defender, dmg, corrMeta, isHostile)
         end)
 
         bindListener(comp.entity, 'DEATH', pfx .. 'DEATH', function(deadComp, killer)
@@ -839,7 +1241,10 @@ function T.beginSession(opts)
         if dmg <= 0 then
             return
         end
-        markCombatStarted(sourceKind)
+        local isHostile = isVerifiedHostileInteraction(attacker, defender)
+        if isHostile then
+            markCombatStarted(sourceKind, attacker, defender)
+        end
 
         local c = session.counters
         c.totalDamage = c.totalDamage + dmg
@@ -851,6 +1256,8 @@ function T.beginSession(opts)
                 c.weaponSkillDamage = c.weaponSkillDamage + dmg
             elseif sourceKind == 'spell' then
                 c.spellDamage = c.spellDamage + dmg
+            elseif sourceKind == 'ability' then
+                c.abilityDamage = c.abilityDamage + dmg
             elseif sourceKind == 'auto' then
                 c.autoAttackDamage = c.autoAttackDamage + dmg
             else
@@ -869,7 +1276,7 @@ function T.beginSession(opts)
         local evType = (sourceKind == 'pet' or sourceKind == 'clone') and 'pet_damage' or 'damage_dealt'
         local evMeta = meta or {}
         evMeta.source_kind = sourceKind
-        emitEvent(evCat, evType, attacker, defender, dmg, evMeta, true)
+        emitEvent(evCat, evType, attacker, defender, dmg, evMeta, isHostile)
         checkBossHpThresholds()
     end
 
@@ -909,6 +1316,8 @@ function T.beginSession(opts)
         for _, actor in ipairs(session.actors) do
             local id = entityIdOf(actor)
             if id ~= nil then
+                reconcileActorHp(actor, 'sample')
+
                 if actor.getTP then
                     local curTp = actor:getTP() or 0
                     local prevTp = session.lastTpByActor[id]
@@ -1120,7 +1529,9 @@ function T.beginSession(opts)
     session.recordSnapshot = recordSnapshot
     session.emitEvent      = emitEvent
     session.onBossSkillChosen = function(chosenMob, target, skillId)
-        local seq = emitEvent('boss', 'boss_ability_choose', chosenMob, target, skillId, { skill_id = skillId }, true)
+        session.counters.bossAbilitiesChosen = session.counters.bossAbilitiesChosen + 1
+        local isHostile = isVerifiedHostileInteraction(chosenMob, target)
+        local seq = emitEvent('boss', 'boss_ability_choose', chosenMob, target, skillId, { skill_id = skillId }, isHostile)
         session.lastBossActionSeq   = seq
         session.lastBossActionSkill = skillId
         session.lastBossActionMs    = monotonicNowMs()
@@ -1137,14 +1548,47 @@ function T.beginSession(opts)
         level_sync_valid = levelSyncInfo and levelSyncInfo.valid or true,
     }, false)
 
-    -- Seed initial resource & effect readings
+    -- Seed initial resource, HP/MaxHP, & effect readings
     for _, actor in ipairs(actors) do
         local id = entityIdOf(actor)
         if id ~= nil then
             if actor.getTP then session.lastTpByActor[id] = actor:getTP() or 0 end
             if actor.getMP then session.lastMpByActor[id] = actor:getMP() or 0 end
-            if actor.getHP then session.lastHpByActor[id] = actor:getHP() or 0 end
+            local curHp = actor.getHP and (actor:getHP() or 0) or 0
+            local curMaxHp = (actor.getMaxHP and actor:getMaxHP()) or curHp
+            session.lastHpByActor[id] = curHp
+            session.hpStateByActor[id] = { hp = curHp, maxHp = curMaxHp, pendingDamage = 0, preDamageHp = curHp }
             session.lastEffectsByEntity[id] = snapshotEffectIds(actor)
+
+            -- Check unavailable weapon skills under level synchronization
+            if levelSyncInfo and levelSyncInfo.restriction_active and actor.getWeaponSkillType then
+                local okSkill, wsSkill = pcall(function() return actor:getWeaponSkillType(xi.slot.MAIN) end)
+                local wsTalents = xi and xi.overlords and xi.overlords.wsTalents or nil
+                local wsCatalog = xi and xi.overlords and xi.overlords.wsCatalog or nil
+                if okSkill and type(wsSkill) == 'number' and wsSkill > 0 and wsTalents and wsTalents.isWSUnlocked and wsCatalog and wsCatalog.byId then
+                    local totalForWeapon = 0
+                    local unlockedForWeapon = 0
+                    for wsId, wsDef in pairs(wsCatalog.byId) do
+                        if wsDef and wsDef.skill == wsSkill then
+                            totalForWeapon = totalForWeapon + 1
+                            local okUnl, isUnl = pcall(wsTalents.isWSUnlocked, actor, wsId)
+                            if okUnl and isUnl then
+                                unlockedForWeapon = unlockedForWeapon + 1
+                            end
+                        end
+                    end
+                    if totalForWeapon > 0 and unlockedForWeapon == 0 then
+                        session.wsAvailabilityIssues[#session.wsAvailabilityIssues + 1] =
+                        {
+                            actor_id        = id,
+                            actor_name      = entityNameOf(actor),
+                            weapon_skill    = wsSkill,
+                            effective_level = effectiveLevel,
+                            original_level  = originalLevel,
+                        }
+                    end
+                end
+            end
         end
     end
     if mob ~= nil then
@@ -1163,18 +1607,60 @@ function T.beginSession(opts)
     if mob ~= nil then
         bindListener(mob, 'ENGAGE', 'MOB_ENGAGE', function(engagedMob, target)
             if session.ended then return end
-            emitEvent('boss', 'boss_engage', engagedMob, target, 1, nil, true)
-            recordSnapshot(true)
+            local isHostile = isVerifiedHostileInteraction(engagedMob, target)
+            emitEvent('boss', 'boss_engage', engagedMob, target, 1, nil, isHostile)
+            if session.combatStartMs ~= nil then
+                recordSnapshot(true)
+            end
         end)
 
         bindListener(mob, 'TAKE_DAMAGE', 'MOB_DMG', function(defender, amount, attacker, attackType, damageType)
             if session.ended then return end
             local dmg = math.max(0, math.floor(tonumber(amount) or 0))
-            if dmg <= 0 then return end
+            local aid = entityIdOf(attacker)
+            local did = entityIdOf(defender)
 
+            -- 1. Check synchronous Weapon Skill call-stack context FIRST (no timestamp heuristics!).
+            local topCtx = T._damageContextStack[#T._damageContextStack]
+            if topCtx ~= nil and topCtx.kind == 'ws' and topCtx.attackerId == aid and topCtx.defenderId == did then
+                if dmg > 0 then
+                    topCtx.recordedCount = topCtx.recordedCount + 1
+                    topCtx.recordedDamage = topCtx.recordedDamage + dmg
+                    session.counters.wsHitsAttributed = session.counters.wsHitsAttributed + 1
+                    recordOffenseDamage(dmg, 'ws', attacker, defender, {
+                        skill_id    = topCtx.skillId,
+                        hits_landed = topCtx.hitsLanded,
+                        tp_hits     = topCtx.tpHits,
+                        extra_hits  = topCtx.extraHits,
+                        is_critical = topCtx.critical,
+                        attack_type = attackType,
+                        damage_type = damageType,
+                    })
+                end
+                return
+            end
+
+            -- Consume pending melee swing counter for physical player attacks even if dmg == 0
+            -- (e.g. Stoneskin/0-dmg hit), while never consuming it on magical additional effects.
+            local isMagical = (xi.attackType ~= nil and attackType == xi.attackType.MAGICAL)
+            local isRanged  = (xi.attackType ~= nil and attackType == xi.attackType.RANGED)
+            local consumedSwing = false
+            if aid ~= nil and session.actorMap[aid] ~= nil and not isMagical and (session.pendingMeleeSwings[aid] or 0) > 0 then
+                session.pendingMeleeSwings[aid] = session.pendingMeleeSwings[aid] - 1
+                consumedSwing = true
+            end
+
+            if dmg <= 0 then
+                return
+            end
+
+            -- 2. Companion (Pet or Shinobi Clone) attribution
             local compKind, compOwnerId = resolveCompanionOwnership(attacker, session.actorMap)
             if compKind ~= nil then
-                bindCompanionIfNeeded({ entity = attacker, id = entityIdOf(attacker), kind = compKind, ownerId = compOwnerId })
+                bindCompanionIfNeeded({ entity = attacker, id = aid, kind = compKind, ownerId = compOwnerId })
+                if compOwnerId == nil then
+                    session.counters.unattributedCompanionHits = session.counters.unattributedCompanionHits + 1
+                end
                 recordOffenseDamage(dmg, compKind, attacker, defender, {
                     owner_id    = compOwnerId,
                     attack_type = attackType,
@@ -1183,17 +1669,35 @@ function T.beginSession(opts)
                 return
             end
 
-            local aid = entityIdOf(attacker)
+            -- 3. Player participant attribution (autoattack vs spell vs ability)
             if aid ~= nil and session.actorMap[aid] ~= nil then
-                -- Skip duplicate damage recording for Weapon Skills already credited in WEAPONSKILL_USE
-                if session.pendingWsCredit > 0 then
-                    session.pendingWsCredit = session.pendingWsCredit - 1
-                    return
-                end
-                local kind = (xi.attackType and attackType == xi.attackType.MAGICAL) and 'spell' or 'auto'
-                recordOffenseDamage(dmg, kind, attacker, defender, {
+                local kind
+                local meta =
+                {
                     attack_type = attackType,
                     damage_type = damageType,
+                }
+                if isMagical then
+                    kind = 'spell'
+                    if session.castingActor[aid] ~= nil then
+                        meta.spell_id = session.castingActor[aid]
+                    end
+                elseif consumedSwing or isRanged then
+                    kind = 'auto'
+                else
+                    kind = 'ability'
+                end
+                recordOffenseDamage(dmg, kind, attacker, defender, meta)
+                return
+            end
+
+            -- 4. Unattributed non-participant damage (e.g. unowned clone/pet)
+            if attacker ~= nil and attacker ~= defender then
+                session.counters.unattributedCompanionHits = session.counters.unattributedCompanionHits + 1
+                recordOffenseDamage(dmg, 'other', attacker, defender, {
+                    attack_type  = attackType,
+                    damage_type  = damageType,
+                    unattributed = true,
                 })
             end
         end)
@@ -1201,27 +1705,31 @@ function T.beginSession(opts)
         bindListener(mob, 'MELEE_SWING_HIT', 'MOB_SWING_HIT', function(attacker, target, attack)
             if session.ended then return end
             local tid = entityIdOf(target)
+            local isHostile = isVerifiedHostileInteraction(attacker, target)
             if tid ~= nil and session.actorMap[tid] ~= nil then
                 session.counters.incomingSwingsHit = session.counters.incomingSwingsHit + 1
                 emitEvent('defense', 'incoming_swing_hit', attacker, target, 1, {
                     is_critical = (attack and attack.isCritical and attack:isCritical()) or false,
-                }, true)
+                }, isHostile)
             end
         end)
 
         bindListener(mob, 'MELEE_SWING_MISS', 'MOB_SWING_MISS', function(attacker, target, attack)
             if session.ended then return end
             local tid = entityIdOf(target)
+            local isHostile = isVerifiedHostileInteraction(attacker, target)
             if tid ~= nil and session.actorMap[tid] ~= nil then
                 session.counters.incomingSwingsMissed = session.counters.incomingSwingsMissed + 1
-                emitEvent('defense', 'incoming_swing_missed', attacker, target, 0, nil, true)
+                emitEvent('defense', 'incoming_swing_missed', attacker, target, 0, nil, isHostile)
             end
         end)
 
         bindListener(mob, 'WEAPONSKILL_STATE_ENTER', 'MOB_WS_ENTER', function(m, skillId)
             if session.ended then return end
             session.counters.bossAbilitiesUsed = session.counters.bossAbilitiesUsed + 1
-            local seq = emitEvent('boss', 'boss_ability_start', m, m:getTarget(), skillId, { skill_id = skillId }, true)
+            local target = m.getTarget and m:getTarget() or nil
+            local isHostile = isVerifiedHostileInteraction(m, target)
+            local seq = emitEvent('boss', 'boss_ability_start', m, target, skillId, { skill_id = skillId }, isHostile)
             session.lastBossActionSeq   = seq
             session.lastBossActionSkill = skillId
             session.lastBossActionMs    = monotonicNowMs()
@@ -1229,6 +1737,11 @@ function T.beginSession(opts)
 
         bindListener(mob, 'WEAPONSKILL_STATE_EXIT', 'MOB_WS_EXIT', function(m, skillId, completed)
             if session.ended then return end
+            if completed == true then
+                session.counters.bossAbilitiesCompleted = session.counters.bossAbilitiesCompleted + 1
+            else
+                session.counters.bossAbilitiesFailed = session.counters.bossAbilitiesFailed + 1
+            end
             emitEvent('boss', 'boss_ability_complete', m, m:getTarget(), skillId, {
                 skill_id  = skillId,
                 completed = completed == true,
@@ -1238,17 +1751,31 @@ function T.beginSession(opts)
         bindListener(mob, 'MAGIC_START', 'MOB_MAG_START', function(caster, target, spell)
             if session.ended then return end
             local sid = spell and spell.getID and spell:getID() or 0
-            local seq = emitEvent('boss', 'boss_spell_start', caster, target, sid, { spell_id = sid }, true)
-            session.lastBossActionSeq   = seq
-            session.lastBossActionSkill = sid
-            session.lastBossActionMs    = monotonicNowMs()
+            -- Self-targeted buffs (e.g. Blaze Spikes on self) have isHostile == false
+            -- and remain in the preparation-phase timeline until real combat begins!
+            local isHostile = isVerifiedHostileInteraction(caster, target)
+            local seq = emitEvent('boss', 'boss_spell_start', caster, target, sid, {
+                spell_id         = sid,
+                self_targeted    = (entityIdOf(caster) ~= nil and entityIdOf(caster) == entityIdOf(target)),
+                verified_hostile = isHostile,
+            }, isHostile)
+            if isHostile then
+                session.lastBossActionSeq   = seq
+                session.lastBossActionSkill = sid
+                session.lastBossActionMs    = monotonicNowMs()
+            end
         end)
 
         bindListener(mob, 'MAGIC_USE', 'MOB_MAG_USE', function(caster, target, spell)
             if session.ended then return end
             session.counters.bossSpellsCast = session.counters.bossSpellsCast + 1
             local sid = spell and spell.getID and spell:getID() or 0
-            emitEvent('boss', 'boss_spell_complete', caster, target, sid, { spell_id = sid }, true)
+            local isHostile = isVerifiedHostileInteraction(caster, target)
+            emitEvent('boss', 'boss_spell_complete', caster, target, sid, {
+                spell_id         = sid,
+                self_targeted    = (entityIdOf(caster) ~= nil and entityIdOf(caster) == entityIdOf(target)),
+                verified_hostile = isHostile,
+            }, isHostile)
         end)
 
         bindListener(mob, 'DEATH', 'MOB_DEATH', function(deadMob, killer)
@@ -1292,18 +1819,27 @@ function T.beginSession(opts)
 
             bindListener(actor, 'MELEE_SWING_HIT', pfx .. 'HIT', function(att, targ, attack)
                 if session.ended then return end
+                local isHostile = isVerifiedHostileInteraction(att, targ)
+                if isHostile then
+                    local aid = entityIdOf(att)
+                    if aid ~= nil then
+                        session.pendingMeleeSwings[aid] = (session.pendingMeleeSwings[aid] or 0) + 1
+                    end
+                end
                 session.counters.meleeHits = session.counters.meleeHits + 1
                 local isCrit = (attack and attack.isCritical and attack:isCritical()) or false
                 if isCrit then
                     session.counters.critHits = session.counters.critHits + 1
                 end
-                emitEvent('offense', isCrit and 'melee_crit' or 'melee_hit', att, targ, 1, { is_critical = isCrit }, true)
+                emitEvent('offense', isCrit and 'melee_crit' or 'melee_hit', att, targ, 1, { is_critical = isCrit }, isHostile)
+                reconcileAllActorsHp('melee_trigger', att, { trigger = 'melee_hit' })
             end)
 
             bindListener(actor, 'MELEE_SWING_MISS', pfx .. 'MISS', function(att, targ)
                 if session.ended then return end
+                local isHostile = isVerifiedHostileInteraction(att, targ)
                 session.counters.meleeMisses = session.counters.meleeMisses + 1
-                emitEvent('offense', 'melee_miss', att, targ, 0, nil, true)
+                emitEvent('offense', 'melee_miss', att, targ, 0, nil, isHostile)
             end)
 
             bindListener(actor, 'WEAPONSKILL_USE', pfx .. 'WS', function(att, targ, skill, spentTP, action, damage)
@@ -1315,9 +1851,40 @@ function T.beginSession(opts)
                 local wsDmg = math.max(0, math.floor(tonumber(damage) or 0))
                 local skillId = skill and skill.getID and skill:getID() or 0
                 local skillName = skill and skill.getName and skill:getName() or nil
+                local isHostile = isVerifiedHostileInteraction(att, targ)
+                local aid = entityIdOf(att)
+                local wsCtx = aid and session.lastWsCtxByAttacker[aid] or nil
 
-                if wsDmg > 0 then
-                    session.pendingWsCredit = session.pendingWsCredit + 1
+                if wsCtx ~= nil and not wsCtx.consumedByWsUse and wsCtx.recordedCount > 0 then
+                    -- Damage was already attributed synchronously during xi.weaponskills.takeWeaponskillDamage -> TAKE_DAMAGE.
+                    -- Emit a correlation event for TP expenditure & hit counts WITHOUT double-counting damage!
+                    wsCtx.consumedByWsUse = true
+                    emitEvent('offense', 'weaponskill_use', att, targ, wsDmg, {
+                        skill_id          = skillId,
+                        skill_name        = skillName,
+                        tp_spent          = spent,
+                        attributed_damage = wsCtx.recordedDamage,
+                        hits_landed       = wsCtx.hitsLanded,
+                        tp_hits           = wsCtx.tpHits,
+                        extra_hits        = wsCtx.extraHits,
+                        is_critical       = wsCtx.critical,
+                        already_credited  = true,
+                    }, isHostile)
+                    if wsDmg > 0 and wsCtx.recordedDamage ~= wsDmg then
+                        recordDiagnostic(
+                            'damage_attribution_mismatch',
+                            'warning',
+                            string.format('WS %s reported %d damage in WEAPONSKILL_USE vs %d attributed in TAKE_DAMAGE', tostring(skillName or skillId), wsDmg, wsCtx.recordedDamage),
+                            {
+                                skill_id             = skillId,
+                                ws_use_damage        = wsDmg,
+                                take_damage_recorded = wsCtx.recordedDamage,
+                            }
+                        )
+                    end
+                elseif wsDmg > 0 then
+                    -- Direct fallback for custom/mocked WSs that bypassed xi.weaponskills.takeWeaponskillDamage.
+                    c.wsHitsAttributed = c.wsHitsAttributed + 1
                     recordOffenseDamage(wsDmg, 'ws', att, targ, {
                         skill_id   = skillId,
                         skill_name = skillName,
@@ -1328,8 +1895,11 @@ function T.beginSession(opts)
                         skill_id   = skillId,
                         skill_name = skillName,
                         tp_spent   = spent,
-                    }, true)
+                    }, isHostile)
                 end
+
+                -- Capture HP-restoring or HP-draining weapon skills (e.g. Sanguine Blade, Moonlight)
+                reconcileAllActorsHp('ws_heal', att, { skill_id = skillId, skill_name = skillName })
                 sampleResourcesAndThreat()
             end)
 
@@ -1338,20 +1908,26 @@ function T.beginSession(opts)
                 session.counters.abilityUses = session.counters.abilityUses + 1
                 local abId = ability and ability.getID and ability:getID() or 0
                 local abName = ability and ability.getName and ability:getName() or ''
-                local isHostile = (targ ~= nil and entityIdOf(targ) == entityIdOf(session.mob))
+                local isHostile = isVerifiedHostileInteraction(user, targ)
                 if isDefensiveAbilityName(abName) then
                     session.counters.defensiveCdUses = session.counters.defensiveCdUses + 1
                     emitEvent('defense', 'defensive_ability_use', user, targ, abId, { ability_name = abName }, isHostile)
                 else
                     emitEvent('offense', 'ability_use', user, targ, abId, { ability_name = abName }, isHostile)
                 end
+                -- Authoritatively capture healing Job Abilities (Vivacious Pulse, Chakra, Curing Waltz, Font of Life, etc.)
+                reconcileAllActorsHp('ability_heal', user, { ability_id = abId, ability_name = abName })
                 sampleResourcesAndThreat()
             end)
 
             bindListener(actor, 'MAGIC_START', pfx .. 'MAGSTART', function(caster, targ, spell)
                 if session.ended then return end
                 local sid = spell and spell.getID and spell:getID() or 0
-                local isHostile = (targ ~= nil and entityIdOf(targ) == entityIdOf(session.mob))
+                local cid = entityIdOf(caster)
+                if cid ~= nil then
+                    session.castingActor[cid] = sid
+                end
+                local isHostile = isVerifiedHostileInteraction(caster, targ)
                 emitEvent('offense', 'spell_start', caster, targ, sid, { spell_id = sid }, isHostile)
             end)
 
@@ -1360,34 +1936,43 @@ function T.beginSession(opts)
                 local c = session.counters
                 c.spellCasts = c.spellCasts + 1
                 local sid = spell and spell.getID and spell:getID() or 0
-                local isHostile = (targ ~= nil and entityIdOf(targ) == entityIdOf(session.mob))
+                local cid = entityIdOf(caster)
+                if cid ~= nil then
+                    session.castingActor[cid] = nil
+                end
+                local isHostile = isVerifiedHostileInteraction(caster, targ)
                 emitEvent('offense', 'spell_complete', caster, targ, sid, { spell_id = sid }, isHostile)
 
                 local tid = entityIdOf(targ)
-                if tid ~= nil and session.actorMap[tid] ~= nil and action and action.getParam then
-                    local spellGroup = spell and spell.getSpellGroup and spell:getSpellGroup() or nil
-                    local healedAmt = tonumber(action:getParam(tid)) or 0
-                    if healedAmt > 0 and (spellGroup == nil or (xi.magic and xi.magic.spellGroup and spellGroup == xi.magic.spellGroup.WHITE)) then
-                        local maxHp = targ.getMaxHP and targ:getMaxHP() or 0
-                        local eff = math.min(healedAmt, math.max(0, maxHp))
-                        c.effectiveHealing = c.effectiveHealing + eff
-                        c.healEvents = c.healEvents + 1
-                        local tNow = monotonicNowMs()
-                        if session.lastHealMs ~= nil then
-                            local gap = tNow - session.lastHealMs
-                            if gap > session.maxHealGapMs then
-                                session.maxHealGapMs = gap
-                            end
-                        end
-                        session.lastHealMs = tNow
-                        emitEvent('defense', 'heal_applied', caster, targ, eff, { spell_id = sid }, false)
+                local msgId = nil
+                if tid ~= nil and action ~= nil and action.getMsg then
+                    local okMsg, mVal = pcall(function() return action:getMsg(tid) end)
+                    if okMsg and type(mVal) == 'number' then
+                        msgId = mVal
                     end
+                end
+
+                if tid ~= nil and session.actorMap[tid] ~= nil then
+                    -- Strict MsgBasic check: NEVER treat status-effect spells like Shell (msgId=230, param=41) as healing!
+                    if msgId == nil or HP_RECOVERY_MSG_IDS[msgId] then
+                        reconcileActorHp(targ, 'spell_heal', caster, { spell_id = sid, msg_id = msgId })
+                    else
+                        -- Buff/status spell: reconcile Max HP changes cleanly without recording false healing.
+                        reconcileActorHp(targ, 'effect_change', caster, { spell_id = sid, msg_id = msgId })
+                    end
+                elseif isHostile then
+                    -- Capture Drain / HP-steal spells that recover HP on the caster.
+                    reconcileActorHp(caster, 'spell_heal', caster, { spell_id = sid, drain = true, msg_id = msgId })
                 end
                 sampleResourcesAndThreat()
             end)
 
             bindListener(actor, 'MAGIC_INTERRUPTED', pfx .. 'MAGINT', function(caster, targ, spell)
                 if session.ended then return end
+                local cid = entityIdOf(caster)
+                if cid ~= nil then
+                    session.castingActor[cid] = nil
+                end
                 session.counters.spellInterrupts = session.counters.spellInterrupts + 1
                 local sid = spell and spell.getID and spell:getID() or 0
                 emitEvent('offense', 'spell_interrupt', caster, targ, sid, { spell_id = sid }, false)
@@ -1397,6 +1982,10 @@ function T.beginSession(opts)
                 if session.ended then return end
                 local dmg = math.max(0, math.floor(tonumber(amount) or 0))
                 if dmg <= 0 then return end
+
+                -- Reconcile any prior HP recovery (e.g. Regen tick) BEFORE recording this hit.
+                reconcileActorHp(defender, 'pre_damage')
+
                 local c = session.counters
                 c.actualIncomingDamage = c.actualIncomingDamage + dmg
                 c.incomingHits = c.incomingHits + 1
@@ -1414,7 +2003,16 @@ function T.beginSession(opts)
                     dmgMeta.boss_skill_id   = session.lastBossActionSkill
                 end
 
-                emitEvent('defense', 'damage_taken', attacker, defender, dmg, dmgMeta, true)
+                local isHostile = isVerifiedHostileInteraction(attacker, defender)
+                emitEvent('defense', 'damage_taken', attacker, defender, dmg, dmgMeta, isHostile)
+
+                -- Record pending C++ addHP(-dmg) deduction (which fires immediately after TAKE_DAMAGE).
+                local did = entityIdOf(defender)
+                if did ~= nil and session.hpStateByActor[did] ~= nil then
+                    local st = session.hpStateByActor[did]
+                    st.preDamageHp = defender.getHP and (defender:getHP() or st.hp) or st.hp
+                    st.pendingDamage = (st.pendingDamage or 0) + dmg
+                end
 
                 local maxHp = defender.getMaxHP and defender:getMaxHP() or 0
                 if maxHp > 0 and dmg >= (maxHp * T.SPIKE_HP_FRACTION) then
@@ -1438,9 +2036,20 @@ function T.beginSession(opts)
                 session.counters.expPointsObserved = session.counters.expPointsObserved + (tonumber(exp) or 0)
             end)
 
-            bindListener(actor, 'EFFECTS_TICK', pfx .. 'TICK', function()
+            bindListener(actor, 'EFFECTS_TICK', pfx .. 'TICK', function(tickActor)
                 if session.ended then return end
+                reconcileActorHp(tickActor or actor, 'regen_check')
                 sampleResourcesAndThreat()
+            end)
+
+            bindListener(actor, 'EFFECT_GAIN', pfx .. 'EFFGAIN', function(effActor)
+                if session.ended then return end
+                reconcileActorHp(effActor or actor, 'effect_change')
+            end)
+
+            bindListener(actor, 'EFFECT_LOSE', pfx .. 'EFFLOSE', function(effActor)
+                if session.ended then return end
+                reconcileActorHp(effActor or actor, 'effect_change')
             end)
         end
     end
@@ -1471,7 +2080,14 @@ end
 
 -- Detaches all listeners cleanly without mutating gameplay state.
 function T.detachSession(session)
-    if session == nil or session.boundEntities == nil then
+    if session == nil then
+        return
+    end
+    if session.runId ~= nil and T._activeSessions[session.runId] ~= nil then
+        T._activeSessions[session.runId] = nil
+        T._activeSessionCount = math.max(0, (T._activeSessionCount or 1) - 1)
+    end
+    if session.boundEntities == nil then
         return
     end
     for _, binding in ipairs(session.boundEntities) do
@@ -1565,28 +2181,137 @@ function T.finishSession(session, outcome, opts)
     local mpEfficiency   = c.mpConsumed > 0 and round4((c.totalDamage + c.effectiveHealing) / c.mpConsumed) or T.UNAVAILABLE
     local avgBuffCount   = c.buffSamples > 0 and round4(c.activeBuffTotal / c.buffSamples) or T.UNAVAILABLE
 
+    -- Authoritative boss HP & damage breakdown reconciliation
+    local bossInitialHp = session.bossInitialHp or 0
+    local bossFinalHp = (session.mob and session.mob.getHP and session.mob:getHP()) or 0
+    local bossRefillHp = (session.mob and session.mob.getLocalVar and session.mob:getLocalVar('[ProvingGrounds]RefillHpTotal')) or 0
+    local bossHpLost = math.max(0, bossInitialHp + bossRefillHp - bossFinalHp)
+    local offenseBreakdownSum = c.autoAttackDamage + c.weaponSkillDamage + c.spellDamage + c.abilityDamage + c.otherDamage + c.petAndCloneDamage
+    local damageDeltaVsBossHp = c.totalDamage - bossHpLost
+    local damageReconciled = (offenseBreakdownSum == c.totalDamage)
+    if combatStarted and bossInitialHp > 0 and c.totalDamage > 0 then
+        if bossFinalHp > 0 and math.abs(damageDeltaVsBossHp) > 1 then
+            damageReconciled = false
+        elseif bossFinalHp == 0 and c.totalDamage < bossHpLost then
+            damageReconciled = false
+        end
+    end
+
     local enc  = session.encounter or {}
     local soul = session.soulInfo or {}
+    local diagnostics = {}
     local warnings = {}
-    for _, w in ipairs(session.warnings) do warnings[#warnings + 1] = w end
+    local warningSeen = {}
+    local function pushWarn(code, detail, meta, severity)
+        if not warningSeen[code] then
+            warningSeen[code] = true
+            warnings[#warnings + 1] = code
+        end
+        if detail ~= nil then
+            diagnostics[#diagnostics + 1] =
+            {
+                code     = code,
+                severity = severity or 'warning',
+                detail   = detail,
+                meta     = meta,
+            }
+        end
+    end
+
+    for _, d in ipairs(session.diagnostics or {}) do
+        diagnostics[#diagnostics + 1] = d
+    end
+    for _, w in ipairs(session.warnings or {}) do
+        if not warningSeen[w] then
+            warningSeen[w] = true
+            warnings[#warnings + 1] = w
+        end
+    end
 
     if not combatStarted then
-        warnings[#warnings + 1] = 'combat_never_started'
+        pushWarn('combat_never_started', 'Encounter ended before any verified hostile interaction occurred.', nil, 'warning')
     end
     if session.eventsDropped > 0 then
-        warnings[#warnings + 1] = string.format('events_dropped:%d', session.eventsDropped)
+        pushWarn(string.format('events_dropped:%d', session.eventsDropped), nil)
     end
     if session.snapshotsDropped > 0 then
-        warnings[#warnings + 1] = string.format('snapshots_dropped:%d', session.snapshotsDropped)
+        pushWarn(string.format('snapshots_dropped:%d', session.snapshotsDropped), nil)
+    end
+    if c.unattributedHpRecovery > 0 then
+        pushWarn(
+            'unattributed_hp_recovery',
+            string.format('%d HP recovered across %d event(s) without an authoritative spell/ability/WS/regen attribution', c.unattributedHpRecovery, c.unattributedHpEvents),
+            { total_hp = c.unattributedHpRecovery, events = c.unattributedHpEvents },
+            'warning'
+        )
+    end
+    if not damageReconciled then
+        pushWarn(
+            'damage_attribution_mismatch',
+            string.format('Recorded damage (%d, breakdown sum %d) did not reconcile with boss HP lost (%d, initial=%d, refill=%d, final=%d)', c.totalDamage, offenseBreakdownSum, bossHpLost, bossInitialHp, bossRefillHp, bossFinalHp),
+            {
+                total_damage_recorded = c.totalDamage,
+                offense_breakdown_sum = offenseBreakdownSum,
+                boss_hp_lost          = bossHpLost,
+                boss_initial_hp       = bossInitialHp,
+                boss_refill_hp        = bossRefillHp,
+                boss_final_hp         = bossFinalHp,
+            },
+            'warning'
+        )
+    end
+    if combatStarted and c.tpGenerated >= 1000 and c.tpSpent == 0 and c.wsUses == 0 then
+        pushWarn(
+            'resource_generated_without_expenditure',
+            string.format('%d TP generated during combat with 0 TP spent and 0 weapon skills executed', c.tpGenerated),
+            { tp_generated = c.tpGenerated, tp_spent = c.tpSpent, ws_uses = c.wsUses },
+            'warning'
+        )
+    end
+    if #(session.wsAvailabilityIssues or {}) > 0 then
+        pushWarn(
+            'unavailable_ws_under_level_sync',
+            string.format('%d participant(s) had zero unlocked weapon skills for their equipped weapon under level sync', #session.wsAvailabilityIssues),
+            { actors = session.wsAvailabilityIssues },
+            'warning'
+        )
+    end
+    if c.bossAbilitiesFailed >= 2 or (c.bossAbilitiesChosen >= 3 and c.bossAbilitiesCompleted == 0) then
+        pushWarn(
+            'boss_ability_execution_failures',
+            string.format('Boss ability selections failed repeatedly (chosen=%d, started=%d, completed=%d, failed=%d)', c.bossAbilitiesChosen, c.bossAbilitiesUsed, c.bossAbilitiesCompleted, c.bossAbilitiesFailed),
+            {
+                chosen    = c.bossAbilitiesChosen,
+                started   = c.bossAbilitiesUsed,
+                completed = c.bossAbilitiesCompleted,
+                failed    = c.bossAbilitiesFailed,
+            },
+            'warning'
+        )
+    end
+    if c.unattributedCompanionHits > 0 then
+        pushWarn(
+            'missing_companion_attribution',
+            string.format('%d companion/non-participant hit(s) lacked verified player ownership', c.unattributedCompanionHits),
+            { unattributed_hits = c.unattributedCompanionHits },
+            'warning'
+        )
+    elseif combatStarted and COMPANION_SOUL_KEYS[soul.soul_key] and not c.petSeen and not c.cloneSeen and combatDurationSec >= 5 then
+        pushWarn(
+            'missing_companion_attribution',
+            string.format('Companion-oriented Soul (%s) recorded no pet or clone activity during %.1fs of combat', tostring(soul.soul_name or soul.soul_key), combatDurationSec),
+            { soul_key = soul.soul_key },
+            'warning'
+        )
     end
 
     local syncValid = true
     if session.levelSync ~= nil then
         syncValid = (session.levelSync.valid == true)
         if not syncValid then
-            warnings[#warnings + 1] = 'invalid_level_sync'
+            pushWarn('invalid_level_sync', 'Level synchronization verification failed.', session.levelSync, 'error')
             for _, sw in ipairs(session.levelSync.warnings or {}) do
-                warnings[#warnings + 1] = sw
+                pushWarn(sw, nil)
             end
         end
     end
@@ -1629,16 +2354,17 @@ function T.finishSession(session, outcome, opts)
         gear_profile             = enc.gearProfile or 'unknown',
         party_composition        = enc.partyComposition or 'solo',
         combat_started           = combatStarted,
+        combat_start_info        = session.combatStartInfo,
         prep_duration_sec        = prepDurationSec,
         encounter_duration_sec   = round4(combatDurationSec),
         total_session_sec        = totalSessionSec,
         timing =
         {
-            arena_entry_ms    = session.arenaEntryMs,
-            prep_start_ms     = session.prepStartMs,
-            combat_start_ms   = session.combatStartMs,
-            combat_end_ms     = session.combatEndMs,
-            prep_duration_sec = prepDurationSec,
+            arena_entry_ms      = session.arenaEntryMs,
+            prep_start_ms       = session.prepStartMs,
+            combat_start_ms     = session.combatStartMs,
+            combat_end_ms       = session.combatEndMs,
+            prep_duration_sec   = prepDurationSec,
             combat_duration_sec = round4(combatDurationSec),
         },
         server_commit_sha        = session.serverCommitSha,
@@ -1647,6 +2373,19 @@ function T.finishSession(session, outcome, opts)
         seed                     = enc.seed ~= nil and enc.seed or T.UNAVAILABLE,
         valid_for_balance        = validForBalance,
         warnings                 = warnings,
+        diagnostics              = diagnostics,
+        reconciliation =
+        {
+            boss_initial_hp          = bossInitialHp,
+            boss_final_hp            = bossFinalHp,
+            boss_refill_hp           = bossRefillHp,
+            boss_hp_lost             = bossHpLost,
+            total_damage_recorded    = c.totalDamage,
+            offense_breakdown_sum    = offenseBreakdownSum,
+            damage_reconciled        = damageReconciled,
+            unattributed_hp_recovery = c.unattributedHpRecovery,
+            max_hp_changes           = c.maxHpChanges,
+        },
         files =
         {
             runs_index    = session.runsPath,
@@ -1665,6 +2404,8 @@ function T.finishSession(session, outcome, opts)
                 autoattack_damage    = c.autoAttackDamage,
                 weaponskill_damage   = c.weaponSkillDamage,
                 spell_damage         = c.spellDamage,
+                ability_damage       = c.abilityDamage,
+                other_damage         = c.otherDamage,
                 pet_and_clone_damage = c.petAndCloneDamage,
                 melee_hits           = c.meleeHits,
                 melee_misses         = c.meleeMisses,
@@ -1693,12 +2434,19 @@ function T.finishSession(session, outcome, opts)
             },
             healing =
             {
-                effective_healing    = c.effectiveHealing,
-                overhealing          = T.UNAVAILABLE,
-                healing_per_second   = hps,
-                mp_consumed          = c.mpConsumed,
-                mp_recovered         = c.mpRecovered,
-                healing_downtime_sec = c.healEvents > 1 and round4(session.maxHealGapMs / 1000.0) or T.UNAVAILABLE,
+                effective_healing        = c.effectiveHealing,
+                spell_healing            = c.spellHealing,
+                ability_healing          = c.abilityHealing,
+                regen_healing            = c.regenHealing,
+                ws_healing               = c.wsHealing,
+                unattributed_hp_recovery = c.unattributedHpRecovery,
+                unattributed_hp_events   = c.unattributedHpEvents,
+                max_hp_changes           = c.maxHpChanges,
+                overhealing              = T.UNAVAILABLE,
+                healing_per_second       = hps,
+                mp_consumed              = c.mpConsumed,
+                mp_recovered             = c.mpRecovered,
+                healing_downtime_sec     = c.healEvents > 1 and round4(session.maxHealGapMs / 1000.0) or T.UNAVAILABLE,
             },
             threat =
             {
@@ -1723,8 +2471,11 @@ function T.finishSession(session, outcome, opts)
             },
             boss =
             {
-                abilities_used = c.bossAbilitiesUsed,
-                spells_cast    = c.bossSpellsCast,
+                abilities_chosen    = c.bossAbilitiesChosen,
+                abilities_used      = c.bossAbilitiesUsed,
+                abilities_completed = c.bossAbilitiesCompleted,
+                abilities_failed    = c.bossAbilitiesFailed,
+                spells_cast         = c.bossSpellsCast,
             },
             safety =
             {
@@ -1738,7 +2489,7 @@ function T.finishSession(session, outcome, opts)
             raw_incoming_damage     = 'unavailable: TAKE_DAMAGE listener receives post-mitigation final damage only',
             mitigated_damage        = 'unavailable: depends on raw_incoming_damage',
             block_parry_evade_split = 'unavailable: MELEE_SWING_MISS aggregates dodge/parry/shadow misses without per-reaction split',
-            overhealing             = 'unavailable: MAGIC_USE action param reports applied HP recovery without pre-cap amount',
+            overhealing             = 'unavailable: HP reconciliation records actual HP restored without pre-cap amount',
             soul_specific_metrics   = 'unavailable: per-Soul custom gauge hooks not yet instrumented in Lua telemetry',
             spell_resist_tier       = 'unavailable: MAGIC_USE does not expose 1/2, 1/4, 1/8 resist tier directly',
         },
@@ -1772,6 +2523,53 @@ function T.finishSession(session, outcome, opts)
     end
 
     return record
+end
+
+-- Synchronous Weapon Skill damage attribution context hook.
+-- Registered once on server boot (zero overhead when no Proving Grounds session is active).
+if hasServerRuntime and not T._wsHookRegistered then
+    T._wsHookRegistered = true
+    local m = Module:new('overlords_proving_grounds_telemetry')
+    m:addOverride('xi.weaponskills.takeWeaponskillDamage', function(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+        if (T._activeSessionCount or 0) <= 0 then
+            return super(defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+        end
+
+        local aid = entityIdOf(attacker)
+        local did = entityIdOf(defender)
+        local ctx =
+        {
+            kind            = 'ws',
+            attackerId      = aid,
+            defenderId      = did,
+            skillId         = (wsResults and wsResults.wsID) or 0,
+            hitsLanded      = (wsResults and wsResults.hitsLanded) or 0,
+            tpHits          = (wsResults and wsResults.tpHitsLanded) or 0,
+            extraHits       = (wsResults and wsResults.extraHitsLanded) or 0,
+            critical        = (wsResults and wsResults.criticalHit) or false,
+            recordedCount   = 0,
+            recordedDamage  = 0,
+            consumedByWsUse = false,
+        }
+
+        T._damageContextStack[#T._damageContextStack + 1] = ctx
+        local ok, result = pcall(super, defender, attacker, wsParams, primaryMsg, attack, wsResults, action)
+        T._damageContextStack[#T._damageContextStack] = nil
+
+        if ok then
+            ctx.finalDmg = tonumber(result) or 0
+            if aid ~= nil then
+                for _, sess in pairs(T._activeSessions) do
+                    if sess and not sess.ended and sess.actorMap and sess.actorMap[aid] then
+                        sess.lastWsCtxByAttacker[aid] = ctx
+                    end
+                end
+            end
+            return result
+        end
+
+        error(result)
+    end)
 end
 
 return T

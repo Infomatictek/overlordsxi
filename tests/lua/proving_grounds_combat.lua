@@ -403,8 +403,10 @@ describe('Soul Proving Grounds — Full Timeline, Timing, Feedback & Real Combat
         assert((off.melee_hits + off.melee_misses) > 0, 'No real melee autoattacks executed')
         assert(off.autoattack_damage > 0, 'No autoattack damage recorded')
         assert(off.weaponskill_uses > 0 and off.weaponskill_damage > 0 and res.tp_spent >= 1000, 'No real WS executed')
-        assert(off.autoattack_damage + off.weaponskill_damage + off.spell_damage + off.pet_and_clone_damage == off.total_damage,
+        assert(off.autoattack_damage + off.weaponskill_damage + off.spell_damage + (off.ability_damage or 0) + (off.other_damage or 0) + off.pet_and_clone_damage == off.total_damage,
             'Damage attribution mismatch (possible WS double-count!)')
+        assert(record.reconciliation and record.reconciliation.damage_reconciled == true,
+            'Summary damage did not reconcile with authoritative boss HP loss!')
         assert(off.ability_uses > 0, 'No real Job Ability executed')
         assert(thr.enmity_generation > 0, 'No real enmity generated')
         assert(def.actual_incoming_damage > 0, 'No real incoming boss damage recorded')
@@ -548,5 +550,515 @@ describe('Soul Proving Grounds — Full Timeline, Timing, Feedback & Real Combat
         assert(rec2.metrics.defense.actual_incoming_damage == 25,
             string.format('Listener leak or duplicate damage on repeat: expected 25, got %d', rec2.metrics.defense.actual_incoming_damage))
         assert(rec1.metrics.defense.actual_incoming_damage == 77, 'Finished run 1 mutated by run 2!')
+    end)
+end)
+
+describe('Soul Proving Grounds — Combat Timing, HP Recovery, WS Attribution & Visibility Regressions', function()
+    local player
+    local boss
+
+    before_each(function()
+        A.cleanupSession('reg_setup', { despawnMob = true, notifyOwner = false, writeLog = false })
+        boss = nil
+        player = xi.test.world:spawnPlayer({
+            zone  = xi.zone.GM_HOME,
+            job   = xi.job.WAR,
+            level = 10,
+        })
+        xi.customBossServer.applyPlayerCombatPace(player, true)
+    end)
+
+    after_each(function()
+        if player then
+            R.applySkillupLock(player, false)
+            R.restoreLevelSync(player)
+            if player:isEngaged() then
+                player:disengage()
+            end
+        end
+        if boss and boss.setStatus then
+            pcall(function()
+                boss:setStatus(xi.status.DISAPPEAR)
+            end)
+        end
+        A.cleanupSession('reg_teardown', { despawnMob = true, notifyOwner = false, writeLog = false })
+    end)
+
+    it('1 & 5. Boss self-buff (Blaze Spikes) stays in preparation phase and is excluded from sustained DPS', function()
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'magic_caster',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'nm',
+        })
+        boss = R.spawnTrialMob(player:getZone(), encounter, { spawnLifetimeSec = 90 })
+        assert(boss ~= nil, 'Failed to spawn Lv10 Magic Caster NM')
+
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { player },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        -- Boss casts Blaze Spikes (249) on ITSELF at t=1.8s (reproducing live runs 004 & 005).
+        local fakeBlazeSpikes = { getID = function() return 249 end }
+        simMs = 1800
+        boss:triggerListener('MAGIC_START', boss, boss, fakeBlazeSpikes)
+        simMs = 4800
+        boss:triggerListener('MAGIC_USE', boss, boss, fakeBlazeSpikes)
+
+        assert(telem.combatStartMs == nil, 'Self-targeted boss buff must NOT start the combat timer!')
+
+        -- Player waits until t=20s, then lands real melee hits totaling 100 damage over 10s of combat.
+        simMs = 20000
+        player:triggerListener('MELEE_SWING_HIT', player, boss, { isCritical = function() return false end })
+        boss:takeDamage(50, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+        assert(telem.combatStartMs == 20000, string.format('Expected combat start at 20000ms, got %s', tostring(telem.combatStartMs)))
+
+        simMs = 30000
+        player:triggerListener('MELEE_SWING_HIT', player, boss, { isCritical = function() return false end })
+        boss:takeDamage(50, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+
+        local rec = T.finishSession(telem, 'reset', { writeLog = true })
+        assert(rec.combat_started == true, 'Combat should have started on first hostile hit')
+        assert(math.abs(rec.prep_duration_sec - 20.0) < 0.05, string.format('Expected 20s prep, got %s', tostring(rec.prep_duration_sec)))
+        assert(math.abs(rec.encounter_duration_sec - 10.0) < 0.05, string.format('Expected 10s combat, got %s', tostring(rec.encounter_duration_sec)))
+        -- Sustained DPS MUST be 100 / 10 = 10.0 (NOT 100 / 28.2 = 3.55!)
+        assert(math.abs(rec.metrics.offense.sustained_dps - 10.0) < 0.05,
+            string.format('Preparation time leaked into sustained DPS: expected 10.0, got %s', tostring(rec.metrics.offense.sustained_dps)))
+
+        -- Verify boss self-buff events were preserved in preparation phase timeline
+        local evLines = readAllLines(rec.files.events_log)
+        local sawPrepBossSpell = false
+        for _, ln in ipairs(evLines or {}) do
+            if ln:find('"event_type":"boss_spell_start"', 1, true) and ln:find('"phase":"preparation"', 1, true) then
+                sawPrepBossSpell = true
+            end
+        end
+        assert(sawPrepBossSpell, 'Pre-combat boss self-buff must remain in preparation-phase timeline')
+    end)
+
+    it('2. Provoke starts combat cleanly', function()
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'magic_caster',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'normal',
+        })
+        boss = R.spawnTrialMob(player:getZone(), encounter, { spawnLifetimeSec = 60 })
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { player },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        simMs = 8000
+        player.actions:move(R.BOSS_POS.x, R.BOSS_POS.y, R.BOSS_POS.z - 2, 192)
+        xi.test.world:tickEntity(player)
+        player.actions:useAbility(boss, xi.jobAbility.PROVOKE)
+        xi.test.world:skipTime(1)
+        xi.test.world:tickEntity(player)
+        xi.test.world:tickEntity(boss)
+
+        assert(telem.combatStartMs == 8000, string.format('Provoke did not start combat at 8000ms (got %s)', tostring(telem.combatStartMs)))
+        local rec = T.finishSession(telem, 'reset', { writeLog = false })
+        assert(rec.combat_started == true and rec.combat_start_info and rec.combat_start_info.verified_hostile == true,
+            'Provoke combat_start_info must be verified_hostile=true')
+    end)
+
+    it('3. Shinobi clone opening attack starts combat with verified clone attribution', function()
+        local nin = xi.test.world:spawnPlayer({
+            zone  = xi.zone.GM_HOME,
+            job   = xi.job.NIN,
+            level = 10,
+        })
+        spec.set(nin, xi.job.NIN, 'kurogane', { silent = true })
+        spec.refreshPlayer(nin)
+
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'physical_bruiser',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'normal',
+        })
+        boss = R.spawnTrialMob(nin:getZone(), encounter, { spawnLifetimeSec = 60 })
+        local K = xi.overlords.kurogane
+        local prevFlag = K.ENABLE_EXPERIMENTAL_CLONES
+        K.ENABLE_EXPERIMENTAL_CLONES = true
+        nin.actions:move(R.BOSS_POS.x, R.BOSS_POS.y, R.BOSS_POS.z - 2, 192)
+        nin.actions:engage(boss)
+        xi.test.world:tickEntity(nin)
+
+        -- Spawn a real Kurogane shadow clone BEFORE starting the telemetry session so
+        -- the clone's opening attack is the first hostile event inside the session.
+        local cOk, spawned = K.spawn(nin, 1)
+        assert(cOk and spawned and spawned >= 1, 'Failed to spawn Kurogane clone: ' .. tostring(spawned))
+        local cloneMob = K._owners[nin:getID()].clones[1].mob
+        assert(cloneMob ~= nil, 'Kurogane clone mob missing')
+
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { nin },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        assert(telem.combatStartMs == nil, 'Clone presence alone must not start combat before attacking')
+
+        -- Clone lands the opening hostile attack on boss at t=6s
+        simMs = 6000
+        boss:takeDamage(28, cloneMob, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+
+        assert(telem.combatStartMs == 6000, string.format('Expected clone opening attack to start combat at 6000ms, got %s', tostring(telem.combatStartMs)))
+        local rec = T.finishSession(telem, 'reset', { writeLog = false })
+        K.ENABLE_EXPERIMENTAL_CLONES = prevFlag
+        if K.dismissAll then K.dismissAll(nin) end
+        if nin:isEngaged() then nin:disengage() end
+
+        assert(rec.combat_started == true, 'Clone opening attack did not start combat')
+        assert(rec.metrics.offense.pet_and_clone_damage == 28,
+            string.format('Expected 28 clone damage, got %s', tostring(rec.metrics.offense.pet_and_clone_damage)))
+        assert(rec.combat_start_info and rec.combat_start_info.verified_hostile == true, 'Clone opening attack must be verified hostile')
+    end)
+
+    it('4. Hostile spell starts combat (while player self-buff does not)', function()
+        local blm = xi.test.world:spawnPlayer({
+            zone  = xi.zone.GM_HOME,
+            job   = xi.job.BLM,
+            level = 10,
+        })
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'physical_bruiser',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'normal',
+        })
+        boss = R.spawnTrialMob(blm:getZone(), encounter, { spawnLifetimeSec = 60 })
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { blm },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        -- Self-targeted player buff does NOT start combat
+        simMs = 2000
+        blm:triggerListener('MAGIC_START', blm, blm, { getID = function() return 48 end })
+        blm:triggerListener('MAGIC_USE', blm, blm, { getID = function() return 48 end }, { getMsg = function() return 230 end, getParam = function() return 41 end })
+        assert(telem.combatStartMs == nil, 'Player self-buff must not start combat')
+
+        -- Hostile spell targeting boss DOES start combat
+        simMs = 5000
+        blm:triggerListener('MAGIC_START', blm, boss, { getID = function() return 144 end }) -- Fire
+        assert(telem.combatStartMs == 5000, string.format('Hostile spell failed to start combat at 5000ms (got %s)', tostring(telem.combatStartMs)))
+
+        local rec = T.finishSession(telem, 'reset', { writeLog = false })
+        assert(rec.combat_started == true and rec.combat_start_info.verified_hostile == true, 'Hostile spell start not verified')
+    end)
+
+    it('6 & 7. Healing spells, Regen, and unattributed HP recovery are accurately separated from Shell buffs and Max HP changes', function()
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'magic_caster',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'normal',
+        })
+        boss = R.spawnTrialMob(player:getZone(), encounter, { spawnLifetimeSec = 60 })
+        player:setHP(player:getMaxHP())
+        local baseMaxHp = player:getMaxHP()
+
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { player },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        -- Start combat with real incoming damage of 120 HP
+        simMs = 1000
+        player:takeDamage(120, boss, xi.attackType.PHYSICAL, xi.damageType.BLUNT)
+        assert(player:getHP() == baseMaxHp - 120, 'Expected player HP reduced by 120')
+
+        -- A. Shell buff (msgId=230, param=41=xi.effect.SHELL) must record 0 healing!
+        simMs = 2000
+        player:triggerListener('MAGIC_USE', player, player, { getID = function() return 48 end }, {
+            getMsg   = function() return 230 end,
+            getParam = function() return 41 end,
+        })
+        assert(telem.counters.effectiveHealing == 0,
+            string.format('Shell buff falsely recorded %d healing!', telem.counters.effectiveHealing))
+
+        -- B. Real Cure spell restores 40 HP (msgId=7 MagicRecoversHP)
+        simMs = 3000
+        player:addHP(40)
+        player:triggerListener('MAGIC_USE', player, player, { getID = function() return 1 end }, {
+            getMsg   = function() return 7 end,
+            getParam = function() return 40 end,
+        })
+        assert(telem.counters.spellHealing == 40 and telem.counters.effectiveHealing == 40,
+            string.format('Expected 40 spellHealing, got spell=%d total=%d', telem.counters.spellHealing, telem.counters.effectiveHealing))
+
+        -- C. Authoritative Regen tick (+25 HP with xi.mod.REGEN=25) recorded once without double-counting
+        simMs = 6000
+        player:addMod(xi.mod.REGEN, 25)
+        player:addHP(25)
+        player:triggerListener('EFFECTS_TICK', player)
+        -- Second immediate tick with no HP change must NOT double-count!
+        simMs = 7000
+        player:triggerListener('EFFECTS_TICK', player)
+        player:delMod(xi.mod.REGEN, 25)
+        assert(telem.counters.regenHealing == 25 and telem.counters.effectiveHealing == 65,
+            string.format('Expected 25 regenHealing (65 total), got regen=%d total=%d', telem.counters.regenHealing, telem.counters.effectiveHealing))
+
+        -- D. Max HP modification (+100 HP mod when topped off) must log max_hp_change, NOT healing!
+        simMs = 8000
+        local hpBeforeMod = player:getHP()
+        player:addMod(xi.mod.HP, 100)
+        player:updateHealth()
+        telem.sampleNow()
+        player:delMod(xi.mod.HP, 100)
+        player:updateHealth()
+        telem.sampleNow()
+        assert(telem.counters.maxHpChanges >= 2, string.format('Expected >=2 max_hp_change events, got %d', telem.counters.maxHpChanges))
+        assert(telem.counters.effectiveHealing == 65,
+            string.format('Max HP change was mistaken for healing! effectiveHealing=%d', telem.counters.effectiveHealing))
+        assert(player:getHP() <= hpBeforeMod, 'HP unexpectedly jumped after Max HP revert')
+
+        -- E. Unobservable HP recovery (+20 HP with no spell/ability/WS/regen) must be labeled unattributed_hp_change
+        simMs = 10000
+        player:addHP(20)
+        telem.sampleNow()
+        assert(telem.counters.unattributedHpRecovery == 20,
+            string.format('Expected 20 unattributed HP recovery, got %d', telem.counters.unattributedHpRecovery))
+        assert(telem.counters.effectiveHealing == 65, 'Unattributed HP change must NOT inflate attributed effectiveHealing')
+
+        local rec = T.finishSession(telem, 'reset', { writeLog = true })
+        assert(rec.metrics.healing.spell_healing == 40, 'Summary spell_healing mismatch')
+        assert(rec.metrics.healing.regen_healing == 25, 'Summary regen_healing mismatch')
+        assert(rec.metrics.healing.unattributed_hp_recovery == 20, 'Summary unattributed_hp_recovery mismatch')
+        assert(rec.metrics.healing.max_hp_changes >= 2, 'Summary max_hp_changes mismatch')
+
+        local hasUnattrWarn = false
+        for _, w in ipairs(rec.warnings or {}) do
+            if w == 'unattributed_hp_recovery' then hasUnattrWarn = true end
+        end
+        assert(hasUnattrWarn, 'Expected explicit unattributed_hp_recovery warning in summary')
+    end)
+
+    it('8, 9, 10 & 11. Preserves simultaneous hits, records single & multi-hit WS damage exactly once, and reconciles with boss HP', function()
+        local ally = xi.test.world:spawnPlayer({
+            zone  = xi.zone.GM_HOME,
+            job   = xi.job.WAR,
+            level = 10,
+        })
+        local encounter = R.buildEncounterConfig({
+            bossType    = 'physical_bruiser',
+            bossLevel   = 10,
+            playerLevel = 10,
+            difficulty  = 'even_match',
+            bossPreset  = 'normal',
+        })
+        boss = R.spawnTrialMob(player:getZone(), encounter, { spawnLifetimeSec = 90 })
+        local bossStartHp = boss:getHP()
+        assert(bossStartHp > 200, 'Expected boss HP > 200')
+
+        local simMs = 0
+        local telem = T.beginSession({
+            mob                     = boss,
+            actors                  = { player, ally },
+            encounter               = encounter,
+            testMode                = 'automated_real',
+            originalLevel           = 10,
+            effectiveLevel          = 10,
+            enableLiveSnapshotTimer = false,
+            clockMsFn               = function() return simMs end,
+        })
+
+        -- 8. Two legitimate simultaneous melee hits at exact same timestamp (simMs = 1000) with identical damage (25 each)
+        simMs = 1000
+        player:triggerListener('MELEE_SWING_HIT', player, boss, { isCritical = function() return false end })
+        boss:takeDamage(25, player, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+        ally:triggerListener('MELEE_SWING_HIT', ally, boss, { isCritical = function() return false end })
+        boss:takeDamage(25, ally, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
+
+        assert(telem.counters.autoAttackDamage == 50,
+            string.format('Simultaneous legitimate hits were lost or deduplicated! Expected 50, got %d', telem.counters.autoAttackDamage))
+
+        -- 9. Single-hit Weapon Skill through real xi.weaponskills.takeWeaponskillDamage -> TAKE_DAMAGE -> WEAPONSKILL_USE order
+        simMs = 3000
+        local mockAction = {
+            messageID = function() end,
+            param = function() end,
+            resolution = function() end,
+            recordDamage = function() end,
+        }
+        local singleWsResults = {
+            wsID            = xi.weaponskill.HARD_SLASH,
+            hitsLanded      = 1,
+            tpHitsLanded    = 1,
+            extraHitsLanded = 0,
+            bonusTP         = 0,
+            shadowsAbsorbed = 0,
+            criticalHit     = false,
+            finalDmg        = 39,
+        }
+        local dmg1 = xi.weaponskills.takeWeaponskillDamage(
+            boss,
+            player,
+            {},
+            true,
+            { type = xi.attackType.PHYSICAL, damageType = xi.damageType.SLASHING, slot = xi.slot.MAIN },
+            singleWsResults,
+            mockAction
+        )
+        -- Immediately fire WEAPONSKILL_USE just as CWeaponSkillState::Update does AFTER takeWeaponskillDamage!
+        player:triggerListener('WEAPONSKILL_USE', player, boss, {
+            getID   = function() return xi.weaponskill.HARD_SLASH end,
+            getName = function() return 'hard_slash' end,
+        }, 1000, mockAction, dmg1)
+
+        assert(dmg1 > 0, 'Expected positive single-hit WS damage')
+        assert(telem.counters.weaponSkillDamage == dmg1,
+            string.format('Single-hit WS double-counted or missed! expected %d, got %d', dmg1, telem.counters.weaponSkillDamage))
+        assert(telem.counters.autoAttackDamage == 50,
+            string.format('Single-hit WS leaked into autoAttackDamage! expected 50, got %d', telem.counters.autoAttackDamage))
+
+        -- 10. Multi-hit Weapon Skill (Double Thrust: 1 TP hit + 2 extra hits = 3 hits landed)
+        simMs = 5000
+        local multiWsResults = {
+            wsID            = xi.weaponskill.DOUBLE_THRUST,
+            hitsLanded      = 3,
+            tpHitsLanded    = 1,
+            extraHitsLanded = 2,
+            bonusTP         = 0,
+            shadowsAbsorbed = 0,
+            criticalHit     = true,
+            finalDmg        = 66,
+        }
+        local dmg2 = xi.weaponskills.takeWeaponskillDamage(
+            boss,
+            ally,
+            {},
+            true,
+            { type = xi.attackType.PHYSICAL, damageType = xi.damageType.PIERCING, slot = xi.slot.MAIN },
+            multiWsResults,
+            mockAction
+        )
+        ally:triggerListener('WEAPONSKILL_USE', ally, boss, {
+            getID   = function() return xi.weaponskill.DOUBLE_THRUST end,
+            getName = function() return 'double_thrust' end,
+        }, 1000, mockAction, dmg2)
+
+        assert(dmg2 > 0, 'Expected positive multi-hit WS damage')
+        assert(telem.counters.weaponSkillDamage == dmg1 + dmg2,
+            string.format('Multi-hit WS double-counted or missed! expected %d, got %d', dmg1 + dmg2, telem.counters.weaponSkillDamage))
+        assert(telem.counters.autoAttackDamage == 50, 'Multi-hit WS leaked into autoAttackDamage!')
+
+        -- 11. Reconcile summary metrics with authoritative boss HP loss & event log
+        local rec = T.finishSession(telem, 'reset', { writeLog = true })
+        local bossHpLost = bossStartHp - boss:getHP()
+        assert(rec.metrics.offense.total_damage == 50 + dmg1 + dmg2, 'Total damage mismatch')
+        assert(rec.metrics.offense.total_damage == bossHpLost,
+            string.format('Summary total_damage (%d) != authoritative boss HP lost (%d)!', rec.metrics.offense.total_damage, bossHpLost))
+        assert(rec.reconciliation.damage_reconciled == true, 'Summary reconciliation flag must be true')
+        assert(rec.metrics.resources_and_pets.tp_spent == 2000, 'Expected 2000 TP spent across 2 WSs')
+
+        -- Verify multi-hit metadata persisted in event log
+        local evLines = readAllLines(rec.files.events_log)
+        local sawMultiHit = false
+        for _, ln in ipairs(evLines or {}) do
+            if ln:find('"hits_landed":3', 1, true) and ln:find('"extra_hits":2', 1, true) then
+                sawMultiHit = true
+            end
+        end
+        assert(sawMultiHit, 'Multi-hit WS metadata (hits_landed=3, extra_hits=2) missing from event log')
+    end)
+
+    it('12 & Visibility Audit. Validates Lv10/13 Magic Caster & visible models across ALL Proving Grounds archetypes (Normal & NM, Lv10/30/50/75)', function()
+        local zone = player:getZone()
+        local checkLevels = { 10, 30, 50, 75 }
+        local presets = { 'normal', 'nm' }
+
+        -- Verify Lv10 and Lv13 Magic Caster scenarios (both Normal and NM) remain functional & visible
+        for _, mcCase in ipairs({
+            { eff = 10, diff = 'even_match', preset = 'normal', expBoss = 10 },
+            { eff = 10, diff = 'even_match', preset = 'nm',     expBoss = 10 },
+            { eff = 10, diff = 'very_tough', preset = 'normal', expBoss = 13 },
+            { eff = 10, diff = 'very_tough', preset = 'nm',     expBoss = 13 },
+        }) do
+            local enc = R.buildEncounterConfig({
+                bossType    = 'magic_caster',
+                bossLevel   = mcCase.expBoss,
+                playerLevel = mcCase.eff,
+                difficulty  = mcCase.diff,
+                bossPreset  = mcCase.preset,
+            })
+            local m, err = R.spawnTrialMob(zone, enc, { spawnLifetimeSec = 30 })
+            assert(m ~= nil, string.format('Magic Caster Lv%d %s failed to spawn: %s', mcCase.expBoss, mcCase.preset, tostring(err)))
+            assert(m:getMainLvl() == mcCase.expBoss, string.format('Expected Magic Caster Lv%d, got %d', mcCase.expBoss, m:getMainLvl()))
+            local visReport = R.validateMobAppearance(m)
+            assert(visReport and visReport.valid == true, string.format('Magic Caster Lv%d %s failed visibility validation: %s (model=%s flags=0x%X)',
+                mcCase.expBoss, mcCase.preset, table.concat(visReport and visReport.warnings or {}, ','), tostring(visReport and visReport.model_id), tonumber(visReport and visReport.mob_flags) or 0))
+            assert(visReport.model_id > 0, 'Magic Caster model_id must be > 0')
+            assert(bit.band(visReport.mob_flags, R.VISIBILITY_CLEAR_MASK) == 0, 'Magic Caster still has hidden/untargetable entityFlags!')
+            -- Verify Magic Caster spells/behavior preserved (BLM job, spell list active, magic cooldown configured)
+            assert(m:getMainJob() == xi.job.BLM, string.format('Expected Magic Caster BLM job, got %d', m:getMainJob()))
+            assert(m:hasSpellList() == true, 'Magic Caster spell list was not preserved')
+            assert(m:getMobMod(xi.mobMod.MAGIC_COOL) > 0, 'Magic Caster MAGIC_COOL was not preserved')
+            m:setStatus(xi.status.DISAPPEAR)
+        end
+
+        -- Audit EVERY registered Proving Grounds archetype (Normal & NM) across Lv10, 30, 50, 75
+        for archKey, _ in pairs(R.ARCHETYPES) do
+            for _, preset in ipairs(presets) do
+                for _, lvl in ipairs(checkLevels) do
+                    local enc = R.buildEncounterConfig({
+                        bossType    = archKey,
+                        bossLevel   = lvl,
+                        playerLevel = lvl,
+                        difficulty  = 'even_match',
+                        bossPreset  = preset,
+                    })
+                    local m, err = R.spawnTrialMob(zone, enc, { spawnLifetimeSec = 30 })
+                    assert(m ~= nil, string.format('Archetype %s (%s Lv%d) failed to spawn: %s', archKey, preset, lvl, tostring(err)))
+                    local visReport = R.validateMobAppearance(m)
+                    assert(visReport and visReport.valid == true, string.format('Archetype %s (%s Lv%d) has invalid/invisible appearance: %s (model=%s flags=0x%X)',
+                        archKey, preset, lvl, table.concat(visReport and visReport.warnings or {}, ','), tostring(visReport and visReport.model_id), tonumber(visReport and visReport.mob_flags) or 0))
+                    m:setStatus(xi.status.DISAPPEAR)
+                end
+            end
+        end
     end)
 end)
