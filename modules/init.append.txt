@@ -24,6 +24,7 @@ custom/lua/kurogane_clones.lua
 custom/lua/nin_specs.lua
 custom/lua/nin_nightblade_specs.lua
 custom/lua/blu_specs.lua
+custom/lua/blu_warmage_specs.lua
 custom/lua/pup_specs.lua
 custom/lua/soulspire_job_spec_runtime.lua
 custom/lua/soulspire_test_gear.lua

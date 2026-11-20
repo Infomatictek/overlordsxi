@@ -97,7 +97,6 @@ end
 
 local SOUL_TAG =
 {
-    warmage      = 'WMG',
     magus        = 'MAG',
     azurebastion = 'AZB',
 }

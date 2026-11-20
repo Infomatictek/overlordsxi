@@ -3024,6 +3024,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     zealot         = { [S.STAFF or 12] = true },
     valkyrie       = { [S.POLEARM or 8] = true },
     templar        = { [S.CLUB or 11] = true },
+    warmage        = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
     magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
     vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
     celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },

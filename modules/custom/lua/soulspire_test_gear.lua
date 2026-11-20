@@ -3567,6 +3567,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.SMN or 15) then
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'Summoner (Staff)' }
     elseif jobId == (j.BLU or 16) then
+        if specKey == 'warmage' then
+            return { role = 'caster', weapon = 'sword', offhand = 'none', ranged = 'none', ammo = 'ammo_caster', label = 'BLU Warmage (Monster Magic)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'sword', offhand = 'auto', ranged = 'none', ammo = 'ammo_tp', label = 'Blue Mage (Sword TP)' }
     elseif jobId == (j.COR or 17) then
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'gun', ammo = 'bullet', label = 'Corsair (Dagger & Gun)' }
@@ -3684,6 +3687,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.BLU or 16) and testGear.getActiveSpecKey(player, jobId) == 'warmage' then
+        return wKey == 'sword' or wKey == 'club' or wKey == 'club_mage'
+    end
     if jobId == (xi.job.DRG or 14) then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)
         if activeSpec == 'lancer' or activeSpec == 'skyborn' then return wKey == 'polearm' end
