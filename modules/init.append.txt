@@ -72,6 +72,7 @@ custom/lua/blu_healer_specs.lua
 custom/lua/dnc_healer_specs.lua
 custom/lua/smn_specs.lua
 custom/lua/smn_primalist_specs.lua
+custom/lua/smn_herald_specs.lua
 custom/lua/pup_healer_specs.lua
 custom/lua/geo_specs.lua
 custom/lua/drg_specs.lua

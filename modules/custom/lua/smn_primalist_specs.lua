@@ -169,6 +169,7 @@ for _, info in ipairs(AVATARS) do
             canMagicBurst = true, primaryMessage = xi.msg.basic.USES_JA_TAKE_DAMAGE,
         }
         local result = xi.mobskills.mobMagicalMove(pet, target, skill, action, params)
+        result.heraldOrdinary = result.damage
         result.damage = applyChallenge(owner, pet, target, element, result.damage)
         if xi.mobskills.processDamage(pet, target, skill, action, result) then
             target:takeDamage(result.damage, pet, result.attackType, result.damageType)

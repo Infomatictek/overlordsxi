@@ -3572,6 +3572,8 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.SMN or 15) then
         if specKey == 'primalist' then
             return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SMN Primalist (Elemental Pacts)', specEntry = specEntry }
+        elseif specKey == 'herald' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SMN Herald (Astral Accord)', specEntry = specEntry }
         end
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'Summoner (Staff)' }
     elseif jobId == (j.BLU or 16) then
@@ -3697,8 +3699,11 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
-    if jobId == (xi.job.SMN or 15) and testGear.getActiveSpecKey(player, jobId) == 'primalist' then
-        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    if jobId == (xi.job.SMN or 15) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'primalist' or activeSpec == 'herald' then
+            return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+        end
     end
     if jobId == (xi.job.BST or 9) and testGear.getActiveSpecKey(player, jobId) == 'untamed' then
         return wKey == 'axe' or wKey == 'gaxe'
