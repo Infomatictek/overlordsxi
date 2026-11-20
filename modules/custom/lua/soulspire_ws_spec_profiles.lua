@@ -3037,6 +3037,7 @@ P.ALLOWED_SKILLS_BY_SPEC =
     skyborn        = { [S.POLEARM or 8] = true },
     wyvernheart    = { [S.POLEARM or 8] = true },
     alphawarden    = { [S.AXE or 5] = true },
+    untamed        = { [S.AXE or 5] = true, [S.GREAT_AXE or 6] = true },
     miragesentinel = { [S.DAGGER or 2] = true },
     flintlock      = { [S.MARKSMANSHIP or 26] = true },
     buccaneer      = { [S.SWORD or 3] = true },

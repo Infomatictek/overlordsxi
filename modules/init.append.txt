@@ -20,6 +20,7 @@ custom/lua/run_specs.lua
 custom/lua/brd_specs.lua
 custom/lua/sam_specs.lua
 custom/lua/bst_specs.lua
+custom/lua/bst_untamed_specs.lua
 custom/lua/pld_specs.lua
 custom/lua/kurogane_clones.lua
 custom/lua/nin_specs.lua

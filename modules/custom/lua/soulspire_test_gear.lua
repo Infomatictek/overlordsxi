@@ -3533,6 +3533,9 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dark Knight (Scythe TP)' }
     elseif jobId == (j.BST or 9) then
+        if specKey == 'untamed' then
+            return { role = 'tp', weapon = 'axe', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'BST Untamed (Pack Assault)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'axe', offhand = 'auto', ranged = 'none', ammo = 'ammo_tp', label = 'Beastmaster (Axe TP)' }
     elseif jobId == (j.BRD or 10) then
         return { role = 'caster', weapon = 'dagger', offhand = 'shield', ranged = 'instrument', ammo = 'none', label = 'Bard (Dagger & Instrument)' }
@@ -3689,6 +3692,9 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.BST or 9) and testGear.getActiveSpecKey(player, jobId) == 'untamed' then
+        return wKey == 'axe' or wKey == 'gaxe'
+    end
     if jobId == (xi.job.SCH or 20) and testGear.getActiveSpecKey(player, jobId) == 'archivist' then
         return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
     end
