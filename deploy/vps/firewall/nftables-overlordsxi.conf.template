@@ -1,0 +1,91 @@
+#!/usr/sbin/nft -f
+###############################################################################
+# OverlordsXI — VPS Gateway nftables Firewall & Game Traffic Forwarding
+#
+# Copy to /etc/nftables.conf on the Ubuntu LTS VPS and replace:
+#   WAN_IF          -> public NIC (e.g. eth0 / ens3 — verify with `ip route`)
+#   SSH_PORT        -> your SSH port (default 22)
+#   SSH_ALLOW_CIDR  -> optional admin CIDR restriction (or 0.0.0.0/0 with key-only SSH)
+#   UNRAID_WG_IP    -> 10.77.0.2
+#
+# Audited OverlordsXI Game Ports (DO NOT forward 3306, 54003, 8088, or Unraid UI!):
+#   TCP 54231 : xi_connect (Auth TLS)
+#   TCP 54230 : xi_connect (Lobby Data)
+#   TCP 54001 : xi_connect (Lobby View)
+#   TCP 54002 : xi_search  (Search / AH)
+#   TCP 51220 : xi_profile (POL Profile TLS)
+#   TCP 51240 : xi_profile (POL IRC / Presence)
+#   UDP 54230 : xi_map     (FFXI Zone / Gameplay)
+###############################################################################
+
+flush ruleset
+
+define WAN_IF       = "eth0"
+define WG_IF        = "wg0"
+define UNRAID_WG_IP = 10.77.0.2
+define SSH_PORT     = 22
+define WG_PORT      = 51820
+
+define GAME_TCP_PORTS = { 54001, 54002, 54230, 54231, 51220, 51240 }
+define GAME_UDP_PORTS = { 54230 }
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        iif "lo" accept
+        ct state established,related accept
+        ct state invalid drop
+
+        # Allow ICMP ping (rate-limited) for diagnostics
+        ip protocol icmp icmp type echo-request limit rate 5/second accept
+        ip6 nexthdr icmpv6 icmpv6 type { echo-request, nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
+
+        # Admin SSH (key-only recommended)
+        iifname $WAN_IF tcp dport $SSH_PORT ct state new limit rate 10/minute accept
+
+        # WireGuard tunnel from Unraid
+        iifname $WAN_IF udp dport $WG_PORT accept
+
+        # Allow healthcheck pings from Unraid inside the WireGuard tunnel only
+        iifname $WG_IF ip saddr $UNRAID_WG_IP icmp type echo-request accept
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+
+        # Allow ONLY audited FFXI game ports from WAN -> Unraid over WireGuard
+        iifname $WAN_IF oifname $WG_IF ip daddr $UNRAID_WG_IP tcp dport $GAME_TCP_PORTS accept
+        iifname $WAN_IF oifname $WG_IF ip daddr $UNRAID_WG_IP udp dport $GAME_UDP_PORTS accept
+
+        # Explicitly never forward MariaDB (3306), ZeroMQ (54003), or Unraid WebUI (80/443)
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
+
+table ip nat {
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # DNAT public game ports on VPS -> Unraid WireGuard IP
+        iifname $WAN_IF tcp dport $GAME_TCP_PORTS dnat to $UNRAID_WG_IP
+        iifname $WAN_IF udp dport $GAME_UDP_PORTS dnat to $UNRAID_WG_IP
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+
+        # SNAT (masquerade) traffic entering wg0 so Unraid ALWAYS replies back
+        # through wg0 -> VPS -> Player, preventing asymmetric routing & origin IP leaks.
+        # Trade-off documented in VPS_WIREGUARD_CLOUDFLARE_GUIDE.md:
+        #   Unraid sees 10.77.0.1 as client source IP unless policy routing is used.
+        oifname $WG_IF ip daddr $UNRAID_WG_IP tcp dport $GAME_TCP_PORTS masquerade
+        oifname $WG_IF ip daddr $UNRAID_WG_IP udp dport $GAME_UDP_PORTS masquerade
+    }
+}

@@ -1,0 +1,24 @@
+###############################################################################
+# OverlordsXI — VPS WireGuard Server Template (/etc/wireguard/wg0.conf)
+#
+# Replace all <PLACEHOLDER> values on the Ubuntu LTS VPS.
+# NEVER commit a populated .conf file with real keys to Git!
+#
+# Generate keys on VPS:
+#   umask 077 && wg genkey | tee /etc/wireguard/vps.key | wg pubkey > /etc/wireguard/vps.pub
+# Generate preshared key:
+#   wg genpsk > /etc/wireguard/unraid.psk
+###############################################################################
+
+[Interface]
+Address = 10.77.0.1/24
+ListenPort = 51820
+PrivateKey = <VPS_PRIVATE_KEY>
+# Keep MTU conservative for FFXI UDP packets over WireGuard + residential WAN
+MTU = 1380
+
+[Peer]
+# Unraid OverlordsXI Host (initiates outbound tunnel — no residential router port-forward needed)
+PublicKey = <UNRAID_PUBLIC_KEY>
+PresharedKey = <PRESHARED_KEY>
+AllowedIPs = 10.77.0.2/32
