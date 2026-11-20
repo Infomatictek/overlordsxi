@@ -4,8 +4,8 @@
 
 - Server integration branch: `feat/final-25-souls`, based on `180f018caa22f73f7ff2fab4323380901606f738` in `Infomatictek/soulspirexi`.
 - Launcher baseline: `919674ea842acb1afbf1f2140f63dfbf50c1d1f2` in `Infomatictek/soulspirexi-launcher`. Launcher branch: `feat/final-25-souls`.
-- Completed: 6/25. Current: Bandit. Blocked: none.
-- Latest pushed Soul implementation commits: server `b505bd6ee0e796943baefa4f4cd91b24d956622d`, launcher `69916af58954ba4fc0e077eb4c4d7b25b8686c6a`. The server branch also carries this tracker update.
+- Completed: 7/25. Current: Trickster. Blocked: none.
+- Latest pushed Soul implementation commits: server `418959873209adb67c7f31b106ee742a22670bbe`, launcher `3430706a43f05f9844dd0784c076f9e94026873e`. The server branch also carries this tracker update.
 
 ## Implementation queue
 
@@ -17,8 +17,8 @@
 | 4 | BLM | Channeler | channeler | Support | Pushed. Manual verification required. |
 | 5 | RDM | Scarlet Weaver | scarletweaver | Damage | Pushed. Manual verification required. |
 | 6 | RDM | Royal Tactician | royaltactician | Support | Pushed. Manual verification required. |
-| 7 | THF | Bandit | bandit | Damage | Current |
-| 8 | THF | Trickster | trickster | Support | Pending |
+| 7 | THF | Bandit | bandit | Damage | Pushed. Manual verification required. |
+| 8 | THF | Trickster | trickster | Support | Current |
 | 9 | THF | Phantom | phantom | Tank | Pending |
 | 10 | PLD | Oathbreaker | oathbreaker | Damage | Pending |
 | 11 | DRK | Reaper | reaper | Damage | Pending |
@@ -65,4 +65,6 @@
 - **Scarlet Weaver architecture:** The approved RDM design is an offensive two-form choice. `rdm_scarlet_weaver_specs.lua` owns form and timing, and `0050-scarlet-weaver-native-actions.patch` scopes Yang to normal main-hand Sword hits and Yin to the Soul's spell set. The signed defense-cost design belongs to the separate RUN Spellblade discussion.
 - **Royal Tactician checkpoint:** [Implementation report](completed/royaltactician.md). Server `b505bd6ee0e796943baefa4f4cd91b24d956622d`, launcher `69916af58954ba4fc0e077eb4c4d7b25b8686c6a`. Three focused tests and 67 non-loopback regression tests passed. Audit found 47 registered and 19 planned. Six wiki actions, 11 C++ units and 1,109 launcher manifest entries verified.
 - **Royal Tactician architecture:** Successful enfeebles use the native outcome message to open the latest order, and the server's completed cast path accounts for actual MP spent. Mutually exclusive recipient orders enforce strongest-wins for the same type, with timed cleanup of Advance's flat Accuracy and Store TP.
-- **Next step:** inspect Bandit's Sequence B implementation and accepted combat contract. Confirm its exact weakness/position checks and anything already practiceable at Lv.10. Port the appropriate THF ability IDs to native action mappings while keeping Trickster enmity and Phantom defense distinct.
+- **Bandit checkpoint:** [Implementation report](completed/bandit.md). Server `418959873209adb67c7f31b106ee742a22670bbe`, launcher `3430706a43f05f9844dd0784c076f9e94026873e`. Three focused tests and 70 non-loopback regression tests passed. Audit found 48 registered, 18 planned. Both wiki actions, 12 C++ units and 1,109 manifest entries verified.
+- **Bandit architecture:** At the native weapon-skill start event, Bandit snapshots an existing Defense Down or private opening. A landed qualifying weapon skill refunds TP. Find the Gap provides the solo Lv.10 path. It gives no allied debuff or bonus.
+- **Next step:** inspect Trickster's Sequence B contract for positional enmity, Attack Down on a damaging WS, and optional party target cases. Use the native THF action IDs and verify a solo fallback that preserves its support identity and avoids Bandit or Phantom overlap.
