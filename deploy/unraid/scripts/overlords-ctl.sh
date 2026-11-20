@@ -81,16 +81,19 @@ cmd_init() {
         "${APPDATA_DIR}/meshes" \
         "${APPDATA_DIR}/backups" || true
 
-    # Populate navmeshes / ximeshes if empty
-    if [ -z "$(ls -A "${APPDATA_DIR}/meshes/navmeshes" 2>/dev/null || true)" ]; then
+    # Populate navmeshes / ximeshes if empty (docker cp works cleanly with bind mounts)
+    if [ -z "$(ls -A "${APPDATA_DIR}/meshes/navmeshes" 2>/dev/null || true)" ] || \
+       [ -z "$(ls -A "${APPDATA_DIR}/meshes/ximeshes" 2>/dev/null || true)" ]; then
         echo "==> Populating navmeshes & ximeshes from ghcr.io/landsandboat/ximeshes:latest..."
-        docker run --rm \
-            -v "${APPDATA_DIR}/meshes/navmeshes:/navmeshes" \
-            -v "${APPDATA_DIR}/meshes/ximeshes:/ximeshes" \
-            ghcr.io/landsandboat/ximeshes:latest
+        local mesh_cid
+        mesh_cid="$(docker create ghcr.io/landsandboat/ximeshes:latest)"
+        docker cp "${mesh_cid}:/navmeshes/." "${APPDATA_DIR}/meshes/navmeshes/"
+        docker cp "${mesh_cid}:/ximeshes/." "${APPDATA_DIR}/meshes/ximeshes/"
+        docker rm "${mesh_cid}" >/dev/null
         chown -R "${PUID}:${PGID}" "${APPDATA_DIR}/meshes" || true
+        docker rmi ghcr.io/landsandboat/ximeshes:latest >/dev/null 2>&1 || true
     else
-        echo "    Meshes already populated ($(ls -1 "${APPDATA_DIR}/meshes/navmeshes" | wc -l) navmeshes)."
+        echo "    Meshes already populated ($(ls -1 "${APPDATA_DIR}/meshes/navmeshes" | wc -l) navmeshes, $(ls -1 "${APPDATA_DIR}/meshes/ximeshes" | wc -l) ximeshes)."
     fi
 
     echo "==> Initialization complete."
@@ -249,7 +252,12 @@ cmd_deploy() {
     dc up -d --remove-orphans
 
     echo "==> Waiting for health checks..."
-    sleep 5
+    for _ in $(seq 1 20); do
+        if [ "$(docker inspect -f '{{.State.Health.Status}}' overlordsxi-map 2>/dev/null || true)" = "healthy" ]; then
+            break
+        fi
+        sleep 3
+    done
     "${SCRIPT_DIR}/verify-deployment.sh"
 }
 
