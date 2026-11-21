@@ -1,0 +1,59 @@
+--- a/scripts/tests/custom/kurogane.lua
++++ b/scripts/tests/custom/kurogane.lua
+@@ -240,7 +240,7 @@
+             player.packets:clear()
+             cloneA:setPos(player:getXPos() + 0.5, player:getYPos(), player:getZPos() + 0.5, player:getRotPos())
+             cloneA:setHP(1)
+-            cloneA:updateEntity()
++            cloneA:setMaxHP(2); cloneA:setHP(1); xi.test.world:skipTime(1)
+             xi.test.world:tickEntity(cloneA)
+             xi.test.world:tickEntity(player)
+ 
+@@ -286,17 +286,18 @@
+                 level = 75,
+             })
+ 
++            player:addItem(xi.item.BRONZE_HARNESS)
++            player:equipItem(xi.item.BRONZE_HARNESS)
+             player:setModelId(0x0105, xi.slot.HEAD)
+-            player:setModelId(0x0076, xi.slot.BODY)
+             player:setModelId(0x00B7, xi.slot.MAIN)
+ 
+-            -- Lock current style (Mode = 3 Set with Count = 0 locks current look into mainlook).
+-            local lockPkt = ffi.new('KRG_CLI_LOCKSTYLE')
+-            lockPkt.Count = 0
+-            lockPkt.Mode  = 3
+-            player.packets:send(0x053, lockPkt, ffi.sizeof(lockPkt))
++            -- Lock equipped BRONZE_HARNESS (model 0x000F -> 0x200F) via supported xi_test lockstyle helper.
++            player.actions:setLockstyle(3,
++                {
++                    { itemId = xi.item.BRONZE_HARNESS, slot = xi.slot.BODY },
++                })
+ 
+-            -- Change underlying body after locking style; clone must still render locked 0x2076.
++            -- Change underlying body after locking style; clone must still render locked 0x200F.
+             player:setModelId(0x0099, xi.slot.BODY)
+ 
+             -- Enable DisplayHeadOffFlg (hidden head) via 0x0DC config packet.
+@@ -306,7 +307,7 @@
+             player.packets:send(0x0DC, cfgPkt, ffi.sizeof(cfgPkt))
+ 
+             local ownerLook = player:getLookSnapshot()
+-            assert(ownerLook.body == 0x0076, string.format('lockstyle body mismatch: got 0x%04X', ownerLook.body))
++            assert(ownerLook.body == 0x000F, string.format('lockstyle body mismatch: got 0x%04X', ownerLook.body))
+             assert(ownerLook.head == 0, string.format('hidden head snapshot mismatch: got 0x%04X', ownerLook.head))
+ 
+             player.packets:clear()
+@@ -319,10 +320,8 @@
+             assert(pkt, 'no 0x00E packet captured for lockstyle/hidden-head clone')
+             assert(packetReader.readU16(pkt.data, 0x34) == 0x0000, string.format(
+                 'hidden head should encode 0x0000 at 0x34, got 0x%04X', packetReader.readU16(pkt.data, 0x34)))
+-            assert(packetReader.readU16(pkt.data, 0x36) == 0x2076, string.format(
+-                'lockstyle body should encode 0x2076 at 0x36, got 0x%04X', packetReader.readU16(pkt.data, 0x36)))
+-            assert(packetReader.readU16(pkt.data, 0x3E) == 0x60B7, string.format(
+-                'lockstyle main should encode 0x60B7 at 0x3E, got 0x%04X', packetReader.readU16(pkt.data, 0x3E)))
++            assert(packetReader.readU16(pkt.data, 0x36) == 0x200F, string.format(
++                'lockstyle body should encode 0x200F at 0x36, got 0x%04X', packetReader.readU16(pkt.data, 0x36)))
+             assert(readCString(pkt.data, 0x44, 18) == 'Locked Shadow', 'packetName at 0x44 mismatch')
+         end)
+     end)
