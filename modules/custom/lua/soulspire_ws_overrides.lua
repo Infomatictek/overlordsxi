@@ -9,6 +9,7 @@ require('modules/module_utils')
 require('modules/custom/lua/soulspire_ws_catalog')
 require('modules/custom/lua/soulspire_ws_talents')
 local wsFoundations = require('modules/custom/lua/soulspire_ws_foundations')
+local wsTelemetry   = require('modules/custom/lua/soulspire_ws_telemetry')
 require('modules/custom/lua/soulspire_throwing_ws')
 require('scripts/combat/skillchain')
 require('scripts/globals/job_utils/monk')
@@ -1370,8 +1371,31 @@ local function applyWSNormalizationAndTalents(attacker, target, wsID, wsParams, 
                     end
                 end
 
-                if eff.stance and isStanceActive(attacker, eff.stance) then
-                    applyStatEffects(eff.stance, r)
+                local stanceFired = nil
+                if eff.stance then
+                    if isStanceActive(attacker, eff.stance) then
+                        applyStatEffects(eff.stance, r)
+                        stanceFired = true
+                    else
+                        stanceFired = false
+                    end
+                end
+
+                if wsTelemetry.isActiveFor(attacker) then
+                    local activeSoulKey = talents.resolveSpecCategory(attacker, jobId)
+                    local evalStatus = (stanceFired == false) and wsTelemetry.STATUS.CONDITION_NOT_MET or wsTelemetry.STATUS.APPLIED
+                    local evalReason = (stanceFired == false) and 'stance_not_active' or ''
+                    wsTelemetry.emit(attacker, ws, activeSoulKey, node, r, 'pre_ws', evalStatus, {
+                        reason = evalReason,
+                        pre_state = { raw_tp = tp },
+                        applied_effects = {
+                            ftpMod = params.ftpMod,
+                            numHits = params.numHits,
+                            multiHitfTP = params.multiHitfTP == true,
+                            effective_tp = effectiveTp,
+                        },
+                        post_state = { effective_tp = effectiveTp, temp_mod_count = #tempMods },
+                    })
                 end
             end
         end
@@ -1883,6 +1907,23 @@ local function applyPostDamageTraits(attacker, target, wsID, ranks, dmg, extraCt
             end
             if eff.conductionAdd then
                 conductionAddTotal = conductionAddTotal + (pickRankVal(eff.conductionAdd, r) or 0)
+            end
+            if isPrimaryTarget and type(eff.soulHook) == 'table' then
+                local activeSoulKey = talents.resolveSpecCategory(attacker, jobId)
+                wsTelemetry.applySoulHookPostWS(attacker, target, ws, activeSoulKey, node, r, eff.soulHook)
+            elseif isPrimaryTarget then
+                if eff.tpRefund and attacker.addTP then
+                    local refund = math.min(350, math.max(0, pickRankVal(eff.tpRefund, r) or 0))
+                    if refund > 0 then
+                        attacker:addTP(refund)
+                    end
+                end
+                if eff.mpReturn and attacker.addMP then
+                    local gain = math.min(120, math.max(0, pickRankVal(eff.mpReturn, r) or 0))
+                    if gain > 0 then
+                        attacker:addMP(gain)
+                    end
+                end
             end
             if type(eff.chiBlast) == 'table' then
                 if eff.chiBlast.pct then

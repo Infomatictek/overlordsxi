@@ -54,6 +54,31 @@ T.FEEDBACK_OPTIONS =
 }
 
 local runSequence = 0
+local activeSessionsByActor = {}
+
+function T.hasActiveSessionFor(player)
+    if player == nil or not player.getID then
+        return false
+    end
+    local sess = activeSessionsByActor[player:getID()]
+    return sess ~= nil and not sess.ended
+end
+
+function T.recordWsTalentEvent(attacker, payload)
+    if attacker == nil or not attacker.getID or type(payload) ~= 'table' then
+        return false
+    end
+    local session = activeSessionsByActor[attacker:getID()]
+    if session == nil or session.ended then
+        return false
+    end
+    if (session.eventsWritten + #session.eventBuffer) >= T.MAX_EVENTS_PER_RUN then
+        session.eventsDropped = (session.eventsDropped or 0) + 1
+        return false
+    end
+    session.eventBuffer[#session.eventBuffer + 1] = T.encodeJson(payload)
+    return true
+end
 
 local DEFENSIVE_COOLDOWN_KEYWORDS =
 {
@@ -1445,6 +1470,10 @@ function T.beginSession(opts)
         end
     end
 
+    for aid, _ in pairs(actorMap) do
+        activeSessionsByActor[aid] = session
+    end
+
     return session
 end
 
@@ -1483,6 +1512,13 @@ function T.detachSession(session)
     end
     session.boundEntities = {}
     session.boundCompanionIds = {}
+    if type(session.actorMap) == 'table' then
+        for aid, _ in pairs(session.actorMap) do
+            if activeSessionsByActor[aid] == session then
+                activeSessionsByActor[aid] = nil
+            end
+        end
+    end
 end
 
 -- Finalizes a session, flushes all buffered events & snapshots, writes summary JSONL,
