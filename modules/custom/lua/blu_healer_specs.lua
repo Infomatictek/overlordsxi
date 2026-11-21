@@ -419,7 +419,11 @@ local function syncMagusSird(player)
 end
 
 local function attachMagusListeners(player)
-    if player == nil or player:getLocalVar('OX_MAG_LISTENERS') == 1 then
+    if player == nil then
+        return
+    end
+    player:setLocalVar('OX_MAG_ACTIVE', 1)
+    if player:getLocalVar('OX_MAG_LISTENERS') == 1 then
         return
     end
     player:setLocalVar('OX_MAG_LISTENERS', 1)
@@ -506,6 +510,7 @@ local function detachMagusListeners(player)
     if player == nil then
         return
     end
+    player:setLocalVar('OX_MAG_ACTIVE', 0)
     player:setLocalVar('OX_MAG_LISTENERS', 0)
     player:removeListener('OX_MAG_EFF_GAIN')
     player:removeListener('OX_MAG_EFF_LOSE')
@@ -533,13 +538,8 @@ m:addOverride('xi.spells.canUseSpellOverride', function(player, spell)
         local spellId = spell:getID()
         local entry   = MAGUS_SPELL_BY_ID[spellId]
         if entry ~= nil and player:hasSpell(spellId) then
-            local lvl = player:getMainLvl() or 1
-            if lvl < entry.reqLvl and spell.setMPCost then
-                local scaled = getScaledMagusMp(lvl, entry)
-                if (spell.getMPCost and spell:getMPCost() or entry.baseMp) > scaled then
-                    spell:setMPCost(scaled)
-                end
-            end
+            -- Level-scaled MP cost is applied in C++ (CMagicState) on the per-cast
+            -- spell clone so CanUseSpell never mutates a shared CSpell pointer.
             return true
         end
     end

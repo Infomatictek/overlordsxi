@@ -234,11 +234,14 @@ local function syncKagemushaVarsAndSpells(player, fromMods)
         if isDualKatanasEquipped(player) then
             local reduct = scaleTier(player:getMainLvl(), 20, 30, 40, 50)
             player:setLocalVar('OX_NIN_CAST_REDUCT', reduct)
+            player:setLocalVar('OX_KGM_DUAL_KATANA', 1)
         else
             player:setLocalVar('OX_NIN_CAST_REDUCT', 0)
+            player:setLocalVar('OX_KGM_DUAL_KATANA', 0)
         end
     else
         player:setLocalVar('OX_NIN_CAST_REDUCT', 0)
+        player:setLocalVar('OX_KGM_DUAL_KATANA', 0)
     end
     -- Never reduce Utsusemi spell recast below fixed timers
     player:setLocalVar('OX_NIN_RECAST_REDUCT', 0)
@@ -1125,6 +1128,7 @@ if xi.job and xi.job.NIN then
                 if player ~= nil and player.setLocalVar then
                     player:setLocalVar('OX_NIN_CAST_REDUCT', 0)
                     player:setLocalVar('OX_NIN_RECAST_REDUCT', 0)
+                    player:setLocalVar('OX_KGM_DUAL_KATANA', 0)
                     player:setLocalVar('OX_NIN_ASH', 0)
                     player:setLocalVar('OX_NIN_ASH_EXP', 0)
                     player:setLocalVar('OX_NIN_MIGAWARI_EXP', 0)
