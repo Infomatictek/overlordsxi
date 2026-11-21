@@ -1,57 +1,40 @@
-# Shinobi (NIN) — Shadow Clone Commander 2.0 Guide
+# Shinobi (NIN) — Playstyle Guide
 
-**Soul:** Shinobi · Ninja branch 1 · Tier 1 Pure Physical DPS · unlock level 10 · SoulspireXI level cap 75  
-**Legacy internal key:** `kurogane` (retained for saved Soul data and existing scripts)  
-**Selection:** `!spec set shinobi` or `!spec set kurogane`
+## At a Glance
+Shinobi is a **Tier 1 pure physical damage Shadow Clone commander**. Instead of defensive shadows, Shinobi summons up to **five fragile offensive clones** that attack independently and copy your appearance. The tactical challenge is to keep at least two clones attacking the same enemy and move through **Feint → Switch → Cascade** by using different squad commands in sequence. This specialization has no dedicated tanking, healing or party-wide defensive support; its damage comes from clone coordination.
 
-## What is Shinobi?
+## Setup & Gear
+- **Unlock:** Equip the Shinobi Soul Crystal or use `!spec set shinobi` from Lv. 10.
+- **Weapons:** Use **Katana**, preferably dual-wielded. Accuracy, Attack, STR, DEX, Haste, Store TP and weapon-skill damage all improve your personal output alongside the squad.
+- **Clone preparation:** Keep **Shadow Squadron** available. Two distinct living clones must hit your selected quarry to open the first tactical phase.
+- **Target control:** Focus one living enemy at a time. Target changes, disengagement, zoning and clone losses can erase tactical progress.
+- **Role:** You are a fragile damage specialist. Tank and healer support remain essential because clones do not absorb your incoming damage or make you safer.
 
-**Shinobi is a Tier 1 pure physical DPS shadow-clone commander.** Instead of defensive Utsusemi images, Shinobi fields up to **five fragile offensive shadow clones** that copy your appearance and equipment and independently attack your engaged target. You weave Katana autoattacks and weaponskills with **zero-tool Ninjutsu squad commands** and two signature Job Abilities through one cohesive **Feint → Switch → Cascade** tactical cycle.
+## How to Play (Step-by-Step)
+1. **Summon the squad:** Engage a living enemy and cast **Shadow Squadron: Ichi** for two clones. At Lv. 37, **Shadow Squadron: Ni** adds a three-clone option; the total active cap remains five.
+2. **Build Feint:** Allow **two different living clones** to land genuine melee hits on your engaged quarry within **six seconds**. The HUD advances to **Feint Ready**.
+3. **Use the first command:** Activate **False Assault** during Feint to create your **Opening** and advance the tactical phase to **Switch Ready**.
+4. **Choose a different second command:** Use **Mirror Step** or **Phantom Assault**. Using a different successful squad command advances to **Cascade Ready**; repeating the same command does not advance.
+5. **Trigger Cascade with another different command:** Use **Crosscut** or **Shadow Legion** while the squad and target are valid. This produces the coordinated strike from your surviving clones and resets the phase.
+6. **Refresh clones:** Individual clones expire or can die to direct and area damage. Keep them active without accidentally breaking a good tactical sequence.
+7. **Use stronger commands as they unlock:** **Shadow Pin** becomes available at Lv. 30, **Thunder Relay** at Lv. 50, and **Final Mirage** at Lv. 70. Final Mirage spends the current phase for a stronger finisher.
+8. **Weave Katana attacks:** Use regular Katana melee and eligible weapon skills while issuing squad commands. The squad's tactical phase is the main priority when command windows are short.
 
-**Shinobi is not a tank or support Soul.** Clones do not intercept hits for you, grant personal mitigation, heal, hold enemy hate, apply enemy debuffs, or grant party-wide damage bonuses. Heavy boss AoEs and direct hits can kill clones; managing squad uptime and command sequencing is your core skill expression.
+## Key Mechanics & Stacks
+- **Clone cap and lifespan:** Up to **five** simultaneous offensive clones, each with an independent life of about **25–30 seconds**. Fragile HP scales with effective level; surviving clones drive coordinated output.
+- **Feint building:** Two **distinct clones** must land real melee hits on the same engaged quarry within **six seconds**.
+- **Tactical phases:** **Feint Ready, Switch Ready and Cascade Ready** each give around **20 seconds** for a qualifying command.
+- **Command diversity:** A different successful command is required to progress from Switch through Cascade. Repeating the same one still acts normally but does not progress the cycle.
+- **Opening:** **False Assault** establishes a short **12-second** personal tactical opening that can empower an eligible later different command.
+- **Lv. 10 commands:** **False Assault** (12-second recast), **Mirror Step** (16 seconds), **Crosscut** (14 seconds), and **Shadow Squadron: Ichi** (20 seconds), plus accessible Shadow Legion and Phantom Assault.
+- **Later progression:** **Shadow Pin** at Lv. 30 (18-second recast); **Shadow Squadron: Ni** at Lv. 37 (30 seconds); **Thunder Relay** at Lv. 50 (22 seconds); **Final Mirage** at Lv. 70 (45 seconds).
+- **Squad reset:** Losing all clones, changing target, disengaging, death, zoning, Soul/level change or phase timeout can clear tactical progress.
+- **Soul HUD:** Displays **living clones, Feint hit progress, current phase, remaining command window, Opening and next-command readiness**.
 
-## Complete Shinobi Action Kit
-
-Shinobi's Ninjutsu spells and Job Abilities (including zero-tool Ninjutsu casting, level-sync unlock progression, cast times, recasts, and descriptions) are generated automatically from the live server definitions and launcher Soul action catalog in the **Soul Actions & Level Progression** section of the wiki.
-
-## The Tactical Cycle: Feint → Switch → Cascade
-
-Shinobi tracks **one server-authoritative tactical phase** on your Soul HUD:
-
-1. **Build Feint (`0/2` → `2/2`):** Two **distinct living clones** land real, verified, owner-attributed melee hits on your engaged enemy within **6 seconds** → enters **Feint Ready (20s)**.
-2. **Feint Ready (20s):** Any successful squad command activates its effect and advances the phase to **Switch Ready (20s)**.
-3. **Switch Ready (20s):** A **different** successful squad command within 20 seconds advances the phase to **Cascade Ready (20s)**. Repeating the same command executes normally but does **not** advance the phase.
-4. **Cascade Ready (20s):** A subsequent **different** qualifying squad command triggers a capped **Cascade Coordinated Strike** from surviving clones and resets the cycle to Building. (Casting **Final Mirage** at Lv70 consumes the active phase directly for its amplified finisher and resets the cycle.)
-
-**State reset rules:** Phase progress and tactical buffs reset cleanly on target change, disengagement, owner death, zoning, Soul change, level sync/change, phase timeout, or loss of all living clones. Failed/invalid casts are rejected before consuming cooldowns, tools, or phase progress.
-
-## Level-10 Gameplay Loop
-
-1. Engage your enemy and cast **Shadow Squadron: Ichi** (2 offensive clones).
-2. Let two distinct living clones land melee hits within 6 seconds to establish **Feint Ready**.
-3. Cast **False Assault** to set your 12s **Opening** and advance to **Switch Ready**.
-4. Follow with **Mirror Step** (sustained alternating rhythm) or **Phantom Assault** to consume Opening and advance to **Cascade Ready**.
-5. Unleash **Crosscut** (or **Shadow Legion**) to trigger the **Cascade Coordinated Strike** and reset the cycle.
-6. Refresh **Shadow Squadron: Ichi** (and **Ni** from Lv37+) as clones expire or fall to boss AoEs, weaving Katana weaponskills throughout.
-
-## Clone Baseline & Survivability
-
-| Property | Live Setting |
-| --- | --- |
-| Level cap | 75 (effective level enforced under Level Sync) |
-| Active clone cap | 5 maximum (transactional staging: failed replacement never deletes existing clones) |
-| Clone lifetime | 25–30 seconds independent expiry per clone |
-| Clone HP | `clamp(20 + 2 × Ninja level, 40, 170)` (40 HP @ Lv10 → 170 HP @ Lv75) |
-| Splash durability | -30% magical splash damage taken (survives minor spikes & 1 incidental AoE; heavy boss AoEs & direct melee hits remain lethal) |
-| Threat & attribution | Clones clear native enmity on every hit; owner receives damage, claim, and reward credit via `attributeDamageTo` |
-
-## Gear and Passives
-
-- **Weapon:** Katana (dual wield). Maintain your own accuracy, attack, STR/DEX, haste, and weaponskill damage alongside your squad.
-- **Passives (Lv10 / 30 / 50 / 70+):** +10/16/22/28 STR and DEX; +15/25/35/50 Katana skill; +8/12/16/20% Attack; +5/8/12/16% all-hit WS damage; +5/8/11/14 Double Attack; +5/10/15/20 Store TP; -20/-25/-30/-40 Enmity.
-- **Distinct from Kagemusha & Nightblade:** Kagemusha (branch 2) remains the defensive shadow tank (Kage Bunshin 443, Smoke Lotus 444, defensive Utsusemi). Nightblade (branch 3) retains its reactive seal support identity.
-
-## Soul HUD & GM Diagnostics
-
-- **Soul HUD (`soulspire_soulhud`):** Displays living clones (`0–5` violet pips), current tactical phase (`BUILD 0/2..1/2`, `FEINT RDY`, `SWITCH RDY (!LAST)`, `CASCADE RDY (!LAST)`, `OPEN`), phase countdown bar (`0–20s`), and next-command readiness.
-- **GM Diagnostics (`!kurogane`):** Permission-4 testers can inspect live clone/phase telemetry with `!kurogane status`, `!kurogane look`, `!kurogane spawn [1-5]`, and `!kurogane dismiss`.
+## Common Mistakes (Don't Do This)
+- **Treating offensive clones as defensive Utsusemi:** They do not intercept incoming damage or provide tank-level survival.
+- **Using the same squad command repeatedly:** Correct command variation advances Switch and Cascade; repetition does not.
+- **Letting the phase timer expire:** Each ready phase is brief, so plan the next different command before the window closes.
+- **Changing enemies mid-cycle:** Tactical progress is tied to a valid engaged quarry.
+- **Ignoring clone deaths:** Two distinct attackers are needed to build Feint; losing the squad ends the combo.
+- **Leaving the squad unsummoned during boss phases:** The commanding mechanic needs living clone participants, so refresh appropriately.
