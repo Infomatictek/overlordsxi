@@ -22,6 +22,9 @@ class UntamedNativeTests(unittest.TestCase):
         self.assertIn("PSpell->getSpellGroup() != SPELLGROUP_TRUST", patch)
         self.assertIn("xi::SkillType::GreatAxe", patch)
 
+    def test_module_does_not_require_nonexistent_globals_utils(self):
+        self.assertNotIn("scripts/globals/utils", MODULE.read_text(encoding="utf-8"))
+
 
 @unittest.skipUnless(LuaRuntime, "Lupa is required for in-process Lua gameplay checks")
 class UntamedRuntimeTests(unittest.TestCase):
@@ -32,7 +35,7 @@ class UntamedRuntimeTests(unittest.TestCase):
             Module = { new = function() return { addOverride = function(_, p, fn) overrides[p] = fn end } end }
             for _, name in ipairs({
                 'modules/module_utils', 'modules/custom/lua/soulspire_job_specs', 'scripts/globals/player',
-                'scripts/globals/pets', 'scripts/globals/utils',
+                'scripts/globals/pets',
             }) do package.preload[name] = function() return {} end end
             package.preload['modules/custom/lua/soulspire_soul_actions'] = function()
                 return { register = function(_, data) catalog = data end }
