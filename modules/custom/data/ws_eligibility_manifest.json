@@ -1,0 +1,6177 @@
+{
+  "schema_version": "2.0.0",
+  "canonical_soul_count": 66,
+  "total_catalog_ws": 218,
+  "summary": {
+    "total_all_catalog_soul_ws_combinations": 14388,
+    "total_theoretical_equipable_soul_ws_combinations": 5577,
+    "total_approved_soul_ws_combinations": 1474,
+    "total_excluded_equipable_soul_ws_combinations": 4103,
+    "reduction_vs_equipable_pct": 73.57,
+    "reduction_vs_full_catalog_pct": 89.76,
+    "estimated_talent_defs_without_filtering": 66924,
+    "estimated_talent_defs_with_filtering": 17688,
+    "estimated_talent_defs_avoided": 49236
+  },
+  "skill_id_map": {
+    "Hand-to-Hand": 1,
+    "Dagger": 2,
+    "Sword": 3,
+    "Great Sword": 4,
+    "Axe": 5,
+    "Great Axe": 6,
+    "Scythe": 7,
+    "Polearm": 8,
+    "Katana": 9,
+    "Great Katana": 10,
+    "Club": 11,
+    "Staff": 12,
+    "Archery": 25,
+    "Marksmanship": 26,
+    "Throwing": 27
+  },
+  "souls": {
+    "commander": {
+      "soul_key": "commander",
+      "soul_name": "Commander",
+      "job": "WAR",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Great Axe",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        6,
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "shield_break",
+        "iron_tempest",
+        "sturmwind",
+        "armor_break",
+        "keen_edge",
+        "weapon_break",
+        "raging_rush",
+        "full_break",
+        "steel_cyclone",
+        "metatron_torment",
+        "kings_justice",
+        "fell_cleave",
+        "ukkos_fury",
+        "upheaval",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 32,
+      "theoretical_job_ws_count": 190,
+      "excluded_job_ws_count": 158,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Great Sword",
+        "Axe",
+        "Scythe",
+        "Polearm",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Katana",
+        "Great Katana"
+      ],
+      "exclusion_reason": "Incidental base WAR weapons outside Great Axe (primary) and Sword (1H tactical support) are excluded.",
+      "evidence": [
+        "war_specs.lua",
+        "docs/guides/commander.md",
+        "Tactical Breach / Warcry support loop"
+      ]
+    },
+    "berserker": {
+      "soul_key": "berserker",
+      "soul_name": "Berserker",
+      "job": "WAR",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Axe"
+      ],
+      "approved_weapon_families": [
+        "Great Axe",
+        "Axe"
+      ],
+      "approved_skill_ids": [
+        6,
+        5
+      ],
+      "eligible_ws_ids": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "eligible_ws_keys": [
+        "raging_axe",
+        "smash_axe",
+        "gale_axe",
+        "avalanche_axe",
+        "spinning_axe",
+        "rampage",
+        "calamity",
+        "mistral_axe",
+        "decimation",
+        "onslaught",
+        "primal_rend",
+        "bora_axe",
+        "cloudsplitter",
+        "ruinator",
+        "shield_break",
+        "iron_tempest",
+        "sturmwind",
+        "armor_break",
+        "keen_edge",
+        "weapon_break",
+        "raging_rush",
+        "full_break",
+        "steel_cyclone",
+        "metatron_torment",
+        "kings_justice",
+        "fell_cleave",
+        "ukkos_fury",
+        "upheaval"
+      ],
+      "eligible_ws_count": 28,
+      "theoretical_job_ws_count": 190,
+      "excluded_job_ws_count": 162,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Scythe",
+        "Polearm",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Katana",
+        "Great Katana"
+      ],
+      "exclusion_reason": "Incidental base WAR weapons (Sword, Dagger, H2H, GS, Scythe, Polearm, Club, Staff, Ranged) are outside Berserker's axe-cleaver burst identity.",
+      "evidence": [
+        "war_specs.lua",
+        "docs/guides/berserker.md",
+        "Bloodlust Surge physical burst loop"
+      ]
+    },
+    "spartan": {
+      "soul_key": "spartan",
+      "soul_name": "Spartan",
+      "job": "WAR",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Polearm"
+      ],
+      "approved_skill_ids": [
+        8
+      ],
+      "eligible_ws_ids": [
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "eligible_ws_keys": [
+        "double_thrust",
+        "thunder_thrust",
+        "raiden_thrust",
+        "leg_sweep",
+        "penta_thrust",
+        "vorpal_thrust",
+        "skewer",
+        "wheeling_thrust",
+        "impulse_drive",
+        "geirskogul",
+        "drakesbane",
+        "sonic_thrust",
+        "camlanns_torment",
+        "stardiver"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 190,
+      "excluded_job_ws_count": 176,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Katana",
+        "Great Katana"
+      ],
+      "exclusion_reason": "Spartan mechanics (Grit, Iron Resolve, Polearm+Buckler) strictly require Polearm.",
+      "evidence": [
+        "war_specs.lua (xi.skill.POLEARM)",
+        "soulspire_polearm_buckler.lua",
+        "docs/guides/spartan.md"
+      ]
+    },
+    "sensei": {
+      "soul_key": "sensei",
+      "soul_name": "Sensei",
+      "job": "MNK",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        12
+      ],
+      "eligible_ws_ids": [
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 17,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 43,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Sensei's signature defensive loop requires main-hand Staff; H2H/Club/Throwing excluded.",
+      "evidence": [
+        "mnk_specs.lua (xi.skill.STAFF)",
+        "docs/guides/sensei.md",
+        "Dojo Staff counter tank"
+      ]
+    },
+    "chiweaver": {
+      "soul_key": "chiweaver",
+      "soul_name": "Chi Weaver",
+      "job": "MNK",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Hand-to-Hand"
+      ],
+      "approved_skill_ids": [
+        1
+      ],
+      "eligible_ws_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        231
+      ],
+      "eligible_ws_keys": [
+        "combo",
+        "shoulder_tackle",
+        "one_inch_punch",
+        "backhand_blow",
+        "raging_fists",
+        "spinning_attack",
+        "howling_fist",
+        "dragon_kick",
+        "asuran_fists",
+        "final_heaven",
+        "ascetics_fury",
+        "stringing_pummel",
+        "tornado_kick",
+        "victory_smite",
+        "shijin_spiral",
+        "maru_kala"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 44,
+      "excluded_weapon_families": [
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Chi Weaver healing/bolting loop is strictly Hand-to-Hand.",
+      "evidence": [
+        "mnk_specs.lua",
+        "docs/guides/chiweaver.md",
+        "0-MP Lotus/Harmony H2H healer"
+      ]
+    },
+    "blackbelt": {
+      "soul_key": "blackbelt",
+      "soul_name": "Black Belt",
+      "job": "MNK",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Hand-to-Hand"
+      ],
+      "approved_skill_ids": [
+        1
+      ],
+      "eligible_ws_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        231
+      ],
+      "eligible_ws_keys": [
+        "combo",
+        "shoulder_tackle",
+        "one_inch_punch",
+        "backhand_blow",
+        "raging_fists",
+        "spinning_attack",
+        "howling_fist",
+        "dragon_kick",
+        "asuran_fists",
+        "final_heaven",
+        "ascetics_fury",
+        "stringing_pummel",
+        "tornado_kick",
+        "victory_smite",
+        "shijin_spiral",
+        "maru_kala"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 44,
+      "excluded_weapon_families": [
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Staff/Club/Throwing are outside Black Belt's pure Hand-to-Hand martial identity.",
+      "evidence": [
+        "mnk_specs.lua",
+        "docs/guides/blackbelt.md",
+        "Footwork/Impetus martial DPS loop"
+      ]
+    },
+    "bishop": {
+      "soul_key": "bishop",
+      "soul_name": "Bishop",
+      "job": "WHM",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        11,
+        12
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 58,
+      "excluded_job_ws_count": 25,
+      "excluded_weapon_families": [
+        "Polearm",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Polearm and Throwing are outside Bishop's clerical healing identity.",
+      "evidence": [
+        "whm_specs.lua (CLUB/STAFF)",
+        "docs/guides/bishop.md"
+      ]
+    },
+    "zealot": {
+      "soul_key": "zealot",
+      "soul_name": "Zealot",
+      "job": "WHM",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        12
+      ],
+      "eligible_ws_ids": [
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 17,
+      "theoretical_job_ws_count": 58,
+      "excluded_job_ws_count": 41,
+      "excluded_weapon_families": [
+        "Club",
+        "Polearm",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Zealot's custom holy nuking mechanics require main-hand Staff.",
+      "evidence": [
+        "whm_zealot_specs.lua (xi.skill.STAFF)",
+        "docs/guides/zealot.md"
+      ]
+    },
+    "valkyrie": {
+      "soul_key": "valkyrie",
+      "soul_name": "Valkyrie",
+      "job": "WHM",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Polearm"
+      ],
+      "approved_skill_ids": [
+        8
+      ],
+      "eligible_ws_ids": [
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "eligible_ws_keys": [
+        "double_thrust",
+        "thunder_thrust",
+        "raiden_thrust",
+        "leg_sweep",
+        "penta_thrust",
+        "vorpal_thrust",
+        "skewer",
+        "wheeling_thrust",
+        "impulse_drive",
+        "geirskogul",
+        "drakesbane",
+        "sonic_thrust",
+        "camlanns_torment",
+        "stardiver"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 58,
+      "excluded_job_ws_count": 44,
+      "excluded_weapon_families": [
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Valkyrie's Wingmate/aerial support kit requires main-hand Polearm.",
+      "evidence": [
+        "whm_valkyrie_specs.lua (xi.skill.POLEARM)",
+        "docs/guides/valkyrie.md"
+      ]
+    },
+    "astromancer": {
+      "soul_key": "astromancer",
+      "soul_name": "Astromancer",
+      "job": "BLM",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        12
+      ],
+      "eligible_ws_ids": [
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 17,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 59,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Scythe",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Dagger, Club, Scythe, and Throwing are incidental to Astromancer's Staff casting identity.",
+      "evidence": [
+        "blm_astromancer_specs.lua",
+        "docs/guides/astromancer.md"
+      ]
+    },
+    "channeler": {
+      "soul_key": "channeler",
+      "soul_name": "Channeler",
+      "job": "BLM",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        12
+      ],
+      "eligible_ws_ids": [
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 17,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 59,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Scythe",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Channeler explicitly designates Staff as its sole WS family.",
+      "evidence": [
+        "blm_channeler_specs.lua",
+        "docs/guides/channeler.md (Staff eligible family)"
+      ]
+    },
+    "necromancer": {
+      "soul_key": "necromancer",
+      "soul_name": "Necromancer",
+      "job": "BLM",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Scythe"
+      ],
+      "approved_skill_ids": [
+        7
+      ],
+      "eligible_ws_ids": [
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109
+      ],
+      "eligible_ws_keys": [
+        "slice",
+        "dark_harvest",
+        "shadow_of_death",
+        "nightmare_scythe",
+        "spinning_scythe",
+        "vorpal_scythe",
+        "guillotine",
+        "cross_reaper",
+        "spiral_hell",
+        "catastrophe",
+        "insurgency",
+        "infernal_scythe",
+        "quietus",
+        "entropy"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 62,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Necromancer's Dark Pact recovery requires main-hand Scythe.",
+      "evidence": [
+        "blm_specs.lua (xi.skill.SCYTHE)",
+        "docs/guides/necromancer.md"
+      ]
+    },
+    "crimsonduelist": {
+      "soul_key": "crimsonduelist",
+      "soul_name": "Crimson Duelist",
+      "job": "RDM",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 18,
+      "theoretical_job_ws_count": 91,
+      "excluded_job_ws_count": 73,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Crimson Duelist mandates 1H Sword with empty offhand; Dagger/Club/Staff/Archery excluded.",
+      "evidence": [
+        "rdm_specs.lua (xi.skill.SWORD, empty offhand)",
+        "docs/guides/crimsonduelist.md"
+      ]
+    },
+    "royaltactician": {
+      "soul_key": "royaltactician",
+      "soul_name": "Royal Tactician",
+      "job": "RDM",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 18,
+      "theoretical_job_ws_count": 91,
+      "excluded_job_ws_count": 73,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Royal Tactician designates Sword as its eligible melee WS family.",
+      "evidence": [
+        "rdm_royal_tactician_specs.lua",
+        "docs/guides/royaltactician.md"
+      ]
+    },
+    "scarletweaver": {
+      "soul_key": "scarletweaver",
+      "soul_name": "Scarlet Weaver",
+      "job": "RDM",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 18,
+      "theoretical_job_ws_count": 91,
+      "excluded_job_ws_count": 73,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Scarlet Weaver's Yang/Yin weaving requires Sword (supporting physical & magical Sword WS).",
+      "evidence": [
+        "rdm_scarlet_weaver_specs.lua",
+        "docs/guides/scarletweaver.md",
+        "Yin/Yang Sword specialization"
+      ]
+    },
+    "trickster": {
+      "soul_key": "trickster",
+      "soul_name": "Trickster",
+      "job": "THF",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        2,
+        3
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        224,
+        225,
+        226,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "exenterator",
+        "chant_du_cygne",
+        "requiescat",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 36,
+      "theoretical_job_ws_count": 117,
+      "excluded_job_ws_count": 81,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Katana",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Pass the Blame threat-transfer requires Dagger or Sword; other base THF weapons excluded.",
+      "evidence": [
+        "thf_trickster_specs.lua (DAGGER/SWORD)",
+        "docs/guides/trickster.md"
+      ]
+    },
+    "bandit": {
+      "soul_key": "bandit",
+      "soul_name": "Bandit",
+      "job": "THF",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        2,
+        3
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        224,
+        225,
+        226,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "exenterator",
+        "chant_du_cygne",
+        "requiescat",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 36,
+      "theoretical_job_ws_count": 117,
+      "excluded_job_ws_count": 81,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Katana",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Find the Gap opening and TP refund require Dagger or Sword; all other base THF weapons excluded.",
+      "evidence": [
+        "thf_bandit_specs.lua (DAGGER/SWORD)",
+        "docs/guides/bandit.md"
+      ]
+    },
+    "phantom": {
+      "soul_key": "phantom",
+      "soul_name": "Phantom",
+      "job": "THF",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Katana"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Katana"
+      ],
+      "approved_skill_ids": [
+        2,
+        9
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        224,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "blade_rin",
+        "blade_retsu",
+        "blade_teki",
+        "blade_to",
+        "blade_chi",
+        "blade_ei",
+        "blade_jin",
+        "blade_ten",
+        "blade_ku",
+        "blade_metsu",
+        "blade_kamu",
+        "blade_yu",
+        "blade_hi",
+        "blade_shun",
+        "exenterator",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 32,
+      "theoretical_job_ws_count": 117,
+      "excluded_job_ws_count": 85,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Phantom shadow-tank triggers require Dagger or Katana; other base THF weapons excluded.",
+      "evidence": [
+        "thf_phantom_specs.lua (DAGGER/KATANA)",
+        "docs/guides/phantom.md"
+      ]
+    },
+    "templar": {
+      "soul_key": "templar",
+      "soul_name": "Templar",
+      "job": "PLD",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Club"
+      ],
+      "approved_skill_ids": [
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 97,
+      "excluded_job_ws_count": 81,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Staff",
+        "Polearm"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Templar Beacon of Light / Perpetual Majesty loop centers on Club + Shield.",
+      "evidence": [
+        "pld_healer_specs.lua (xi.skill.CLUB)",
+        "docs/guides/templar.md"
+      ]
+    },
+    "defender": {
+      "soul_key": "defender",
+      "soul_name": "Defender",
+      "job": "PLD",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        11,
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 34,
+      "theoretical_job_ws_count": 97,
+      "excluded_job_ws_count": 63,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Great Sword",
+        "Staff",
+        "Polearm"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Great Sword, Staff, Polearm, and Dagger are excluded; Club primary + Sword secondary (Sanguine sustain strictly gated).",
+      "evidence": [
+        "pld_specs.lua (CLUB + Shield Zeal/Holy Nova)",
+        "docs/guides/aegistemplar.md",
+        "Sword signature PLD secondary"
+      ]
+    },
+    "oathbreaker": {
+      "soul_key": "oathbreaker",
+      "soul_name": "Oathbreaker",
+      "job": "PLD",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Sword"
+      ],
+      "approved_skill_ids": [
+        4
+      ],
+      "eligible_ws_ids": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "eligible_ws_keys": [
+        "hard_slash",
+        "power_slash",
+        "frostbite",
+        "freezebite",
+        "shockwave",
+        "crescent_moon",
+        "sickle_moon",
+        "spinning_slash",
+        "ground_strike",
+        "scourge",
+        "herculean_slash",
+        "torcleaver",
+        "resolution",
+        "dimidiation"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 97,
+      "excluded_job_ws_count": 83,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Club",
+        "Staff",
+        "Polearm"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Oathbreaker Reckoning retaliation loop requires Great Sword.",
+      "evidence": [
+        "pld_oathbreaker_specs.lua (xi.skill.GREAT_SWORD)",
+        "docs/guides/oathbreaker.md"
+      ]
+    },
+    "reaper": {
+      "soul_key": "reaper",
+      "soul_name": "Reaper",
+      "job": "DRK",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Scythe"
+      ],
+      "approved_skill_ids": [
+        7
+      ],
+      "eligible_ws_ids": [
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109
+      ],
+      "eligible_ws_keys": [
+        "slice",
+        "dark_harvest",
+        "shadow_of_death",
+        "nightmare_scythe",
+        "spinning_scythe",
+        "vorpal_scythe",
+        "guillotine",
+        "cross_reaper",
+        "spiral_hell",
+        "catastrophe",
+        "insurgency",
+        "infernal_scythe",
+        "quietus",
+        "entropy"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 121,
+      "excluded_job_ws_count": 107,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Club",
+        "Marksmanship"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "exclusion_reason": "Reaper Finality execution requires Scythe; Great Sword/Sword/Axe/Great Axe excluded.",
+      "evidence": [
+        "drk_reaper_specs.lua (xi.skill.SCYTHE)",
+        "docs/guides/reaper.md"
+      ]
+    },
+    "dreadnought": {
+      "soul_key": "dreadnought",
+      "soul_name": "Dreadnought",
+      "job": "DRK",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Scythe"
+      ],
+      "approved_skill_ids": [
+        7
+      ],
+      "eligible_ws_ids": [
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109
+      ],
+      "eligible_ws_keys": [
+        "slice",
+        "dark_harvest",
+        "shadow_of_death",
+        "nightmare_scythe",
+        "spinning_scythe",
+        "vorpal_scythe",
+        "guillotine",
+        "cross_reaper",
+        "spiral_hell",
+        "catastrophe",
+        "insurgency",
+        "infernal_scythe",
+        "quietus",
+        "entropy"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 121,
+      "excluded_job_ws_count": 107,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Club",
+        "Marksmanship"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dreadnought Blood-Pool drain tank loop requires Scythe.",
+      "evidence": [
+        "drk_specs.lua (xi.skill.SCYTHE)",
+        "docs/guides/dreadnought.md"
+      ]
+    },
+    "scourge": {
+      "soul_key": "scourge",
+      "soul_name": "Scourge",
+      "job": "DRK",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Scythe"
+      ],
+      "approved_skill_ids": [
+        7
+      ],
+      "eligible_ws_ids": [
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109
+      ],
+      "eligible_ws_keys": [
+        "slice",
+        "dark_harvest",
+        "shadow_of_death",
+        "nightmare_scythe",
+        "spinning_scythe",
+        "vorpal_scythe",
+        "guillotine",
+        "cross_reaper",
+        "spiral_hell",
+        "catastrophe",
+        "insurgency",
+        "infernal_scythe",
+        "quietus",
+        "entropy"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 121,
+      "excluded_job_ws_count": 107,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Club",
+        "Marksmanship"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Throwing"
+      ],
+      "exclusion_reason": "Scourge explicitly designates Scythe as its sole eligible WS family.",
+      "evidence": [
+        "drk_scourge_specs.lua",
+        "docs/guides/scourge.md (Scythe eligible family)"
+      ]
+    },
+    "adventurer": {
+      "soul_key": "adventurer",
+      "soul_name": "Adventurer",
+      "job": "BRD",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        2,
+        3
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        224,
+        225,
+        226,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "exenterator",
+        "chant_du_cygne",
+        "requiescat",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 36,
+      "theoretical_job_ws_count": 80,
+      "excluded_job_ws_count": 44,
+      "excluded_weapon_families": [
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Adventurer Cadence loop and dual-wield config authorize Dagger and Sword only.",
+      "evidence": [
+        "brd_specs.lua (weaponConfig dual_1h DAGGER/SWORD)",
+        "docs/guides/adventurer.md"
+      ]
+    },
+    "musician": {
+      "soul_key": "musician",
+      "soul_name": "Musician",
+      "job": "BRD",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        2,
+        12
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        224,
+        232,
+        235
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "exenterator",
+        "ruthless_stroke",
+        "oshala"
+      ],
+      "eligible_ws_count": 35,
+      "theoretical_job_ws_count": 80,
+      "excluded_job_ws_count": 45,
+      "excluded_weapon_families": [
+        "Sword",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Musician is a pure instrument caster; Sword/Club/Throwing excluded.",
+      "evidence": [
+        "brd_specs.lua",
+        "docs/guides/musician.md"
+      ]
+    },
+    "minstrel": {
+      "soul_key": "minstrel",
+      "soul_name": "Minstrel",
+      "job": "BRD",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        2,
+        3
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        224,
+        225,
+        226,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "exenterator",
+        "chant_du_cygne",
+        "requiescat",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 36,
+      "theoretical_job_ws_count": 80,
+      "excluded_job_ws_count": 44,
+      "excluded_weapon_families": [
+        "Club",
+        "Staff",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Minstrel shield-tank uses 1H Dagger/Sword; Club/Staff/Throwing excluded.",
+      "evidence": [
+        "brd_specs.lua",
+        "docs/guides/minstrel.md"
+      ]
+    },
+    "sniper": {
+      "soul_key": "sniper",
+      "soul_name": "Sniper",
+      "job": "RNG",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Marksmanship"
+      ],
+      "approved_skill_ids": [
+        26
+      ],
+      "eligible_ws_ids": [
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221
+      ],
+      "eligible_ws_keys": [
+        "hot_shot",
+        "split_shot",
+        "sniper_shot",
+        "slug_shot",
+        "blast_shot",
+        "heavy_shot",
+        "detonator",
+        "coronach",
+        "trueflight",
+        "leaden_salute",
+        "numbing_shot",
+        "wildfire",
+        "last_stand"
+      ],
+      "eligible_ws_count": 13,
+      "theoretical_job_ws_count": 101,
+      "excluded_job_ws_count": 88,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Axe",
+        "Club",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Sniper Sightline Shot requires Marksmanship (Gun/Crossbow); melee and Archery excluded.",
+      "evidence": [
+        "rng_sniper_specs.lua",
+        "docs/guides/sniper.md (Gun/Crossbow)"
+      ]
+    },
+    "huntsman": {
+      "soul_key": "huntsman",
+      "soul_name": "Huntsman",
+      "job": "RNG",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Archery"
+      ],
+      "secondary_signature_weapons": [
+        "Marksmanship"
+      ],
+      "approved_weapon_families": [
+        "Archery",
+        "Marksmanship"
+      ],
+      "approved_skill_ids": [
+        25,
+        26
+      ],
+      "eligible_ws_ids": [
+        192,
+        193,
+        194,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221
+      ],
+      "eligible_ws_keys": [
+        "flaming_arrow",
+        "piercing_arrow",
+        "dulling_arrow",
+        "sidewinder",
+        "blast_arrow",
+        "arching_arrow",
+        "empyreal_arrow",
+        "namas_arrow",
+        "refulgent_arrow",
+        "jishnus_radiance",
+        "apex_arrow",
+        "hot_shot",
+        "split_shot",
+        "sniper_shot",
+        "slug_shot",
+        "blast_shot",
+        "heavy_shot",
+        "detonator",
+        "coronach",
+        "trueflight",
+        "leaden_salute",
+        "numbing_shot",
+        "wildfire",
+        "last_stand"
+      ],
+      "eligible_ws_count": 24,
+      "theoretical_job_ws_count": 101,
+      "excluded_job_ws_count": 77,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Axe",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Huntsman Warden's Ration triggers on Archery or Marksmanship WS; melee weapons excluded.",
+      "evidence": [
+        "rng_specs.lua (ARCHERY/MARKSMANSHIP)",
+        "docs/guides/huntsman.md"
+      ]
+    },
+    "arcanearcher": {
+      "soul_key": "arcanearcher",
+      "soul_name": "Arcane Archer",
+      "job": "RNG",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Archery"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Archery"
+      ],
+      "approved_skill_ids": [
+        25
+      ],
+      "eligible_ws_ids": [
+        192,
+        193,
+        194,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203
+      ],
+      "eligible_ws_keys": [
+        "flaming_arrow",
+        "piercing_arrow",
+        "dulling_arrow",
+        "sidewinder",
+        "blast_arrow",
+        "arching_arrow",
+        "empyreal_arrow",
+        "namas_arrow",
+        "refulgent_arrow",
+        "jishnus_radiance",
+        "apex_arrow"
+      ],
+      "eligible_ws_count": 11,
+      "theoretical_job_ws_count": 101,
+      "excluded_job_ws_count": 90,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Axe",
+        "Club",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff"
+      ],
+      "exclusion_reason": "Arcane Archer Attunement Arrow strictly uses Archery.",
+      "evidence": [
+        "rng_arcane_archer_specs.lua",
+        "docs/guides/arcanearcher.md (Bow/Archery only)"
+      ]
+    },
+    "ronin": {
+      "soul_key": "ronin",
+      "soul_name": "Ronin",
+      "job": "SAM",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Katana"
+      ],
+      "approved_skill_ids": [
+        10
+      ],
+      "eligible_ws_ids": [
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157
+      ],
+      "eligible_ws_keys": [
+        "tachi_enpi",
+        "tachi_hobaku",
+        "tachi_goten",
+        "tachi_kagero",
+        "tachi_jinpu",
+        "tachi_koki",
+        "tachi_yukikaze",
+        "tachi_gekko",
+        "tachi_kasha",
+        "tachi_kaiten",
+        "tachi_rana",
+        "tachi_ageha",
+        "tachi_fudo",
+        "tachi_shoha"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 88,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Polearm",
+        "Club",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Staff",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Ronin Seigan/Stagger loop requires Great Katana; incidental SAM weapons excluded.",
+      "evidence": [
+        "sam_specs.lua (GREAT_KATANA)",
+        "docs/guides/ronin.md"
+      ]
+    },
+    "imperialarcher": {
+      "soul_key": "imperialarcher",
+      "soul_name": "Imperial Archer",
+      "job": "SAM",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [
+        "Archery"
+      ],
+      "approved_weapon_families": [
+        "Great Katana",
+        "Archery"
+      ],
+      "approved_skill_ids": [
+        10,
+        25
+      ],
+      "eligible_ws_ids": [
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        192,
+        193,
+        194,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203
+      ],
+      "eligible_ws_keys": [
+        "tachi_enpi",
+        "tachi_hobaku",
+        "tachi_goten",
+        "tachi_kagero",
+        "tachi_jinpu",
+        "tachi_koki",
+        "tachi_yukikaze",
+        "tachi_gekko",
+        "tachi_kasha",
+        "tachi_kaiten",
+        "tachi_rana",
+        "tachi_ageha",
+        "tachi_fudo",
+        "tachi_shoha",
+        "flaming_arrow",
+        "piercing_arrow",
+        "dulling_arrow",
+        "sidewinder",
+        "blast_arrow",
+        "arching_arrow",
+        "empyreal_arrow",
+        "namas_arrow",
+        "refulgent_arrow",
+        "jishnus_radiance",
+        "apex_arrow"
+      ],
+      "eligible_ws_count": 25,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 77,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Polearm",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Staff",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Imperial Archer Drawn Oisoya alternates Great Katana and Archery; other SAM weapons excluded.",
+      "evidence": [
+        "sam_specs.lua (GREAT_KATANA + ARCHERY)",
+        "docs/guides/imperialarcher.md"
+      ]
+    },
+    "warlord": {
+      "soul_key": "warlord",
+      "soul_name": "Warlord",
+      "job": "SAM",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Katana"
+      ],
+      "approved_skill_ids": [
+        10
+      ],
+      "eligible_ws_ids": [
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157
+      ],
+      "eligible_ws_keys": [
+        "tachi_enpi",
+        "tachi_hobaku",
+        "tachi_goten",
+        "tachi_kagero",
+        "tachi_jinpu",
+        "tachi_koki",
+        "tachi_yukikaze",
+        "tachi_gekko",
+        "tachi_kasha",
+        "tachi_kaiten",
+        "tachi_rana",
+        "tachi_ageha",
+        "tachi_fudo",
+        "tachi_shoha"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 88,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Polearm",
+        "Club",
+        "Archery",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Staff",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Warlord Noto/Ashura loop requires Great Katana.",
+      "evidence": [
+        "sam_specs.lua (GREAT_KATANA)",
+        "docs/guides/warlord.md"
+      ]
+    },
+    "kurogane": {
+      "soul_key": "kurogane",
+      "soul_name": "Shinobi",
+      "job": "NIN",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Katana"
+      ],
+      "approved_skill_ids": [
+        9
+      ],
+      "eligible_ws_ids": [
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141
+      ],
+      "eligible_ws_keys": [
+        "blade_rin",
+        "blade_retsu",
+        "blade_teki",
+        "blade_to",
+        "blade_chi",
+        "blade_ei",
+        "blade_jin",
+        "blade_ten",
+        "blade_ku",
+        "blade_metsu",
+        "blade_kamu",
+        "blade_yu",
+        "blade_hi",
+        "blade_shun"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 131,
+      "excluded_job_ws_count": 117,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Katana",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Staff"
+      ],
+      "exclusion_reason": "Shinobi/Kurogane clone assault loop centers on Katana; incidental NIN weapons excluded.",
+      "evidence": [
+        "nin_specs.lua (KATANA)",
+        "kurogane_clones.lua",
+        "docs/guides/shinobi.md"
+      ]
+    },
+    "kagemusha": {
+      "soul_key": "kagemusha",
+      "soul_name": "Kagemusha",
+      "job": "NIN",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Katana"
+      ],
+      "approved_skill_ids": [
+        9
+      ],
+      "eligible_ws_ids": [
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141
+      ],
+      "eligible_ws_keys": [
+        "blade_rin",
+        "blade_retsu",
+        "blade_teki",
+        "blade_to",
+        "blade_chi",
+        "blade_ei",
+        "blade_jin",
+        "blade_ten",
+        "blade_ku",
+        "blade_metsu",
+        "blade_kamu",
+        "blade_yu",
+        "blade_hi",
+        "blade_shun"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 131,
+      "excluded_job_ws_count": 117,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Katana",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Staff"
+      ],
+      "exclusion_reason": "Kagemusha Yonin/Shadow rebuild loop requires Katana.",
+      "evidence": [
+        "nin_specs.lua (KATANA)",
+        "docs/guides/kagemusha.md"
+      ]
+    },
+    "nightblade": {
+      "soul_key": "nightblade",
+      "soul_name": "Nightblade",
+      "job": "NIN",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Katana"
+      ],
+      "approved_skill_ids": [
+        9
+      ],
+      "eligible_ws_ids": [
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141
+      ],
+      "eligible_ws_keys": [
+        "blade_rin",
+        "blade_retsu",
+        "blade_teki",
+        "blade_to",
+        "blade_chi",
+        "blade_ei",
+        "blade_jin",
+        "blade_ten",
+        "blade_ku",
+        "blade_metsu",
+        "blade_kamu",
+        "blade_yu",
+        "blade_hi",
+        "blade_shun"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 131,
+      "excluded_job_ws_count": 117,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Sword",
+        "Great Katana",
+        "Club",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Staff"
+      ],
+      "exclusion_reason": "Nightblade explicitly designates Katana as its sole eligible WS family.",
+      "evidence": [
+        "nin_nightblade_specs.lua",
+        "docs/guides/nightblade.md (Katana eligible family)"
+      ]
+    },
+    "lancer": {
+      "soul_key": "lancer",
+      "soul_name": "Lancer",
+      "job": "DRG",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Polearm"
+      ],
+      "approved_skill_ids": [
+        8
+      ],
+      "eligible_ws_ids": [
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "eligible_ws_keys": [
+        "double_thrust",
+        "thunder_thrust",
+        "raiden_thrust",
+        "leg_sweep",
+        "penta_thrust",
+        "vorpal_thrust",
+        "skewer",
+        "wheeling_thrust",
+        "impulse_drive",
+        "geirskogul",
+        "drakesbane",
+        "sonic_thrust",
+        "camlanns_torment",
+        "stardiver"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 83,
+      "excluded_job_ws_count": 69,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Staff",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Lancer Vault follow-up requires Polearm; Sword/Dagger/Staff/Club excluded.",
+      "evidence": [
+        "drg_lancer_specs.lua (POLEARM)",
+        "docs/guides/lancer.md"
+      ]
+    },
+    "skyborn": {
+      "soul_key": "skyborn",
+      "soul_name": "Skyborn",
+      "job": "DRG",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Polearm"
+      ],
+      "approved_skill_ids": [
+        8
+      ],
+      "eligible_ws_ids": [
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "eligible_ws_keys": [
+        "double_thrust",
+        "thunder_thrust",
+        "raiden_thrust",
+        "leg_sweep",
+        "penta_thrust",
+        "vorpal_thrust",
+        "skewer",
+        "wheeling_thrust",
+        "impulse_drive",
+        "geirskogul",
+        "drakesbane",
+        "sonic_thrust",
+        "camlanns_torment",
+        "stardiver"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 83,
+      "excluded_job_ws_count": 69,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Staff",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Skyborn Grounding Cry / Skyward Guard requires Polearm.",
+      "evidence": [
+        "drg_skyborn_specs.lua (POLEARM)",
+        "docs/guides/skyborn.md"
+      ]
+    },
+    "wyvernheart": {
+      "soul_key": "wyvernheart",
+      "soul_name": "Wyvernheart",
+      "job": "DRG",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Polearm"
+      ],
+      "approved_skill_ids": [
+        8
+      ],
+      "eligible_ws_ids": [
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "eligible_ws_keys": [
+        "double_thrust",
+        "thunder_thrust",
+        "raiden_thrust",
+        "leg_sweep",
+        "penta_thrust",
+        "vorpal_thrust",
+        "skewer",
+        "wheeling_thrust",
+        "impulse_drive",
+        "geirskogul",
+        "drakesbane",
+        "sonic_thrust",
+        "camlanns_torment",
+        "stardiver"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 83,
+      "excluded_job_ws_count": 69,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Staff",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Wyvernheart Wyrmscale loop requires Polearm.",
+      "evidence": [
+        "drg_specs.lua (POLEARM)",
+        "docs/guides/wyvernheart.md"
+      ]
+    },
+    "warmage": {
+      "soul_key": "warmage",
+      "soul_name": "Warmage",
+      "job": "BLU",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Sword",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        3,
+        11
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 34,
+      "theoretical_job_ws_count": 34,
+      "excluded_job_ws_count": 0,
+      "excluded_weapon_families": [],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "All non-Sword/Club weapon families are unsupported on BLU Warmage.",
+      "evidence": [
+        "blu_warmage_specs.lua",
+        "docs/guides/warmage.md (Sword and Club)"
+      ]
+    },
+    "magus": {
+      "soul_key": "magus",
+      "soul_name": "Magus",
+      "job": "BLU",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Sword",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        3,
+        11
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 34,
+      "theoretical_job_ws_count": 34,
+      "excluded_job_ws_count": 0,
+      "excluded_weapon_families": [],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "All non-Sword/Club weapon families are unsupported on BLU Magus.",
+      "evidence": [
+        "blu_healer_specs.lua (SWORD/CLUB)",
+        "docs/guides/magus.md"
+      ]
+    },
+    "azurebastion": {
+      "soul_key": "azurebastion",
+      "soul_name": "Azure Bastion",
+      "job": "BLU",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Sword",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        3,
+        11
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 34,
+      "theoretical_job_ws_count": 34,
+      "excluded_job_ws_count": 0,
+      "excluded_weapon_families": [],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Azure Surge triggers on Sword or Club WS only.",
+      "evidence": [
+        "blu_specs.lua (SWORD/CLUB)",
+        "docs/guides/azurebastion.md"
+      ]
+    },
+    "flintlock": {
+      "soul_key": "flintlock",
+      "soul_name": "Flintlock",
+      "job": "COR",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Marksmanship"
+      ],
+      "approved_skill_ids": [
+        26
+      ],
+      "eligible_ws_ids": [
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221
+      ],
+      "eligible_ws_keys": [
+        "hot_shot",
+        "split_shot",
+        "sniper_shot",
+        "slug_shot",
+        "blast_shot",
+        "heavy_shot",
+        "detonator",
+        "coronach",
+        "trueflight",
+        "leaden_salute",
+        "numbing_shot",
+        "wildfire",
+        "last_stand"
+      ],
+      "eligible_ws_count": 13,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 47,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery"
+      ],
+      "exclusion_reason": "Flintlock Deadeye Chamber detonation requires Marksmanship (Gun); Dagger/Sword excluded.",
+      "evidence": [
+        "cor_specs.lua (MARKSMANSHIP)",
+        "docs/guides/flintlock.md (Gun Deadeye Chamber)"
+      ]
+    },
+    "gambler": {
+      "soul_key": "gambler",
+      "soul_name": "Gambler",
+      "job": "COR",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [
+        "Dagger"
+      ],
+      "approved_weapon_families": [
+        "Marksmanship",
+        "Dagger"
+      ],
+      "approved_skill_ids": [
+        26,
+        2
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        224,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "hot_shot",
+        "split_shot",
+        "sniper_shot",
+        "slug_shot",
+        "blast_shot",
+        "heavy_shot",
+        "detonator",
+        "coronach",
+        "trueflight",
+        "leaden_salute",
+        "numbing_shot",
+        "wildfire",
+        "last_stand",
+        "exenterator",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 31,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 29,
+      "excluded_weapon_families": [
+        "Sword",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery"
+      ],
+      "exclusion_reason": "Gambler uses Marksmanship + Dagger; Sword/Throwing excluded.",
+      "evidence": [
+        "cor_specs.lua",
+        "docs/guides/gambler.md",
+        "P.ALLOWED_SKILLS_BY_SPEC"
+      ]
+    },
+    "buccaneer": {
+      "soul_key": "buccaneer",
+      "soul_name": "Buccaneer",
+      "job": "COR",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Sword"
+      ],
+      "approved_skill_ids": [
+        3
+      ],
+      "eligible_ws_ids": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        225,
+        226
+      ],
+      "eligible_ws_keys": [
+        "fast_blade",
+        "burning_blade",
+        "red_lotus_blade",
+        "flat_blade",
+        "shining_blade",
+        "seraph_blade",
+        "circle_blade",
+        "spirits_within",
+        "vorpal_blade",
+        "swift_blade",
+        "savage_blade",
+        "knights_of_round",
+        "death_blossom",
+        "atonement",
+        "expiacion",
+        "sanguine_blade",
+        "chant_du_cygne",
+        "requiescat"
+      ],
+      "eligible_ws_count": 18,
+      "theoretical_job_ws_count": 60,
+      "excluded_job_ws_count": 42,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery"
+      ],
+      "exclusion_reason": "Buccaneer Point-Blank Pistol Grapeshot builder triggers specifically on 1H Sword WS.",
+      "evidence": [
+        "cor_specs.lua (xi.skill.SWORD Point-Blank Pistol)",
+        "docs/guides/buccaneer.md"
+      ]
+    },
+    "vampire": {
+      "soul_key": "vampire",
+      "soul_name": "Vampire",
+      "job": "DNC",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Throwing"
+      ],
+      "approved_weapon_families": [
+        "Dagger",
+        "Throwing"
+      ],
+      "approved_skill_ids": [
+        2,
+        27
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        224,
+        232,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "exenterator",
+        "ruthless_stroke",
+        "pirouette_toss",
+        "whirling_waltz",
+        "ricochet_tango",
+        "crimson_samba",
+        "stutter_disc",
+        "feathered_ring",
+        "bolero_cyclone",
+        "flamenco_finale",
+        "tarantella_storm",
+        "grand_jete",
+        "aurora_fandango"
+      ],
+      "eligible_ws_count": 29,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 34,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Sword"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Vampire Finishing Move healing triggers on Dagger or Throwing WS; Sword/H2H excluded.",
+      "evidence": [
+        "dnc_healer_specs.lua (DAGGER/THROWING)",
+        "docs/guides/vampire.md"
+      ]
+    },
+    "bladewheel": {
+      "soul_key": "bladewheel",
+      "soul_name": "Bladewheel",
+      "job": "DNC",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Throwing"
+      ],
+      "secondary_signature_weapons": [
+        "Dagger"
+      ],
+      "approved_weapon_families": [
+        "Throwing",
+        "Dagger"
+      ],
+      "approved_skill_ids": [
+        27,
+        2
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        224,
+        232,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "exenterator",
+        "ruthless_stroke",
+        "pirouette_toss",
+        "whirling_waltz",
+        "ricochet_tango",
+        "crimson_samba",
+        "stutter_disc",
+        "feathered_ring",
+        "bolero_cyclone",
+        "flamenco_finale",
+        "tarantella_storm",
+        "grand_jete",
+        "aurora_fandango"
+      ],
+      "eligible_ws_count": 29,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 34,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Sword"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Bladewheel centers on custom Chakram Throwing WS with Dagger melee backup; Sword/H2H excluded.",
+      "evidence": [
+        "dnc_specs.lua (THROWING/DAGGER)",
+        "soulspire_throwing_ws.lua",
+        "docs/guides/bladewheel.md"
+      ]
+    },
+    "miragesentinel": {
+      "soul_key": "miragesentinel",
+      "soul_name": "Mirage Sentinel",
+      "job": "DNC",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Dagger"
+      ],
+      "approved_skill_ids": [
+        2
+      ],
+      "eligible_ws_ids": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        224,
+        232
+      ],
+      "eligible_ws_keys": [
+        "wasp_sting",
+        "viper_bite",
+        "shadowstitch",
+        "gust_slash",
+        "cyclone",
+        "energy_steal",
+        "energy_drain",
+        "dancing_edge",
+        "shark_bite",
+        "evisceration",
+        "mercy_stroke",
+        "mandalic_stab",
+        "mordant_rime",
+        "pyrrhic_kleos",
+        "aeolian_edge",
+        "rudras_storm",
+        "exenterator",
+        "ruthless_stroke"
+      ],
+      "eligible_ws_count": 18,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 45,
+      "excluded_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Club",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Mirage Sentinel Fan Dance refresh strictly mandates Dagger in Main and Sub.",
+      "evidence": [
+        "dnc_specs.lua (dual DAGGER mandatory)",
+        "docs/guides/miragesentinel.md"
+      ]
+    },
+    "medic": {
+      "soul_key": "medic",
+      "soul_name": "Medic",
+      "job": "SCH",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        11,
+        12
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 29,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Dagger and Throwing are incidental to Medic's Eos healer identity.",
+      "evidence": [
+        "sch_specs.lua",
+        "docs/guides/medic.md (Staff or Club)"
+      ]
+    },
+    "sage": {
+      "soul_key": "sage",
+      "soul_name": "Sage",
+      "job": "SCH",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Staff",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        12,
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 29,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Dagger, Sword, and Throwing are outside Sage's elemental scholar identity.",
+      "evidence": [
+        "sch_specs.lua",
+        "docs/guides/sage.md (Staff or Club)"
+      ]
+    },
+    "archivist": {
+      "soul_key": "archivist",
+      "soul_name": "Archivist",
+      "job": "SCH",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Staff",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        12,
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 29,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Archivist explicitly designates Staff and Club as its eligible WS families.",
+      "evidence": [
+        "sch_archivist_specs.lua",
+        "docs/guides/archivist.md (Staff and Club)"
+      ]
+    },
+    "untamed": {
+      "soul_key": "untamed",
+      "soul_name": "Untamed",
+      "job": "BST",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Axe"
+      ],
+      "approved_weapon_families": [
+        "Great Axe",
+        "Axe"
+      ],
+      "approved_skill_ids": [
+        6,
+        5
+      ],
+      "eligible_ws_ids": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "eligible_ws_keys": [
+        "raging_axe",
+        "smash_axe",
+        "gale_axe",
+        "avalanche_axe",
+        "spinning_axe",
+        "rampage",
+        "calamity",
+        "mistral_axe",
+        "decimation",
+        "onslaught",
+        "primal_rend",
+        "bora_axe",
+        "cloudsplitter",
+        "ruinator",
+        "shield_break",
+        "iron_tempest",
+        "sturmwind",
+        "armor_break",
+        "keen_edge",
+        "weapon_break",
+        "raging_rush",
+        "full_break",
+        "steel_cyclone",
+        "metatron_torment",
+        "kings_justice",
+        "fell_cleave",
+        "ukkos_fury",
+        "upheaval"
+      ],
+      "eligible_ws_count": 28,
+      "theoretical_job_ws_count": 94,
+      "excluded_job_ws_count": 66,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Scythe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Untamed feral pack-DPS authorizes Great Axe and Axe; Dagger/Sword/Scythe/Club excluded.",
+      "evidence": [
+        "bst_untamed_specs.lua (AXE/GREAT_AXE)",
+        "docs/guides/untamed.md"
+      ]
+    },
+    "alphawarden": {
+      "soul_key": "alphawarden",
+      "soul_name": "Alpha Warden",
+      "job": "BST",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Axe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Axe"
+      ],
+      "approved_skill_ids": [
+        5
+      ],
+      "eligible_ws_ids": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "eligible_ws_keys": [
+        "raging_axe",
+        "smash_axe",
+        "gale_axe",
+        "avalanche_axe",
+        "spinning_axe",
+        "rampage",
+        "calamity",
+        "mistral_axe",
+        "decimation",
+        "onslaught",
+        "primal_rend",
+        "bora_axe",
+        "cloudsplitter",
+        "ruinator"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 94,
+      "excluded_job_ws_count": 80,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Axe",
+        "Scythe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Alpha Warden pack-tank loop centers on Axe.",
+      "evidence": [
+        "bst_specs.lua (xi.skill.AXE)",
+        "docs/guides/alphawarden.md"
+      ]
+    },
+    "beastspeaker": {
+      "soul_key": "beastspeaker",
+      "soul_name": "Beastspeaker",
+      "job": "BST",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Axe"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Axe"
+      ],
+      "approved_skill_ids": [
+        5
+      ],
+      "eligible_ws_ids": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "eligible_ws_keys": [
+        "raging_axe",
+        "smash_axe",
+        "gale_axe",
+        "avalanche_axe",
+        "spinning_axe",
+        "rampage",
+        "calamity",
+        "mistral_axe",
+        "decimation",
+        "onslaught",
+        "primal_rend",
+        "bora_axe",
+        "cloudsplitter",
+        "ruinator"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 94,
+      "excluded_job_ws_count": 80,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Sword",
+        "Great Axe",
+        "Scythe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Great Sword",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Beastspeaker explicitly designates Axe as its sole eligible WS family.",
+      "evidence": [
+        "bst_beastspeaker_specs.lua",
+        "docs/guides/beastspeaker.md (Axe eligible family)"
+      ]
+    },
+    "primalist": {
+      "soul_key": "primalist",
+      "soul_name": "Primalist",
+      "job": "SMN",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Staff",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        12,
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Primalist's avatar-burst caster identity.",
+      "evidence": [
+        "smn_primalist_specs.lua",
+        "docs/guides/primalist.md (Staff and Club)"
+      ]
+    },
+    "celestial": {
+      "soul_key": "celestial",
+      "soul_name": "Celestial",
+      "job": "SMN",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Staff",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        12,
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Celestial's Starlight Mend healer identity.",
+      "evidence": [
+        "smn_specs.lua (STAFF/CLUB)",
+        "docs/guides/celestial.md"
+      ]
+    },
+    "herald": {
+      "soul_key": "herald",
+      "soul_name": "Herald",
+      "job": "SMN",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "approved_weapon_families": [
+        "Staff",
+        "Club"
+      ],
+      "approved_skill_ids": [
+        12,
+        11
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Herald's avatar-support identity.",
+      "evidence": [
+        "smn_herald_specs.lua",
+        "docs/guides/herald.md (Staff and Club)"
+      ]
+    },
+    "vanguard": {
+      "soul_key": "vanguard",
+      "soul_name": "Vanguard",
+      "job": "PUP",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Hand-to-Hand"
+      ],
+      "approved_skill_ids": [
+        1
+      ],
+      "eligible_ws_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        231
+      ],
+      "eligible_ws_keys": [
+        "combo",
+        "shoulder_tackle",
+        "one_inch_punch",
+        "backhand_blow",
+        "raging_fists",
+        "spinning_attack",
+        "howling_fist",
+        "dragon_kick",
+        "asuran_fists",
+        "final_heaven",
+        "ascetics_fury",
+        "stringing_pummel",
+        "tornado_kick",
+        "victory_smite",
+        "shijin_spiral",
+        "maru_kala"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 45,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Vanguard Clockwork Bulwark tank uses Hand-to-Hand; Dagger/Club/Throwing excluded.",
+      "evidence": [
+        "pup_specs.lua (HAND_TO_HAND)",
+        "docs/guides/vanguard.md"
+      ]
+    },
+    "animist": {
+      "soul_key": "animist",
+      "soul_name": "Animist",
+      "job": "PUP",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Hand-to-Hand"
+      ],
+      "approved_skill_ids": [
+        1
+      ],
+      "eligible_ws_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        231
+      ],
+      "eligible_ws_keys": [
+        "combo",
+        "shoulder_tackle",
+        "one_inch_punch",
+        "backhand_blow",
+        "raging_fists",
+        "spinning_attack",
+        "howling_fist",
+        "dragon_kick",
+        "asuran_fists",
+        "final_heaven",
+        "ascetics_fury",
+        "stringing_pummel",
+        "tornado_kick",
+        "victory_smite",
+        "shijin_spiral",
+        "maru_kala"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 45,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Animist Aether Cells combat healer uses Hand-to-Hand; Dagger/Club/Throwing excluded.",
+      "evidence": [
+        "pup_healer_specs.lua (HAND_TO_HAND)",
+        "docs/guides/animist.md"
+      ]
+    },
+    "pugilist": {
+      "soul_key": "pugilist",
+      "soul_name": "Pugilist",
+      "job": "PUP",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Hand-to-Hand"
+      ],
+      "approved_skill_ids": [
+        1
+      ],
+      "eligible_ws_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        231
+      ],
+      "eligible_ws_keys": [
+        "combo",
+        "shoulder_tackle",
+        "one_inch_punch",
+        "backhand_blow",
+        "raging_fists",
+        "spinning_attack",
+        "howling_fist",
+        "dragon_kick",
+        "asuran_fists",
+        "final_heaven",
+        "ascetics_fury",
+        "stringing_pummel",
+        "tornado_kick",
+        "victory_smite",
+        "shijin_spiral",
+        "maru_kala"
+      ],
+      "eligible_ws_count": 16,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 45,
+      "excluded_weapon_families": [
+        "Dagger",
+        "Club",
+        "Throwing"
+      ],
+      "unsupported_weapon_families": [
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship"
+      ],
+      "exclusion_reason": "Pugilist tandem automaton DPS uses Hand-to-Hand; Dagger/Club/Throwing excluded.",
+      "evidence": [
+        "pup_specs.lua (HAND_TO_HAND)",
+        "docs/guides/pugilist.md"
+      ]
+    },
+    "spellblade": {
+      "soul_key": "spellblade",
+      "soul_name": "Spellblade",
+      "job": "RUN",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Sword"
+      ],
+      "approved_skill_ids": [
+        4
+      ],
+      "eligible_ws_ids": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "eligible_ws_keys": [
+        "hard_slash",
+        "power_slash",
+        "frostbite",
+        "freezebite",
+        "shockwave",
+        "crescent_moon",
+        "sickle_moon",
+        "spinning_slash",
+        "ground_strike",
+        "scourge",
+        "herculean_slash",
+        "torcleaver",
+        "resolution",
+        "dimidiation"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 62,
+      "excluded_weapon_families": [
+        "Sword",
+        "Axe",
+        "Great Axe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Spellblade Edgeflare strictly requires Great Sword.",
+      "evidence": [
+        "run_specs.lua (GREAT_SWORD)",
+        "docs/guides/spellblade.md"
+      ]
+    },
+    "lifebinder": {
+      "soul_key": "lifebinder",
+      "soul_name": "Lifebinder",
+      "job": "RUN",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Sword"
+      ],
+      "approved_skill_ids": [
+        4
+      ],
+      "eligible_ws_ids": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "eligible_ws_keys": [
+        "hard_slash",
+        "power_slash",
+        "frostbite",
+        "freezebite",
+        "shockwave",
+        "crescent_moon",
+        "sickle_moon",
+        "spinning_slash",
+        "ground_strike",
+        "scourge",
+        "herculean_slash",
+        "torcleaver",
+        "resolution",
+        "dimidiation"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 62,
+      "excluded_weapon_families": [
+        "Sword",
+        "Axe",
+        "Great Axe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Incidental base RUN weapons (Sword, Axe, Great Axe, Club) excluded from Lifebinder.",
+      "evidence": [
+        "run_specs.lua",
+        "docs/guides/lifebinder.md (Great Sword Runic Lifetap)"
+      ]
+    },
+    "inquisitor": {
+      "soul_key": "inquisitor",
+      "soul_name": "Inquisitor",
+      "job": "RUN",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "approved_weapon_families": [
+        "Great Sword"
+      ],
+      "approved_skill_ids": [
+        4
+      ],
+      "eligible_ws_ids": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "eligible_ws_keys": [
+        "hard_slash",
+        "power_slash",
+        "frostbite",
+        "freezebite",
+        "shockwave",
+        "crescent_moon",
+        "sickle_moon",
+        "spinning_slash",
+        "ground_strike",
+        "scourge",
+        "herculean_slash",
+        "torcleaver",
+        "resolution",
+        "dimidiation"
+      ],
+      "eligible_ws_count": 14,
+      "theoretical_job_ws_count": 76,
+      "excluded_job_ws_count": 62,
+      "excluded_weapon_families": [
+        "Sword",
+        "Axe",
+        "Great Axe",
+        "Club"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Dagger",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Staff",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Incidental base RUN weapons (Sword, Axe, Great Axe, Club) excluded from Inquisitor.",
+      "evidence": [
+        "run_specs.lua (GREAT_SWORD parry bonus)",
+        "docs/guides/inquisitor.md"
+      ]
+    },
+    "diviner": {
+      "soul_key": "diviner",
+      "soul_name": "Diviner",
+      "job": "GEO",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        11,
+        12
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Diviner's luopan support identity.",
+      "evidence": [
+        "geo_diviner_specs.lua",
+        "docs/guides/diviner.md (Club and Staff)"
+      ]
+    },
+    "verdant": {
+      "soul_key": "verdant",
+      "soul_name": "Verdant",
+      "job": "GEO",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        11,
+        12
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Verdant's Nature's Surge healer identity.",
+      "evidence": [
+        "geo_specs.lua (CLUB/STAFF)",
+        "docs/guides/verdant.md"
+      ]
+    },
+    "terramancer": {
+      "soul_key": "terramancer",
+      "soul_name": "Terramancer",
+      "job": "GEO",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "approved_weapon_families": [
+        "Club",
+        "Staff"
+      ],
+      "approved_skill_ids": [
+        11,
+        12
+      ],
+      "eligible_ws_ids": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        235
+      ],
+      "eligible_ws_keys": [
+        "shining_strike",
+        "seraph_strike",
+        "brainshaker",
+        "starlight",
+        "moonlight",
+        "skullbreaker",
+        "true_strike",
+        "judgment",
+        "hexa_strike",
+        "black_halo",
+        "randgrith",
+        "mystic_boon",
+        "flash_nova",
+        "dagan",
+        "realmrazer",
+        "exudation",
+        "heavy_swing",
+        "rock_crusher",
+        "earth_crusher",
+        "starburst",
+        "sunburst",
+        "shell_crusher",
+        "full_swing",
+        "spirit_taker",
+        "retribution",
+        "gate_of_tartarus",
+        "vidohunir",
+        "garland_of_bliss",
+        "omniscience",
+        "cataclysm",
+        "myrkr",
+        "shattersoul",
+        "oshala"
+      ],
+      "eligible_ws_count": 33,
+      "theoretical_job_ws_count": 51,
+      "excluded_job_ws_count": 18,
+      "excluded_weapon_families": [
+        "Dagger"
+      ],
+      "unsupported_weapon_families": [
+        "Hand-to-Hand",
+        "Sword",
+        "Great Sword",
+        "Axe",
+        "Great Axe",
+        "Scythe",
+        "Polearm",
+        "Katana",
+        "Great Katana",
+        "Archery",
+        "Marksmanship",
+        "Throwing"
+      ],
+      "exclusion_reason": "Dagger is incidental to Terramancer's geomantic caster identity.",
+      "evidence": [
+        "geo_terramancer_specs.lua",
+        "docs/guides/terramancer.md (Club and Staff)"
+      ]
+    }
+  }
+}
