@@ -372,12 +372,29 @@ local function syncAlphaWardenPet(player, pet, justSpawned)
     local hpp     = scaleTier(lvl, 14, 18, 22, 26)
     local desired =
     {
-        { xi.mod.HPP,              hpp },
-        { xi.mod.DMG,              -3000 },
-        { xi.mod.PHYS_DMG_DEALT,   -60 },
-        { xi.mod.RANGED_DMG_DEALT, -60 },
-        { xi.mod.MAG_DMG_DEALT,    -60 },
+        { xi.mod.HPP, hpp },
+        { xi.mod.DMG, -3000 },
     }
+    if xi.mod.PHYS_DMG_DEALT then
+        table.insert(desired, { xi.mod.PHYS_DMG_DEALT, -60 })
+    else
+        if xi.mod.ATTP then
+            table.insert(desired, { xi.mod.ATTP, -60 })
+        end
+        if xi.mod.ALL_WSDMG_ALL_HITS then
+            table.insert(desired, { xi.mod.ALL_WSDMG_ALL_HITS, -60 })
+        end
+    end
+    if xi.mod.RANGED_DMG_DEALT then
+        table.insert(desired, { xi.mod.RANGED_DMG_DEALT, -60 })
+    elseif xi.mod.RATTP then
+        table.insert(desired, { xi.mod.RATTP, -60 })
+    end
+    if xi.mod.MAG_DMG_DEALT then
+        table.insert(desired, { xi.mod.MAG_DMG_DEALT, -60 })
+    elseif xi.mod.MATT then
+        table.insert(desired, { xi.mod.MATT, -60 })
+    end
     if xi.mod.DMGBREATH then
         table.insert(desired, { xi.mod.DMGBREATH, -10000 })
     end
@@ -1235,10 +1252,22 @@ if xi.job and xi.job.BST then
                     { xi.mod.ENMITY_LOSS_REDUCTION, scaleTier(lvl, 25, 35, 45, 60) },
                     { xi.mod.AXE,                   scaleTier(lvl, 15, 25, 35, 50) },
                     { xi.mod.SIC_READY_RECAST,      15 },
-                    { xi.mod.PHYS_DMG_DEALT,        -60 },
-                    { xi.mod.RANGED_DMG_DEALT,      -60 },
-                    { xi.mod.MAG_DMG_DEALT,         -60 },
                 }
+                if xi.mod.PHYS_DMG_DEALT then
+                    table.insert(out, { xi.mod.PHYS_DMG_DEALT, -60 })
+                elseif xi.mod.ATTP then
+                    table.insert(out, { xi.mod.ATTP, -60 })
+                end
+                if xi.mod.RANGED_DMG_DEALT then
+                    table.insert(out, { xi.mod.RANGED_DMG_DEALT, -60 })
+                elseif xi.mod.RATTP then
+                    table.insert(out, { xi.mod.RATTP, -60 })
+                end
+                if xi.mod.MAG_DMG_DEALT then
+                    table.insert(out, { xi.mod.MAG_DMG_DEALT, -60 })
+                elseif xi.mod.MATT then
+                    table.insert(out, { xi.mod.MATT, -60 })
+                end
 
                 local isWiki = (player == nil) or (not player.getEquipID)
                 if isWiki then
