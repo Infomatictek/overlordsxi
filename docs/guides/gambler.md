@@ -1,26 +1,40 @@
 # Gambler (COR) — Playstyle Guide
 
 ## At a Glance
-Gambler turns Corsair into a **high-roller party buffer and cooldown resetter** (`Support` tier: -40% personal damage dealt, 0.35x WS scaling). You maintain **3 active Phantom Rolls simultaneously**, never drop below **Roll 8–9 Safe Standing**, bend dice odds with **Quick Draw `Card Counting`** and **`House Advantage` (forced XI)**, and trigger **150% Overdrive rolls + party cooldown reductions**.
+Gambler is a Tier 3 **Corsair party support** Soul that trades personal damage for unusually strong **Phantom Roll** effects and party cooldown recovery. Your rolls maintain a reliable **Safe Standing** floor even at moderate dice totals, while a **Lucky or XI** can produce an **Overdrive** result. **Quick Draw**, **Card Counting**, **Snake Eye**, **House Advantage** and **Fold** let you control how much risk you accept when chasing a jackpot. Your mistakes punish you through HP/TP pressure and House Debt, not by deleting the party's existing roll buffs.
 
 ## Setup & Gear
-- **Auto-Provisioned Gear:** Starter Gun & Bullets auto-equip if empty, with 100% Bullet & Card Recycle.
-- **No Party Bust Risk:** Rolling a 12+ (`Bust`) **never removes or weakens** existing party roll buffs — instead it hurts *you* with a 25% HP backlash, 12s `House Debt` (-25% DEF, 0 Regain), and 15s Roll Lock.
+- **Unlock:** Equip the Gambler Soul Crystal or use `!spec set gambler` at Lv. 10.
+- **Equipment:** Gun and ammunition are useful for Quick Draw and the regular Corsair toolkit. Starter equipment may be provisioned when empty; the Soul grants strong bullet/card Recycle.
+- **Stats:** HP, MP, CHR, AGI, supportive recast reduction and survival gear. Unlike Flintlock, Gambler prioritizes party utility over individual ranged damage.
+- **Party planning:** Select **three complementary rolls** that match the actual group. Ask teammates which standard job abilities they want reduced by Random Deal and other cooldown effects.
+- **Risk planning:** Every Double-Up ante can cost current HP and TP, so avoid chasing jackpots when an incoming boss attack makes the wager unsafe.
 
 ## How to Play (Step-by-Step)
-1. **Stack 3 Active Rolls (`Safe Standing`):** Roll your first Phantom Roll (`12s CD`, max 3 active rolls). Rolls 1–10 automatically floor to **Roll 8–9 strength**.
-2. **Rig Your `Double-Up` Odds (`Card Counting`):** Before Double-Up (wagers 10% HP + 150 TP per Ante), fire a **Quick Draw** (`12s CD`, also applies `Expose` `-15% Crit Evasion / -30 MEVA` and shaves **-3s** off your standard JAs when Random Deal is on CD):
-   - **Fire / Light Shot** forces your next Double-Up roll to **3–6**.
-   - **Ice / Water Shot** forces your next Double-Up roll to **1–3**.
-   - Use `Snake Eye` (20s CD) to cap Double-Up at **11** (prevents Busts), or press `House Advantage` (30s CD: 15y party **+18% ATK/RATK/MATT**) to force your next Roll or Double-Up straight to **XI (11)**!
-3. **Cash In Jackpots:** Landing a **Lucky number or XI** boosts that roll to **150% Overdrive potency**, shaves **8–14s off your own JAs**, and rolling **XI resets `Phantom Roll`'s cooldown immediately**!
-4. **Party Cooldown Engine:** Rotate `Random Deal` (35s CD, 15y: **-12s** off standard party JAs), `Dead Man's Hand` (35s CD: **2x Dispel**, `-20% DEF/-20 MDEF Breach`, **-10s** standard party JAs), and `Wild Card` (180s CD, 15y: +30% MP, +400 TP, JA reset, +30% SC/MB on roll 5–6).
+1. **Establish the three-roll baseline:** Use **Phantom Roll** to maintain up to **three different active rolls**. Safe Standing keeps non-bust results at a useful potency floor even without a Lucky/XI result.
+2. **Evaluate whether to Double-Up:** If the current roll already provides its baseline benefit, only push the dice when the potential extra potency is worth the HP/TP ante.
+3. **Control the next dice result:** Use **Quick Draw** for Card Counting preparation. Fire/Light and Ice/Water shots have different steering effects on the next Double-Up. **Snake Eye** and **House Advantage** provide further control.
+4. **Cash in Lucky or XI:** A jackpot gives stronger roll potency and additional resource or cooldown benefits. XI can also make the next roll available sooner.
+5. **Handle Bust quickly:** A Bust harms Gambler through **House Debt**, personal HP loss and a temporary roll lock. Use **Fold** when available to clear those penalties rather than waiting out the whole delay.
+6. **Support party cooldowns:** Use **Random Deal** to reduce standard party job-ability recasts; combine this with permitted Quick Draw and jackpot cooldown interactions.
+7. **Use Dead Man's Hand for enemy control:** **Dead Man's Hand** combines strong dispelling and Breach-type effects on one enemy with additional party cooldown and resource support.
+8. **Refresh intelligently:** Keep three useful roll effects active and coordinate major party abilities before expending your own high-impact cooldowns. Gambler wins by making its party more effective over time.
 
 ## Key Mechanics & Stacks
-- **`House Debt` & `Fold`:** If you ever Bust, press `Fold` (20s CD) right away — it instantly clears both `House Debt` and the 15s Roll Lock.
-- **3 Active Rolls + 3-Bust Cap:** Keep 3 different Overdrive/Safe-Standing rolls running on your party at all times.
+- **Safe Standing:** Non-bust rolls from 1–10 receive roughly **roll 8–9 baseline strength** rather than punishing the party with very weak buffs.
+- **Lucky/XI Overdrive:** The jackpot increases the relevant roll to **150% Overdrive potency** and grants additional Soul-specific party resource/cooldown benefits.
+- **Three active rolls:** Gambler supports a maximum of **three different maintained roll effects**.
+- **Double-Up ante:** Each push spends **10% of current HP and 150 TP** when applicable. Weigh the price against your ability to survive the next boss attack.
+- **Card Counting:** Quick Draw prepares constrained next-Double-Up outcomes. Fire/Light favors **3–6**, Ice/Water **1–3**; its other support effects include a target Expose and small cooldown reductions where eligible.
+- **House Advantage:** Roughly **30-second recast**; can force the next roll or Double-Up toward XI while adding a short-range offensive party support effect.
+- **Bust and Fold:** A Bust produces a personal HP backlash, House Debt and temporary roll lock rather than invalidating the party's already established buffs. **Fold** clears the special penalty when ready.
+- **Random Deal and Dead Man's Hand:** Shorter-recast tools to reduce eligible standard job-ability cooldowns, with excluded actions such as one-hour abilities or their own special resets.
+- **Wild Card:** A major group resource/reset ability with its own much longer recast. Coordinate its timing with party burst rather than using it merely to recover a small amount of TP.
 
 ## Common Mistakes (Don't Do This)
-- **Don't `Double-Up` blindly at Roll 8–9 without `Card Counting` (Ice/Water 1–3), `Snake Eye`, or `House Advantage`:** Because Safe Standing already gives you Roll 8–9 strength automatically, only chase XI/Lucky when the math is in your favor!
-- **Don't `Double-Up` with `<150 TP` or low HP:** Each Double-Up wagers 10% current HP + 150 TP, and Busting triggers a 25% Max HP backlash.
-- **Never panic-wait out a Bust:** Keep `Fold` (20s CD) ready to wipe `House Debt` immediately.
+- **Treating a mediocre roll as worthless:** Safe Standing already provides a valuable potency floor, so a risky Double-Up isn't always justified.
+- **Double-Upping at low HP or TP:** A wager and a subsequent Bust can create an avoidable death or leave you resource-starved.
+- **Ignoring the current party needs:** Three extremely strong rolls are ineffective if their bonuses do not support the group's actual roles.
+- **Spending House Advantage without a plan:** Its forced XI is most valuable when you know which roll should receive the jackpot.
+- **Forgetting Fold:** Clear House Debt and roll lock when the ability is available rather than remaining unable to support the party.
+- **Trying to reset excluded cooldowns:** Major one-hour abilities and certain special cooldowns are intentionally exempt from reductions.
