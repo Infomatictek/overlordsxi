@@ -3,9 +3,13 @@
 ## Tested Revisions & Fix Branch
 
 - **Server `main` Baseline:** `3518148929b034a2e0a0d25963e369969880d48a` (wiki refresh atop merge `61315036968d629988c54c51b7de3fab9635eb2b`)
-- **Server Staging-Fix Branch:** `fix/staging-bst-untamed-load` @ `887cb1862cee4f9cc52e9e7ac95478267897df45`
+- **Server Staging-Fix Branch:** `fix/staging-bst-untamed-load` (0 behind `origin/main`)
   - `1d38610` — `fix(bst): remove nonexistent scripts/globals/utils require in bst_untamed_specs` (+ regression test)
   - `887cb18` — `fix(blu): resolve Warmage crystal id collision and blu_specs reload wipe` (+ regression test)
+  - `7fee842` — `fix(bst): guard undefined DMG_DEALT mods in Alpha Warden and apply supported pet offense penalties` (+ `tests/test_bst_alphawarden.py`)
+  - `63469ef` — `fix(tests): use cross-platform ENOTDIR blocker file in Proving Grounds write-failure test`
+  - `742a18c` — `fix(tests): repair Kurogane xi_test helpers and add 66-Soul real-engine smoke suite` (`patches/0071-kurogane-xi-test-helpers.patch`, `tests/lua/souls_66_smoke.lua`)
+- **Staging Docker Image Built & Running:** `soulspirexi/server:staging-66souls-742a18c`
 - **Launcher `main` Tested:** `2ad0865031640a56e525257e49c84f09cf7def21`
 - **Production Safety:** **100% Untouched.** All 8 production containers (`soulspirexi-{mariadb,world,connect,search,profile,map,combat-analytics}`, `soulspire-parser`), production database (`xidb` on `127.0.0.1:3306`), and `/mnt/user/appdata/soulspirexi` remained untouched throughout.
 
@@ -14,8 +18,8 @@
 ## Native Build Status
 
 - **Base Revision:** LandSandBoat `091e7409d1c9d702f366dc374115f939393c46ab`
-- **Engine Patches:** All **77 patches** (including `0046-burrows-reborn-first-descent-instance.patch` and `0046-zealot-native-actions.patch`..`0070-diviner-native-actions.patch`) applied cleanly in 2.3s with zero conflicts.
-- **Compiled Binaries (`soulspirexi/server:staging-66souls-3518148`):**
+- **Engine Patches:** All **78 patches** (77 baseline + `0071-kurogane-xi-test-helpers.patch`) applied cleanly in 2.3s with zero conflicts.
+- **Compiled Binaries (`soulspirexi/server:staging-66souls-742a18c`):**
   - `xi_connect` — **PASS**
   - `xi_world` — **PASS**
   - `xi_search` — **PASS**
@@ -53,30 +57,34 @@
 | Suite | Result | Details |
 |---|---|---|
 | `tools/audit_soul_coverage.py .` | **PASS** | `implemented: 66, incomplete: 0, planned: 0` (`DNC:freelancer` excluded) |
-| Server Python + Lupa full suite (`unittest discover`) | **PASS** | `147` tests (`0` failures; `5` skipped in slim container without `node`/`lua`) |
+| Cross-repo Lua wiki validation (`--require-lua --strict-actions`) | **PASS** | `66 Crystal Specs (256 Custom JAs, 44 Traits), 219 Weaponskill Trees, 78 Engine Patches` |
+| Server Python + Lupa full suite (`unittest discover`) | **PASS** | `151` tests (`0` failures; `5` skipped in slim container without `node`/`lua`) |
 | Frontend JS syntax + Node UI tests | **PASS** | `8 / 8` tests passing (`node --check` + `node --test tests/test_combat_reports_ui.mjs`) |
-| `xi_test` Real-Engine 66-Soul Smoke (`souls_66_smoke.lua`) | **65 / 66 PASS, 1 FAIL** | All **66** Souls load after fixes (`BST:untamed` & `BLU:warmage`); `263 / 264` Lv. 10/30/50/75 activations + HUD sync passed; **1 defect found** on `BST:alphawarden` at Lv. 10 |
-| `xi_test` Proving Grounds Combat (`proving_grounds_combat.lua`) | **5 / 6 PASS** | Arbiter placement, Lv. 75→10 Level Sync, +0/+3/+5/+8 Normal/NM bosses, Shinobi clone/pet sync, 30s prep isolation + 1s snapshots + feedback all **PASS**; 1 path-unwritable negative test failed due to container permissions |
-| `xi_test` Kurogane (`kurogane.lua`) | **1 / 2 PASS** | Canonical NIN crystal IDs **PASS**; `0x00E` test failed on `updateEntity` nil method in `xi_test` Lua helper |
+| `xi_test` Real-Engine 66-Soul Smoke (`tests/lua/souls_66_smoke.lua`) | **PASS (66 / 66)** | All **66 / 66** Souls loaded; **264 / 264** Lv. 10/30/50/75 activations + HUD sync passed with zero Lua exceptions |
+| `xi_test` Proving Grounds Combat (`tests/lua/proving_grounds_combat.lua`) | **PASS (7 / 7)** | Arbiter placement, Lv. 75→10 Level Sync, +0/+3/+5/+8 Normal/NM bosses, Shinobi clone/pet sync, 30s prep isolation + 1s snapshots + feedback, cross-platform unwritable-path rejection, and multi-participant AoE correlation all **PASS** |
+| `xi_test` Kurogane (`scripts/tests/custom/kurogane.lua`) | **PASS (5 / 5)** | Canonical NIN crystal IDs, 8-slot `0x00E` spawn + subsequent update preservation, lockstyle + hidden-head `0x00E` encoding, 5-clone cap + disengage cleanup, and failed-replacement preservation all **PASS** |
 
 ---
 
-## Verified Defects Found During Staging Validation
+## Verified Defects Found & Resolved During Staging Validation
 
 1. **FIXED (`1d38610`) — `BST:untamed` failed to load on `xi_map`:**
    - **Root Cause:** `modules/custom/lua/bst_untamed_specs.lua:5` called `require('scripts/globals/utils')`, which does not exist in LandSandBoat (`utils` is already a global).
    - **Fix:** Removed the nonexistent `require` and added a regression test in `tests/test_bst_untamed.py`. Verified `=== Module: soulspire_bst_untamed ===` loads cleanly on `soulspirexi-staging-map`.
-   - **Rebuild Required:** Yes (staging server image rebuilt and verified).
 2. **FIXED (`887cb18`) — `BLU:warmage` vanished from `xi.soulspire.spec.jobs[xi.job.BLU]` at runtime:**
    - **Root Cause:** (a) `blu_warmage_specs.lua:206` registered `id = 1`, colliding with `blu_specs.lua:600` (`azurebastion`, `id = 1`); (b) `blu_healer_specs.lua:7` unconditionally called `require('modules/custom/lua/blu_specs')` after `blu_warmage_specs.lua`, re-running `spec.registerJob(xi.job.BLU, ...)` and wiping out `warmage`.
-   - **Fix:** Updated Warmage to `id = 3`, guarded `blu_specs` require in `blu_healer_specs.lua`, and added a regression test in `tests/test_blu_warmage.py`. Verified all 3 BLU Souls (`azurebastion`, `magus`, `warmage`) load and activate across Lv. 10/30/50/75 in `xi_test`.
-   - **Rebuild Required:** Yes (staging image should be rebuilt from `887cb18` before live staging playtesting).
-3. **OPEN (Baseline Defect) — `BST:alphawarden` Lv. 10 pet mod crash (`bst_specs.lua:377-379`):**
-   - **Symptom:** Activating `BST:alphawarden` at Lv. 10 in `xi_test` throws `stack index 2, expected number, received nil: not a numeric type` in `pet:addMod(entry[1], entry[2])`.
-   - **Root Cause:** `syncAlphaWardenPet` passes `xi.mod.PHYS_DMG_DEALT` / `RANGED_DMG_DEALT` / `MAG_DMG_DEALT` where at least one enum is `nil` in this LandSandBoat revision.
-   - **Action:** Documented without silently altering Alpha Warden balance mechanics; requires confirming the intended LandSandBoat `xi.mod` enum before patching.
-4. **OPEN (Non-Soul Warning) — Burrows Reborn instance script cache warning:**
-   - `map-server.log` logs `No returned object to cache: ./scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua` (pre-existing `main` Burrows warning).
+   - **Fix:** Updated Warmage to `id = 3`, guarded `blu_specs` require in `blu_healer_specs.lua`, and added a regression test in `tests/test_blu_warmage.py`.
+3. **FIXED (`7fee842`) — `BST:alphawarden` Lv. 10 pet mod crash (`bst_specs.lua:377-379`):**
+   - **Root Cause:** `xi.mod.PHYS_DMG_DEALT`, `RANGED_DMG_DEALT`, and `MAG_DMG_DEALT` do not exist in pinned LandSandBoat (`091e7409`, `/server/scripts/enum/mod.codegen.lua`). Passing `nil` to `pet:addMod` threw a type error on guardian beast spawn.
+   - **Fix:** Guarded `*_DMG_DEALT` enums in `syncAlphaWardenPet` and `mods`, and applied supported LandSandBoat pet outgoing-offense penalty modifiers (`ATTP = -60`, `ALL_WSDMG_ALL_HITS = -60`, `RATTP = -60`, `MATT = -60`) when `*_DMG_DEALT` is absent — preserving Alpha Warden's `-60%` pet-tank offensive tradeoff and defensive mods without affecting other BST Souls. Added `tests/test_bst_alphawarden.py`.
+4. **FIXED (`63469ef`) — Proving Grounds write-failure negative test failed on Linux/Docker:**
+   - **Root Cause:** `tests/lua/proving_grounds_combat.lua:461-462` used Windows-invalid characters (`<invalid:path>`), which are valid POSIX filenames on Linux.
+   - **Fix:** Replaced with a cross-platform `ENOTDIR` blocker file (creating a regular file and targeting a nested path beneath it), verifying `logging_status.ok == false`, `partial_recording == true`, and `#errors >= 1` on both Linux and Windows.
+5. **FIXED (`742a18c`) — Kurogane `xi_test` helper failures (`patches/0071-kurogane-xi-test-helpers.patch`):**
+   - **Root Cause:** `kurogane.lua` called nonexistent `cloneA:updateEntity()` and sent raw `0x053` `Mode=3, Count=0` on a player with no equipped items.
+   - **Fix:** Used supported `xi_test` interfaces (`setMaxHP(2); setHP(1); xi.test.world:skipTime(1)` for subsequent `0x00E` packet generation, and equipped `BRONZE_HARNESS` + `player.actions:setLockstyle(3, ...)` for lockstyle + hidden-head `0x00E` verification) with zero production Kurogane changes.
+6. **OPEN (Non-Soul Warning) — Burrows Reborn instance script cache warning:**
+   - `map-server.log` logs `No returned object to cache: ./scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua` (pre-existing `main` Burrows warning, non-blocking for 66 Souls).
 
 ---
 
@@ -110,7 +118,7 @@
 | DRK:reaper | PASS | PASS | PASS | PASS | MANUAL | New 25: Lupa + engine smoke OK; native actions TSV verified |
 | DRK:dreadnought | PASS | PASS | PASS | PASS | MANUAL | Engine smoke OK; live tank manual |
 | DRK:scourge | PASS | PASS | PASS | PASS | MANUAL | New 25: Lupa + engine smoke OK; native actions TSV verified |
-| BST:alphawarden | FAIL | PASS | PASS | PASS | MANUAL | **Defect:** `bst_specs.lua:377-379` `nil` `xi.mod` on Lv10 pet spawn |
+| BST:alphawarden | PASS | PASS | PASS | PASS | MANUAL | **Fixed (`7fee842`)**: guarded `*_DMG_DEALT` + applied supported `-60` pet offense penalties |
 | BST:untamed | PASS | PASS | PASS | PASS | MANUAL | **Fixed (`1d38610`)**: removed bad `scripts/globals/utils` require |
 | BST:beastspeaker | PASS | PASS | PASS | PASS | MANUAL | New 25: Lupa + engine smoke OK; native actions TSV verified |
 | BRD:adventurer | PASS | PASS | PASS | PASS | MANUAL | Engine smoke OK; live combat manual |
@@ -157,7 +165,6 @@
 
 ## Remaining Release Blockers
 
-1. **Merge Staging Fix PR (`fix/staging-bst-untamed-load` → `main`):** Required so `BST:untamed` loads on `xi_map` and `BLU:warmage` is not wiped out by `blu_healer_specs.lua`.
-2. **Fix `BST:alphawarden` Lv. 10 pet mod enum (`bst_specs.lua:377-379`):** Confirm intended LandSandBoat `xi.mod` constant for Alpha Warden guardian beast damage scaling.
-3. **Live Ashita v4 Client & Interactive Gameplay Verification:** Connect a Windows Ashita v4 test client to staging and verify native Soul action menus, descriptions, recasts, macros, HUDs, and Proving Grounds encounters across Lv. 10 (0 talent points), 30, 50, and 75.
-4. **Optional Launcher `.exe` Release:** Tag `v2.0.1` on `Infomatictek/soulspirexi-launcher` `main` (after bumping `<Version>` in `SoulspireLauncher.csproj`) to publish a native `soulspirexi-launcher` binary.
+1. **Review & Merge Staging Fix PR (`fix/staging-bst-untamed-load` → `main`):** Required so `BST:untamed`, `BLU:warmage`, `BST:alphawarden`, `Proving Grounds`, and `Kurogane` fixes are merged into `main` and GitHub Actions CI passes.
+2. **Live Ashita v4 Client & Interactive Gameplay Verification (Manual):** Automated engine validation confirms all 66 Souls load and activate cleanly across Lv. 10/30/50/75, but **does not substitute for real gameplay**. Connect a Windows Ashita v4 test client to staging and verify native Soul action menus, descriptions, recasts, macros, HUDs, and interactive Proving Grounds encounters across Lv. 10 (0 talent points), 30, 50, and 75.
+3. **Optional Launcher `.exe` Release:** Tag `v2.0.1` on `Infomatictek/soulspirexi-launcher` `main` (after bumping `<Version>` in `SoulspireLauncher.csproj`) to publish a native `soulspirexi-launcher` binary.
