@@ -12,6 +12,7 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/soulspire_job_specs')
+require('modules/custom/lua/soulspire_weapon_config')
 require('scripts/combat/basic/magic_burst')
 require('scripts/combat/basic/magic_hit_rate')
 require('scripts/combat/physical_utilities')
@@ -760,6 +761,20 @@ if xi.job and xi.job.BRD then
             icon           = 'crimson_blade',
             extraAbilities = { ABIL_LUNGE_FLOURISH, ABIL_TROUBADOURS_ENCORE },
             extraTraits    = { TRAIT_DUAL_WIELD, TRAIT_ADVENTURER_TEMPO },
+            weaponConfig   =
+            {
+                minLevel = 10,
+                pairings =
+                {
+                    {
+                        main = { 'dagger', 'sword' },
+                        sub  = { 'dagger', 'sword' },
+                        mode = 'dual_1h',
+                    },
+                },
+                restrictSoulDualWieldToPairings = true,
+                allowVanillaShield              = true,
+            },
             description    = 'Wandering troubadour spec: Dual-wield Dagger/Sword DPS with Cadence stacks, Sonic WS follow-ups, and Encore haste.',
             highlights     =
             {

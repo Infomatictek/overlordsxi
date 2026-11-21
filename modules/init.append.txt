@@ -3,6 +3,7 @@ custom/lua/soulspire_mob_status_sync.lua
 custom/sql/custom_status_effects_sync.sql
 custom/lua/boss_like_combat_and_exp.lua
 custom/lua/soulspire_job_specs.lua
+custom/lua/soulspire_weapon_config.lua
 custom/lua/soulspire_ws_catalog.lua
 custom/lua/soulspire_ws_talents.lua
 custom/lua/soulspire_ws_trees_throwing.lua

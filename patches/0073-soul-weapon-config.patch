@@ -1,0 +1,259 @@
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index a1c06c4..c9c5d7f 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -5616,6 +5616,15 @@ void CLuaBaseEntity::unequipItem(uint8 slotID)
+     }
+ }
+ 
++void CLuaBaseEntity::checkValidEquipment()
++{
++    if (m_PBaseEntity->objtype == TYPE_PC)
++    {
++        auto* PChar = static_cast<CCharEntity*>(m_PBaseEntity);
++        charutils::CheckValidEquipment(PChar, false);
++    }
++}
++
+ /************************************************************************
+  *  Function: setEquipBlock()
+  *  Purpose : Blocks player from equipping gear
+@@ -21356,6 +21365,7 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("canEquipItem", CLuaBaseEntity::canEquipItem);
+     SOL_REGISTER("equipItem", CLuaBaseEntity::equipItem);
+     SOL_REGISTER("unequipItem", CLuaBaseEntity::unequipItem);
++    SOL_REGISTER("checkValidEquipment", CLuaBaseEntity::checkValidEquipment);
+ 
+     SOL_REGISTER("setEquipBlock", CLuaBaseEntity::setEquipBlock);
+     SOL_REGISTER("lockEquipSlot", CLuaBaseEntity::lockEquipSlot);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+index f5dabb7..89ef0c1 100644
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -304,6 +304,7 @@ public:
+     auto canEquipItem(uint16 itemID, const sol::object& chkLevel) -> bool;
+     void equipItem(uint16 itemID, const sol::object& container, const sol::object& equipSlot) const;
+     void unequipItem(uint8 slotID);
++    void checkValidEquipment();
+ 
+     void setEquipBlock(uint16 equipBlock);
+     void lockEquipSlot(uint8 slot);
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+index 1b300fa..5697131 100644
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -7059,4 +7059,34 @@ void OnUtsusemiShadowBroken(CBattleEntity* PDefender, CBattleEntity* PAttacker,
+     }
+ }
+ 
++auto EvaluateSoulWeaponPair(CCharEntity* PChar, CItem* PMain, CItem* PSub) -> int32
++{
++    if (PChar == nullptr)
++    {
++        return 0;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.weaponConfig.evaluatePair");
++    if (!func.valid())
++    {
++        return 0;
++    }
++
++    const auto result = func(PChar, PMain, PSub);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::EvaluateSoulWeaponPair: %s", err.what());
++        return 0;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (retObj.valid() && retObj.is<int32>())
++    {
++        return retObj.as<int32>();
++    }
++
++    return 0;
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+index 51614c6..ca7a3eb 100644
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -592,6 +592,7 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
+ auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32;
+ auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32;
+ void OnUtsusemiShadowBroken(CBattleEntity* PDefender, CBattleEntity* PAttacker, uint16 shadowsBroken);
++auto EvaluateSoulWeaponPair(CCharEntity* PChar, CItem* PMain, CItem* PSub) -> int32;
+ 
+ }; // namespace luautils
+ 
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+index 7a70a39..dd1ab89 100644
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -2176,7 +2176,19 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+                             CItemEquipment* sub = PChar->getEquip(SLOT_SUB);
+                             if (sub != nullptr && sub->isType(ITEM_EQUIPMENT))
+                             {
+-                                if (sub->isType(ITEM_WEAPON))
++                                const int32 soulPair = luautils::EvaluateSoulWeaponPair(PChar, PItem, sub);
++                                if (soulPair == 1 || soulPair == 2)
++                                {
++                                    if (sub->isType(ITEM_WEAPON))
++                                    {
++                                        PChar->m_dualWield = (soulPair == 1);
++                                    }
++                                }
++                                else if (soulPair == -1)
++                                {
++                                    UnequipItem(PChar, SLOT_SUB, Recalculate::No);
++                                }
++                                else if (sub->isType(ITEM_WEAPON))
+                                 {
+                                     CItemWeapon* PWeapon = static_cast<CItemWeapon*>(sub);
+                                     if (PWeapon->getSkillType() != xi::SkillType::None || static_cast<CItemWeapon*>(PItem)->getSkillType() == xi::SkillType::HandToHand)
+@@ -2203,13 +2215,18 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+                         break;
+                         default:
+                         {
+-                            // one-handed main: keep a dual-wield weapon or shield, but drop a grip
+-                            auto*      PSubWeapon = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_SUB));
+-                            const bool subIsGrip  = PSubWeapon != nullptr && PSubWeapon->getSkillType() == xi::SkillType::None;
++                            // one-handed main: keep a dual-wield weapon or shield, but drop a grip or Soul-disallowed sub
++                            CItemEquipment* sub        = PChar->getEquip(SLOT_SUB);
++                            auto*           PSubWeapon = dynamic_cast<CItemWeapon*>(sub);
++                            const bool      subIsGrip  = PSubWeapon != nullptr && PSubWeapon->getSkillType() == xi::SkillType::None;
+                             if (subIsGrip)
+                             {
+                                 UnequipItem(PChar, SLOT_SUB, Recalculate::No);
+                             }
++                            else if (sub != nullptr && sub->isType(ITEM_EQUIPMENT) && luautils::EvaluateSoulWeaponPair(PChar, PItem, sub) == -1)
++                            {
++                                UnequipItem(PChar, SLOT_SUB, Recalculate::No);
++                            }
+                         }
+                         break;
+                     }
+@@ -2221,9 +2238,30 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+             break;
+             case SLOT_SUB:
+             {
+-                CItemWeapon* weapon = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_MAIN));
++                CItemWeapon* weapon   = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_MAIN));
++                const int32  soulPair = luautils::EvaluateSoulWeaponPair(PChar, weapon, PItem);
++                if (soulPair == -1)
++                {
++                    return false;
++                }
++                else if (soulPair == 1)
++                {
++                    if (PItem->isType(ITEM_WEAPON))
++                    {
++                        PChar->m_Weapons[SLOT_SUB] = PItem;
++                        PChar->m_dualWield         = true;
++                    }
++                }
++                else if (soulPair == 2)
++                {
++                    if (PItem->isType(ITEM_WEAPON))
++                    {
++                        PChar->m_Weapons[SLOT_SUB] = PItem;
++                    }
++                    PChar->m_dualWield = false;
++                }
+                 // NULL weapon can be unarmed weapon that just got unequipped
+-                if (!weapon)
++                else if (!weapon)
+                 {
+                     if (PItem->IsShield())
+                     {
+@@ -3089,34 +3127,44 @@ void EquipItem(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 contai
+         auto PItemWeapon = dynamic_cast<CItemWeapon*>(PItem);
+         auto PMainItem   = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_MAIN));
+ 
+-        if (PItemWeapon && PItemWeapon->getSkillType() == xi::SkillType::None && (!PMainItem || !PMainItem->isTwoHanded()))
++        const int32 soulPair = luautils::EvaluateSoulWeaponPair(PChar, PMainItem, PItem);
++        if (soulPair == -1)
+         {
+-            PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::Requires2HForGrip);
++            PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, PItem->getID(), 0, MsgBasic::NeedDualWield);
+             return;
+         }
+ 
+-        if (PItemWeapon && PItemWeapon->getSkillType() != xi::SkillType::None)
++        if (soulPair == 0)
+         {
+-            // Don't attempt to equip item in equip menu if you don't have dual wield trait (client sees BLU, THF, DNC, NIN, /DNC or /NIN etc as able to equip sub weapons even if sub is too low or no trait on BLU)
+-            if (!PChar->hasTrait(TRAIT_DUAL_WIELD))
++            if (PItemWeapon && PItemWeapon->getSkillType() == xi::SkillType::None && (!PMainItem || !PMainItem->isTwoHanded()))
+             {
+-                PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, PItemWeapon->getID(), 0, MsgBasic::NeedDualWield);
++                PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::Requires2HForGrip);
+                 return;
+             }
+ 
+-            // Don't allow Dual Wield injections to offhand when you dont have a mainahdn (this was visual only)
+-            // Don't allow non-shields in offhand with no weapon
+-            if ((PMainItem && PMainItem->isTwoHanded()) || !PMainItem)
++            if (PItemWeapon && PItemWeapon->getSkillType() != xi::SkillType::None)
+             {
+-                return;
++                // Don't attempt to equip item in equip menu if you don't have dual wield trait (client sees BLU, THF, DNC, NIN, /DNC or /NIN etc as able to equip sub weapons even if sub is too low or no trait on BLU)
++                if (!PChar->hasTrait(TRAIT_DUAL_WIELD))
++                {
++                    PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, PItemWeapon->getID(), 0, MsgBasic::NeedDualWield);
++                    return;
++                }
++
++                // Don't allow Dual Wield injections to offhand when you dont have a mainahdn (this was visual only)
++                // Don't allow non-shields in offhand with no weapon
++                if ((PMainItem && PMainItem->isTwoHanded()) || !PMainItem)
++                {
++                    return;
++                }
+             }
+-        }
+ 
+-        // Disallow everything but shields if you're using H2H
+-        // Equipping a shield will unequip the H2H weapon and you will go barefisted with a shield
+-        if (PMainItem && PMainItem->getSkillType() == xi::SkillType::HandToHand)
+-        {
+-            return;
++            // Disallow everything but shields if you're using H2H
++            // Equipping a shield will unequip the H2H weapon and you will go barefisted with a shield
++            if (PMainItem && PMainItem->getSkillType() == xi::SkillType::HandToHand)
++            {
++                return;
++            }
+         }
+     }
+ 
+@@ -3253,14 +3301,23 @@ void CheckValidEquipment(CCharEntity* PChar, bool isDelevel /* = false */)
+             continue;
+         }
+ 
+-        if (slotID == SLOT_SUB && !PItem->IsShield())
++        if (slotID == SLOT_SUB)
+         {
+-            // Unequip if no main weapon or a non-grip subslot without DW
+-            if (!PChar->getEquip(SLOT_MAIN) || (!charutils::hasTrait(PChar, TRAIT_DUAL_WIELD) && !(static_cast<CItemWeapon*>(PItem)->getSkillType() == xi::SkillType::None)))
++            const int32 soulPair = luautils::EvaluateSoulWeaponPair(PChar, PChar->getEquip(SLOT_MAIN), PItem);
++            if (soulPair == -1)
+             {
+                 UnequipItem(PChar, SLOT_SUB, Recalculate::Yes, isDelevel);
+                 continue;
+             }
++            if (soulPair == 0 && !PItem->IsShield())
++            {
++                // Unequip if no main weapon or a non-grip subslot without DW
++                if (!PChar->getEquip(SLOT_MAIN) || (!charutils::hasTrait(PChar, TRAIT_DUAL_WIELD) && !(static_cast<CItemWeapon*>(PItem)->getSkillType() == xi::SkillType::None)))
++                {
++                    UnequipItem(PChar, SLOT_SUB, Recalculate::Yes, isDelevel);
++                    continue;
++                }
++            }
+         }
+ 
+         const bool jobEligible = (PItem->getJobs() & (1 << (static_cast<uint8>(PChar->GetMJob()) - 1))) ||

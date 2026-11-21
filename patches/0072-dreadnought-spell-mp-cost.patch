@@ -1,20 +1,20 @@
 diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
 --- a/src/map/ai/states/magic_state.cpp
 +++ b/src/map/ai/states/magic_state.cpp
-@@ -79,4 +79,16 @@
+@@ -100,5 +100,16 @@ auto CMagicState::init() -> StateErrorOr<void>
  
      m_PSpell = PSpell->clone();
- 
+     const auto* caster = dynamic_cast<const CCharEntity*>(m_PEntity);
++
 +    // Dreadnought's early spell grants must be usable with its starter MP.
 +    // The Lua cast hook runs after CanCastSpell/HasCost, so set the cost on
 +    // this per-cast clone before the native affordability check. The local
 +    // flag is set only while the Dreadnought Soul has a Scythe equipped.
-+    if (auto* caster = dynamic_cast<CCharEntity*>(m_PEntity); caster &&
-+        caster->GetMJob() == xi::Job::DRK && caster->GetMLevel() >= 10 &&
++    if (caster && caster->GetMJob() == xi::Job::DRK && caster->GetMLevel() >= 10 &&
 +        caster->GetLocalVar("OX_DRN_SCYTHE") == 1)
 +    {
 +        if (m_spellId == static_cast<SpellID>(246)) m_PSpell->setMPCost(12); // Drain II
 +        if (m_spellId == static_cast<SpellID>(277)) m_PSpell->setMPCost(0);  // Dread Spikes spends HP in Lua
 +    }
-+
-     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     m_zealotCast = zealot::isActive(caster);
+     m_valkyrieCast = valkyrie::isActive(caster);
