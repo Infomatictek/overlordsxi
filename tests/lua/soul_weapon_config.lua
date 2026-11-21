@@ -12,7 +12,8 @@ local ITEM_ASH_CLUB_P1    = 17137 -- Club   (Lv1, All jobs, slot=3)
 local ITEM_METAL_SHIELD   = 28651 -- Shield (Lv1, All jobs, slot=2)
 local ITEM_ONION_STAFF    = 17104 -- Staff  (Lv1, 2H, BRD equippable, slot=1)
 local ITEM_BRONZE_SPEAR   = 16859 -- Polearm (Lv7, 2H, WAR equippable)
-local ITEM_LAUAN_SHIELD   = 12289 -- Size-1 Buckler (Lv1, WAR equippable)
+local ITEM_ASPIS_BUCKLER  = 12299 -- Size-1 Buckler (Lv9, WAR equippable)
+local ITEM_LAUAN_SHIELD   = 12289 -- Size-2 Shield (Lv1, WAR equippable - must be rejected by Spartan Polearm)
 
 local function spawnBrdWar(level)
     local player = xi.test.world:spawnPlayer({
@@ -31,11 +32,11 @@ local function spawnStationaryMob(player)
     mob:respawn()
     mob:setAutoAttackEnabled(false)
     mob:setMobAbilityEnabled(false)
+    mob:setMobMod(xi.mobMod.NO_MOVE, 1)
     mob:setMaxHP(5000)
     mob:setHP(5000)
     local pos = mob:getPos()
     player:setPos(pos.x, pos.y, pos.z)
-    xi.test.world:skipTime(1)
     return mob
 end
 
@@ -63,18 +64,28 @@ describe('Soul Weapon Configuration System (BRD Adventurer Slice)', function()
         assert(subEq ~= nil and subEq:getID() == ITEM_ONION_SWORD, 'Expected onion_sword in SUB')
 
         -- Verify actual Dual Wield combat swings, damage, TP, and Cadence stacks
+        player:addMod(xi.mod.ACC, 200)
         local mob = spawnStationaryMob(player)
         local hitCount = 0
         player:addListener('MELEE_SWING_HIT', 'TEST_BRD_DW_HIT', function()
             hitCount = hitCount + 1
         end)
         local hpBefore = mob:getHP()
+        player.packets:clear()
         player.actions:engage(mob)
-        xi.test.world:skipTime(12)
+        xi.test.world:skipTime(14)
         player:disengage()
         player:removeListener('TEST_BRD_DW_HIT')
 
-        assert(hitCount >= 2, 'Dual Wield combat must land at least 2 hits (main + offhand), got ' .. tostring(hitCount))
+        local actionRounds = 0
+        for _, p in ipairs(player.packets:getIncoming()) do
+            if p.type == 0x028 then
+                actionRounds = actionRounds + 1
+            end
+        end
+
+        assert(actionRounds >= 1, 'Expected at least 1 melee action round, got ' .. tostring(actionRounds))
+        assert(hitCount > actionRounds, string.format('Dual Wield must land >1 hit per round (hits=%d rounds=%d)', hitCount, actionRounds))
         assert(mob:getHP() < hpBefore, 'Dual Wield swings must deal damage')
         assert(player:getTP() > 0, 'Dual Wield swings must generate TP')
 
@@ -97,7 +108,9 @@ describe('Soul Weapon Configuration System (BRD Adventurer Slice)', function()
         assert(player:addItem(ITEM_WIND_KNIFE_P1), 'add wind_knife_+1')
         assert(player:addItem(ITEM_ONION_SWORD), 'add onion_sword')
         assert(player:addItem(ITEM_ASH_CLUB_P1), 'add ash_club_+1')
-        assert(player:addItem(ITEM_METAL_SHIELD), 'add metal_slime_shield')
+        if not player:hasItem(ITEM_METAL_SHIELD) then
+            assert(player:addItem(ITEM_METAL_SHIELD), 'add metal_slime_shield')
+        end
 
         -- Dagger + Club in SUB must be rejected
         player:equipItem(ITEM_WIND_KNIFE_P1, xi.inv.INVENTORY, xi.slot.MAIN)
@@ -191,11 +204,14 @@ describe('Soul Weapon Configuration System (BRD Adventurer Slice)', function()
         spec.refreshPlayer(war)
         spec.syncPolearmBuckler(war, spec.get(war, xi.job.WAR))
         assert(war:addItem(ITEM_BRONZE_SPEAR), 'add bronze_spear_+1')
-        assert(war:addItem(ITEM_LAUAN_SHIELD), 'add lauan_shield')
+        assert(war:addItem(ITEM_ASPIS_BUCKLER), 'add aspis (Size-1 Buckler)')
+        assert(war:addItem(ITEM_LAUAN_SHIELD), 'add lauan_shield (Size-2 Shield)')
         war:equipItem(ITEM_BRONZE_SPEAR, xi.inv.INVENTORY, xi.slot.MAIN)
         war:equipItem(ITEM_LAUAN_SHIELD, xi.inv.INVENTORY, xi.slot.SUB)
+        assert(war:getEquippedItem(xi.slot.SUB) == nil, 'WAR Spartan Polearm must reject Size-2 shield')
+        war:equipItem(ITEM_ASPIS_BUCKLER, xi.inv.INVENTORY, xi.slot.SUB)
         assert(war:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BRONZE_SPEAR, 'WAR Spartan must keep Polearm in MAIN')
-        assert(war:getEquippedItem(xi.slot.SUB):getID() == ITEM_LAUAN_SHIELD, 'WAR Spartan must keep Size-1 Buckler in SUB')
+        assert(war:getEquippedItem(xi.slot.SUB):getID() == ITEM_ASPIS_BUCKLER, 'WAR Spartan must keep Size-1 Buckler in SUB')
 
         -- Phase 5 advanced modes must remain inert by default
         assert(wc.evaluatePair(war, war:getEquippedItem(xi.slot.MAIN), war:getEquippedItem(xi.slot.SUB)) == wc.RESULT.VANILLA,
