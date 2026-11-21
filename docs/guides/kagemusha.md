@@ -1,24 +1,40 @@
 # Kagemusha (NIN) — Playstyle Guide
 
 ## At a Glance
-Kagemusha transforms Ninja into a **Dual-Katana Utsusemi shadow-detonation tank** (`Tank` tier: -60% damage dealt, 0.12x WS scaling, +60–120 baseline Enmity). Every shadow consumed or cast generates threat, TP (`+35 TP` per broken shadow), enemy **Shadow Smoke (Cripple)** debuffs, and **Kawarimi Ash (max 4)** — which you spend via Katana Weaponskills to regenerate shadows and heal yourself!
+Kagemusha is a **dual-Katana shadow tank**. Its Utsusemi shadows are a renewable defensive resource: losing shadows adds enmity, TP, **Shadow Smoke** debuffs and **Kawarimi Ash**, which you spend with Katana weapon skills to rebuild shadows and heal. **Smoke Lotus**, **Kage Bunshin** and a transformed **Mijin Gakure** provide active threat and emergency survival. Unlike the Shinobi clone damage Soul, Kagemusha uses shadows to stay alive and hold the boss.
 
 ## Setup & Gear
-- **Required Weapons:** **Dual Katanas (`Katana` in BOTH Main AND Sub slots).** Single-wielding or using a non-Katana offhand disables Katana/Ninjutsu skill mods, 100% SIRD, 100% Ninja Tool Save, -20–50% Ninjutsu Cast Time, Shadow Detonation, AoE Shadow-Guard, and `Smoke Lotus`.
-- **0 Ninja Tools Needed:** Ninjutsu casts consume 0 tools while Dual Katanas are equipped. All Elemental/Enfeebling/Utsusemi spells unlock from Lv.10+.
+- **Unlock:** Equip the Kagemusha Soul Crystal or use `!spec set kagemusha` from Lv. 10.
+- **Strict weapons:** Equip **Katana in both Main and Sub**. A single Katana or unrelated offhand disables important Ninjutsu, shadow and defensive bonuses.
+- **Stats:** HP, Evasion, Parry, Katana/Ninjutsu skill, Enmity, Magic Evasion and survival gear.
+- **Tools:** Kagemusha's eligible Ninjutsu receives strong tool-saving support when dual Katanas are equipped.
+- **Party role:** Keep the boss on you, watch your shadow count and coordinate healing when shadows are briefly exhausted.
 
 ## How to Play (Step-by-Step)
-1. **Stance Up & Pull:** Activate `Yonin` (15s CD: **zero Accuracy penalty**, `+30 Enmity`, `+25 MACC`, and whenever your shadows hit `0` it automatically activates **`-18% DT` and `+15% Parry`**!). Pull with `Smoke Lotus` (30s CD, 8y: heavy threat + maxes **4 Shadow Smoke** + `20% Slow` 30s + **+2 Kawarimi Ash**) or `Futae` (45s CD: instant next Ninjutsu + Stun + `Expose` -25 MEVA + **+1 Ash**).
-2. **Maintain & Cycle Shadows (`Ichi` <-> `Ni`):** `Utsusemi: Ichi` (1.5s cast / 18s CD -> **3 shadows**) and `Utsusemi: Ni` (1.2s cast / 28s CD -> **4 shadows**) **overwrite each other cleanly**. Incoming AoE/conal moves remove at most 2 shadows (with 50% magic/breath bleedthrough reduction while >=1 shadow remains).
-3. **Detonate Broken Shadows:** Every shadow broken grants **+35 TP**, `+145 CE / +380 VE` enmity, applies **+1 `Shadow Smoke`** on the attacker (max 4 -> `-4% ATTP/MATT & -6 ACC` per stack), and stores **+1 `Kawarimi Ash`** (max 4). Any Ninjutsu cast also grants **+1 Ash**.
-4. **Spend `Ash` with Katana WSs & Cheat Death (`Mijin Gakure`):** Firing any **Katana WS** refreshes active `Shadow Smoke` (15s) and spends **3 Kawarimi Ash** for **+1 Shadow** (up to 5) + an **8–14% Max HP heal**. Use `Kage Bunshin` (45s CD: instant `+3 Shadows` + 1 cleanse + `-15% MDT` 6s) and `Mijin Gakure` (120s CD: **12s Migawari Intercept — does NOT kill you!** It negates any hit >30% HP or lethal hit, heals 25% HP, and spawns 4 shadows).
+1. **Enter Yonin:** Activate **Yonin** for threat and specialized defense; it also improves your recovery when shadows have been fully consumed.
+2. **Establish shadows:** Cast **Utsusemi: Ichi** for three defensive shadows, followed by **Ni** when appropriate for four. The specialized system allows clean overwrites rather than treating the two versions as permanently incompatible.
+3. **Pull with Smoke Lotus:** Its close-range burst creates threat, enemy **Shadow Smoke**, a Slow effect and **Kawarimi Ash** to begin your cycle.
+4. **Let shadows protect you:** Each qualifying shadow broken by an enemy can award TP, threat, an additional Shadow Smoke stack on that attacker and one Kawarimi Ash.
+5. **Maintain smoke pressure:** Shadow Smoke reduces enemy offensive effectiveness. Eligible Katana weapon skills can refresh its duration.
+6. **Spend Kawarimi Ash through Katana weapon skills:** At sufficient Ash, an eligible weapon skill converts three stacks into a replacement shadow and a self-heal.
+7. **Use Kage Bunshin before danger:** This cooldown rapidly restores shadows and grants temporary magic mitigation and cleansing.
+8. **Use Mijin Gakure for emergencies:** Under Kagemusha it is a **non-suicidal survival effect** with a short intercept window and instant shadow restoration, not an intentional self-KO.
 
 ## Key Mechanics & Stacks
-- **Shadow Smoke (1–4 stacks on target, 15s):** Stacked by broken shadows and `Smoke Lotus`; weakens enemy Attack/Magic Attack and Accuracy cleanly via Cripple. Refreshed by Katana WSs.
-- **Kawarimi Ash (0–4 stacks, 30s):** Built by broken shadows (+1), Ninjutsu casts (+1), `Futae` (+1), `Smoke Lotus` (+2). Spent in batches of **3** on Katana WSs to gain `+1 Shadow` + `% HP heal`.
-- **`Mijin Gakure` Safety Net:** Completely redesigned as a 12s non-suicidal cheat-death cooldown on a 120s recast.
+- **Utsusemi:** Specialized **Ichi** and **Ni** provide roughly **3 and 4 shadows**, with separate cast/recast timing and clean replacement.
+- **Broken-shadow rewards:** Eligible shadow loss grants approximately **35 TP**, additional cumulative/volatile enmity, **one Shadow Smoke** and **one Kawarimi Ash**.
+- **Shadow Smoke:** Up to **four stacks** on a target, lasting approximately **15 seconds**, reducing the enemy's Attack, Magic Attack and Accuracy.
+- **Kawarimi Ash:** Up to **four stacks** for about **30 seconds**, gained from shadow loss, Ninjutsu and special actions; three can be spent through an eligible Katana weapon skill for shadow and HP restoration.
+- **Smoke Lotus:** **30-second recast**, close-range high-threat action applying Shadow Smoke and generating Ash.
+- **Yonin:** Modified tank stance with added Enmity/Magic Accuracy and emergency defensive benefits when shadows run out.
+- **Kage Bunshin:** **45-second recast**, emergency shadow restoration and short magical protection.
+- **Mijin Gakure:** Specialized **120-second recast**, approximately **12-second** protection against lethal or unusually large hits, plus HP and shadow recovery.
+- **Level progression:** Shadow engine potency, tank defense, Katana/Ninjutsu skill and self-healing scale through Lv. 10/30/50/70.
 
 ## Common Mistakes (Don't Do This)
-- **Never single-wield or use a non-Katana offhand:** Both `Main` and `Sub` must be Katanas.
-- **Don't hold `Mijin Gakure` thinking it kills you:** Under Kagemusha it is your best 120s emergency cheat-death and instant 4-shadow reset!
-- **Don't worry about `Ichi` failing to overwrite `Ni`:** Both Utsusemi tiers overwrite cleanly on Kagemusha.
+- **Equipping a shield or different offhand:** This breaks essential dual-Katana shadow benefits.
+- **Treating Kagemusha like Shinobi:** These are distinct Souls; Kagemusha uses defensive shadows rather than commanding fragile offensive clones.
+- **Waiting too long to restore shadows:** Build and spend Ash before a large incoming boss hit.
+- **Casting a new shadow spell without tracking timing:** Use the specific cast/recast and overwrite behavior to minimize vulnerable gaps.
+- **Letting Shadow Smoke fall off:** Refresh and build it to reduce the quarry's offensive pressure.
+- **Avoiding Mijin Gakure because of its original reputation:** The Kagemusha version is designed as an emergency defensive ability.
