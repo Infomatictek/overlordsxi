@@ -87,7 +87,7 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Necromancer | `2b3ed34` | Existing modal thrall guide |
 | Shinobi | `861260a` | `nin_specs.lua`, `kurogane_clones.lua`, existing Shinobi guide; removed internal diagnostics from player guide |
 
-**Status:** 66/66 documentation revisions committed. Source review completed at documentation level; full generated-wiki verification and automated integration tests still pending. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 66/66 documentation revisions committed. GitHub Actions generated-wiki validation and CI tooling/Soul action wiki unit tests passed. Rendered live site review still pending. Not merged or wiki-published. Latest wiki-data generator and CI tooling/Soul Action wiki tests passed on the feature branch.
 
 ## Findings and resume instructions
 
@@ -103,5 +103,12 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 - All **66 canonical `docs/guides/<soul>.md`** entries have expanded player-facing revisions on this feature branch.
 - No server or launcher gameplay implementation was modified.
 - Most of the revisions have been checked against current implementation or existing completed-guide mechanics; detailed game-client behavior is not independently live-tested.
-- **Do not confuse documentation completion with release validation.** Before merging, run the wiki generator with current launcher definitions, inspect the rendered guide panels, run strict parser/action tests and check all 66 against server unlocks and UI.
+- **CI validation succeeded:** GitHub Actions run 44864752017 generated wiki data with current launcher action definitions and passed the CI tooling/Soul action wiki unit tests. Manual rendered-site spot checks and in-game behavior verification remain separate tasks.
 - Perform a focused technical check on the six originally misparsed guides (Terramancer, Diviner, Beastspeaker, Herald, Untamed, Primalist) and Shinobi, whose original file used nonstandard sections and internal-only diagnostics.
+
+## CI verification
+
+- GitHub Actions: [Update SoulspireXI Wiki Data, run 44864752017](https://github.com/Infomatictek/soulspirexi/actions/runs/44864752017).
+- `Generate and validate site/data.json and site/data.js`: **success**.
+- `Run CI tooling and Soul action wiki unit tests`: **success**.
+- Validation job: **success**. Publish job skipped correctly because this was a feature-branch run.
