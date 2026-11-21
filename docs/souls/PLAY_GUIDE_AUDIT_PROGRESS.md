@@ -50,8 +50,14 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Vampire | `3483294` | Verified `dnc_healer_specs.lua` |
 | Musician | `25cb042` | Verified `brd_specs.lua` |
 | Minstrel | `f1616a5` | Verified `brd_specs.lua` |
+| Flintlock | `320715d` | Verified `cor_specs.lua` current Gun kit |
+| Medic | `a076746` | Verified `sch_specs.lua` and `eos_companion.lua`; radial eligibility needs live verification |
+| Sensei | `d16481d` | Verified `mnk_specs.lua` |
+| Adventurer | `03d1bd5` | Verified `brd_specs.lua` |
+| Sage | `a4e7226` | Verified `sch_specs.lua` and Titania companion definition |
+| Bladewheel | `7a8d5ca` | Verified `dnc_specs.lua`; weapon skill detail from existing guide |
 
-**Status:** 30/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 36/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
