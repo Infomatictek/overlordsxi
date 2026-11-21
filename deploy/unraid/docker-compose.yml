@@ -182,6 +182,7 @@ services:
       net.unraid.docker.icon: "https://raw.githubusercontent.com/Infomatictek/soulspirexi/main/site/assets/logo.png"
     networks:
       - proxynet
+      - soulspire_db
     environment:
       TZ: "${TZ:-America/Chicago}"
       OVERLORDS_ANALYTICS_HOST: "0.0.0.0"
@@ -196,6 +197,11 @@ services:
       OVERLORDS_TRUST_PROXY_HEADERS: "1"
       OVERLORDS_ENABLE_LOCAL_AUTH: "1"
       OVERLORDS_SERVE_STATIC_SITE: "0"
+      SOULSPIRE_FFXI_DB_HOST: "soulspirexi-mariadb"
+      SOULSPIRE_FFXI_DB_PORT: "3306"
+      SOULSPIRE_FFXI_DB_NAME: "${MARIADB_DATABASE:-xidb}"
+      SOULSPIRE_FFXI_DB_USER: "${MARIADB_USER:-soulspire}"
+      SOULSPIRE_FFXI_DB_PASSWORD: "${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env}"
     volumes:
       - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/analytics:/data"
       - "${APPDATA_DIR:-/mnt/user/appdata/soulspirexi}/logs/proving_grounds:/pg_logs:ro"
