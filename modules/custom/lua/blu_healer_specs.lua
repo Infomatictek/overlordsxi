@@ -4,7 +4,9 @@
 -----------------------------------
 require('modules/module_utils')
 require('modules/custom/lua/soulspire_job_specs')
-require('modules/custom/lua/blu_specs')
+if not (xi.soulspire and xi.soulspire.spec and xi.soulspire.spec.jobs and xi.soulspire.spec.jobs[xi.job.BLU]) then
+    require('modules/custom/lua/blu_specs')
+end
 local H = require('modules/custom/lua/soulspire_healer_helpers')
 require('scripts/globals/job_utils/blue_mage')
 require('scripts/globals/bluemagic')

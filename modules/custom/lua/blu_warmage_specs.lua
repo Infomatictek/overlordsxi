@@ -203,7 +203,7 @@ actions.register('warmage',
 
 spec.registerCrystal(xi.job.BLU,
 {
-    id = 1, key = 'warmage', name = 'Warmage', abr = 'WMG', role = 'Damage', icon = 'warmage', reqLevel = 10,
+    id = 3, key = 'warmage', name = 'Warmage', abr = 'WMG', role = 'Damage', icon = 'warmage', reqLevel = 10,
     description = 'Read one enemy and select the monster technique that best answers its defenses.',
     highlights =
     {

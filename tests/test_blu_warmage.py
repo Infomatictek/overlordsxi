@@ -27,6 +27,10 @@ class WarmageNativeTests(unittest.TestCase):
         self.assertEqual(len(native), 11)
         self.assertEqual(sorted((name.lower(), level, cast, recast, mp) for name, level, mp, cast, recast in native), sorted(lua))
 
+    def test_warmage_crystal_id_does_not_collide_with_azure_bastion_or_magus(self):
+        src = MODULE.read_text(encoding="utf-8")
+        self.assertRegex(src, r"id\s*=\s*3\s*,\s*key\s*=\s*'warmage'")
+
 
 @unittest.skipUnless(LuaRuntime, "Lupa is required for in-process Lua gameplay checks")
 class WarmageRuntimeTests(unittest.TestCase):
