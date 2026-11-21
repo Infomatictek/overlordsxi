@@ -518,19 +518,23 @@ def load_ws_catalog() -> dict[str, list[dict[str, Any]]]:
     for i, m in enumerate(matches):
         ws_id = int(m.group(1))
         block = txt[m.start(): matches[i + 1].start() if i + 1 < len(matches) else len(txt)]
-        key_m = re.search(r"key\s*=\s*'([^']+)'", block)
-        name_m = re.search(r"name\s*=\s*'([^']+)'", block)
-        skill_m = re.search(r"skillName\s*=\s*'([^']+)'", block)
-        type_m = re.search(r"wsType\s*=\s*'([^']+)'", block)
+        key_m = re.search(r"key\s*=\s*(?:'([^']+)'|\"([^\"]+)\")", block)
+        name_m = re.search(r"name\s*=\s*(?:'([^']+)'|\"([^\"]+)\")", block)
+        skill_m = re.search(r"skillName\s*=\s*(?:'([^']+)'|\"([^\"]+)\")", block)
+        type_m = re.search(r"wsType\s*=\s*(?:'([^']+)'|\"([^\"]+)\")", block)
         if not (key_m and name_m and skill_m and type_m):
             continue
-        by_skill[skill_m.group(1)].append({
+        ws_key = key_m.group(1) or key_m.group(2)
+        ws_name = name_m.group(1) or name_m.group(2)
+        ws_skill = skill_m.group(1) or skill_m.group(2)
+        ws_type = type_m.group(1) or type_m.group(2)
+        by_skill[ws_skill].append({
             "id": ws_id,
-            "key": key_m.group(1),
-            "name": name_m.group(1),
-            "skill_name": skill_m.group(1),
-            "skill_id": SKILL_ID_BY_NAME[skill_m.group(1)],
-            "ws_type": type_m.group(1),
+            "key": ws_key,
+            "name": ws_name,
+            "skill_name": ws_skill,
+            "skill_id": SKILL_ID_BY_NAME[ws_skill],
+            "ws_type": ws_type,
         })
     for k in by_skill:
         by_skill[k].sort(key=lambda x: x["id"])

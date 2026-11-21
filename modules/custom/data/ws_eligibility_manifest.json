@@ -1,17 +1,17 @@
 {
   "schema_version": "2.0.0",
   "canonical_soul_count": 66,
-  "total_catalog_ws": 218,
+  "total_catalog_ws": 219,
   "summary": {
-    "total_all_catalog_soul_ws_combinations": 14388,
-    "total_theoretical_equipable_soul_ws_combinations": 5577,
-    "total_approved_soul_ws_combinations": 1474,
-    "total_excluded_equipable_soul_ws_combinations": 4103,
-    "reduction_vs_equipable_pct": 73.57,
-    "reduction_vs_full_catalog_pct": 89.76,
-    "estimated_talent_defs_without_filtering": 66924,
-    "estimated_talent_defs_with_filtering": 17688,
-    "estimated_talent_defs_avoided": 49236
+    "total_all_catalog_soul_ws_combinations": 14454,
+    "total_theoretical_equipable_soul_ws_combinations": 5619,
+    "total_approved_soul_ws_combinations": 1476,
+    "total_excluded_equipable_soul_ws_combinations": 4143,
+    "reduction_vs_equipable_pct": 73.73,
+    "reduction_vs_full_catalog_pct": 89.79,
+    "estimated_talent_defs_without_filtering": 67428,
+    "estimated_talent_defs_with_filtering": 17712,
+    "estimated_talent_defs_avoided": 49716
   },
   "skill_id_map": {
     "Hand-to-Hand": 1,
@@ -120,8 +120,8 @@
         "requiescat"
       ],
       "eligible_ws_count": 32,
-      "theoretical_job_ws_count": 190,
-      "excluded_job_ws_count": 158,
+      "theoretical_job_ws_count": 191,
+      "excluded_job_ws_count": 159,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -227,8 +227,8 @@
         "upheaval"
       ],
       "eligible_ws_count": 28,
-      "theoretical_job_ws_count": 190,
-      "excluded_job_ws_count": 162,
+      "theoretical_job_ws_count": 191,
+      "excluded_job_ws_count": 163,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -302,8 +302,8 @@
         "stardiver"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 190,
-      "excluded_job_ws_count": 176,
+      "theoretical_job_ws_count": 191,
+      "excluded_job_ws_count": 177,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -384,8 +384,8 @@
         "oshala"
       ],
       "eligible_ws_count": 17,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 43,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 44,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Club",
@@ -464,8 +464,8 @@
         "maru_kala"
       ],
       "eligible_ws_count": 16,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 44,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 45,
       "excluded_weapon_families": [
         "Club",
         "Staff",
@@ -544,8 +544,8 @@
         "maru_kala"
       ],
       "eligible_ws_count": 16,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 44,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 45,
       "excluded_weapon_families": [
         "Club",
         "Staff",
@@ -662,8 +662,8 @@
         "oshala"
       ],
       "eligible_ws_count": 33,
-      "theoretical_job_ws_count": 58,
-      "excluded_job_ws_count": 25,
+      "theoretical_job_ws_count": 59,
+      "excluded_job_ws_count": 26,
       "excluded_weapon_families": [
         "Polearm",
         "Throwing"
@@ -742,8 +742,8 @@
         "oshala"
       ],
       "eligible_ws_count": 17,
-      "theoretical_job_ws_count": 58,
-      "excluded_job_ws_count": 41,
+      "theoretical_job_ws_count": 59,
+      "excluded_job_ws_count": 42,
       "excluded_weapon_families": [
         "Club",
         "Polearm",
@@ -817,8 +817,8 @@
         "stardiver"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 58,
-      "excluded_job_ws_count": 44,
+      "theoretical_job_ws_count": 59,
+      "excluded_job_ws_count": 45,
       "excluded_weapon_families": [
         "Club",
         "Staff",
@@ -898,8 +898,8 @@
         "oshala"
       ],
       "eligible_ws_count": 17,
-      "theoretical_job_ws_count": 76,
-      "excluded_job_ws_count": 59,
+      "theoretical_job_ws_count": 77,
+      "excluded_job_ws_count": 60,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -979,8 +979,8 @@
         "oshala"
       ],
       "eligible_ws_count": 17,
-      "theoretical_job_ws_count": 76,
-      "excluded_job_ws_count": 59,
+      "theoretical_job_ws_count": 77,
+      "excluded_job_ws_count": 60,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -1054,8 +1054,8 @@
         "entropy"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 76,
-      "excluded_job_ws_count": 62,
+      "theoretical_job_ws_count": 77,
+      "excluded_job_ws_count": 63,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -1137,8 +1137,8 @@
         "requiescat"
       ],
       "eligible_ws_count": 18,
-      "theoretical_job_ws_count": 91,
-      "excluded_job_ws_count": 73,
+      "theoretical_job_ws_count": 92,
+      "excluded_job_ws_count": 74,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -1220,8 +1220,8 @@
         "requiescat"
       ],
       "eligible_ws_count": 18,
-      "theoretical_job_ws_count": 91,
-      "excluded_job_ws_count": 73,
+      "theoretical_job_ws_count": 92,
+      "excluded_job_ws_count": 74,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -1303,8 +1303,8 @@
         "requiescat"
       ],
       "eligible_ws_count": 18,
-      "theoretical_job_ws_count": 91,
-      "excluded_job_ws_count": 73,
+      "theoretical_job_ws_count": 92,
+      "excluded_job_ws_count": 74,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -1427,8 +1427,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 36,
-      "theoretical_job_ws_count": 117,
-      "excluded_job_ws_count": 81,
+      "theoretical_job_ws_count": 118,
+      "excluded_job_ws_count": 82,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Katana",
@@ -1549,8 +1549,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 36,
-      "theoretical_job_ws_count": 117,
-      "excluded_job_ws_count": 81,
+      "theoretical_job_ws_count": 118,
+      "excluded_job_ws_count": 82,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Katana",
@@ -1663,8 +1663,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 32,
-      "theoretical_job_ws_count": 117,
-      "excluded_job_ws_count": 85,
+      "theoretical_job_ws_count": 118,
+      "excluded_job_ws_count": 86,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Sword",
@@ -2283,8 +2283,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 36,
-      "theoretical_job_ws_count": 80,
-      "excluded_job_ws_count": 44,
+      "theoretical_job_ws_count": 81,
+      "excluded_job_ws_count": 45,
       "excluded_weapon_families": [
         "Club",
         "Staff",
@@ -2403,8 +2403,8 @@
         "oshala"
       ],
       "eligible_ws_count": 35,
-      "theoretical_job_ws_count": 80,
-      "excluded_job_ws_count": 45,
+      "theoretical_job_ws_count": 81,
+      "excluded_job_ws_count": 46,
       "excluded_weapon_families": [
         "Sword",
         "Club",
@@ -2525,8 +2525,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 36,
-      "theoretical_job_ws_count": 80,
-      "excluded_job_ws_count": 44,
+      "theoretical_job_ws_count": 81,
+      "excluded_job_ws_count": 45,
       "excluded_weapon_families": [
         "Club",
         "Staff",
@@ -2597,8 +2597,8 @@
         "last_stand"
       ],
       "eligible_ws_count": 13,
-      "theoretical_job_ws_count": 101,
-      "excluded_job_ws_count": 88,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 89,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -2696,8 +2696,8 @@
         "last_stand"
       ],
       "eligible_ws_count": 24,
-      "theoretical_job_ws_count": 101,
-      "excluded_job_ws_count": 77,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 78,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -2764,8 +2764,8 @@
         "apex_arrow"
       ],
       "eligible_ws_count": 11,
-      "theoretical_job_ws_count": 101,
-      "excluded_job_ws_count": 90,
+      "theoretical_job_ws_count": 102,
+      "excluded_job_ws_count": 91,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -2839,8 +2839,8 @@
         "tachi_shoha"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 102,
-      "excluded_job_ws_count": 88,
+      "theoretical_job_ws_count": 103,
+      "excluded_job_ws_count": 89,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -2940,8 +2940,8 @@
         "apex_arrow"
       ],
       "eligible_ws_count": 25,
-      "theoretical_job_ws_count": 102,
-      "excluded_job_ws_count": 77,
+      "theoretical_job_ws_count": 103,
+      "excluded_job_ws_count": 78,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -3014,8 +3014,8 @@
         "tachi_shoha"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 102,
-      "excluded_job_ws_count": 88,
+      "theoretical_job_ws_count": 103,
+      "excluded_job_ws_count": 89,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -3089,8 +3089,8 @@
         "blade_shun"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 131,
-      "excluded_job_ws_count": 117,
+      "theoretical_job_ws_count": 132,
+      "excluded_job_ws_count": 118,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -3165,8 +3165,8 @@
         "blade_shun"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 131,
-      "excluded_job_ws_count": 117,
+      "theoretical_job_ws_count": 132,
+      "excluded_job_ws_count": 118,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -3240,8 +3240,8 @@
         "blade_shun"
       ],
       "eligible_ws_count": 14,
-      "theoretical_job_ws_count": 131,
-      "excluded_job_ws_count": 117,
+      "theoretical_job_ws_count": 132,
+      "excluded_job_ws_count": 118,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Dagger",
@@ -3889,8 +3889,8 @@
         "last_stand"
       ],
       "eligible_ws_count": 13,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 47,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 48,
       "excluded_weapon_families": [
         "Dagger",
         "Sword",
@@ -4002,8 +4002,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 31,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 29,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 30,
       "excluded_weapon_families": [
         "Sword",
         "Throwing"
@@ -4085,8 +4085,8 @@
         "requiescat"
       ],
       "eligible_ws_count": 18,
-      "theoretical_job_ws_count": 60,
-      "excluded_job_ws_count": 42,
+      "theoretical_job_ws_count": 61,
+      "excluded_job_ws_count": 43,
       "excluded_weapon_families": [
         "Dagger",
         "Marksmanship",
@@ -4160,7 +4160,8 @@
         248,
         249,
         250,
-        251
+        251,
+        252
       ],
       "eligible_ws_keys": [
         "wasp_sting",
@@ -4191,10 +4192,11 @@
         "flamenco_finale",
         "tarantella_storm",
         "grand_jete",
-        "aurora_fandango"
+        "aurora_fandango",
+        "terpsichores_halo"
       ],
-      "eligible_ws_count": 29,
-      "theoretical_job_ws_count": 63,
+      "eligible_ws_count": 30,
+      "theoretical_job_ws_count": 64,
       "excluded_job_ws_count": 34,
       "excluded_weapon_families": [
         "Hand-to-Hand",
@@ -4268,7 +4270,8 @@
         248,
         249,
         250,
-        251
+        251,
+        252
       ],
       "eligible_ws_keys": [
         "wasp_sting",
@@ -4299,10 +4302,11 @@
         "flamenco_finale",
         "tarantella_storm",
         "grand_jete",
-        "aurora_fandango"
+        "aurora_fandango",
+        "terpsichores_halo"
       ],
-      "eligible_ws_count": 29,
-      "theoretical_job_ws_count": 63,
+      "eligible_ws_count": 30,
+      "theoretical_job_ws_count": 64,
       "excluded_job_ws_count": 34,
       "excluded_weapon_families": [
         "Hand-to-Hand",
@@ -4385,8 +4389,8 @@
         "ruthless_stroke"
       ],
       "eligible_ws_count": 18,
-      "theoretical_job_ws_count": 63,
-      "excluded_job_ws_count": 45,
+      "theoretical_job_ws_count": 64,
+      "excluded_job_ws_count": 46,
       "excluded_weapon_families": [
         "Hand-to-Hand",
         "Sword",
@@ -4502,8 +4506,8 @@
         "oshala"
       ],
       "eligible_ws_count": 33,
-      "theoretical_job_ws_count": 62,
-      "excluded_job_ws_count": 29,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 30,
       "excluded_weapon_families": [
         "Dagger",
         "Throwing"
@@ -4618,8 +4622,8 @@
         "oshala"
       ],
       "eligible_ws_count": 33,
-      "theoretical_job_ws_count": 62,
-      "excluded_job_ws_count": 29,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 30,
       "excluded_weapon_families": [
         "Dagger",
         "Throwing"
@@ -4734,8 +4738,8 @@
         "oshala"
       ],
       "eligible_ws_count": 33,
-      "theoretical_job_ws_count": 62,
-      "excluded_job_ws_count": 29,
+      "theoretical_job_ws_count": 63,
+      "excluded_job_ws_count": 30,
       "excluded_weapon_families": [
         "Dagger",
         "Throwing"
@@ -5416,8 +5420,8 @@
         "maru_kala"
       ],
       "eligible_ws_count": 16,
-      "theoretical_job_ws_count": 61,
-      "excluded_job_ws_count": 45,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 46,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -5495,8 +5499,8 @@
         "maru_kala"
       ],
       "eligible_ws_count": 16,
-      "theoretical_job_ws_count": 61,
-      "excluded_job_ws_count": 45,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 46,
       "excluded_weapon_families": [
         "Dagger",
         "Club",
@@ -5574,8 +5578,8 @@
         "maru_kala"
       ],
       "eligible_ws_count": 16,
-      "theoretical_job_ws_count": 61,
-      "excluded_job_ws_count": 45,
+      "theoretical_job_ws_count": 62,
+      "excluded_job_ws_count": 46,
       "excluded_weapon_families": [
         "Dagger",
         "Club",

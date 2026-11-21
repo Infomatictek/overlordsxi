@@ -12,46 +12,13 @@
 -----------------------------------
 local talents = xi.soulspire and xi.soulspire.wsTalents
 local DNA     = require('modules/custom/lua/soulspire_ws_dna')
+local E       = require('modules/custom/lua/soulspire_ws_eligibility')
+local M       = require('modules/custom/lua/soulspire_ws_soul_mechanics')
 
 local P = {}
 
-P.ALL_SPECS =
-{
-    'berserker',
-    'commander',
-    'spartan',
-    'sensei',
-    'blackbelt',
-    'chiweaver',
-    'inquisitor',
-    'spellblade',
-    'lifebinder',
-    'medic',
-    'sage',
-    'necromancer',
-    'bladewheel',
-    'ronin',
-    'imperialarcher',
-    'warlord',
-    'aegistemplar',
-    'kagemusha',
-    'kurogane',
-    'bishop',
-    'templar',
-    'magus',
-    'vampire',
-    'celestial',
-    'pugilist',
-    'vanguard',
-    'animist',
-    'verdant',
-    'wyvernheart',
-    'miragesentinel',
-    'flintlock',
-    'buccaneer',
-    'gambler',
-    'huntsman',
-}
+-- Authoritative 66-Soul list sourced directly from soulspire_ws_eligibility.lua
+P.ALL_SPECS = E.CANONICAL_SOULS
 
 local STAT_UP =
 {
@@ -2926,151 +2893,267 @@ local function cloneNode(src)
     return out
 end
 
-function P.buildSpecTree(wsId, archetype, baseNodes, specKey, opts)
-    opts = opts or {}
-    local ctx = DNA.get(wsId, archetype)
+local BRANCH_BY_COL = { [1] = 'damage', [2] = 'utility', [3] = 'soul' }
 
-    -- Preserve Dancer Bladewheel's bespoke 12-node Throwing trees (#241-#252)
-    if opts.preserveBladewheel and specKey == 'bladewheel' and type(baseNodes) == 'table' and #baseNodes > 0 then
+local function buildSoulHookEffect(hook, scale)
+    if type(hook) ~= 'table' then
+        return {}
+    end
+    local eff = { soulHook = hook }
+    local function scaleTbl(tbl, mult)
+        if type(tbl) ~= 'table' then return nil end
         local out = {}
-        for _, n in ipairs(baseNodes) do
-            table.insert(out, sanitizeSpecNode(cloneNode(n), 'bladewheel', ctx))
+        for i = 1, #tbl do
+            local v = tbl[i] * mult
+            out[i] = (math.abs(v) < 1 and v ~= 0) and (math.floor(v * 100 + 0.5) / 100) or math.floor(v + 0.5)
         end
         return out
     end
+    local mult = scale or 1.0
+    if hook.bonusWsd then eff.wsd = scaleTbl(hook.bonusWsd, mult) end
+    if hook.matt then eff.matt = scaleTbl(hook.matt, mult) end
+    if hook.macc then eff.macc = scaleTbl(hook.macc, mult) end
+    if hook.enmity then eff.enmity = scaleTbl(hook.enmity, mult) end
+    if hook.subtleBlow then eff.subtleBlow = scaleTbl(hook.subtleBlow, mult) end
+    if hook.tpRefund then eff.tpRefund = scaleTbl(hook.tpRefund, mult) end
+    if hook.tpBonus then eff.tpBonus = scaleTbl(hook.tpBonus, mult) end
+    if hook.partyTp then eff.partyTp = scaleTbl(hook.partyTp, mult) end
+    if hook.mpReturn then eff.mpReturn = scaleTbl(hook.mpReturn, mult) end
+    if hook.eosHeal then eff.eosHeal = scaleTbl(hook.eosHeal, mult) end
+    if hook.petTp then eff.petTp = scaleTbl(hook.petTp, mult) end
+    if hook.partyHealPct then eff.partyHealPct = scaleTbl(hook.partyHealPct, mult) end
+    if hook.hpDrain then eff.hpDrain = scaleTbl(hook.hpDrain, mult) end
+    if hook.conductionAdd then eff.conductionAdd = scaleTbl(hook.conductionAdd, mult) end
+    if hook.defIgnore then eff.defIgnore = scaleTbl(hook.defIgnore, mult) end
+    if hook.chiBlastPct then eff.chiBlastPct = scaleTbl(hook.chiBlastPct, mult) end
+    if hook.nextWsd or hook.nextTp then
+        eff.nextWs = {
+            wsd = hook.nextWsd and scaleTbl(hook.nextWsd, mult) or nil,
+            tp  = hook.nextTp and scaleTbl(hook.nextTp, mult) or nil,
+            dur = 15,
+        }
+    end
+    if hook.targetDebuff and hook.debuffPower then
+        eff.targetDebuffs = {{ effect = hook.targetDebuff, power = scaleTbl(hook.debuffPower, mult), duration = 45 }}
+    end
+    return eff
+end
 
-    -- Full 12-node bespoke synthesis for this (wsId, specKey)
-    local t1c1 = buildT1C1(specKey, ctx)
-    local t1c2 = buildT1C2(specKey, ctx)
-    local t1c3 = buildT1C3(specKey, ctx)
-    local t2c1, t3c1, t4c1 = buildCol1Nodes(specKey, ctx)
-    local t2c2, t3c2, t4c2 = buildCol2Nodes(specKey, ctx)
-    local t2c3, t3c3, t4c3 = buildCol3Nodes(specKey, ctx)
+-- Clean, reusable 3-branch (Damage / Utility / Soul) x 4-tier synthesis for any canonical Soul
+local function buildUnifiedThreeBranchTree(wsId, specKey, ctx)
+    local prof = M.getProfile(specKey)
+    local pfx  = (prof and prof.pfx) or 'gen'
+    local tag  = (prof and prof.tag) or 'Focus'
+    local utag = (prof and prof.utilTag) or 'Tactics'
+    local stag = (prof and prof.soulTag) or 'Soul'
+    local pref = (prof and prof.pref) or 'str'
+    local role = (prof and prof.tier) or 'Damage'
+    local hook = prof and prof.soulHook or nil
+    local stDef = prof and prof.stance or nil
 
-    local nodes = { t1c1, t1c2, t1c3, t2c1, t2c2, t2c3, t3c1, t3c2, t3c3, t4c1, t4c2, t4c3 }
+    local curve = ctx.ftpCurve or { 1.40, 2.25, 3.25 }
+    local statUp = STAT_UP[pref] or 'STR'
+
+    -- COL 1: DAMAGE (HOW it deals damage)
+    local t1c1 = mkFtpNode(tag .. ' Force', curve, '', nil, ctx.isPhys and { wsd = { 2, 4, 6, 8, 10, 12 } } or { matt = { 5, 10, 15, 20, 25, 30 } })
+    local t2c1Eff = ctx.isPhys and {
+        wsc = { [pref] = { 0.10, 0.20, 0.30, 0.40, 0.50 } },
+        atkPct = { 6, 12, 18, 24, 30 },
+    } or {
+        wsc = { [pref] = { 0.10, 0.20, 0.30, 0.40, 0.50 } },
+        matt = { 8, 16, 24, 32, 40 },
+    }
+    local t2c1 = mkNode(2, 1, pfx .. '_dmg_wsc', tag .. ' ' .. statUp, 5,
+        string.format('%s +10..50%% WSC & %s scaling', statUp, ctx.isPhys and '+Atk' or '+MAB'),
+        function(r) return string.format('%s +%d%% WSC, +%d%s', statUp, r * 10, ctx.isPhys and (r * 6) or (r * 8), ctx.isPhys and '% Atk' or ' MAB') end,
+        t2c1Eff)
+
+    local t3c1Eff
+    local t3c1Zero, t3c1Desc
+    if not ctx.isPhys then
+        t3c1Eff = { matt = { 10, 20, 30, 40, 50 }, macc = { 8, 16, 24, 32, 40 } }
+        t3c1Zero = 'Magical specialization: +10..50 MAB & +8..40 MACC'
+        t3c1Desc = function(r) return string.format('+%d MAB, +%d MACC', r * 10, r * 8) end
+    elseif (ctx.origHits or 1) >= 2 and role == 'Damage' then
+        local hSeq, th = makeHitSequence(ctx.origHits, 5)
+        t3c1Eff = { hits = hSeq, multiHitfTPAt = 4, wsd = { 3, 6, 9, 12, 15 } }
+        t3c1Zero = string.format('Multi-hit execution: up to %d hits & fTP carry at R4', th)
+        t3c1Desc = function(r) return string.format('%d Hits, +%d%% WSD%s', hSeq[r], r * 3, r >= 4 and ', fTP Carry' or '') end
+    elseif role == 'Damage' then
+        t3c1Eff = { defIgnore = { 0.05, 0.10, 0.15, 0.20, 0.25 }, crit = { 4, 8, 12, 16, 20 } }
+        t3c1Zero = 'Armor-piercing burst: 5..25% DEF Ignore & +4..20% Crit'
+        t3c1Desc = function(r) return string.format('%d%% DEF Ign, +%d%% Crit', r * 5, r * 4) end
+    else
+        t3c1Eff = { wsd = { 4, 8, 12, 16, 20 }, acc = { 8, 16, 24, 32, 40 } }
+        t3c1Zero = 'Controlled precision: +4..20% WSD & +8..40 Acc'
+        t3c1Desc = function(r) return string.format('+%d%% WSD, +%d Acc', r * 4, r * 8) end
+    end
+    local t3c1 = mkNode(3, 1, pfx .. '_dmg_spec', tag .. ' Execution', 5, t3c1Zero, t3c1Desc, t3c1Eff)
+
+    local t4c1Eff = ctx.isPhys
+        and { wsd = { 10, 20, 30 }, ftpAdd = { 0.15, 0.30, 0.45 } }
+        or  { wsd = { 10, 20, 30 }, matt = { 18, 36, 54 } }
+    local t4c1 = mkNode(4, 1, pfx .. '_dmg_cap', tag .. ' Apex', 3,
+        'Mastery: +10/20/30% WSD & ' .. (ctx.isPhys and '+0.15..0.45 fTP' or '+18..54 MAB'),
+        function(r) return string.format('+%d%% WSD, %s', r * 10, ctx.isPhys and string.format('+%.2f fTP', r * 0.15) or string.format('+%d MAB', r * 18)) end,
+        t4c1Eff)
+
+    -- COL 2: UTILITY (WHY and WHEN it is used)
+    local t1c2Eff, t1c2Zero, t1c2Desc
+    if role == 'Tank' then
+        t1c2Eff = { enmity = { 5, 10, 15, 20, 25, 30, 35 }, macc = { 6, 12, 18, 24, 30, 36, 42 } }
+        t1c2Zero = 'R1: +5..35 Enmity & +6..42 MACC for threat control'
+        t1c2Desc = function(r) return string.format('+%d Enmity, +%d MACC', r * 5, r * 6) end
+    elseif role == 'Healer' or role == 'CombatHealer' then
+        t1c2Eff = { enmity = { -4, -8, -12, -16, -20, -24, -28 }, tpBonus = { 40, 80, 120, 160, 200, 240, 280 } }
+        t1c2Zero = 'R1: -4..28 Enmity & +40..280 Effective TP'
+        t1c2Desc = function(r) return string.format('-%d Enmity, +%d TP Bonus', r * 4, r * 40) end
+    else
+        t1c2Eff = { tpBonus = { 50, 100, 150, 200, 250, 300, 350 }, subtleBlow = { 2, 4, 6, 8, 10, 12, 14 } }
+        t1c2Zero = 'R1: +50..350 Effective TP & +2..14 Subtle Blow'
+        t1c2Desc = function(r) return string.format('+%d TP Bonus, +%d SB', r * 50, r * 2) end
+    end
+    local t1c2 = mkNode(1, 2, pfx .. '_util_t1', utag .. ' Tempo', 7, t1c2Zero, t1c2Desc, t1c2Eff)
+
+    local t2c2Eff = {
+        nextWs = { tp = { 60, 120, 180, 240, 300 }, acc = { 8, 16, 24, 32, 40 }, dur = 15 },
+    }
+    local t2c2 = mkNode(2, 2, pfx .. '_util_t2', utag .. ' Primer', 5,
+        'Primes next WS: +60..300 TP & +8..40 Acc (15s)',
+        function(r) return string.format('NextWS +%d TP, +%d Acc', r * 60, r * 8) end,
+        t2c2Eff)
+
+    local t3c2Eff = (role == 'Support' or role == 'HybridSupport')
+        and { dispel = { 1, 1, 1, 2, 2 }, scBonus = { 5, 10, 15, 20, 25 } }
+        or  { scBonus = { 6, 12, 18, 24, 30 }, macc = { 8, 16, 24, 32, 40 } }
+    local t3c2 = mkNode(3, 2, pfx .. '_util_t3', utag .. ' Chain', 5,
+        (role == 'Support' or role == 'HybridSupport') and 'Dispel 1-2 buffs & +5..25% Skillchain damage' or '+6..30% Skillchain damage & +8..40 MACC',
+        function(r)
+            if role == 'Support' or role == 'HybridSupport' then
+                return string.format('Dispel %d, +%d%% SC', r >= 4 and 2 or 1, r * 5)
+            end
+            return string.format('+%d%% SC, +%d MACC', r * 6, r * 8)
+        end,
+        t3c2Eff)
+
+    local t4c2Eff
+    local t4c2Zero, t4c2Desc
+    if role == 'Tank' then
+        t4c2Eff = { enmity = { 10, 20, 30, 40, 50 }, targetDebuffs = {{ effect = xi.effect.ATTACK_DOWN, power = { 6, 10, 14, 18, 22 }, duration = 45 }} }
+        t4c2Zero = 'Mastery: +10..50 Enmity & Target Atk -6..22%'
+        t4c2Desc = function(r) return string.format('+%d Enmity, Tgt Atk -%d%%', r * 10, 2 + r * 4) end
+    elseif role == 'Healer' or role == 'CombatHealer' then
+        t4c2Eff = { partyHealPct = { 2, 3, 4, 5, 6 }, cleanseParty = { 1, 1, 1, 2, 2 } }
+        t4c2Zero = 'Mastery: Party 2..6% HP Mend & Cleanse 1-2'
+        t4c2Desc = function(r) return string.format('Party Heal %d%%, Cleanse %d', r + 1, r >= 4 and 2 or 1) end
+    else
+        t4c2Eff = { tpRefund = { 50, 100, 150, 200, 250 }, scBonus = { 5, 10, 15, 20, 25 } }
+        t4c2Zero = 'Mastery: 50..250 TP Refund & +5..25% SC Dmg'
+        t4c2Desc = function(r) return string.format('+%d TP Refund, +%d%% SC', r * 50, r * 5) end
+    end
+    local t4c2 = mkNode(4, 2, pfx .. '_util_cap', utag .. ' Mastery', 5, t4c2Zero, t4c2Desc, t4c2Eff)
+
+    -- COL 3: SOUL (WHAT it means to the active Soul — real implemented Soul mechanics)
+    local t1c3Eff = buildSoulHookEffect(hook, 0.65)
+    local t1c3 = mkNode(1, 3, pfx .. '_soul_t1', stag .. ' Spark', 7,
+        string.format('R1 Soul link: %s synergy', hook and hook.label or stag),
+        function(r) return string.format('%s (Rank %d)', hook and hook.label or stag, r) end,
+        t1c3Eff)
+
+    local stFields = ctx.isPhys and { wsd = { 6, 12, 18, 24, 30 }, acc = { 6, 12, 18, 24, 30 } }
+        or { matt = { 10, 20, 30, 40, 50 }, macc = { 8, 16, 24, 32, 40 } }
+    local stanceTbl = {}
+    if stDef then
+        stanceTbl.effects  = stDef.effects
+        stanceTbl.jobSpec  = stDef.jobSpec
+        stanceTbl.schSpec  = stDef.schSpec
+        stanceTbl.petAlive = stDef.petAlive
+        stanceTbl.localVar = stDef.localVar
+    end
+    for k, v in pairs(stFields) do stanceTbl[k] = v end
+    local t2c3 = mkNode(2, 3, pfx .. '_soul_t2', stag .. ' Stance', 5,
+        string.format('While %s active: +%s', (stDef and stDef.label) or stag, ctx.isPhys and '6..30% WSD & Acc' or '10..50 MAB & MACC'),
+        function(r) return string.format('%s: +%d%s', (stDef and stDef.label) or stag, ctx.isPhys and (r * 6) or (r * 10), ctx.isPhys and '% WSD' or ' MAB') end,
+        { stance = stanceTbl })
+
+    local t3c3Eff = buildSoulHookEffect(hook, 1.0)
+    local t3c3 = mkNode(3, 3, pfx .. '_soul_t3', stag .. ' Synergy', 5,
+        string.format('Deepens %s Soul mechanic', hook and hook.label or stag),
+        function(r) return string.format('%s Synergy R%d', hook and hook.label or stag, r) end,
+        t3c3Eff)
+
+    local t4c3Eff = buildSoulHookEffect(hook, 1.35)
+    t4c3Eff.scBonus = { 5, 10, 15, 20, 25 }
+    local t4c3 = mkNode(4, 3, pfx .. '_soul_cap', stag .. ' Capstone', 5,
+        string.format('Mastery: Peak %s & +5..25%% SC Dmg', hook and hook.label or stag),
+        function(r) return string.format('Peak %s, +%d%% SC', hook and hook.label or stag, r * 5) end,
+        t4c3Eff)
+
+    return { t1c1, t1c2, t1c3, t2c1, t2c2, t2c3, t3c1, t3c2, t3c3, t4c1, t4c2, t4c3 }
+end
+
+function P.buildSpecTree(wsId, archetype, baseNodes, specKey, opts)
+    opts = opts or {}
+    local normKey = E.normalizeSoulKey(specKey) or specKey
+    local ctx = DNA.get(wsId, archetype)
+    local prof = M.getProfile(normKey)
+
+    -- Preserve Dancer Bladewheel's bespoke 12-node Throwing trees (#241-#252)
+    local nodes
+    if opts.preserveBladewheel and normKey == 'bladewheel' and type(baseNodes) == 'table' and #baseNodes > 0 then
+        nodes = {}
+        for _, n in ipairs(baseNodes) do
+            table.insert(nodes, cloneNode(n))
+        end
+    elseif SPEC_META[normKey] ~= nil and STANCE_DEFS[normKey] ~= nil then
+        -- Legacy 34 bespoke specs
+        local t1c1 = buildT1C1(normKey, ctx)
+        local t1c2 = buildT1C2(normKey, ctx)
+        local t1c3 = buildT1C3(normKey, ctx)
+        local t2c1, t3c1, t4c1 = buildCol1Nodes(normKey, ctx)
+        local t2c2, t3c2, t4c2 = buildCol2Nodes(normKey, ctx)
+        local t2c3, t3c3, t4c3 = buildCol3Nodes(normKey, ctx)
+        nodes = { t1c1, t1c2, t1c3, t2c1, t2c2, t2c3, t3c1, t3c2, t3c3, t4c1, t4c2, t4c3 }
+    else
+        -- All other canonical Souls (32+ Souls) use the unified 3-branch Damage/Utility/Soul builder
+        nodes = buildUnifiedThreeBranchTree(wsId, normKey, ctx)
+    end
+
     for i = 1, #nodes do
-        nodes[i] = sanitizeSpecNode(nodes[i], specKey, ctx)
+        local n = nodes[i]
+        n.branch = n.branch or BRANCH_BY_COL[n.col or 1] or 'damage'
+        -- Attach the Soul's canonical soulHook onto Col 3 Tier 3/4 nodes if not already attached
+        if n.col == 3 and (n.tier == 3 or n.tier == 4) and prof and prof.soulHook and type(n.effect) == 'table' and n.effect.soulHook == nil then
+            n.effect.soulHook = prof.soulHook
+        end
+        n = sanitizeSpecNode(n, normKey, ctx)
+        n = M.enforceRoleGuardrails(n, normKey, wsId)
+        nodes[i] = n
     end
     return nodes
 end
 
-local S = xi.skill or {}
-local WAR_OPEN_SKILLS =
-{
-    [S.HAND_TO_HAND or 1]  = true,
-    [S.DAGGER or 2]        = true,
-    [S.SWORD or 3]         = true,
-    [S.GREAT_SWORD or 4]   = true,
-    [S.AXE or 5]           = true,
-    [S.GREAT_AXE or 6]     = true,
-    [S.SCYTHE or 7]        = true,
-    [S.POLEARM or 8]       = true,
-    [S.CLUB or 11]         = true,
-    [S.STAFF or 12]        = true,
-    [S.ARCHERY or 25]      = true,
-    [S.MARKSMANSHIP or 26] = true,
-}
-
-local RUN_OPEN_SKILLS =
-{
-    [S.SWORD or 3]       = true,
-    [S.GREAT_SWORD or 4] = true,
-    [S.AXE or 5]         = true,
-    [S.GREAT_AXE or 6]   = true,
-    [S.CLUB or 11]       = true,
-}
-
-local SCH_OPEN_SKILLS =
-{
-    [S.DAGGER or 2] = true,
-    [S.CLUB or 11]  = true,
-    [S.STAFF or 12] = true,
-}
-
-P.ALLOWED_SKILLS_BY_SPEC =
-{
-    commander      = WAR_OPEN_SKILLS,
-    berserker      = WAR_OPEN_SKILLS,
-    spartan        = { [S.POLEARM or 8] = true },
-    blackbelt      = { [S.HAND_TO_HAND or 1] = true },
-    chiweaver      = { [S.HAND_TO_HAND or 1] = true },
-    sensei         = { [S.STAFF or 12] = true },
-    inquisitor     = RUN_OPEN_SKILLS,
-    spellblade     = { [S.GREAT_SWORD or 4] = true },
-    lifebinder     = RUN_OPEN_SKILLS,
-    medic          = SCH_OPEN_SKILLS,
-    archivist      = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    sage           = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true, [S.CLUB or 11] = true, [S.STAFF or 12] = true }, -- SCH + BRD Musician
-    necromancer    = { [S.SCYTHE or 7] = true },
-    astromancer    = { [S.STAFF or 12] = true },
-    channeler      = { [S.STAFF or 12] = true },
-    scarletweaver  = { [S.SWORD or 3] = true },
-    royaltactician = { [S.SWORD or 3] = true },
-    bandit         = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true },
-    trickster      = { [S.DAGGER or 2] = true, [S.SWORD or 3] = true },
-    phantom        = { [S.DAGGER or 2] = true, [S.KATANA or 9] = true },
-    oathbreaker    = { [S.GREAT_SWORD or 4] = true },
-    bladewheel     = { [S.THROWING or 27] = true, [S.DAGGER or 2] = true, [S.SWORD or 3] = true }, -- DNC Bladewheel + BRD Adventurer
-    ronin          = { [S.GREAT_KATANA or 10] = true },
-    warlord        = { [S.GREAT_KATANA or 10] = true },
-    imperialarcher = { [S.GREAT_KATANA or 10] = true, [S.ARCHERY or 25] = true },
-    aegistemplar   = { [S.CLUB or 11] = true },
-    reaper         = { [S.SCYTHE or 7] = true },
-    scourge        = { [S.SCYTHE or 7] = true },
-    dreadnought    = { [S.SCYTHE or 7] = true },
-    kagemusha      = { [S.KATANA or 9] = true },
-    kurogane       = { [S.KATANA or 9] = true },
-    nightblade     = { [S.KATANA or 9] = true },
-    bishop         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    zealot         = { [S.STAFF or 12] = true },
-    valkyrie       = { [S.POLEARM or 8] = true },
-    templar        = { [S.CLUB or 11] = true },
-    warmage        = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
-    magus          = { [S.SWORD or 3] = true, [S.CLUB or 11] = true },
-    vampire        = { [S.DAGGER or 2] = true, [S.THROWING or 27] = true },
-    celestial      = { [S.STAFF or 12] = true, [S.CLUB or 11] = true },
-    pugilist       = { [S.HAND_TO_HAND or 1] = true },
-    vanguard       = { [S.HAND_TO_HAND or 1] = true },
-    animist        = { [S.HAND_TO_HAND or 1] = true },
-    verdant        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    lancer         = { [S.POLEARM or 8] = true },
-    skyborn        = { [S.POLEARM or 8] = true },
-    wyvernheart    = { [S.POLEARM or 8] = true },
-    alphawarden    = { [S.AXE or 5] = true },
-    untamed        = { [S.AXE or 5] = true, [S.GREAT_AXE or 6] = true },
-    beastspeaker   = { [S.AXE or 5] = true },
-    primalist      = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    herald         = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    terramancer    = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    diviner        = { [S.CLUB or 11] = true, [S.STAFF or 12] = true },
-    miragesentinel = { [S.DAGGER or 2] = true },
-    flintlock      = { [S.MARKSMANSHIP or 26] = true },
-    buccaneer      = { [S.SWORD or 3] = true },
-    gambler        = { [S.MARKSMANSHIP or 26] = true, [S.DAGGER or 2] = true },
-    sniper         = { [S.MARKSMANSHIP or 26] = true },
-    arcanearcher   = { [S.ARCHERY or 25] = true },
-    huntsman       = { [S.ARCHERY or 25] = true, [S.MARKSMANSHIP or 26] = true },
-}
+-- Single source of truth: delegate all weapon eligibility checks to soulspire_ws_eligibility.lua
+P.ALLOWED_SKILLS_BY_SPEC = {}
+for _, skey in ipairs(E.CANONICAL_SOULS) do
+    local entry = E.SOULS[skey]
+    if entry ~= nil then
+        P.ALLOWED_SKILLS_BY_SPEC[skey] = entry.skills
+    end
+end
+-- Alias compatibility
+for alias, canonical in pairs(E.ALIASES) do
+    if P.ALLOWED_SKILLS_BY_SPEC[canonical] ~= nil then
+        P.ALLOWED_SKILLS_BY_SPEC[alias] = P.ALLOWED_SKILLS_BY_SPEC[canonical]
+    end
+end
 
 function P.isSpecAllowedForSkill(specKey, skillId)
-    if specKey == 'generic' then
-        return true
-    end
-    local map = P.ALLOWED_SKILLS_BY_SPEC[specKey]
-    if map == nil then
-        return true
-    end
-    return map[skillId] == true
+    return E.isSkillEligible(specKey, skillId)
 end
 
 function P.getAllowedSpecsForSkill(skillId)
-    local out = {}
-    for _, sk in ipairs(P.ALL_SPECS) do
-        if P.isSpecAllowedForSkill(sk, skillId) then
-            table.insert(out, sk)
-        end
-    end
-    return out
+    return E.getAllowedSoulsForSkill(skillId)
 end
 
 function P.buildAllSpecTrees(wsId, archetype, baseNodes, opts)

@@ -16,6 +16,8 @@
 --   them off on Utility WSs to avoid interrupting party Skillchains.
 -----------------------------------
 require('modules/custom/lua/soulspire_ws_catalog')
+local wsEligibility = require('modules/custom/lua/soulspire_ws_eligibility')
+local wsContracts   = require('modules/custom/lua/soulspire_ws_talent_contracts')
 -----------------------------------
 xi = xi or {}
 xi.soulspire = xi.soulspire or {}
@@ -375,50 +377,15 @@ end
 
 local SPEC_KEY_TO_CATEGORY =
 {
-    commander      = 'commander',
-    berserker      = 'berserker',
-    gladiator      = 'spartan',
-    spartan        = 'spartan',
-    sensei         = 'sensei',
-    blackbelt      = 'blackbelt',
-    chiweaver      = 'chiweaver',
-    inquisitor     = 'inquisitor',
-    spellblade     = 'spellblade',
-    lifebinder     = 'lifebinder',
-    medic          = 'medic',
-    sage           = 'sage',
-    necromancer    = 'necromancer',
-    bladewheel     = 'bladewheel',
-    adventurer     = 'bladewheel',
-    musician       = 'sage',
-    minstrel       = 'spartan',
-    ronin          = 'ronin',
-    imperialarcher = 'imperialarcher',
-    warlord        = 'warlord',
-    aegistemplar   = 'aegistemplar',
-    kagemusha      = 'kagemusha',
-    bishop         = 'bishop',
-    templar        = 'templar',
-    magus          = 'magus',
-    vampire        = 'vampire',
-    celestial      = 'celestial',
-    caller         = 'celestial',
-    marionettist   = 'vanguard',
-    vanguard       = 'vanguard',
-    pugilist       = 'pugilist',
-    soulbeast      = 'spartan',
-    alphawarden    = 'spartan',
-    animist        = 'animist',
-    verdant        = 'verdant',
-    wyvernheart    = 'wyvernheart',
-    miragesentinel = 'miragesentinel',
-    flintlock      = 'flintlock',
-    buccaneer      = 'buccaneer',
-    gambler        = 'gambler',
-    huntsman       = 'huntsman',
-    tank           = 'inquisitor',
-    healer         = 'lifebinder',
+    tank   = 'inquisitor',
+    healer = 'lifebinder',
 }
+for _, skey in ipairs(wsEligibility.CANONICAL_SOULS) do
+    SPEC_KEY_TO_CATEGORY[skey] = skey
+end
+for alias, canonical in pairs(wsEligibility.ALIASES) do
+    SPEC_KEY_TO_CATEGORY[alias] = canonical
+end
 
 function talents.resolveSpecCategory(player, jobId, specKeyOverride)
     local jid = jobId or (player and player.getMainJob and player:getMainJob()) or 0
@@ -432,6 +399,18 @@ function talents.resolveSpecCategory(player, jobId, specKeyOverride)
         return SPEC_KEY_TO_CATEGORY[sKey]
     end
     return 'generic'
+end
+
+function talents.isWSEligibleForPlayer(player, wsId, jobId, specKeyOverride)
+    local ws = catalog.byId[wsId]
+    if ws == nil then
+        return false
+    end
+    local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
+    if specCat == 'generic' then
+        return true
+    end
+    return wsEligibility.isSkillEligible(specCat, ws.skill)
 end
 
 function talents.getSpecToken(player, jobId, specIdOverride)
@@ -2114,9 +2093,13 @@ function talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
         return nil
     end
 
+    local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
+    if specCat ~= 'generic' and not wsEligibility.isSkillEligible(specCat, ws.skill) then
+        return nil
+    end
+
     local custom = CUSTOM_TREES[wsId]
     if custom ~= nil and custom.specNodes ~= nil then
-        local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
         if specCat ~= 'generic' and custom.specNodes[specCat] == nil then
             specCat = 'generic'
         end
@@ -2133,6 +2116,81 @@ function talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
 
     treeCache[wsId] = buildTreeForWS(ws, nil)
     return treeCache[wsId]
+end
+
+function talents.getNodeContract(wsId, nodeKey, player, jobId, specKeyOverride)
+    local ws = catalog.byId[wsId]
+    if ws == nil then
+        return nil
+    end
+    local specCat = talents.resolveSpecCategory(player, jobId, specKeyOverride)
+    local tree = talents.getTreeForWS(wsId, player, jobId, specKeyOverride)
+    if tree == nil or tree.byKey == nil then
+        return nil
+    end
+    local node = tree.byKey[nodeKey]
+    if node == nil then
+        return nil
+    end
+    return wsContracts.compileNodeContract(ws, specCat, node, talents.getRankReqLevel)
+end
+
+-- Safe, deterministic migration/refund for any previously invested WS that is
+-- no longer eligible under the Soul's canonical weapon eligibility manifest.
+-- Preserves all eligible investments; never silently deletes character data.
+function talents.reconcileIneligibleAllocations(player, jobId, specIdOverride)
+    local report =
+    {
+        refundedWs     = {},
+        refundedPoints = 0,
+        preservedWs    = {},
+    }
+    if player == nil then
+        return report
+    end
+
+    local jid = jobId or player:getMainJob()
+    local specCat = talents.resolveSpecCategory(player, jid)
+    if specCat == 'generic' then
+        return report
+    end
+
+    local seen = {}
+    local function scanAndReconcile(prefix, isEvo)
+        if not player.getCharVarsWithPrefix then
+            return
+        end
+        local vars = player:getCharVarsWithPrefix(prefix)
+        for varName, packed in pairs(vars or {}) do
+            if packed and packed > 0 then
+                local wsId = tonumber(string.sub(varName, #prefix + 1))
+                if wsId ~= nil and not seen[wsId] and catalog.byId[wsId] ~= nil then
+                    seen[wsId] = true
+                    if wsEligibility.isWsEligible(specCat, wsId) then
+                        table.insert(report.preservedWs, wsId)
+                    else
+                        -- Count invested ranks directly from stored packed bits before refunding
+                        local refunded = 0
+                        for slot = 1, 20 do
+                            refunded = refunded + readSlotRank(player, jid, wsId, slot, specIdOverride)
+                        end
+                        player:setCharVar(talents.getVarName(jid, wsId, player, specIdOverride), 0)
+                        player:setCharVar(talents.getVar2Name(jid, wsId, player, specIdOverride), 0)
+                        player:setCharVar(talents.getScVarName(jid, wsId, player, specIdOverride), 0)
+                        table.insert(report.refundedWs, { wsId = wsId, points = refunded, evolution = isEvo == true })
+                        report.refundedPoints = report.refundedPoints + refunded
+                    end
+                end
+            end
+        end
+    end
+
+    scanAndReconcile(talents.getVarPrefix(jid, player, specIdOverride), false)
+    scanAndReconcile(talents.getVar2Prefix(jid, player, specIdOverride), false)
+    scanAndReconcile(EV_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_', true)
+    scanAndReconcile(EV2_PREFIX .. talents.getJobKey(jid) .. talents.getSpecToken(player, jid, specIdOverride) .. '_', true)
+
+    return report
 end
 
 -----------------------------------
@@ -2237,6 +2295,9 @@ end
 
 function talents.canInvest(player, jobId, wsId, nodeKey)
     local jid = jobId or player:getMainJob()
+    if not talents.isWSEligibleForPlayer(player, wsId, jid) then
+        return false, 'Weaponskill is not eligible for your active Soul.'
+    end
     local tree = talents.getTreeForWS(wsId, player, jid)
     if tree == nil then
         return false, 'Unknown weaponskill.'
@@ -2253,6 +2314,13 @@ function talents.canInvest(player, jobId, wsId, nodeKey)
     end
 
     local ranks, wsSpent = talents.getWSRanks(player, jid, wsId)
+    if node.exclusiveGroup ~= nil then
+        for _, other in ipairs(tree.nodes) do
+            if other.exclusiveGroup == node.exclusiveGroup and other.key ~= node.key and (ranks[other.key] or 0) > 0 then
+                return false, 'Mutually exclusive talent already selected in this group.'
+            end
+        end
+    end
     if tree.evolution then
         if wsSpent >= talents.EVOLUTION_MAX_CHOICES then
             return false, 'Evolution already has five choices.'
@@ -2520,12 +2588,15 @@ function talents.sendCatalogSync(player)
         return
     end
 
+    local jobId = player:getMainJob()
     talents.sendMetaAndSpent(player)
 
     local wsItems = {}
     for _, wsId in ipairs(catalog.orderedIds) do
         local ws = catalog.byId[wsId]
-        table.insert(wsItems, string.format('%u:%u:%s:%s', ws.id, ws.skill, sanitizeField(ws.name), ws.wsType))
+        if ws ~= nil and talents.isWSEligibleForPlayer(player, wsId, jobId) then
+            table.insert(wsItems, string.format('%u:%u:%s:%s', ws.id, ws.skill, sanitizeField(ws.name), ws.wsType))
+        end
     end
     sendProto(player, 'CAT_BEGIN')
     sendChunked(player, 'CAT|', wsItems)
