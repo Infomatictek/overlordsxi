@@ -1412,6 +1412,16 @@ if xi.job and xi.job.COR then
         role           = 'Damage',
         icon           = 'flintlock',
         reqLevel       = 10,
+        autoRanged     =
+        {
+            minLevel      = 10,
+            maxRange      = 20,
+            rangedOnly    = true,
+            hideMeleeLook = true,
+            damagePct     = 100,
+            tpPct         = 100,
+            skills        = { 'marksmanship' },
+        },
         extraTraits    = { TRAIT_FLINTLOCK_DEADEYE },
         extraAbilities =
         {

@@ -980,6 +980,10 @@ function spec.removeAppliedMods(player, invokeOnRemove)
         player:setLocalVar('OX_THROW_WS', 0)
         player:setLocalVar('OX_AUTO_RANGED', 0)
         player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
+        player:setLocalVar('OX_RANGED_ONLY', 0)
+        player:setLocalVar('OX_HIDE_MELEE_LOOK', 0)
+        player:setLocalVar('OX_AUTO_RANGED_DMG_PCT', 0)
+        player:setLocalVar('OX_AUTO_RANGED_TP_PCT', 0)
         player:setLocalVar('OX_DNC_RANGED', 0)
         player:setLocalVar('OX_CHI_AUTO_RANGED', 0)
         player:setLocalVar('OX_CHI_RANGED_RANGE', 0)
@@ -1080,13 +1084,23 @@ function spec.refreshPlayer(player, opts)
     if player.setLocalVar then
         player:setLocalVar('OX_THROW_WS', active.throwWs and 1 or 0)
         if active.autoRanged then
-            local arMinLvl = (type(active.autoRanged) == 'table' and active.autoRanged.minLevel) or 1
-            local arRange = (type(active.autoRanged) == 'table' and active.autoRanged.maxRange) or 20
-            player:setLocalVar('OX_AUTO_RANGED', (lvl >= arMinLvl) and 1 or 0)
+            local arTable = type(active.autoRanged) == 'table' and active.autoRanged or {}
+            local arMinLvl = arTable.minLevel or 1
+            local arRange = arTable.maxRange or 20
+            local arActive = (lvl >= arMinLvl)
+            player:setLocalVar('OX_AUTO_RANGED', arActive and 1 or 0)
             player:setLocalVar('OX_AUTO_RANGED_RANGE', arRange)
+            player:setLocalVar('OX_RANGED_ONLY', (arActive and arTable.rangedOnly) and 1 or 0)
+            player:setLocalVar('OX_HIDE_MELEE_LOOK', (arActive and arTable.hideMeleeLook) and 1 or 0)
+            player:setLocalVar('OX_AUTO_RANGED_DMG_PCT', arActive and (arTable.damagePct or 100) or 0)
+            player:setLocalVar('OX_AUTO_RANGED_TP_PCT', arActive and (arTable.tpPct or 100) or 0)
         else
             player:setLocalVar('OX_AUTO_RANGED', 0)
             player:setLocalVar('OX_AUTO_RANGED_RANGE', 0)
+            player:setLocalVar('OX_RANGED_ONLY', 0)
+            player:setLocalVar('OX_HIDE_MELEE_LOOK', 0)
+            player:setLocalVar('OX_AUTO_RANGED_DMG_PCT', 0)
+            player:setLocalVar('OX_AUTO_RANGED_TP_PCT', 0)
         end
         player:setLocalVar('OX_DNC_RANGED', active.rangedDances and 1 or 0)
         if active.chiRanged then

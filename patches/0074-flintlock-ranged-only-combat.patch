@@ -1,0 +1,162 @@
+diff --git a/src/map/ai/states/attack_state.cpp b/src/map/ai/states/attack_state.cpp
+index 49b87ba4..7fcb4d81 100644
+--- a/src/map/ai/states/attack_state.cpp
++++ b/src/map/ai/states/attack_state.cpp
+@@ -201,8 +201,20 @@ auto CAttackState::Update(timer::time_point tick) -> bool
+             return false;
+         };
+ 
++        const bool rangedOnly  = m_PEntity->GetLocalVar("OX_RANGED_ONLY") == 1;
+         const bool forceRanged = m_PEntity->GetLocalVar("OX_THROW_STANCE") == 1;
+-        if (tryChiRanged())
++        if (rangedOnly)
++        {
++            // Ranged-only Souls (e.g., COR Flintlock) replace melee auto-attacks with automatic
++            // ranged attacks at all distances and never fall through to melee swings.
++            tryAutoRanged(true);
++            if (!m_PEntity->battleTarget().isSet())
++            {
++                return true;
++            }
++            return false;
++        }
++        else if (tryChiRanged())
+         {
+             if (!m_PEntity->battleTarget().isSet())
+             {
+diff --git a/src/map/ai/states/weaponskill_state.cpp b/src/map/ai/states/weaponskill_state.cpp
+index 1b8edb41..395cbaa0 100644
+--- a/src/map/ai/states/weaponskill_state.cpp
++++ b/src/map/ai/states/weaponskill_state.cpp
+@@ -53,6 +53,17 @@ auto CWeaponSkillState::init() -> StateErrorOr<void>
+         return Error{ std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, m_PEntity, 0, 0, MsgBasic::CannotUseWeaponskill) };
+     }
+ 
++    if (m_PEntity->GetLocalVar("OX_RANGED_ONLY") == 1)
++    {
++        const auto wsSkillType = static_cast<xi::SkillType>(skill->getType());
++        if (wsSkillType != xi::SkillType::Marksmanship &&
++            wsSkillType != xi::SkillType::Archery &&
++            wsSkillType != xi::SkillType::Throwing)
++        {
++            return Error{ std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, m_PEntity, 0, 0, MsgBasic::CannotUseWeaponskill) };
++        }
++    }
++
+     const auto targetFlags = battleutils::isValidSelfTargetWeaponskill(m_wsid) ? TARGET_SELF : TARGET_ENEMY;
+     auto*      PTarget     = m_PEntity->IsValidTarget(target(), targetFlags, m_errorMsg);
+ 
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+index 972ca878..f33de9e3 100644
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -3476,6 +3476,14 @@ void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action
+         {
+             auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
+             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
++            if (PChar->GetLocalVar("OX_RANGED_ONLY") == 1)
++            {
++                const uint32 dmgPct = PChar->GetLocalVar("OX_AUTO_RANGED_DMG_PCT");
++                if (dmgPct > 0 && dmgPct != 100)
++                {
++                    totalDamage = std::max<int32>(1, static_cast<int32>((static_cast<int64>(totalDamage) * dmgPct) / 100));
++                }
++            }
+         }
+         bool exposureClaimed = false;
+         actionResult.recordDamage(attack_outcome_t{
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+index c9c5d7fb..0ccf228d 100644
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -847,7 +847,16 @@ auto CLuaBaseEntity::getLocalVar(const std::string& var) -> uint32
+ 
+ void CLuaBaseEntity::setLocalVar(const std::string& var, uint32 val)
+ {
++    const uint32 prev = (var == "OX_HIDE_MELEE_LOOK") ? m_PBaseEntity->GetLocalVar(var.c_str()) : 0;
+     m_PBaseEntity->SetLocalVar(var.c_str(), val);
++    if (var == "OX_HIDE_MELEE_LOOK" && prev != val)
++    {
++        if (auto* PChar = dynamic_cast<CCharEntity*>(m_PBaseEntity); PChar != nullptr && PChar->loc.zone != nullptr)
++        {
++            PChar->updatemask |= UPDATE_LOOK;
++            PChar->pushPacket<GP_SERV_COMMAND_GRAP_LIST>(PChar);
++        }
++    }
+ }
+ 
+ /************************************************************************
+diff --git a/src/map/packets/char_update.cpp b/src/map/packets/char_update.cpp
+index d265bacb..3151a0cd 100644
+--- a/src/map/packets/char_update.cpp
++++ b/src/map/packets/char_update.cpp
+@@ -393,8 +393,9 @@ void CCharUpdatePacket::updateWith(CCharEntity* PChar, ENTITYUPDATE type, uint8
+         packet->GrapIDTbl[3] = look->hands + 0x3000;
+         packet->GrapIDTbl[4] = look->legs + 0x4000;
+         packet->GrapIDTbl[5] = look->feet + 0x5000;
+-        packet->GrapIDTbl[6] = look->main + 0x6000;
+-        packet->GrapIDTbl[7] = look->sub + 0x7000;
++        const bool hideMelee = PChar->GetLocalVar("OX_HIDE_MELEE_LOOK") == 1;
++        packet->GrapIDTbl[6] = hideMelee ? 0x6000 : look->main + 0x6000;
++        packet->GrapIDTbl[7] = hideMelee ? 0x7000 : look->sub + 0x7000;
+         packet->GrapIDTbl[8] = look->ranged + 0x8000;
+ 
+         if (PChar->m_Costume2 != 0)
+diff --git a/src/map/packets/s2c/0x00a_login.cpp b/src/map/packets/s2c/0x00a_login.cpp
+index 15a40170..0be1724b 100644
+--- a/src/map/packets/s2c/0x00a_login.cpp
++++ b/src/map/packets/s2c/0x00a_login.cpp
+@@ -184,9 +184,10 @@ GP_SERV_COMMAND_LOGIN::GP_SERV_COMMAND_LOGIN(CCharEntity* PChar, const EventInfo
+     packet.GrapIDTbl[3] = look->hands + 0x3000;
+     packet.GrapIDTbl[4] = look->legs + 0x4000;
+     packet.GrapIDTbl[5] = look->feet + 0x5000;
+-    packet.GrapIDTbl[6] = look->main + 0x6000;
+-    packet.GrapIDTbl[7] = look->sub + 0x7000;
+-    packet.GrapIDTbl[8] = look->ranged + 0x8000;
++    const bool hideMelee = PChar->GetLocalVar("OX_HIDE_MELEE_LOOK") == 1;
++    packet.GrapIDTbl[6]  = hideMelee ? 0x6000 : look->main + 0x6000;
++    packet.GrapIDTbl[7]  = hideMelee ? 0x7000 : look->sub + 0x7000;
++    packet.GrapIDTbl[8]  = look->ranged + 0x8000;
+ 
+     packet.MusicNum[0] = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicDay() : PChar->loc.zone->GetBackgroundMusicDay();
+     packet.MusicNum[1] = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicNight() : PChar->loc.zone->GetBackgroundMusicNight();
+diff --git a/src/map/packets/s2c/0x051_grap_list.cpp b/src/map/packets/s2c/0x051_grap_list.cpp
+index 669e6d22..046bb692 100644
+--- a/src/map/packets/s2c/0x051_grap_list.cpp
++++ b/src/map/packets/s2c/0x051_grap_list.cpp
+@@ -35,9 +35,10 @@ GP_SERV_COMMAND_GRAP_LIST::GP_SERV_COMMAND_GRAP_LIST(const CCharEntity* PChar)
+     packet.GrapIDTbl[3] = look->hands + 0x3000;
+     packet.GrapIDTbl[4] = look->legs + 0x4000;
+     packet.GrapIDTbl[5] = look->feet + 0x5000;
+-    packet.GrapIDTbl[6] = look->main + 0x6000;
+-    packet.GrapIDTbl[7] = look->sub + 0x7000;
+-    packet.GrapIDTbl[8] = look->ranged + 0x8000;
++    const bool hideMelee = PChar->GetLocalVar("OX_HIDE_MELEE_LOOK") == 1;
++    packet.GrapIDTbl[6]  = hideMelee ? 0x6000 : look->main + 0x6000;
++    packet.GrapIDTbl[7]  = hideMelee ? 0x7000 : look->sub + 0x7000;
++    packet.GrapIDTbl[8]  = look->ranged + 0x8000;
+ 
+     if (PChar->m_Costume2 != 0)
+     {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+index d5ad6e1f..e0585c60 100644
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -2183,7 +2183,16 @@ auto CalculateTPFromDamageDealt(CBattleEntity* PAttacker, const bool& isZanshin,
+ 
+     if (slot == SLOT_RANGED || slot == SLOT_AMMO)
+     {
+-        return luautils::callGlobal<int32>("xi.combat.tp.getSingleRangedHitTPReturn", PAttacker);
++        int32 tp = luautils::callGlobal<int32>("xi.combat.tp.getSingleRangedHitTPReturn", PAttacker);
++        if (auto* PChar = dynamic_cast<CCharEntity*>(PAttacker); PChar != nullptr && PChar->GetLocalVar("OX_RANGED_ONLY") == 1)
++        {
++            const uint32 tpPct = PChar->GetLocalVar("OX_AUTO_RANGED_TP_PCT");
++            if (tpPct > 0 && tpPct != 100)
++            {
++                tp = static_cast<int32>((static_cast<int64>(tp) * tpPct) / 100);
++            }
++        }
++        return tp;
+     }
+     else
+     {
