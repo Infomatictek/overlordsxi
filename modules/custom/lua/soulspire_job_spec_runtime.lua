@@ -32,6 +32,9 @@ m:addOverride('xi.player.onGameIn', function(player, firstLogin, zoning)
 
     if player ~= nil and player:isPC() then
         spec.refreshPlayer(player)
+        if xi.soulspire.weaponConfig and xi.soulspire.weaponConfig.reconcileEquipment then
+            xi.soulspire.weaponConfig.reconcileEquipment(player)
+        end
     end
 end)
 
@@ -48,6 +51,9 @@ m:addOverride('xi.player.onPlayerLevelDown', function(player)
 
     if player ~= nil and player:isPC() then
         spec.refreshPlayer(player)
+        if xi.soulspire.weaponConfig and xi.soulspire.weaponConfig.reconcileEquipment then
+            xi.soulspire.weaponConfig.reconcileEquipment(player)
+        end
     end
 end)
 

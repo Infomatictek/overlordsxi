@@ -706,6 +706,9 @@ local function syncAbilitiesTable(player)
     if player.recalculateAbilitiesTable then
         player:recalculateAbilitiesTable()
     end
+    if xi.soulspire.weaponConfig and xi.soulspire.weaponConfig.reconcileEquipment then
+        xi.soulspire.weaponConfig.reconcileEquipment(player)
+    end
 end
 
 local function evalIdList(player, entry, fieldName)
@@ -1169,6 +1172,9 @@ function spec.onTraitsRebuild(player)
 
     local active = spec.refreshPlayer(player, { skipSync = true })
     spec.syncPolearmBuckler(player, active)
+    if xi.soulspire.weaponConfig and xi.soulspire.weaponConfig.reconcileEquipment then
+        xi.soulspire.weaponConfig.reconcileEquipment(player)
+    end
     if player.getPet then
         local pet = player:getPet()
         if pet ~= nil then
