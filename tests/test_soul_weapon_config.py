@@ -8,7 +8,7 @@ BRD_SPECS_LUA = ROOT / "modules/custom/lua/brd_specs.lua"
 JOB_SPECS_LUA = ROOT / "modules/custom/lua/soulspire_job_specs.lua"
 RUNTIME_LUA = ROOT / "modules/custom/lua/soulspire_job_spec_runtime.lua"
 INIT_APPEND = ROOT / "modules/init.append.txt"
-PATCH_0072 = ROOT / "patches/0072-soul-weapon-config.patch"
+PATCH_0073 = ROOT / "patches/0073-soul-weapon-config.patch"
 LUA_TEST_SUITE = ROOT / "tests/lua/soul_weapon_config.lua"
 DESIGN_DOC = ROOT / "docs/soul-weapon-configuration-system.md"
 
@@ -57,8 +57,8 @@ class SoulWeaponConfigStaticTests(unittest.TestCase):
         self.assertIn("xi.soulspire.weaponConfig.reconcileEquipment(player)", job_specs_src)
         self.assertIn("xi.soulspire.weaponConfig.reconcileEquipment(player)", runtime_src)
 
-    def test_patch_0072_exposes_authoritative_cpp_hooks_without_touching_spells(self):
-        patch_src = PATCH_0072.read_text(encoding="utf-8")
+    def test_patch_0073_exposes_authoritative_cpp_hooks_without_touching_spells(self):
+        patch_src = PATCH_0073.read_text(encoding="utf-8")
         self.assertIn("EvaluateSoulWeaponPair", patch_src)
         self.assertIn("xi.overlords.weaponConfig.evaluatePair", patch_src)
         self.assertIn("CLuaBaseEntity::checkValidEquipment", patch_src)

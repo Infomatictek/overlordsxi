@@ -167,10 +167,11 @@ Do **not** execute two full-strength independent two-handed attack rounds or sim
 
 ### 4.2 Explicitly Identified Client Rendering, Animation & Engine Limitations
 
-1. **Client Offhand Filtering (`FFXiMain.dll`)**:
-   - Retail `FFXiMain.dll` gates Sub-slot weapons by hardcoded vanilla job IDs (`NIN/DNC/THF/BLU`), ignoring `0x0AC` trait bit 18.
-   - **Phase 4 Solution**: Ashita v4 `crystalsocket` (`weapon_config.lua`) intercepts `/equip sub <item|none>` and Equipment-menu Sub-slot `Enter` to present a Soul-aware offhand picker and transmit raw `0x050` packets directly to the authoritative server. Zero per-frame scans; zero guessed native offsets.
-   - **Optional Future Enhancement (`crystaljobs.dll`)**: Eliminating the picker popup so 1H weapons appear directly inside FFXI's native Sub-slot item list requires disassembling the exact supported Windows `FFXiMain.dll` (`TS=0x6ae818b4`, `SizeOfImage=0xC17000`) to locate the Equipment menu Sub-slot filter and `/equip sub` validator, adding signature-gated hooks to `layout.h` + `crystaljobs.cpp`, and compiling via Windows CI. Do **not** guess RVAs.
+1. **Client Offhand Filtering (`FFXiMain.dll` & Native `crystaljobs.dll` Hook #24)**:
+   - Disassembly of supported `FFXiMain.dll` (`TS=0x6ae818b4`, `SizeOfImage=0xC17000`) confirmed that the native Sub-slot item menu (`0x1336CE` -> `0x21DDF0`) already lists `Slots & 0x0002` weapons and shields, and Shields (`Type == 5`) already bypass the Dual Wield check at `0x133CFF` (allowing WAR Spartan/Gladiator Polearm + Size-1 Buckler natively).
+   - Both the native Equipment menu (controller & keyboard) and `/equip sub` route through `EquipMenu::TryEquipItem` (`0x133BD0`), which gates non-vanilla Dual Wield jobs at `RVA 0x133D56` (`push 0x8b`).
+   - **Native Solution**: `crystaljobs.dll` Hook #24 (`PrologueDetour` at `0x133D56`, plus verified signatures for `0xEB5D0` `GetInventoryItem` and `0x15D210` `GetItemResource`) evaluates data-driven Soul rules synced via `CrystalJobsReplaceWeaponRules` (`CRYSTALJOBS_CAP_SOUL_SUB_WEAPON`). CrystalSocket's custom Sub-slot picker (`buckler.lua`, `##crystal_buckler`, `/equip sub` interception) has been removed; CrystalSocket handles Soul Crystal selection/management and one-shot native rule synchronization only.
+   - Server patch `0073-soul-weapon-config.patch` + `soulspire_weapon_config.lua` remain 100% authoritative.
 2. **Dual One-Handed (`dual_1h`) Animations**:
    - FFXI natively supports 1H models in `look.main` + `look.sub` and `0x028` `LEFTATTACK` swings. Visual confirmation on live BRD10/WAR5 is required in the manual checklist below to confirm clean stance/swing playback and lockstyle behavior.
 3. **Two-Handed + Shield (`twohand_shield`) Animations**:
@@ -187,17 +188,17 @@ Do **not** execute two full-strength independent two-handed attack rounds or sim
 
 Run on live Windows Ashita v4 client with character `Rin` (`BRD10/WAR5`, Soul: `Adventurer`) carrying `Wind Knife +1` (Dagger), `Onion Sword` (Sword), `Ash Club +1` (Club), and `Metal Slime Shield` (Shield):
 
-- [ ] **Equip Dagger + Sword via Equipment Menu**: Equip `Wind Knife +1` in `Main`. Highlight `Sub` in native Equipment menu and press `Enter`. Confirm the Soul Offhand Picker opens showing `Onion Sword` and `Metal Slime Shield`, and **not** `Wind Knife +1` (already in Main) or `Ash Club +1` (Club). Select `Onion Sword`; confirm it equips into `Sub`.
-- [ ] **Equip via `/equip sub` Command**: Unequip `Sub`, then run `/equip sub "Onion Sword"` -> confirms equips into `Sub`. Run `/equip sub none` -> confirms unequips `Sub`.
-- [ ] **Swap Orientation (Sword + Dagger)**: Equip `Onion Sword` in `Main`, then equip `Wind Knife +1` in `Sub` -> confirms both equip cleanly.
-- [ ] **Unauthorized Weapon Rejection**: Run `/equip sub "Ash Club +1"` (or craft raw `0x050`) -> confirms server rejects it and `Sub` does not equip the Club.
+- [ ] **Equip Dagger + Sword via Native Equipment Menu (Controller)**: Equip `Wind Knife +1` in `Main`. Highlight `Sub` in the native FFXI Equipment menu and press controller Confirm (`Enter`). Confirm the original FFXI Sub list opens directly (no custom CrystalSocket popup) showing `Onion Sword` and `Metal Slime Shield`. Select `Onion Sword`; confirm it equips into `Sub`.
+- [ ] **Equip via Native `/equip sub` Command**: Unequip `Sub`, then run `/equip sub "Onion Sword"` -> confirms native client equips into `Sub` without CrystalSocket command interception. Run `/equip sub none` -> confirms unequips `Sub`.
+- [ ] **Swap Orientation (Sword + Dagger)**: Equip `Onion Sword` in `Main`, then equip `Wind Knife +1` in `Sub` via the native Equipment menu -> confirms both equip cleanly.
+- [ ] **Unauthorized Weapon Rejection**: Attempt to equip `Ash Club +1` in `Sub` via the native Equipment menu, `/equip sub`, or raw `0x050` -> confirms native hook and server reject it.
 - [ ] **Main-Hand Swap Reconciliation**: While wearing `Wind Knife +1` + `Onion Sword`, equip `Ash Club +1` in `Main` -> confirms `Onion Sword` in `Sub` is automatically unequipped.
 - [ ] **Combat Verification**: Engage a mob with `Wind Knife +1` + `Onion Sword`. Confirm:
   - Both main-hand and offhand weapon models render visibly on `Rin`.
   - Both main-hand and offhand swing animations play cleanly without T-pose/freezing.
   - Combat log shows 2-hit melee rounds, damage from both swings, expected TP gain, and Adventurer `Cadence` stacks building.
   - Dagger and Sword Weapon Skills execute normally and honor existing WS talents.
-- [ ] **Soul Switch Reconciliation**: Switch from `Adventurer` to `Musician` (and also test clearing Soul) via Crystal Socket / `!spec` while dual-wielding -> confirms `Sub` weapon is automatically unequipped and remains safely in inventory/wardrobe.
+- [ ] **Soul Switch Reconciliation**: Switch from `Adventurer` to `Musician` (and also test clearing Soul) via CrystalSocket / `!spec` while dual-wielding -> confirms `Sub` weapon is automatically unequipped, remains safely in inventory/wardrobe, and native Sub menu rejects offhand weapons again.
 - [ ] **Zone & Relog Persistence**: Equip `Wind Knife +1` + `Onion Sword` as `Adventurer`, zone to another area, and relog -> confirms both weapons remain equipped and dual-wielding works immediately after zoning/relogging.
-- [ ] **Level Sync Reconciliation**: Sync below Lv.10 (if testable) -> confirms `Sub` weapon is automatically unequipped.
-- [ ] **Regression Check**: Verify `WAR` Spartan Polearm + Size-1 Buckler (`!buckler` / Equipment Sub picker / `/equip sub`) and vanilla `NIN` Dual Wield still work normally.
+- [ ] **Level Sync Reconciliation**: Sync below Lv.10 -> confirms `Sub` weapon is automatically unequipped and native Sub menu rejects offhand weapons.
+- [ ] **Regression Check**: Verify `WAR` Spartan Polearm + Size-1 Buckler and vanilla `NIN` Dual Wield work through the native Equipment menu with controller (and WAR Spartan rejects Size-2/3 shields).

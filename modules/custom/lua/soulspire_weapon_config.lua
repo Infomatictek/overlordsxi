@@ -8,7 +8,7 @@
 --   3. Dual two-handed      (mode = 'dual_2h')        [Phase 5: opt-in per Soul]
 --   4. Vanilla behavior     (Souls with no weaponConfig override)
 --
--- C++ hooks (patch 0072-soul-weapon-config.patch) query:
+-- C++ hooks (patch 0073-soul-weapon-config.patch) query:
 --   xi.overlords.weaponConfig.evaluatePair(player, mainItem, subItem)
 -- Return codes:
 --   0  (VANILLA)          -> No Soul override applies; execute stock LSB rules.
@@ -510,7 +510,7 @@ function WC.reconcileEquipment(player)
 
     local subBefore = player.getEquippedItem and player:getEquippedItem(xi.slot.SUB) or nil
 
-    -- Prefer C++ CheckValidEquipment when patch 0072 is compiled in.
+    -- Prefer C++ CheckValidEquipment when patch 0073 is compiled in.
     if player.checkValidEquipment then
         player:checkValidEquipment()
     end
