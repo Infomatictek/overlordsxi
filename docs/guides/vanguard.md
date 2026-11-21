@@ -1,25 +1,40 @@
 # Vanguard (PUP) — Playstyle Guide
 
 ## At a Glance
-Vanguard transforms Puppetmaster into a **Valoredge Automaton proxy-tank** (`Tank` tier: -60% Master damage dealt, -70% Automaton damage dealt, 0.25x Automaton mobskill damage). Your Valoredge Automaton spawns at full HP/MP with **100% Overload Immunity** and **100% AoE/Conal/Magic/Breath Immunity**, holding hate via 12s **Strobe**, 18s **Shield Bash**, and your **Hydraulic Slam**, while your H2H Weaponskills heal it 18% and give you 10% Stoneskins!
+Vanguard is a **Puppetmaster proxy tank**. Your **Valoredge Automaton** takes the lead in holding the enemy's attention while you maintain it with **Hydraulic Slam**, Hand-to-Hand weapon skills, and emergency support. **Clockwork Bulwark** links your survival to the pet and temporarily splits damage, and **Ventriloquy** repairs a dangerous enmity mismatch. The key challenge is managing both combatants as a single defensive unit rather than treating the automaton as an expendable damage pet.
 
 ## Setup & Gear
-- **Required Weapon:** **Hand-to-Hand (or bare fists).** Equipping H2H unlocks almost all Master & Pet HP, DEF, VIT/DEX, Guard, DT-, Enmity, Shield Block mods, and `Hydraulic Slam`.
-- **Forced Frame/Head:** Automatically sets **Valoredge Frame + Valoredge Head**. (100% Overload Immunity is permanent — Maneuvers never overload.)
+- **Unlock:** Equip the Vanguard Soul Crystal or use `!spec set vanguard` at Lv. 10.
+- **Weapon:** Main-hand **Hand-to-Hand**, or use unarmed attacks when supported. Most special defensive passives and Hydraulic Slam check this eligibility.
+- **Automaton:** The Soul favors **Valoredge Frame and Head**, automatically enforcing that tank-oriented configuration. Keep pet HP and threat visible.
+- **Stats:** HP, Defense, VIT, Guard, Enmity, Damage Taken reduction and enough Accuracy to land the weapon skills that repair the pet.
+- **Party role:** Explain that the automaton is the primary tank and that your own HP remains relevant during shared damage windows.
 
 ## How to Play (Step-by-Step)
-1. **Deploy Valoredge:** Press `Activate` or `Deus Ex Automata` (both **15s CD** at full HP/MP) and `Deploy`. Keep **Earth / Fire / Light** Maneuvers active as needed (`Cooldown` is 30s CD, Maneuvers 10s CD).
-2. **Anchor Hate on Valoredge:** Your Automaton automatically uses single-target **Strobe** (12s CD, high enmity + Blind) and **Shield Bash** (18s CD, 2s Stun + enmity) and sustains with **Cannibal Blade** (20% heal). Use `Hydraulic Slam` (22s CD, 6y, H2H required) for a 2s Stun, `Breach` (`-15% DEF/-15 MDEF`), and a huge threat spike transferred **directly onto Valoredge**.
-3. **Weave H2H WSs:** Every **H2H Weaponskill** heals Valoredge for **18% Max HP**, grants **you a 10% Max HP Stoneskin** (12s), and inflicts `Cripple` (`-15% ATK/MATK, -20 ACC`).
-4. **Damage Split, Hate Swap & Emergency Tools:**
-   - Press `Clockwork Bulwark` (35s CD, 12s): `-15% DT` + Knockback Immunity on both, AND splits **50% of damage** taken between you and Valoredge at `0.75x` reduced potency.
-   - Use `Ventriloquy` (20s CD) to swap hate between you and Valoredge + add `+25% VE` to the new hate leader + gain `-18% DT` (8s).
-   - Use `Repair` (25s CD, **0 oil cost**) to heal Valoredge **50% HP**, yourself **18% HP**, and cleanse 1 debuff on each. Pop `Overdrive` (30s) for rapid 3s Shield Bash / Strobe ticks and `-35%` Pet DT.
+1. **Summon Valoredge:** Use **Activate** or **Deus Ex Automata** to call the tank automaton, then **Deploy** it on the boss. The Soul gives the pet fast reactivation and strong overload prevention.
+2. **Establish pet threat:** Valoredge uses its enhanced **Strobe** and **Shield Bash** actions for frequent single-target enmity and control.
+3. **Use Hydraulic Slam:** Strike one nearby enemy with **Hydraulic Slam** for added threat, a brief stun and **Breach**. The ability's key feature is directing a major threat increase onto Valoredge.
+4. **Maintain Hand-to-Hand weapon skills:** Your eligible weapon skills heal the automaton for **18% maximum HP**, give you a short **10% maximum-HP Stoneskin** and can inflict **Cripple** on the quarry.
+5. **Activate Clockwork Bulwark for shared defense:** During this timed window, the master and Valoredge gain protective effects and eligible damage can be split between them at reduced potency.
+6. **Use Ventriloquy when hate shifts:** If an enemy unexpectedly turns to you or the wrong combatant, use **Ventriloquy** to transfer/swap the threat structure and gain a brief personal defensive benefit.
+7. **Repair before the pet collapses:** **Repair** consumes no Automaton Oil in Vanguard's kit and restores substantial pet HP plus some master HP, with limited cleansing.
+8. **Plan Overdrive:** During **Overdrive**, Valoredge can run much more aggressive Strobe/Shield Bash cycles and gains extra protection. Save it for sustained boss danger.
 
 ## Key Mechanics & Stacks
-- **AoE/Boss Breath Immunity:** Valoredge takes **0** damage from Magic, Breath, and any boss AoE/Conal where the boss isn't explicitly targeting it — making it rock-solid even against AoE-heavy bosses.
-- **0 Oil & 0 Overload:** You never need Automaton Oil for `Repair`, and `PREVENT_OVERLOAD` prevents overload permanently.
+- **Valoredge tank configuration:** The Soul enforces the appropriate Frame/Head and grants strong overload prevention. Its special Strobe and Shield Bash emphasize single-target threat.
+- **Pet defensive immunity:** Valoredge has special protection against qualifying AoE/conal and magical/breath events, particularly when the enemy is not explicitly targeting it. This does not make the master immune to those attacks.
+- **Hydraulic Slam:** **22-second recast**, **6-yalm** Hand-to-Hand action; inflicts a short stun and Breach while reinforcing enmity directly on the automaton.
+- **Hand-to-Hand weapon-skill loop:** Eligible weapon skills heal Valoredge for **18% maximum HP**, give you **10% maximum-HP Stoneskin for 12 seconds**, and can apply Cripple.
+- **Clockwork Bulwark:** **35-second recast**, **12-second duration**; adds damage reduction, knockback immunity and shared-damage behavior between master and pet.
+- **Ventriloquy:** Specialized **20-second recast** to manage hate, plus a short personal damage-reduction effect.
+- **Repair:** Modified **25-second recast**, no oil required; heals Valoredge by about **50% HP**, master by **18% HP**, and removes one eligible debuff.
+- **Overdrive:** A 30-second pet reinforcement window with more frequent threat actions and substantial pet damage reduction.
+- **Progression:** At Lv. 10/30/50/70, Vanguard's Hand-to-Hand-dependent HP, Defense, Enmity, Guard and mitigation bonuses improve. Those passives do not reliably apply when the loadout is invalid.
 
 ## Common Mistakes (Don't Do This)
-- **NEVER unequip Hand-to-Hand:** Swapping away from H2H drops all your HP/DEF/DT/Enmity/Guard passives and locks `Hydraulic Slam`.
-- **Don't forget `Ventriloquy` is a defensive cooldown too:** On a 20s CD, it fixes aggro splits AND grants `-18% DT` (`Sentinel`) for 8s.
+- **Equipping an unrelated weapon:** Without Hand-to-Hand eligibility, important tank passives and Hydraulic Slam stop working.
+- **Allowing the automaton to die:** Losing Valoredge destroys your primary enmity engine and forces an emergency recovery.
+- **Ignoring the master's HP during Bulwark:** The damage-sharing system can expose you even when the pet appears to be tanking well.
+- **Relying on automatic Strobe alone:** Hydraulic Slam, weapon-skill healing and Ventriloquy are key parts of maintaining stable threat.
+- **Using Repair too late:** Restore Valoredge before an imminent boss spike rather than after it falls.
+- **Assuming AoE protection makes the encounter trivial:** The immunity has qualifying conditions and does not automatically protect the player or party.
