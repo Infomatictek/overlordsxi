@@ -44,6 +44,17 @@ WC.MODE =
 -- Registry keyed by [jobId][normalizedSpecKey] = configTable
 WC.registry = WC.registry or {}
 
+-- Reusable client/server visual override profiles (retail 1H model IDs so dual 2H
+-- plays smooth 1H dual-wield animations while mechanically remaining 2H weapons).
+WC.VISUAL_PROFILES =
+{
+    compact_dual_axe =
+    {
+        mainModel = 84, -- Retail 1H Axe model (Viking Axe / Darksteel Axe)
+        subModel  = 84,
+    },
+}
+
 local SKILL_TO_CATEGORY = {}
 local ONE_HANDED_CATEGORIES =
 {
@@ -232,6 +243,7 @@ local function compilePairing(raw)
         mainItemIds   = normalizeIdSet(raw.mainItemIds),
         subItemIds    = normalizeIdSet(raw.subItemIds),
         enabled       = raw.enabled,
+        visualProfile = normalizeKey(raw.visualProfile),
     }
 end
 
@@ -240,23 +252,47 @@ local function compileConfig(raw)
         return nil
     end
 
+    local topMode = normalizeKey(raw.mode)
     local pairings = {}
     for _, p in ipairs(raw.pairings or {}) do
         local cp = compilePairing(p)
         if cp ~= nil then
+            if cp.visualProfile == nil then
+                cp.visualProfile = normalizeKey(raw.visualProfile)
+            end
             table.insert(pairings, cp)
+        end
+    end
+
+    -- Allow declarative top-level mode + mainWhitelist/subWhitelist without duplicating pairings.
+    if #pairings == 0 and topMode ~= nil and topMode ~= WC.MODE.VANILLA and raw.mainWhitelist ~= nil and raw.subWhitelist ~= nil then
+        local synthesized = compilePairing(
+        {
+            main          = raw.mainWhitelist,
+            sub           = raw.subWhitelist,
+            mode          = topMode,
+            minLevel      = raw.minLevel,
+            subShieldSize = raw.subShieldSize,
+            enabled       = raw.enabled ~= false,
+            visualProfile = raw.visualProfile,
+        })
+        if synthesized ~= nil then
+            table.insert(pairings, synthesized)
         end
     end
 
     return
     {
+        mode                            = topMode or WC.MODE.VANILLA,
         minLevel                        = tonumber(raw.minLevel) or nil,
         mainWhitelist                   = normalizeSet(raw.mainWhitelist),
         subWhitelist                    = normalizeSet(raw.subWhitelist),
+        subShieldSize                   = raw.subShieldSize,
         pairings                        = pairings,
         restrictSoulDualWieldToPairings = raw.restrictSoulDualWieldToPairings ~= false,
         allowVanillaShield              = raw.allowVanillaShield ~= false,
         allowAdvancedModes              = raw.allowAdvancedModes == true,
+        visualProfile                   = normalizeKey(raw.visualProfile),
         combat                          = type(raw.combat) == 'table' and raw.combat or {},
     }
 end
@@ -501,12 +537,134 @@ function WC.evaluatePair(player, mainItem, subItem)
     return WC.RESULT.VANILLA
 end
 
+-- Returns (pairing, cfg, lvl) when (mainItem, subItem) matches an active Soul weapon pairing.
+function WC.getActivePairing(player, mainItem, subItem)
+    local cfg, _active, lvl = WC.getActiveConfig(player)
+    if cfg == nil then
+        return nil, nil, lvl
+    end
+
+    if mainItem == nil and player.getEquippedItem then
+        mainItem = player:getEquippedItem(xi.slot.MAIN)
+    end
+    if subItem == nil and player.getEquippedItem then
+        subItem = player:getEquippedItem(xi.slot.SUB)
+    end
+
+    local mainInfo = WC.classifyItem(mainItem)
+    local subInfo  = WC.classifyItem(subItem)
+    if subInfo.kind == 'none' then
+        return nil, cfg, lvl
+    end
+
+    for _, pairing in ipairs(cfg.pairings) do
+        if pairingMatches(pairing, cfg, lvl, mainInfo, subInfo) then
+            return pairing, cfg, lvl
+        end
+    end
+
+    return nil, cfg, lvl
+end
+
+-- Syncs a lightweight local var flag so C++ combat hotpaths skip Lua when no Soul
+-- weapon combat scaling profile is active.
+function WC.syncCombatFlag(player)
+    if player == nil or (player.isPC and not player:isPC()) or not player.setLocalVar then
+        return false
+    end
+
+    local cfg = WC.getActiveConfig(player)
+    local hasCombatScaling = false
+    if cfg ~= nil and type(cfg.combat) == 'table' then
+        local c = cfg.combat
+        if (c.mainDamageScale ~= nil and c.mainDamageScale ~= 1.0) or
+            (c.subDamageScale ~= nil and c.subDamageScale ~= 1.0) or
+            (c.delayScale ~= nil and c.delayScale ~= 1.0) or
+            (c.tpScale ~= nil and c.tpScale ~= 1.0) or
+            c.multiAttackPolicy == 'main_only' or
+            (c.twoHandedStatScale ~= nil and c.twoHandedStatScale ~= 1.0) or
+            (c.shieldBlockScale ~= nil and c.shieldBlockScale ~= 1.0) then
+            hasCombatScaling = true
+        end
+    end
+
+    player:setLocalVar('OX_WEAPON_CFG_ACTIVE', hasCombatScaling and 1 or 0)
+    return hasCombatScaling
+end
+
+-- Returns combat scaling parameters for C++ hooks (CAttack, CAttackRound, GetWeaponDelay, CalculateBaseTP)
+-- ONLY when an active Soul pairing with combat modifiers is currently equipped.
+function WC.getCombatProfile(player)
+    local pairing, cfg = WC.getActivePairing(player)
+    if pairing == nil or cfg == nil or type(cfg.combat) ~= 'table' then
+        return nil
+    end
+
+    local c = cfg.combat
+    if pairing.mode == WC.MODE.DUAL_2H then
+        return
+        {
+            active            = true,
+            mode              = pairing.mode,
+            mainDamageScale   = tonumber(c.mainDamageScale) or 1.0,
+            subDamageScale    = tonumber(c.subDamageScale) or 1.0,
+            delayScale        = tonumber(c.delayScale) or 1.0,
+            tpScale           = tonumber(c.tpScale) or 1.0,
+            subMultiAttackOff = (c.multiAttackPolicy == 'main_only'),
+            wsUsesMainOnly    = (c.wsUsesMainOnly ~= false),
+        }
+    elseif pairing.mode == WC.MODE.TWOHAND_SHIELD then
+        local statScale = tonumber(c.twoHandedStatScale) or 1.0
+        local blockScale = tonumber(c.shieldBlockScale) or 1.0
+        if statScale == 1.0 and blockScale == 1.0 then
+            return nil
+        end
+        return
+        {
+            active            = true,
+            mode              = pairing.mode,
+            mainDamageScale   = statScale,
+            subDamageScale    = 1.0,
+            delayScale        = 1.0,
+            tpScale           = 1.0,
+            subMultiAttackOff = false,
+            wsUsesMainOnly    = true,
+            shieldBlockScale  = blockScale,
+        }
+    end
+
+    return nil
+end
+
+-- Returns (mainModel, subModel) override when the active Soul pairing specifies a visualProfile.
+-- Returns (0, 0) when standard retail item models should be used.
+function WC.getVisualModels(player)
+    local pairing, cfg = WC.getActivePairing(player)
+    if pairing == nil or cfg == nil then
+        return 0, 0
+    end
+
+    local profileName = pairing.visualProfile or cfg.visualProfile
+    if profileName == nil then
+        return 0, 0
+    end
+
+    local profile = WC.VISUAL_PROFILES[profileName]
+    if profile == nil then
+        return 0, 0
+    end
+
+    return tonumber(profile.mainModel) or 0, tonumber(profile.subModel) or 0
+end
+
 -- Reconciles currently equipped items against active Soul weapon rules and traits.
 -- Safely unequips invalid offhand gear without deleting or modifying inventory.
 function WC.reconcileEquipment(player)
     if player == nil or (player.isPC and not player:isPC()) then
         return false
     end
+
+    WC.syncCombatFlag(player)
 
     local subBefore = player.getEquippedItem and player:getEquippedItem(xi.slot.SUB) or nil
 
@@ -519,24 +677,34 @@ function WC.reconcileEquipment(player)
     local mainItem = player.getEquippedItem and player:getEquippedItem(xi.slot.MAIN) or nil
     local subItem  = player.getEquippedItem and player:getEquippedItem(xi.slot.SUB) or nil
     if subItem ~= nil then
-        local subInfo = WC.classifyItem(subItem)
+        local subInfo  = WC.classifyItem(subItem)
+        local mainInfo = WC.classifyItem(mainItem)
         if subInfo.kind == 'weapon' then
             local decision = WC.evaluatePair(player, mainItem, subItem)
             local dwTrait  = (xi.trait and xi.trait.DUAL_WIELD) or 18
             local hasDW    = player.hasTrait and player:hasTrait(dwTrait) or false
-            local mainInfo = WC.classifyItem(mainItem)
 
             local invalid = false
             if decision == WC.RESULT.DENY then
                 invalid = true
             elseif decision == WC.RESULT.VANILLA then
-                if mainItem == nil or mainInfo.isTwoHanded or not hasDW then
+                if mainItem == nil or mainInfo.isTwoHanded or subInfo.isTwoHanded or not hasDW then
                     invalid = true
                 end
             end
 
             if invalid and player.unequipItem then
                 player:unequipItem(xi.slot.SUB)
+            end
+        elseif subInfo.isShield and mainInfo.isTwoHanded then
+            local decision = WC.evaluatePair(player, mainItem, subItem)
+            if decision ~= WC.RESULT.ALLOW_SUB_NON_DW then
+                local legacyPolearmBuckler = player.getMainJob and player:getMainJob() == (xi.job and xi.job.WAR or 1) and
+                    player.getLocalVar and player:getLocalVar('OX_POLEARM_BUCKLER') == 1 and
+                    mainInfo.category == 'polearm' and subInfo.shieldSize == 1
+                if not legacyPolearmBuckler and player.unequipItem then
+                    player:unequipItem(xi.slot.SUB)
+                end
             end
         end
     end
@@ -546,11 +714,12 @@ function WC.reconcileEquipment(player)
 end
 
 -----------------------------------
--- Phase 4 First Vertical Slice: BRD Adventurer (Dagger / Sword Dual Wield)
+-- Template 1 Reference (dual_1h): BRD Adventurer (Dagger / Sword Dual Wield)
 -----------------------------------
 if xi.job and xi.job.BRD then
     WC.register(xi.job.BRD, 'adventurer',
     {
+        mode     = WC.MODE.DUAL_1H,
         minLevel = 10,
         pairings =
         {
@@ -562,6 +731,42 @@ if xi.job and xi.job.BRD then
         },
         restrictSoulDualWieldToPairings = true,
         allowVanillaShield              = true,
+    })
+end
+
+-----------------------------------
+-- Template 2 Prototype (dual_2h): WAR Berserker (Twin Executioner Axes)
+-----------------------------------
+if xi.job and xi.job.WAR then
+    WC.register(xi.job.WAR, 'berserker',
+    {
+        mode               = WC.MODE.DUAL_2H,
+        minLevel           = 10,
+        allowAdvancedModes = true,
+        mainWhitelist      = { 'great_axe' },
+        subWhitelist       = { 'great_axe' },
+        pairings           =
+        {
+            {
+                main          = { 'great_axe' },
+                sub           = { 'great_axe' },
+                mode          = WC.MODE.DUAL_2H,
+                enabled       = true,
+                visualProfile = 'compact_dual_axe',
+            },
+        },
+        restrictSoulDualWieldToPairings = true,
+        allowVanillaShield              = true,
+        visualProfile                   = 'compact_dual_axe',
+        combat                          =
+        {
+            mainDamageScale   = 0.72,
+            subDamageScale    = 0.52,
+            delayScale        = 0.58,
+            tpScale           = 0.85,
+            multiAttackPolicy = 'main_only',
+            wsUsesMainOnly    = true,
+        },
     })
 end
 

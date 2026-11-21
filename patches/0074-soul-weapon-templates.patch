@@ -1,0 +1,389 @@
+diff --git a/src/map/attack.cpp b/src/map/attack.cpp
+--- a/src/map/attack.cpp
++++ b/src/map/attack.cpp
+@@ -28,6 +28,7 @@
+ #include "entities/battle_entity.h"
+ #include "items/item_weapon.h"
+ #include "job_points.h"
++#include "lua/luautils.h"
+ #include "monstrosity.h"
+ #include "status_effect_container.h"
+ #include "utils/puppetutils.h"
+@@ -561,6 +562,23 @@ void CAttack::ProcessDamage()
+         if (result.valid())
+         {
+             m_damage = result.get<int32>(0);
++
++            if (m_damage > 0)
++            {
++                if (auto* PChar = dynamic_cast<CCharEntity*>(m_attacker))
++                {
++                    const auto profile = luautils::GetSoulWeaponCombatProfile(PChar);
++                    if (profile.active)
++                    {
++                        const SLOTTYPE atkSlot = static_cast<SLOTTYPE>(GetWeaponSlot());
++                        const float    scale   = (atkSlot == SLOT_SUB) ? profile.subDamageScale : profile.mainDamageScale;
++                        if (scale != 1.0f && (atkSlot == SLOT_MAIN || atkSlot == SLOT_SUB))
++                        {
++                            m_damage = std::max<int32>(1, static_cast<int32>(std::floor(m_damage * scale)));
++                        }
++                    }
++                }
++            }
+ 
+             // Try skill up.
+             if (m_damage > 0)
+@@ -755,5 +770,21 @@ void CAttack::ProcessDamage()
+     // Absorption isn't possible at this point in the calculation, so zero it.
+     m_damage = std::max(m_damage, 0);
+ 
++    if (m_damage > 0 && (slot == SLOT_MAIN || slot == SLOT_SUB))
++    {
++        if (auto* PChar = dynamic_cast<CCharEntity*>(m_attacker))
++        {
++            const auto profile = luautils::GetSoulWeaponCombatProfile(PChar);
++            if (profile.active)
++            {
++                const float scale = (slot == SLOT_SUB) ? profile.subDamageScale : profile.mainDamageScale;
++                if (scale != 1.0f)
++                {
++                    m_damage = std::max<int32>(1, static_cast<int32>(std::floor(m_damage * scale)));
++                }
++            }
++        }
++    }
++
+     // Try skill up.
+     if (m_damage > 0)
+diff --git a/src/map/attackround.cpp b/src/map/attackround.cpp
+--- a/src/map/attackround.cpp
++++ b/src/map/attackround.cpp
+@@ -23,6 +23,7 @@
+ #include "data/enums/mob_mod.h"
+ #include "items/item_weapon.h"
+ #include "items/transactions/item_claim.h"
++#include "lua/luautils.h"
+ #include "packets/s2c/0x01d_item_same.h"
+ #include "status_effect_container.h"
+ 
+@@ -303,6 +304,16 @@ void CAttackRound::CreateAttacks(CItemWeapon* PWeapon, PHYSICAL_ATTACK_DIRECTION
+         if (!isMainHand)
+         {
+             doubleAttack += m_attacker->getMod(xi::Mod::EXTRA_DUAL_WIELD_ATTACK);
++
++            const auto profile = luautils::GetSoulWeaponCombatProfile(PChar);
++            if (profile.active && profile.subMultiAttackOff)
++            {
++                doubleAttack     = 0;
++                tripleAttack     = 0;
++                quadAttack       = 0;
++                occAttTwiceRate  = 0;
++                occAttThriceRate = 0;
++            }
+         }
+     }
+ 
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -514,6 +514,15 @@ auto CBattleEntity::GetWeaponDelay(bool tp) -> uint32
+         {
+             weaponDelay         = weaponDelay + subweapon->getDelay();
+             dualWieldMultiplier = 1.0f - getMod(xi::Mod::DUAL_WIELD) / 100.0f;
++
++            if (auto* PChar = dynamic_cast<CCharEntity*>(this))
++            {
++                const auto profile = luautils::GetSoulWeaponCombatProfile(PChar);
++                if (profile.active && profile.delayScale != 1.0f && profile.delayScale > 0.0f)
++                {
++                    weaponDelay = static_cast<uint16>(std::max<float>(1.0f, std::floor(weaponDelay * profile.delayScale)));
++                }
++            }
+         }
+ 
+         // Handle Hundred Fists directly.
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -5625,6 +5625,25 @@ void CLuaBaseEntity::checkValidEquipment()
+     }
+ }
+ 
++auto CLuaBaseEntity::getWeaponDelay(bool tp) -> uint32
++{
++    if (auto* PBattleEntity = dynamic_cast<CBattleEntity*>(m_PBaseEntity))
++    {
++        return PBattleEntity->GetWeaponDelay(tp);
++    }
++    return 0;
++}
++
++auto CLuaBaseEntity::getWeaponLook() -> std::tuple<uint16, uint16>
++{
++    if (m_PBaseEntity->objtype == TYPE_PC)
++    {
++        const auto* PChar = static_cast<const CCharEntity*>(m_PBaseEntity);
++        return { PChar->look.main, PChar->look.sub };
++    }
++    return { 0, 0 };
++}
++
+ /************************************************************************
+  *  Function: setEquipBlock()
+  *  Purpose : Blocks player from equipping gear
+@@ -21366,6 +21381,8 @@ void CLuaBaseEntity::Register()
+     SOL_REGISTER("equipItem", CLuaBaseEntity::equipItem);
+     SOL_REGISTER("unequipItem", CLuaBaseEntity::unequipItem);
+     SOL_REGISTER("checkValidEquipment", CLuaBaseEntity::checkValidEquipment);
++    SOL_REGISTER("getWeaponDelay", CLuaBaseEntity::getWeaponDelay);
++    SOL_REGISTER("getWeaponLook", CLuaBaseEntity::getWeaponLook);
+ 
+     SOL_REGISTER("setEquipBlock", CLuaBaseEntity::setEquipBlock);
+     SOL_REGISTER("lockEquipSlot", CLuaBaseEntity::lockEquipSlot);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -305,6 +305,8 @@ public:
+     void equipItem(uint16 itemID, const sol::object& container, const sol::object& equipSlot) const;
+     void unequipItem(uint8 slotID);
+     void checkValidEquipment();
++    auto getWeaponDelay(bool tp) -> uint32;
++    auto getWeaponLook() -> std::tuple<uint16, uint16>;
+ 
+     void setEquipBlock(uint16 equipBlock);
+     void lockEquipSlot(uint8 slot);
+diff --git a/src/map/lua/luautils.cpp b/src/map/lua/luautils.cpp
+--- a/src/map/lua/luautils.cpp
++++ b/src/map/lua/luautils.cpp
+@@ -7089,4 +7089,80 @@ auto EvaluateSoulWeaponPair(CCharEntity* PChar, CItem* PMain, CItem* PSub) -> in
+     return 0;
+ }
+ 
++auto GetSoulWeaponCombatProfile(CCharEntity* PChar) -> SoulWeaponCombatProfile
++{
++    SoulWeaponCombatProfile profile{};
++    if (PChar == nullptr || PChar->GetLocalVar("OX_WEAPON_CFG_ACTIVE") == 0)
++    {
++        return profile;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.weaponConfig.getCombatProfile");
++    if (!func.valid())
++    {
++        return profile;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetSoulWeaponCombatProfile: %s", err.what());
++        return profile;
++    }
++
++    const sol::object retObj = result.get<sol::object>();
++    if (!retObj.valid() || !retObj.is<sol::table>())
++    {
++        return profile;
++    }
++
++    const sol::table tbl      = retObj.as<sol::table>();
++    profile.active            = tbl.get_or("active", false);
++    profile.mainDamageScale   = tbl.get_or("mainDamageScale", 1.0f);
++    profile.subDamageScale    = tbl.get_or("subDamageScale", 1.0f);
++    profile.delayScale        = tbl.get_or("delayScale", 1.0f);
++    profile.tpScale           = tbl.get_or("tpScale", 1.0f);
++    profile.subMultiAttackOff = tbl.get_or("subMultiAttackOff", false);
++    return profile;
++}
++
++auto GetSoulWeaponVisualModels(CCharEntity* PChar, uint16& mainModel, uint16& subModel) -> bool
++{
++    mainModel = 0;
++    subModel  = 0;
++    if (PChar == nullptr)
++    {
++        return false;
++    }
++
++    const auto func = detail::findGlobalLuaFunction("xi.overlords.weaponConfig.getVisualModels");
++    if (!func.valid())
++    {
++        return false;
++    }
++
++    const auto result = func(PChar);
++    if (!result.valid())
++    {
++        const sol::error err = result;
++        ShowError("luautils::GetSoulWeaponVisualModels: %s", err.what());
++        return false;
++    }
++
++    if (result.return_count() >= 2)
++    {
++        const sol::object mObj = result.get<sol::object>(0);
++        const sol::object sObj = result.get<sol::object>(1);
++        if (mObj.valid() && mObj.is<uint16>() && sObj.valid() && sObj.is<uint16>())
++        {
++            mainModel = mObj.as<uint16>();
++            subModel  = sObj.as<uint16>();
++            return mainModel != 0 && subModel != 0;
++        }
++    }
++
++    return false;
++}
++
+ }; // namespace luautils
+diff --git a/src/map/lua/luautils.h b/src/map/lua/luautils.h
+--- a/src/map/lua/luautils.h
++++ b/src/map/lua/luautils.h
+@@ -592,6 +592,19 @@ void OnTalentPacket(CCharEntity* PChar, uint8 operation, uint16 wsId, uint8 arg1
+ auto ExecuteChiRangedAttack(CCharEntity* PChar, CBattleEntity* PTarget, uint8 swingIndex) -> int32;
+ auto OnPreTakeDamage(CBattleEntity* PDefender, int32 amount, CBattleEntity* PAttacker, uint16 attackType, uint16 damageType) -> int32;
+ void OnUtsusemiShadowBroken(CBattleEntity* PDefender, CBattleEntity* PAttacker, uint16 shadowsBroken);
+ auto EvaluateSoulWeaponPair(CCharEntity* PChar, CItem* PMain, CItem* PSub) -> int32;
+ 
++struct SoulWeaponCombatProfile
++{
++    bool  active            = false;
++    float mainDamageScale   = 1.0f;
++    float subDamageScale    = 1.0f;
++    float delayScale        = 1.0f;
++    float tpScale           = 1.0f;
++    bool  subMultiAttackOff = false;
++};
++
++auto GetSoulWeaponCombatProfile(CCharEntity* PChar) -> SoulWeaponCombatProfile;
++auto GetSoulWeaponVisualModels(CCharEntity* PChar, uint16& mainModel, uint16& subModel) -> bool;
++
+ }; // namespace luautils
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -1758,5 +1758,17 @@ auto CalculateBaseTP(CBattleEntity* PEntity, int32 delay) -> int16
+         baseTPReturn = calculateBaseTPGainFunc(PEntity, delay);
+     }
+ 
++    if (baseTPReturn > 0)
++    {
++        if (auto* PChar = dynamic_cast<CCharEntity*>(PEntity))
++        {
++            const auto profile = luautils::GetSoulWeaponCombatProfile(PChar);
++            if (profile.active && profile.tpScale != 1.0f && profile.tpScale > 0.0f)
++            {
++                baseTPReturn = static_cast<int16>(std::max<int32>(1, static_cast<int32>(std::floor(baseTPReturn * profile.tpScale))));
++            }
++        }
++    }
++
+     return baseTPReturn;
+ }
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -1974,6 +1974,25 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate,
+                 PChar->health.tp           = 0;
+                 PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
+                 BuildingCharWeaponSkills(PChar);
+                 UpdateWeaponStyle(PChar, equipSlotID, nullptr);
++                {
++                    uint16 mainModel = 0;
++                    uint16 subModel  = 0;
++                    if (luautils::GetSoulWeaponVisualModels(PChar, mainModel, subModel))
++                    {
++                        PChar->look.main = mainModel;
++                        PChar->look.sub  = subModel;
++                        PChar->SetLocalVar("OX_WEAPON_VISUAL_ACTIVE", 1);
++                    }
++                    else if (PChar->GetLocalVar("OX_WEAPON_VISUAL_ACTIVE") == 1)
++                    {
++                        PChar->SetLocalVar("OX_WEAPON_VISUAL_ACTIVE", 0);
++                        if (auto* PMain = PChar->getEquip(SLOT_MAIN); PMain && PMain->isType(ITEM_EQUIPMENT))
++                        {
++                            PChar->look.main = PMain->getModelId();
++                        }
++                        PChar->look.sub = 0;
++                    }
++                }
+             }
+             break;
+@@ -2030,6 +2071,22 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate,
+                 PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
+                 BuildingCharWeaponSkills(PChar);
+                 UpdateWeaponStyle(PChar, equipSlotID, nullptr);
++                if (PChar->GetLocalVar("OX_WEAPON_VISUAL_ACTIVE") == 1)
++                {
++                    uint16 mainModel = 0;
++                    uint16 subModel  = 0;
++                    if (luautils::GetSoulWeaponVisualModels(PChar, mainModel, subModel))
++                    {
++                        PChar->look.main = mainModel;
++                        PChar->look.sub  = subModel;
++                    }
++                    else
++                    {
++                        PChar->SetLocalVar("OX_WEAPON_VISUAL_ACTIVE", 0);
++                        auto* PSub      = PChar->getEquip(SLOT_SUB);
++                        PChar->look.sub = (PSub && PSub->isType(ITEM_EQUIPMENT)) ? PSub->getModelId() : 0;
++                    }
++                }
+             }
+             break;
+         }
+@@ -2105,5 +2162,8 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+     // When equipping PItem - Remove all equip in slots which are also restricted by PItem
+     // e.g. Equipping a Black Cloak should remove head equipment
+-    if (PItem->getEquipSlotId() & (1 << equipSlotID))
++    const bool allowSoulSub2H = equipSlotID == SLOT_SUB &&
++                                (PItem->getEquipSlotId() & (1 << SLOT_MAIN)) != 0 &&
++                                luautils::EvaluateSoulWeaponPair(PChar, PChar->getEquip(SLOT_MAIN), PItem) == 1;
++    if ((PItem->getEquipSlotId() & (1 << equipSlotID)) || allowSoulSub2H)
+     {
+         auto removeSlotID = PItem->getRemoveSlotId();
+@@ -2345,6 +2405,33 @@ auto EquipArmor(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 conta
+             return false;
+         }
+ 
++        if (equipSlotID == SLOT_MAIN || equipSlotID == SLOT_SUB)
++        {
++            uint16 mainModel = 0;
++            uint16 subModel  = 0;
++            if (luautils::GetSoulWeaponVisualModels(PChar, mainModel, subModel))
++            {
++                PChar->look.main = mainModel;
++                PChar->look.sub  = subModel;
++                if (!PChar->getStyleLocked())
++                {
++                    PChar->mainlook.main = mainModel;
++                    PChar->mainlook.sub  = subModel;
++                }
++                PChar->SetLocalVar("OX_WEAPON_VISUAL_ACTIVE", 1);
++            }
++            else if (PChar->GetLocalVar("OX_WEAPON_VISUAL_ACTIVE") == 1)
++            {
++                PChar->SetLocalVar("OX_WEAPON_VISUAL_ACTIVE", 0);
++                if (auto* PMain = PChar->getEquip(SLOT_MAIN); PMain && PMain->isType(ITEM_EQUIPMENT))
++                {
++                    PChar->look.main = PMain->getModelId();
++                }
++                auto* PSub      = PChar->getEquip(SLOT_SUB);
++                PChar->look.sub = (PSub && PSub->isType(ITEM_EQUIPMENT)) ? PSub->getModelId() : 0;
++            }
++        }
++
+         // Changed visible equipment
+         if (equipSlotID >= SLOT_HEAD && equipSlotID <= SLOT_FEET)
+         {
+@@ -3318,6 +3424,9 @@ void CheckValidEquipment(CCharEntity* PChar, bool isDelevel /* = false */)
+         const bool jobEligible = (PItem->getJobs() & (1 << (static_cast<uint8>(PChar->GetMJob()) - 1))) ||
+                                  (slotID == SLOT_MAIN && (valkyrie::canEquipPolearm(PChar, PItem) || phantom::canEquipKatana(PChar, PItem)));
+-        if (jobEligible && (PItem->getEquipSlotId() & (1 << slotID)))
++        const bool allowSoulSub2H = slotID == SLOT_SUB &&
++                                    (PItem->getEquipSlotId() & (1 << SLOT_MAIN)) != 0 &&
++                                    luautils::EvaluateSoulWeaponPair(PChar, PChar->getEquip(SLOT_MAIN), PItem) == 1;
++        if (jobEligible && ((PItem->getEquipSlotId() & (1 << slotID)) || allowSoulSub2H))
+         {
+             continue;
+         }

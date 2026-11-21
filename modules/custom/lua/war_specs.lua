@@ -603,9 +603,10 @@ if xi.job and xi.job.WAR then
                 BERSERKER_CLEAVE_ABIL_ID,
             },
             extraTraits = { 141 },
-            description = 'Unrelenting fury (Lv10+): amplifies Berserk, Blood Rage, and Warcry with heavy Attack, Double Attack, and WSD.',
+            description = 'Unrelenting fury (Lv10+): wields Twin Executioner Axes (Dual Great Axes with balanced swing/TP scaling and compact dual-axe visuals) while amplifying Berserk, Blood Rage, and Warcry.',
             highlights  =
             {
+                'Twin Executioner Axes (Lv10+): Dual-wield two separate Great Axes via the native Equipment menu (compact 1H axe visuals, balanced main/offhand damage, delay, TP, and main-only multi-attack).',
                 'Passives (Lv10/30/50+): +8/12/16% Attack, +6/10/14% Double Attack, +5/8/12% WS Damage, +5/10/15 Store TP.',
                 'Bloodlust Surge (Lv10, 25s CD, 10s, Self): +10/14/18/24% Attack% and +15/22/30/40% Double Attack Damage at -10% DEF%.',
                 'Savage Cleave (Lv10, 20s CD, Enemy 4y): Overstraining physical strike (0 TP gained) that inflicts 6/8/10/12% Max HP recoil.',
