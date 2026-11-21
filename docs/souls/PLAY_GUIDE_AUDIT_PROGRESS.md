@@ -70,8 +70,24 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Bishop | `51f3166` | Existing guide and `whm_specs.lua` |
 | Templar | `7b499c9` | Existing guide and `pld_healer_specs.lua` |
 | Warlord | `5d65191` | Existing guide and `sam_specs.lua` |
+| Huntsman | `68e9fb8` | Reviewed current modal companion implementation in `rng_specs.lua` |
+| Spellblade | `23cd592` | Reviewed `run_specs.lua` and existing player guide |
+| Spartan | `79d867c` | Current guide and `war_specs.lua` |
+| Aegis Templar | `11181f8` | Current guide and `pld_specs.lua` |
+| Alpha Warden | `b94778d` | Existing guardian pet guide |
+| Inquisitor | `7354d0e` | Rune Fencer stance guide and implementation |
+| Crimson Duelist | `79b8bdc` | Existing Sword/Hex tank guide |
+| Lifebinder | `07d76e2` | Existing Rune-based healing guide |
+| Azure Bastion | `73963e1` | Existing Blue Magic tank guide |
+| Chi Weaver | `5a01cee` | Existing ranged-chi healer guide |
+| Wyvernheart | `73a0662` | Existing Wyvern combat-healer guide |
+| Animist | `4ba6ec2` | Existing support automaton guide |
+| Dreadnought | `3f1bf69` | Existing Scythe tank guide |
+| Kagemusha | `33795fb` | Existing shadow tank guide |
+| Necromancer | `2b3ed34` | Existing modal thrall guide |
+| Shinobi | `861260a` | `nin_specs.lua`, `kurogane_clones.lua`, existing Shinobi guide; removed internal diagnostics from player guide |
 
-**Status:** 50/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 66/66 documentation revisions committed. Source review completed at documentation level; full generated-wiki verification and automated integration tests still pending. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
@@ -81,3 +97,11 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 - `docs/guides/shinobi.md` uses alternative headings that are partly recognized by the current parser and contains internal diagnostics; it needs a dedicated player-facing review.
 - For the next Soul, fetch the guide and the real matching `modules/custom/lua/*_specs.lua` implementation (plus tests/report as needed), verify ability names and mechanics, expand the five wiki-compatible sections, commit the one guide, and append its commit here.
 - Before merging: regenerate wiki data with launcher definitions, run strict Soul action + wiki tests, inspect a rendered guide on the site, and check no vanilla action names or internal identifiers leak.
+
+## Current audit completion and remaining release gates
+
+- All **66 canonical `docs/guides/<soul>.md`** entries have expanded player-facing revisions on this feature branch.
+- No server or launcher gameplay implementation was modified.
+- Most of the revisions have been checked against current implementation or existing completed-guide mechanics; detailed game-client behavior is not independently live-tested.
+- **Do not confuse documentation completion with release validation.** Before merging, run the wiki generator with current launcher definitions, inspect the rendered guide panels, run strict parser/action tests and check all 66 against server unlocks and UI.
+- Perform a focused technical check on the six originally misparsed guides (Terramancer, Diviner, Beastspeaker, Herald, Untamed, Primalist) and Shinobi, whose original file used nonstandard sections and internal-only diagnostics.
