@@ -3502,6 +3502,11 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'h2h', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'Monk (Hand-to-Hand TP)' }
     elseif jobId == (j.WHM or 3) then
+        if specKey == 'valkyrie' then
+            return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'WHM Valkyrie (Polearm Support)', specEntry = specEntry }
+        elseif specKey == 'zealot' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'WHM Zealot (Staff Communion)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'none', ammo = 'ammo_caster', label = 'White Mage (Club & Shield)' }
     elseif jobId == (j.BLM or 4) then
         if specKey == 'necromancer' then
@@ -3511,16 +3516,37 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
     elseif jobId == (j.RDM or 5) then
         return { role = 'caster', weapon = 'sword', offhand = 'shield', ranged = 'none', ammo = 'ammo_caster', label = 'Red Mage (Sword & Shield)' }
     elseif jobId == (j.THF or 6) then
+        if specKey == 'phantom' then
+            return { role = 'tank', weapon = 'dagger', offhand = 'none', ranged = 'none', ammo = 'ammo_tank', label = 'THF Phantom (Evasion Tank)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'dagger', offhand = 'auto', ranged = 'throwing', ammo = 'none', label = 'Thief (Dagger TP)' }
     elseif jobId == (j.PLD or 7) then
+        if specKey == 'oathbreaker' then
+            return { role = 'tp', weapon = 'gsword', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'PLD Oathbreaker (Great Sword)', specEntry = specEntry }
+        end
         return { role = 'tank', weapon = 'sword', offhand = 'shield', ranged = 'none', ammo = 'ammo_tank', label = 'Paladin (Sword & Shield Tank)' }
     elseif jobId == (j.DRK or 8) then
+        if specKey == 'reaper' then
+            return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'DRK Reaper (Scythe)', specEntry = specEntry }
+        elseif specKey == 'scourge' then
+            return { role = 'caster', weapon = 'scythe', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'DRK Scourge (Scythe Curses)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'scythe', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dark Knight (Scythe TP)' }
     elseif jobId == (j.BST or 9) then
+        if specKey == 'untamed' then
+            return { role = 'tp', weapon = 'axe', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'BST Untamed (Pack Assault)', specEntry = specEntry }
+        elseif specKey == 'beastspeaker' then
+            return { role = 'tp', weapon = 'axe', offhand = 'none', ranged = 'none', ammo = 'ammo_tp', label = 'BST Beastspeaker (Quarry Support)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'axe', offhand = 'auto', ranged = 'none', ammo = 'ammo_tp', label = 'Beastmaster (Axe TP)' }
     elseif jobId == (j.BRD or 10) then
         return { role = 'caster', weapon = 'dagger', offhand = 'shield', ranged = 'instrument', ammo = 'none', label = 'Bard (Dagger & Instrument)' }
     elseif jobId == (j.RNG or 11) then
+        if specKey == 'sniper' then
+            return { role = 'ranged', weapon = 'dagger', offhand = 'none', ranged = 'crossbow', ammo = 'bolt', label = 'RNG Sniper (Crossbow)', specEntry = specEntry }
+        elseif specKey == 'arcanearcher' then
+            return { role = 'ranged', weapon = 'dagger', offhand = 'none', ranged = 'bow', ammo = 'arrow', label = 'RNG Arcane Archer (Bow)', specEntry = specEntry }
+        end
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'bow', ammo = 'arrow', label = 'Ranger (Dagger & Bow)' }
     elseif jobId == (j.SAM or 12) then
         if specKey == 'ronin' then
@@ -3532,12 +3558,28 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'gkatana', offhand = 'grip_melee', ranged = 'bow', ammo = 'arrow', label = 'Samurai (Great Katana TP)' }
     elseif jobId == (j.NIN or 13) then
+        if specKey == 'nightblade' then
+            return { role = 'caster', weapon = 'katana', offhand = 'auto', ranged = 'none', ammo = 'ammo_caster', label = 'NIN Nightblade (Katana Seals)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'katana', offhand = 'auto', ranged = 'none', ammo = 'shuriken', label = 'Ninja (Katana & Shuriken TP)' }
     elseif jobId == (j.DRG or 14) then
+        if specKey == 'lancer' then
+            return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'DRG Lancer (Polearm Vault)', specEntry = specEntry }
+        elseif specKey == 'skyborn' then
+            return { role = 'tank', weapon = 'polearm', offhand = 'grip_tank', ranged = 'none', ammo = 'ammo_tank', label = 'DRG Skyborn (Polearm Guard)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'polearm', offhand = 'grip_melee', ranged = 'none', ammo = 'ammo_tp', label = 'Dragoon (Polearm TP)' }
     elseif jobId == (j.SMN or 15) then
+        if specKey == 'primalist' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SMN Primalist (Elemental Pacts)', specEntry = specEntry }
+        elseif specKey == 'herald' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SMN Herald (Astral Accord)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'Summoner (Staff)' }
     elseif jobId == (j.BLU or 16) then
+        if specKey == 'warmage' then
+            return { role = 'caster', weapon = 'sword', offhand = 'none', ranged = 'none', ammo = 'ammo_caster', label = 'BLU Warmage (Monster Magic)', specEntry = specEntry }
+        end
         return { role = 'tp', weapon = 'sword', offhand = 'auto', ranged = 'none', ammo = 'ammo_tp', label = 'Blue Mage (Sword TP)' }
     elseif jobId == (j.COR or 17) then
         return { role = 'ranged', weapon = 'dagger', offhand = 'auto', ranged = 'gun', ammo = 'bullet', label = 'Corsair (Dagger & Gun)' }
@@ -3549,13 +3591,20 @@ function testGear.getDefaultProfile(player, optJobId, optLevel)
         end
         return { role = 'tp', weapon = 'dagger', offhand = 'auto', ranged = 'throwing', ammo = 'none', label = 'Dancer (Daggers & Throwing TP)' }
     elseif jobId == (j.SCH or 20) then
-        if specKey == 'medic' then
+        if specKey == 'archivist' then
+            return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'ammo_caster', label = 'SCH Archivist (Staff & Countermeasures)', specEntry = specEntry }
+        elseif specKey == 'medic' then
             return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'SCH Medic (Staff & Orphic Egg)', specEntry = specEntry }
         elseif specKey == 'sage' then
             return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'SCH Sage (Staff & Orphic Egg)', specEntry = specEntry }
         end
         return { role = 'caster', weapon = 'staff_mage', offhand = 'grip_caster', ranged = 'none', ammo = 'orphic_egg', label = 'Scholar (Staff & Orphic Egg)' }
     elseif jobId == (j.GEO or 21) then
+        if specKey == 'terramancer' then
+            return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'GEO Terramancer (Seismic Faults)', specEntry = specEntry }
+        elseif specKey == 'diviner' then
+            return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'GEO Diviner (Ley Corridor)', specEntry = specEntry }
+        end
         return { role = 'caster', weapon = 'club_mage', offhand = 'shield', ranged = 'handbell', ammo = 'none', label = 'Geomancer (Club & Handbell)' }
     elseif jobId == (j.RUN or 22) then
         if specKey == 'inquisitor' then
@@ -3620,8 +3669,12 @@ local function isItemEquippable(player, entry, targetLevel, opts)
             return false
         end
     else
-        -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs
-        if entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        local soulWeapon = (opts.weaponKey == 'polearm' and activeSpec == 'valkyrie') or
+            (opts.weaponKey == 'katana' and activeSpec == 'phantom')
+        -- Strictly verify vanilla job bitmask so SQL overrides for other specs never leak items across jobs.
+        -- Soul weapon exceptions are checked by player:canEquipItem below.
+        if not soulWeapon and entry.jobs ~= nil and not hasJobBit(entry.jobs, jobId) then
             return false
         end
     end
@@ -3651,6 +3704,65 @@ function testGear.isWeaponAllowedForJob(player, wKey)
         return false
     end
     local jobId = player:getMainJob()
+    if jobId == (xi.job.GEO or 21) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'terramancer' or activeSpec == 'diviner' then
+            return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+        end
+    end
+    if jobId == (xi.job.SMN or 15) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'primalist' or activeSpec == 'herald' then
+            return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+        end
+    end
+    if jobId == (xi.job.BST or 9) and testGear.getActiveSpecKey(player, jobId) == 'untamed' then
+        return wKey == 'axe' or wKey == 'gaxe'
+    end
+    if jobId == (xi.job.BST or 9) and testGear.getActiveSpecKey(player, jobId) == 'beastspeaker' then
+        return wKey == 'axe'
+    end
+    if jobId == (xi.job.SCH or 20) and testGear.getActiveSpecKey(player, jobId) == 'archivist' then
+        return wKey == 'staff' or wKey == 'staff_mage' or wKey == 'club' or wKey == 'club_mage'
+    end
+    if jobId == (xi.job.BLU or 16) and testGear.getActiveSpecKey(player, jobId) == 'warmage' then
+        return wKey == 'sword' or wKey == 'club' or wKey == 'club_mage'
+    end
+    if jobId == (xi.job.DRG or 14) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'lancer' or activeSpec == 'skyborn' then return wKey == 'polearm' end
+    end
+    if jobId == (xi.job.NIN or 13) and testGear.getActiveSpecKey(player, jobId) == 'nightblade' then
+        return wKey == 'katana'
+    end
+    if jobId == (xi.job.RNG or 11) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'sniper' then return wKey == 'crossbow' or wKey == 'gun' or wKey == 'dagger' end
+        if activeSpec == 'arcanearcher' then return wKey == 'bow' or wKey == 'dagger' end
+    end
+    if jobId == (xi.job.DRK or 8) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'reaper' or activeSpec == 'scourge' then return wKey == 'scythe' end
+    end
+    if jobId == (xi.job.PLD or 7) and testGear.getActiveSpecKey(player, jobId) == 'oathbreaker' then
+        return wKey == 'gsword'
+    end
+    if jobId == (xi.job.THF or 6) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'phantom' then
+            return wKey == 'dagger' or wKey == 'katana'
+        elseif activeSpec == 'bandit' or activeSpec == 'trickster' then
+            return wKey == 'dagger' or wKey == 'sword'
+        end
+    end
+    if jobId == (xi.job.WHM or 3) then
+        local activeSpec = testGear.getActiveSpecKey(player, jobId)
+        if activeSpec == 'valkyrie' then
+            return wKey == 'polearm'
+        elseif activeSpec == 'zealot' then
+            return wKey == 'staff' or wKey == 'staff_mage'
+        end
+    end
     local blmJob = (xi.job and xi.job.BLM) or 4
     if (wKey == 'scythe' or wKey == 'scythe_blm') and jobId == blmJob then
         local activeSpec = testGear.getActiveSpecKey(player, jobId)

@@ -1,0 +1,402 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -56,6 +56,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -169,7 +170,13 @@
+     m_beastspeakerAbility = beastspeaker::isActive(character);
+     m_primalistAbility = primalist::isActive(character);
+     m_heraldAbility = herald::isActive(character);
++    m_terramancerAbility = terramancer::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_terramancerAbility && m_abilityId == ABILITY_FULL_CIRCLE)
++    {
++        m_PAbility->setCE(0);
++        m_PAbility->setVE(0);
++    }
+     if (m_heraldAbility && m_abilityId == ABILITY_AVATARS_FAVOR)
+     {
+         m_PAbility->setAOE(0);
+@@ -431,6 +438,7 @@
+         const auto currentBeastspeaker = beastspeaker::isActive(PChar);
+         const auto currentPrimalist = primalist::isActive(PChar);
+         const auto currentHerald = herald::isActive(PChar);
++        const auto currentTerramancer = terramancer::isActive(PChar);
+         const auto* avatar = dynamic_cast<const CPetEntity*>(PChar->PPet);
+         const auto allowedPact = currentPrimalist && avatar ? primalist::pactForPet(PChar, avatar->petID()) : 0;
+         const bool primalistPact = allowedPact != 0 && allowedPact == PAbility->getID();
+@@ -457,6 +465,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_terramancerAbility != currentTerramancer ||
++            (currentTerramancer && PAbility->getID() != ABILITY_FULL_CIRCLE) ||
+             m_heraldAbility != currentHerald ||
+             (currentHerald && !heraldPact && !herald::playerAbility(PAbility->getID())) ||
+             m_primalistAbility != currentPrimalist ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -72,5 +72,6 @@
+     bool                      m_beastspeakerAbility{ false };
+     bool                      m_primalistAbility{ false };
+     bool                      m_heraldAbility{ false };
++    bool                      m_terramancerAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -59,6 +59,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -125,6 +126,24 @@
+     m_beastspeakerCast = beastspeaker::isActive(caster);
+     m_primalistCast = primalist::isActive(caster);
+     m_heraldCast = herald::isActive(caster);
++    m_terramancerCast = terramancer::isActive(caster);
++    if (m_terramancerCast && terramancer::spellLevel(m_spellId))
++    {
++        const bool fault = terramancer::isFault(m_spellId);
++        m_PSpell->setMPCost(fault ? 0 : 3);
++        m_PSpell->setCastTime(fault ? 750ms : 500ms);
++        m_PSpell->setRecastTime(fault ? 0s : 4s);
++        if (fault)
++        {
++            m_PEntity->SetLocalVar("OX_TRM_APPLIED", 0);
++            m_PSpell->setRange(18.0f);
++            m_PSpell->setAOE(SPELLAOE_NONE);
++            m_PSpell->setRadius(0.0f);
++            m_PSpell->setCE(0);
++            m_PSpell->setVE(0);
++            m_PSpell->setFlag(m_PSpell->getFlag() | SPELLFLAG_IGNORE_SHADOWS);
++        }
++    }
+     if ((m_primalistCast && primalist::spellLevel(caster, m_spellId) != 0) ||
+         (m_heraldCast && herald::spellLevel(m_spellId) != 0))
+     {
+@@ -584,7 +603,8 @@
+                           m_untamedCast == untamed::isActive(caster) &&
+                           m_beastspeakerCast == beastspeaker::isActive(caster) &&
+                           m_primalistCast == primalist::isActive(caster) &&
+-                          m_heraldCast == herald::isActive(caster);
++                          m_heraldCast == herald::isActive(caster) &&
++                          m_terramancerCast == terramancer::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -91,6 +91,7 @@
+     bool                    m_beastspeakerCast{ false };
+     bool                    m_primalistCast{ false };
+     bool                    m_heraldCast{ false };
++    bool                    m_terramancerCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "battle_entity.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ 
+ #include <algorithm>
+ 
+@@ -2511,6 +2512,8 @@
+ 
+     MsgBasic msg                 = MsgBasic::None;
+     MsgBasic initialSpellMessage = PSpell->getMessage();
++    const bool planningFault =
++        terramancer::isActive(dynamic_cast<const CCharEntity*>(this)) && terramancer::isFault(PSpell->getID());
+ 
+     for (auto* PTarget : PAI->TargetFind->m_targets)
+     {
+@@ -2520,7 +2523,7 @@
+         action_result_t& actionResult = actionTarget.addResult();
+ 
+         actionResult.resolution = ActionResolution::Hit;
+-        actionResult.animation  = PSpell->getAnimationID();
++        actionResult.animation  = planningFault ? ActionAnimation::None : PSpell->getAnimationID();
+         actionResult.param      = 0;
+ 
+         auto ce = PSpell->getCE();
+@@ -2628,7 +2631,7 @@
+             state.ApplyEnmity(PTarget, ce, ve);
+         }
+ 
+-        if (PTarget->objtype == TYPE_MOB &&
++        if (!planningFault && PTarget->objtype == TYPE_MOB &&
+             msg != MsgBasic::ShadowAbsorb) // If message isn't the shadow loss message, because I had to move this outside of the above check for it.
+         {
+             luautils::OnMagicHit(this, PTarget, PSpell);
+@@ -2746,6 +2749,17 @@
+     {
+         action.recast = GetLocalVar("OX_ARC_FILE_APPLIED") == 1 ? 15s : 0s;
+         SetLocalVar("OX_ARC_FILE_APPLIED", 0);
++    }
++    if (planningFault)
++    {
++        const bool armed = GetLocalVar("OX_TRM_APPLIED") == 1;
++        SetLocalVar("OX_TRM_APPLIED", 0);
++        action.recast = armed ? 8s : 0s;
++        if (armed)
++        {
++            const auto sibling = PSpell->getID() == SpellID::Stone_II ? SpellID::Stone_III : SpellID::Stone_II;
++            PRecastContainer->Add(xi::RecastType::Magic, static_cast<xi::Recast>(sibling), 8s);
++        }
+     }
+     PRecastContainer->Add(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()), action.recast);
+ }
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -125,6 +125,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1513,6 +1514,12 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (terramancer::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto unlock = terramancer::spellLevel(PSpell->getID());
++        return unlock && GetMLevel() >= unlock &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (herald::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "lua_base_entity.h"
++#include "utils/terramancer_actions.h"
+ #include "navmesh/navmesh.h"
+ #include "utils/lancer_actions.h"
+ #include "utils/warmage_actions.h"
+@@ -11977,6 +11978,55 @@
+ 
+     PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+     PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++}
++
++void CLuaBaseEntity::resolveTerramancerFault(CLuaBaseEntity* luaTarget, bool deep)
++{
++    auto* caster = dynamic_cast<CCharEntity*>(m_PBaseEntity);
++    auto* target = luaTarget ? dynamic_cast<CMobEntity*>(luaTarget->GetBaseEntity()) : nullptr;
++    if (!terramancer::isActive(caster) || !caster->isAlive() || !target || !target->isAlive() ||
++        target->PMaster || target->allegiance == caster->allegiance || caster->loc.zone != target->loc.zone ||
++        caster->getBattleID() != target->getBattleID() || caster->entityId().instanceRunId != target->entityId().instanceRunId ||
++        (deep && caster->GetMLevel() < 30) || !battleutils::HasClaim(caster, target) || target->PAI->IsUntargetable())
++    {
++        return;
++    }
++
++    auto* base = spell::GetSpell(SpellID::Stone);
++    if (!base)
++    {
++        return;
++    }
++    auto stone = base->clone();
++    stone->setPrimaryTargetID(target->id);
++    stone->setTotalTargets(1);
++
++    action_t action{};
++    action.actorId    = caster->id;
++    action.actiontype = ActionCategory::MagicFinish;
++    action.actionid   = static_cast<uint16>(deep ? SpellID::Stone_III : SpellID::Stone_II);
++    action.spellgroup = stone->getSpellGroup();
++    if (const auto* recast = caster->PRecastContainer->GetRecast(xi::RecastType::Magic, static_cast<xi::Recast>(action.actionid)))
++    {
++        action.recast = std::max<timer::duration>(0s, recast->TimeStamp + recast->RecastTime - timer::now());
++    }
++    auto& result      = action.addTarget(target->id).addResult();
++    result.animation  = stone->getAnimationID();
++    result.resolution = ActionResolution::Hit;
++    if (stone->canHitShadow() && battleutils::IsAbsorbByShadow(target, caster))
++    {
++        result.param     = 1;
++        result.messageID = MsgBasic::ShadowAbsorb;
++    }
++    else
++    {
++        caster->SetLocalVar("OX_TRM_SCALAR", terramancer::multiplier(caster->GetMLevel(), deep));
++        result.param = luautils::OnSpellCast(caster, target, stone.get(), &action);
++        caster->SetLocalVar("OX_TRM_SCALAR", 0);
++        result.messageID = stone->getMessage();
++        luautils::OnMagicHit(caster, target, stone.get());
++    }
++    caster->loc.zone->PushPacket(caster, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
+ }
+ 
+ void CLuaBaseEntity::sendSoulSpellList()
+@@ -21592,6 +21642,7 @@
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
+     SOL_REGISTER("sendSoulSpellList", CLuaBaseEntity::sendSoulSpellList);
++    SOL_REGISTER("resolveTerramancerFault", CLuaBaseEntity::resolveTerramancerFault);
+     SOL_REGISTER("sendTalentPacket", CLuaBaseEntity::sendTalentPacket);
+     SOL_REGISTER("pushStatus", CLuaBaseEntity::pushStatus);
+     SOL_REGISTER("getEntitiesInRange", CLuaBaseEntity::getEntitiesInRange);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -600,6 +600,7 @@
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
+     void sendSoulSpellList();
++    void resolveTerramancerFault(CLuaBaseEntity* luaTarget, bool deep);
+     void sendTalentPacket(std::string const& payload);
+     void pushStatus();
+     auto getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table;
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -44,6 +44,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -74,8 +75,9 @@
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
+     const bool primalistActive = primalist::isActive(PChar);
+     const bool heraldActive = herald::isActive(PChar);
++    const bool terramancerActive = terramancer::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || terramancerActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -100,6 +102,7 @@
+                                                   : (untamedActive || beastspeakerActive) ? 0
+                                                     : primalistActive ? primalist::spellLevel(PChar, spellId)
+                                                       : heraldActive ? herald::spellLevel(spellId)
++                                                        : terramancerActive ? terramancer::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -42,6 +42,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -78,7 +79,8 @@
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
+     const bool primalistActive = primalist::isActive(PChar);
+     const bool heraldActive = herald::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || valkyrie::isActive(PChar))
++    const bool terramancerActive = terramancer::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || terramancerActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -105,6 +107,7 @@
+                                                                  : beastspeakerActive ? beastspeaker::kitAbility(id, PChar->GetMLevel())
+                                                                    : primalistActive ? primalist::playerAbility(id, PChar->GetMLevel())
+                                                                      : heraldActive ? herald::playerAbility(id)
++                                                                       : terramancerActive ? id == ABILITY_FULL_CIRCLE
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -64,6 +64,7 @@
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
+ #include "utils/herald_actions.h"
++#include "utils/terramancer_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -424,7 +425,9 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)) ||
+         (beastspeaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe)) ||
+         ((primalist::isActive(PChar) || herald::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
+-         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
++        (terramancer::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Club) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/terramancer_actions.h b/src/map/utils/terramancer_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/terramancer_actions.h
+@@ -0,0 +1,41 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "spell.h"
++
++namespace terramancer
++{
++inline auto isActive(const CCharEntity* entity) -> bool
++{
++    return entity && entity->GetMJob() == xi::Job::GEO && entity->GetMLevel() >= 10 &&
++           entity->GetLocalVar("OX_TRM_ACTIVE") == 1;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    switch (id)
++    {
++        case SpellID::Stone:
++        case SpellID::Stone_II:
++            return 10;
++        case SpellID::Stone_III:
++            return 30;
++        default:
++            return 0;
++    }
++}
++
++inline auto isFault(SpellID id) -> bool
++{
++    return id == SpellID::Stone_II || id == SpellID::Stone_III;
++}
++
++inline auto multiplier(uint8 level, bool deep) -> uint32
++{
++    if (deep)
++    {
++        return level >= 70 ? 360 : level >= 50 ? 320 : 280;
++    }
++    return level >= 70 ? 220 : level >= 50 ? 200 : 180;
++}
++} // namespace terramancer

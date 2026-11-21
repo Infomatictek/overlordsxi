@@ -1,0 +1,634 @@
+diff --git a/src/map/ai/ai_container.cpp b/src/map/ai/ai_container.cpp
+--- a/src/map/ai/ai_container.cpp
++++ b/src/map/ai/ai_container.cpp
+@@ -328,7 +328,7 @@
+     return false;
+ }
+ 
+-auto CAIContainer::Internal_RangedAttack(const EntityId& target) -> bool
++auto CAIContainer::Internal_RangedAttack(const EntityId& target, bool sightline) -> bool
+ {
+     auto* entity = dynamic_cast<CBattleEntity*>(PEntity);
+     if (entity)
+@@ -338,7 +338,7 @@
+             return false;
+         }
+ 
+-        return ChangeState<CRangeState>(entity, target);
++        return ChangeState<CRangeState>(entity, target, sightline);
+     }
+     return false;
+ }
+diff --git a/src/map/ai/ai_container.h b/src/map/ai/ai_container.h
+--- a/src/map/ai/ai_container.h
++++ b/src/map/ai/ai_container.h
+@@ -78,7 +78,7 @@
+     auto Internal_MobSkill(const EntityId& target, uint16 wsid, Maybe<timer::duration> castTimeOverride, Maybe<uint16> tpCostOverride = std::nullopt) -> bool;
+     auto Internal_PetSkill(const EntityId& target, uint16 abilityid) -> bool;
+     auto Internal_Ability(const EntityId& target, uint16 abilityid) -> bool;
+-    auto Internal_RangedAttack(const EntityId& target) -> bool;
++    auto Internal_RangedAttack(const EntityId& target, bool sightline = false) -> bool;
+     auto Internal_Die(timer::duration, DeathParams params = {}) -> bool;
+     auto Internal_UseItem(const EntityId& target, uint8 loc, uint8 slotid) -> bool;
+     auto Internal_Despawn(bool instantDespawn = false) -> bool;
+diff --git a/src/map/ai/controllers/player_controller.cpp b/src/map/ai/controllers/player_controller.cpp
+--- a/src/map/ai/controllers/player_controller.cpp
++++ b/src/map/ai/controllers/player_controller.cpp
+@@ -33,6 +33,7 @@
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
++#include "utils/sniper_actions.h"
+ #include "weapon_skill.h"
+ 
+ CPlayerController::CPlayerController(CCharEntity* character)
+@@ -223,6 +224,10 @@
+             return false;
+         }
+ 
++        if (sniper::isActive(PChar) && abilityid == sniper::Sightline)
++        {
++            return PChar->PAI->Internal_RangedAttack(target, true);
++        }
+         return PChar->PAI->Internal_Ability(target, abilityid);
+     }
+ 
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -45,6 +45,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -147,6 +148,7 @@
+     m_oathbreakerAbility = oathbreaker::isActive(character);
+     m_reaperAbility = reaper::isActive(character);
+     m_scourgeAbility = scourge::isActive(character);
++    m_sniperAbility = sniper::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_scourgeAbility && m_abilityId == scourge::Rite)
+     {
+@@ -334,6 +336,7 @@
+         const auto currentOathbreaker = oathbreaker::isActive(PChar);
+         const auto currentReaper = reaper::isActive(PChar);
+         const auto currentScourge = scourge::isActive(PChar);
++        const auto currentSniper = sniper::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -344,6 +347,8 @@
+             m_oathbreakerAbility != currentOathbreaker || (currentOathbreaker && !oathbreaker::isKitAbility(PAbility->getID())) ||
+             m_reaperAbility != currentReaper || (currentReaper && PAbility->getID() != reaper::Finality) ||
+             m_scourgeAbility != currentScourge || (currentScourge && PAbility->getID() != scourge::Rite) ||
++            m_sniperAbility != currentSniper ||
++            (currentSniper && (PAbility->getID() != sniper::DeepSight || PChar->GetMLevel() < 50)) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -61,5 +61,6 @@
+     bool                      m_oathbreakerAbility{ false };
+     bool                      m_reaperAbility{ false };
+     bool                      m_scourgeAbility{ false };
++    bool                      m_sniperAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -48,6 +48,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -103,6 +104,7 @@
+     m_oathbreakerCast = oathbreaker::isActive(caster);
+     m_reaperCast = reaper::isActive(caster);
+     m_scourgeCast = scourge::isActive(caster);
++    m_sniperCast = sniper::isActive(caster);
+ 
+     if (m_scourgeCast && scourge::spellLevel(m_spellId) != 0)
+     {
+@@ -481,7 +483,8 @@
+                           m_phantomCast == phantom::isActive(caster) &&
+                           m_oathbreakerCast == oathbreaker::isActive(caster) &&
+                           m_reaperCast == reaper::isActive(caster) &&
+-                          m_scourgeCast == scourge::isActive(caster);
++                          m_scourgeCast == scourge::isActive(caster) &&
++                          m_sniperCast == sniper::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -80,6 +80,7 @@
+     bool                    m_oathbreakerCast{ false };
+     bool                    m_reaperCast{ false };
+     bool                    m_scourgeCast{ false };
++    bool                    m_sniperCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/ai/states/range_state.cpp b/src/map/ai/states/range_state.cpp
+--- a/src/map/ai/states/range_state.cpp
++++ b/src/map/ai/states/range_state.cpp
+@@ -34,14 +34,19 @@
+ #include "items/item_weapon.h"
+ #include "packets/s2c/0x028_battle2.h"
+ #include "packets/s2c/0x029_battle_message.h"
++#include "packets/s2c/0x062_clistatus2.h"
++#include "packets/s2c/0x119_abil_recast.h"
++#include "recast_container.h"
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
++#include "utils/sniper_actions.h"
+ #include "zone.h"
+ 
+-CRangeState::CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target)
++CRangeState::CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, bool sightline)
+ : CState(PEntity, target)
+ , m_PEntity(PEntity)
++, m_sightline(sightline)
+ {
+     // Capture constructor arguments into members and nothing else. All other logic goes into init().
+ }
+@@ -53,6 +58,20 @@
+     if (!PTarget || this->HasErrorMsg())
+     {
+         return refuseWithErrorMsg();
++    }
++
++    if (m_sightline)
++    {
++        auto* player = dynamic_cast<CCharEntity*>(m_PEntity);
++        if (!sniper::isActive(player) || PTarget->objtype != TYPE_MOB ||
++            player->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Amnesia))
++        {
++            m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, m_PEntity, 0, 0, MsgBasic::UnableToUseJobAbility);
++            return refuseWithErrorMsg();
++        }
++        m_sightlineLevel = player->GetMLevel();
++        m_deepSight = m_sightlineLevel >= 50 && player->GetLocalVar("OX_SNP_DEEP") != 0;
++        m_originalBattleTarget = player->battleTarget();
+     }
+ 
+     // Configured in main : Default is 500ms
+@@ -63,7 +82,8 @@
+         return refuseWithErrorMsg();
+     }
+ 
+-    if (distance(m_PEntity->loc.p, PTarget->loc.p) > m_PEntity->GetRangedAttackRange())
++    const auto maxRange = m_sightline ? sniper::MaxRange : m_PEntity->GetRangedAttackRange();
++    if (distance(m_PEntity->loc.p, PTarget->loc.p) > maxRange)
+     {
+         m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(m_PEntity, PTarget, 0, 0, MsgBasic::TooFarAway);
+         return refuseWithErrorMsg();
+@@ -119,6 +139,16 @@
+ 
+     m_aimTime  = std::chrono::milliseconds(delay);
+     m_startPos = m_PEntity->loc.p;
++    if (m_sightline)
++    {
++        auto* player = static_cast<CCharEntity*>(m_PEntity);
++        m_aimTime = m_deepSight ? 4s : 3s;
++        m_rapidShot = false;
++        m_sightlineWeapon = player->getEquip(SLOT_RANGED)->getID();
++        m_sightlineAmmo = player->getEquip(SLOT_AMMO)->getID();
++        m_sightlinePending = true;
++        player->SetLocalVar("OX_SNP_AIM_UNTIL", sniper::nowSecond() + (m_deepSight ? 4 : 3));
++    }
+ 
+     action_t action{
+         .actorId    = m_PEntity->id,
+@@ -153,7 +183,40 @@
+ 
+ auto CRangeState::Update(const timer::time_point tick) -> bool
+ {
+-    if (m_PEntity && m_PEntity->isAlive() && (tick > GetEntryTime() + m_aimTime && !IsCompleted()))
++    if (m_sightlinePending)
++    {
++        auto* player = static_cast<CCharEntity*>(m_PEntity);
++        auto* enemy = target().resolve<CBattleEntity>();
++        if (!validSightlineTarget(player, enemy))
++        {
++            action_t action{};
++            finishSightline(false);
++            InterruptRangedAttack(action);
++            Complete();
++        }
++        else if (tick >= GetEntryTime() + m_aimTime)
++        {
++            action_t action{};
++            if (m_PEntity->IsValidTarget(target(), TARGET_ENEMY, m_errorMsg) && !m_errorMsg)
++            {
++                m_PEntity->OnRangedAttack(*this, action);
++            }
++            const auto released = !action.targets.empty();
++            finishSightline(released);
++            if (released)
++            {
++                m_PEntity->loc.zone->PushPacket(m_PEntity, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
++                m_PEntity->PAI->EventHandler.triggerListener("RANGE_STATE_EXIT", m_PEntity, enemy, &action);
++            }
++            else
++            {
++                InterruptRangedAttack(action);
++            }
++            Complete();
++        }
++    }
++
++    if (!m_sightline && m_PEntity && m_PEntity->isAlive() && (tick > GetEntryTime() + m_aimTime && !IsCompleted()))
+     {
+         auto* PTarget = m_PEntity->IsValidTarget(target(), TARGET_ENEMY, m_errorMsg);
+ 
+@@ -219,6 +282,43 @@
+ 
+ void CRangeState::Cleanup(timer::time_point tick)
+ {
++    if (m_sightlinePending)
++    {
++        finishSightline(false);
++    }
++}
++
++auto CRangeState::validSightlineTarget(CCharEntity* player, CBattleEntity* target) const -> bool
++{
++    if (!sniper::isActive(player) || !player->isAlive() || player->GetMLevel() != m_sightlineLevel ||
++        player->StatusEffectContainer->HasPreventActionEffect() ||
++        player->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Amnesia) ||
++        player->battleTarget() != m_originalBattleTarget || HasMoved() ||
++        !target || target->loc.zone != player->loc.zone || !target->isAlive() || target->PAI->IsUntargetable() ||
++        !player->CanSeeTarget(target) || !facing(player->loc.p, target->loc.p, 64) ||
++        distance(player->loc.p, target->loc.p) > sniper::MaxRange)
++    {
++        return false;
++    }
++
++    const auto* weapon = dynamic_cast<CItemWeapon*>(player->getEquip(SLOT_RANGED));
++    const auto* ammo = dynamic_cast<CItemWeapon*>(player->getEquip(SLOT_AMMO));
++    return sniper::usesMarksmanship(weapon, ammo) && weapon->getID() == m_sightlineWeapon && ammo->getID() == m_sightlineAmmo;
++}
++
++void CRangeState::finishSightline(bool released)
++{
++    m_sightlinePending = false;
++    auto* player = static_cast<CCharEntity*>(m_PEntity);
++    const auto duration = released ? 12 : 3;
++    player->SetLocalVar("OX_SNP_AIM_UNTIL", 0);
++    player->SetLocalVar("OX_SNP_RECAST_UNTIL", sniper::nowSecond() + duration);
++    player->PRecastContainer->Add(xi::RecastType::Ability, static_cast<xi::Recast>(sniper::SightlineRecast), std::chrono::seconds(duration));
++    if (player->loc.zone)
++    {
++        player->pushPacket<GP_SERV_COMMAND_CLISTATUS2>(player);
++        player->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(player);
++    }
+ }
+ 
+ auto CRangeState::CanUseRangedAttack(CBattleEntity* PTarget, const bool isEndOfAttack) -> bool
+@@ -235,6 +335,12 @@
+         CItemWeapon* PAmmo   = dynamic_cast<CItemWeapon*>(PChar->getEquip(SLOT_AMMO));
+ 
+         if (!((PRanged && PRanged->isType(ITEM_WEAPON)) || (PAmmo && PAmmo->isThrowing())))
++        {
++            m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::NoRangedWeapon);
++            return false;
++        }
++
++        if (sniper::isActive(PChar) && !sniper::usesMarksmanship(PRanged, PAmmo))
+         {
+             m_errorMsg = std::make_unique<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::NoRangedWeapon);
+             return false;
+@@ -321,7 +427,7 @@
+ 
+     float charDistance = distance(m_startPos, m_PEntity->loc.p, true);
+ 
+-    return charDistance > 0.3;
++    return charDistance > (m_sightline ? 1.0f : 0.3f);
+ }
+ 
+ auto CRangeState::IsRapidShot() const -> bool
+@@ -329,6 +435,16 @@
+     return m_rapidShot;
+ }
+ 
++auto CRangeState::IsSightline() const -> bool
++{
++    return m_sightline;
++}
++
++auto CRangeState::IsDeepSight() const -> bool
++{
++    return m_deepSight;
++}
++
+ auto CRangeState::IsOutOfRange() const -> bool
+ {
+     return m_isOutOfRange;
+diff --git a/src/map/ai/states/range_state.h b/src/map/ai/states/range_state.h
+--- a/src/map/ai/states/range_state.h
++++ b/src/map/ai/states/range_state.h
+@@ -24,11 +24,12 @@
+ #include "state.h"
+ 
+ struct action_t;
++class CCharEntity;
+ 
+ class CRangeState : public CState
+ {
+ public:
+-    CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target);
++    CRangeState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, bool sightline = false);
+ 
+     auto init() -> StateErrorOr<void> override;
+ 
+@@ -40,6 +41,8 @@
+     void SpendCost() const;
+     auto IsRapidShot() const -> bool;
+     auto IsOutOfRange() const -> bool;
++    auto IsSightline() const -> bool;
++    auto IsDeepSight() const -> bool;
+ 
+ protected:
+     auto Update(timer::time_point tick) -> bool override;
+@@ -57,6 +60,16 @@
+     timer::duration m_freePhaseTimeMob  = 1100ms; // Phase 3 (mobs/trusts): Cooldown before a ranged attack can fire again.
+     timer::duration m_freePhaseTimePlayer{};      // Phase 3 (players): Cooldown before a ranged attack can fire again, set from RANGED_ATTACK_FREE_PHASE_DELAY (Default 500ms)
+     bool            m_rapidShot{ false };
++    bool            m_sightline{ false };
++    bool            m_sightlinePending{ false };
++    bool            m_deepSight{ false };
++    uint16          m_sightlineWeapon{ 0 };
++    uint16          m_sightlineAmmo{ 0 };
++    EntityId        m_originalBattleTarget{};
++    uint8           m_sightlineLevel{ 0 };
++
++    void finishSightline(bool released);
++    auto validSightlineTarget(CCharEntity* player, CBattleEntity* target) const -> bool;
+     position_t      m_startPos;
+     bool            m_isOutOfRange{ false }; // True if target moved out of range during aim time
+ };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -63,6 +63,7 @@
+ #include "utils/zealot_actions.h"
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+@@ -3213,10 +3214,10 @@
+ 
+ void CBattleEntity::OnRangedAttack(CRangeState& state, action_t& action)
+ {
+-    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot());
+-}
+-
+-void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot)
++    ExecuteRangedAttack(state.target().resolve<CBattleEntity>(), action, state.IsOutOfRange(), state.IsRapidShot(), state.IsSightline(), state.IsDeepSight());
++}
++
++void CBattleEntity::ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline, bool deepSight)
+ {
+     TracyZoneScoped;
+     if (!PTarget)
+@@ -3277,8 +3278,8 @@
+     auto  ammoConsumed = 0;
+     bool  hitOccured   = false; // Track if there was a successful hit
+     bool  wasCritical  = false; // Track if the hit was critical
+-    bool  isBarrage    = StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Barrage, 0);
+-    bool  isSange      = isChar && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sange) && getMod(xi::Mod::SANGE_MULTI_HIT) > 0; // Pre-SoA Sange logic check, applied in SoA module
++    bool  isBarrage    = !sightline && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Barrage, 0);
++    bool  isSange      = !sightline && isChar && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sange) && getMod(xi::Mod::SANGE_MULTI_HIT) > 0; // Pre-SoA Sange logic check, applied in SoA module
+ 
+     // Player Barrage check. Mobs and trusts have barrage.
+     if ((isChar && !ammoThrowing && !rangedThrowing && isBarrage) || (!isChar && isBarrage))
+@@ -3297,20 +3298,21 @@
+             hitCount = PAmmo->getQuantity();
+         }
+     }
+-    else if ((isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TripleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::TRIPLE_SHOT_RATE))
++    else if (!sightline && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TripleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::TRIPLE_SHOT_RATE))
+     {
+         hitCount = 3;
+     }
+-    else if ((isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DoubleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::DOUBLE_SHOT_RATE))
++    else if (!sightline && (isChar || isTrust) && StatusEffectContainer->HasStatusEffect(xi::StatusEffect::DoubleShot) && xirand::GetRandomNumber(100) < getMod(xi::Mod::DOUBLE_SHOT_RATE))
+     {
+         hitCount = 2;
+     }
+ 
++    const auto sightlineAccuracy = sightline ? sniper::aimBonus(GetMLevel()) : 0;
+     // Loop for barrage hits. Once there is a miss the loop ends
+     for (uint8 i = 1; i <= hitCount; ++i)
+     {
+         // TODO: add Barrage mod racc bonus
+-        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, 0) && !isOutOfRange)
++        if (xirand::GetRandomNumber(100) < battleutils::GetRangedHitRate(this, PTarget, isBarrage, sightlineAccuracy) && !isOutOfRange)
+         {
+             // Absorbed by shadow
+             if (battleutils::IsAbsorbByShadow(PTarget, this))
+@@ -3380,7 +3382,7 @@
+ 
+             if (PAmmo != nullptr)
+             {
+-                const bool recycleProc = xirand::GetRandomNumber(100) < recycleChance;
++                const bool recycleProc = !sightline && xirand::GetRandomNumber(100) < recycleChance;
+ 
+                 if (!recycleProc)
+                 {
+@@ -3435,7 +3437,11 @@
+             actionResult.resolution = ActionResolution::Hit;
+         }
+ 
+-        if (isChar && slot == SLOT_RANGED)
++        if (sightline)
++        {
++            totalDamage = totalDamage * sniper::damagePercent(GetMLevel(), deepSight) / 100;
++        }
++        else if (isChar && slot == SLOT_RANGED)
+         {
+             auto attackType = isRapidShot ? PHYSICAL_ATTACK_TYPE::RAPID_SHOT : PHYSICAL_ATTACK_TYPE::RANGED;
+             totalDamage     = attackutils::CheckForDamageMultiplier(PChar, PItem, totalDamage, attackType, slot, true);
+diff --git a/src/map/entities/battle_entity.h b/src/map/entities/battle_entity.h
+--- a/src/map/entities/battle_entity.h
++++ b/src/map/entities/battle_entity.h
+@@ -334,7 +334,7 @@
+ 
+     virtual void OnAbility(CAbilityState&, action_t&);
+     virtual void OnRangedAttack(CRangeState&, action_t&);
+-    void         ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot);
++    void         ExecuteRangedAttack(CBattleEntity* PTarget, action_t& action, bool isOutOfRange, bool isRapidShot, bool sightline = false, bool deepSight = false);
+     void         processActionEffectFlags(const action_t& action) const; // Drops status effects whose flags are tied to action emit/receive.
+     virtual void OnDeathTimer();
+ 
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -114,6 +114,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1500,6 +1501,10 @@
+ 
+     if ((bandit::isActive(this) || trickster::isActive(this) || phantom::isActive(this)) &&
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return false;
++    }
++    if (sniper::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -33,6 +33,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -54,8 +55,9 @@
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
++    const bool sniperActive = sniper::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || sniperActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -71,7 +73,7 @@
+                                 : chnActive ? channeler::spellLevel(spellId)
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
+                                     : royalActive ? royal::spellLevel(spellId)
+-                                      : thfKitActive ? 0
++                                      : (thfKitActive || sniperActive) ? 0
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
+                                           : scourgeActive ? scourge::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -31,6 +31,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -56,7 +57,8 @@
+     const bool oathbreakerActive = oathbreaker::isActive(PChar);
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || valkyrie::isActive(PChar))
++    const bool sniperActive = sniper::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -72,6 +74,7 @@
+                                            : oathbreakerActive ? oathbreaker::isKitAbility(id)
+                                              : reaperActive ? id == reaper::Finality
+                                                : scourgeActive ? id == scourge::Rite
++                                                 : sniperActive ? sniper::kitAbility(id, PChar->GetMLevel())
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -53,6 +53,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/scourge_actions.h"
++#include "utils/sniper_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -400,7 +401,8 @@
+         (phantom::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)) ||
+         (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)) ||
+-        ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)))
++        ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)) ||
++        (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/sniper_actions.h b/src/map/utils/sniper_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/sniper_actions.h
+@@ -0,0 +1,49 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++
++namespace sniper
++{
++inline constexpr uint16 Sightline = 57;
++inline constexpr uint16 DeepSight = 59;
++inline constexpr uint16 SightlineRecast = 122;
++inline constexpr auto MaxRange = 20.0f;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::RNG && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_SNP_ACTIVE") == 1;
++}
++
++inline auto kitAbility(uint16 id, uint8 level) -> bool
++{
++    return id == Sightline || (id == DeepSight && level >= 50);
++}
++
++inline auto nowSecond() -> uint32
++{
++    return static_cast<uint32>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
++}
++
++inline auto usesMarksmanship(const CItemWeapon* weapon, const CItemWeapon* ammo) -> bool
++{
++    return weapon && ammo && ammo->getQuantity() != 0 &&
++           weapon->getSkillType() == xi::SkillType::Marksmanship && ammo->getSkillType() == xi::SkillType::Marksmanship &&
++           weapon->getSubSkillType() == ammo->getSubSkillType();
++}
++
++inline constexpr auto aimBonus(uint8 level) -> int16
++{
++    return level >= 70 ? 30 : level >= 30 ? 20 : 10;
++}
++
++inline constexpr auto damagePercent(uint8 level, bool deep) -> int32
++{
++    if (deep && level >= 50)
++    {
++        return level >= 70 ? 320 : 280;
++    }
++    return level >= 30 ? 230 : 200;
++}
++} // namespace sniper

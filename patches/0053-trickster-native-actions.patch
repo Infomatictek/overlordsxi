@@ -1,0 +1,203 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -42,6 +42,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -137,6 +138,7 @@
+     m_scarletAbility = scarlet::isActive(character);
+     m_royalAbility = royal::isActive(character);
+     m_banditAbility = bandit::isActive(character);
++    m_tricksterAbility = trickster::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -314,11 +316,13 @@
+         const auto currentScarlet = scarlet::isActive(PChar);
+         const auto currentRoyal = royal::isActive(PChar);
+         const auto currentBandit = bandit::isActive(PChar);
++        const auto currentTrickster = trickster::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+             m_royalAbility != currentRoyal || (currentRoyal && PAbility->getID() != royal::IssueOrder) ||
+             m_banditAbility != currentBandit || (currentBandit && !bandit::isKitAbility(PAbility->getID())) ||
++            m_tricksterAbility != currentTrickster || (currentTrickster && PAbility->getID() != trickster::PassTheBlame) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -56,5 +56,6 @@
+     bool                      m_scarletAbility{ false };
+     bool                      m_royalAbility{ false };
+     bool                      m_banditAbility{ false };
++    bool                      m_tricksterAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -45,6 +45,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -93,6 +94,7 @@
+     m_scarletCast = scarlet::isActive(caster);
+     m_royalCast = royal::isActive(caster);
+     m_banditCast = bandit::isActive(caster);
++    m_tricksterCast = trickster::isActive(caster);
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -450,7 +452,8 @@
+                           m_channelerCast == channeler::isActive(caster) &&
+                           m_scarletCast == scarlet::isActive(caster) &&
+                           m_royalCast == royal::isActive(caster) &&
+-                          m_banditCast == bandit::isActive(caster);
++                          m_banditCast == bandit::isActive(caster) &&
++                          m_tricksterCast == trickster::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -75,6 +75,7 @@
+     bool                    m_scarletCast{ false };
+     bool                    m_royalCast{ false };
+     bool                    m_banditCast{ false };
++    bool                    m_tricksterCast{ false };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -111,6 +111,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -1493,7 +1494,7 @@
+                !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+-    if (bandit::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    if ((bandit::isActive(this) || trickster::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -30,6 +30,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -45,8 +46,8 @@
+     const bool chnActive = channeler::isActive(PChar);
+     const bool scarletActive = scarlet::isActive(PChar);
+     const bool royalActive = royal::isActive(PChar);
+-    const bool banditActive = bandit::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || valkyrie::isActive(PChar))
++    const bool thfKitActive = bandit::isActive(PChar) || trickster::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -62,7 +63,7 @@
+                                 : chnActive ? channeler::spellLevel(spellId)
+                                   : scarletActive ? scarlet::spellProfile(spellId).level
+                                     : royalActive ? royal::spellLevel(spellId)
+-                                      : banditActive ? 0
++                                      : thfKitActive ? 0
+                                             : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -28,6 +28,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -46,7 +47,8 @@
+     const bool scarletActive = scarlet::isActive(PChar);
+     const bool royalActive = royal::isActive(PChar);
+     const bool banditActive = bandit::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || valkyrie::isActive(PChar))
++    const bool tricksterActive = trickster::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -57,6 +59,7 @@
+                                  : scarletActive ? scarlet::isKitAbility(id)
+                                    : royalActive ? id == royal::IssueOrder
+                                      : banditActive ? bandit::isKitAbility(id)
++                                       : tricksterActive ? id == trickster::PassTheBlame
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -50,6 +50,7 @@
+ #include "utils/astromancer_actions.h"
+ #include "utils/channeler_actions.h"
+ #include "utils/bandit_actions.h"
++#include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/valkyrie_actions.h"
+@@ -389,7 +390,8 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff)) ||
+         (valkyrie::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Polearm)) ||
+         ((scarlet::isActive(PChar) || royal::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword)) ||
+-        (bandit::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
++        ((bandit::isActive(PChar) || trickster::isActive(PChar)) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Dagger)))
+     {
+         return false;
+diff --git a/src/map/utils/trickster_actions.h b/src/map/utils/trickster_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/trickster_actions.h
+@@ -0,0 +1,14 @@
++#pragma once
++
++#include "entities/char_entity.h"
++
++namespace trickster
++{
++inline constexpr uint16 PassTheBlame = 76;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::THF && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_TRK_ACTIVE") == 1;
++}
++} // namespace trickster

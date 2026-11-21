@@ -1,0 +1,318 @@
+diff --git a/src/map/ability.cpp b/src/map/ability.cpp
+--- a/src/map/ability.cpp
++++ b/src/map/ability.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "ability.h"
++#include "utils/untamed_actions.h"
+ 
+ #include "data/enums/recast.h"
+ 
+@@ -528,6 +529,12 @@
+         return &gamblerQdCharge;
+     }
+ 
++    if (chargeID == std::to_underlying(xi::Recast::Sic) && untamed::isActive(PUser))
++    {
++        static Charge_t packCharges{ std::to_underlying(xi::Recast::Sic), xi::Job::BST, 10, 3, 30s, 902 };
++        return &packCharges;
++    }
++
+     Charge_t* charge = nullptr;
+     for (auto& PCharge : PChargesList)
+     {
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -52,6 +52,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -161,7 +162,13 @@
+     m_skybornAbility = skyborn::isActive(character);
+     m_warmageAbility = warmage::isActive(character);
+     m_archivistAbility = archivist::isActive(character);
++    m_untamedAbility = untamed::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_untamedAbility && m_abilityId == ABILITY_CHARM)
++    {
++        m_PAbility->setRange(3);
++        m_PAbility->setRecastTime(8s);
++    }
+     if (m_lancerAbility && m_abilityId == lancer::Vault)
+     {
+         m_PAbility->setRange(12);
+@@ -368,6 +375,7 @@
+         const auto currentSkyborn = skyborn::isActive(PChar);
+         const auto currentWarmage = warmage::isActive(PChar);
+         const auto currentArchivist = archivist::isActive(PChar);
++        const auto currentUntamed = untamed::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -389,6 +397,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_untamedAbility != currentUntamed ||
++            (currentUntamed && !untamed::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_archivistAbility != currentArchivist ||
+             (currentArchivist && !archivist::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -68,5 +68,6 @@
+     bool                      m_skybornAbility{ false };
+     bool                      m_warmageAbility{ false };
+     bool                      m_archivistAbility{ false };
++    bool                      m_untamedAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -55,6 +55,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -117,6 +118,7 @@
+     m_skybornCast = skyborn::isActive(caster);
+     m_warmageCast = warmage::isActive(caster);
+     m_archivistCast = archivist::isActive(caster);
++    m_untamedCast = untamed::isActive(caster);
+     if (m_archivistCast && archivist::spellLevel(m_spellId) != 0)
+     {
+         const bool countermeasure = m_spellId == SpellID::Sandstorm;
+@@ -565,7 +567,8 @@
+                           m_lancerCast == lancer::isActive(caster) &&
+                           m_skybornCast == skyborn::isActive(caster) &&
+                           m_warmageCast == warmage::isActive(caster) &&
+-                          m_archivistCast == archivist::isActive(caster);
++                          m_archivistCast == archivist::isActive(caster) &&
++                          m_untamedCast == untamed::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -87,6 +87,7 @@
+     bool                    m_skybornCast{ false };
+     bool                    m_warmageCast{ false };
+     bool                    m_archivistCast{ false };
++    bool                    m_untamedCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -121,6 +121,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1507,6 +1508,10 @@
+ 
+     if ((bandit::isActive(this) || trickster::isActive(this) || phantom::isActive(this)) &&
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return false;
++    }
++    if (untamed::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
+     }
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -40,6 +40,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -66,8 +67,9 @@
+     const bool nightbladeActive = nightblade::isActive(PChar);
+     const bool warmageActive = warmage::isActive(PChar);
+     const bool archivistActive = archivist::isActive(PChar);
++    const bool untamedActive = untamed::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -89,6 +91,7 @@
+                                             : nightbladeActive ? nightblade::spellLevel(spellId)
+                                               : warmageActive ? warmage::spellLevel(spellId)
+                                                 : archivistActive ? archivist::spellLevel(spellId)
++                                                  : untamedActive ? 0
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -38,6 +38,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -70,7 +71,8 @@
+     const bool skybornActive = skyborn::isActive(PChar);
+     const bool warmageActive = warmage::isActive(PChar);
+     const bool archivistActive = archivist::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || valkyrie::isActive(PChar))
++    const bool untamedActive = untamed::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -93,13 +95,17 @@
+                                                          : skybornActive ? skyborn::isKitAbility(id)
+                                                            : warmageActive ? id == warmage::Assess && PChar->GetMLevel() >= 10
+                                                              : archivistActive ? archivist::kitAbility(id, PChar->GetMLevel())
++                                                               : untamedActive ? untamed::kitAbility(id, PChar->GetMLevel())
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+                 abilities[id / 8] &= static_cast<uint8_t>(~(1 << (id % 8)));
+             }
+         }
+-        std::memset(packet.CommandDataTbl.PetAbilities, 0, sizeof(packet.CommandDataTbl.PetAbilities));
++        if (!untamedActive)
++        {
++            std::memset(packet.CommandDataTbl.PetAbilities, 0, sizeof(packet.CommandDataTbl.PetAbilities));
++        }
+     }
+     // Note: Packet Traits is 32 bytes. CCharEntity is 18.
+     std::memcpy(packet.CommandDataTbl.Traits, PChar->m_TraitList, sizeof(PChar->m_TraitList));
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -60,6 +60,7 @@
+ #include "utils/skyborn_actions.h"
+ #include "utils/warmage_actions.h"
+ #include "utils/archivist_actions.h"
++#include "utils/untamed_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -415,7 +416,9 @@
+         (warmage::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Sword) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
+         (archivist::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
+-         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
++        (untamed::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -108,6 +108,7 @@
+ #include "entities/pet_entity.h"
+ 
+ #include "battleutils.h"
++#include "utils/untamed_actions.h"
+ #include "blueutils.h"
+ #include "char_points_queries.h"
+ #include "charutils.h"
+@@ -3369,6 +3370,16 @@
+         return;
+     }
+ 
++    if (untamed::isActive(PChar))
++    {
++        if (PPet->getPetType() == PET_TYPE::JUG_PET && PetID == PETID_HARE_FAMILIAR)
++        {
++            addPetAbility(PChar, ABILITY_FOOT_KICK - ABILITY_HEALING_RUBY);
++        }
++        PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++        return;
++    }
++
+     if (PChar->GetMJob() == xi::Job::SMN || PChar->GetSJob() == xi::Job::SMN)
+     {
+         std::vector<CAbility*> AbilitiesList = ability::GetAbilities(xi::Job::SMN);
+diff --git a/src/map/utils/petutils.cpp b/src/map/utils/petutils.cpp
+--- a/src/map/utils/petutils.cpp
++++ b/src/map/utils/petutils.cpp
+@@ -24,6 +24,7 @@
+ 
+ #include "ability.h"
+ #include "battleutils.h"
++#include "utils/untamed_actions.h"
+ #include "charutils.h"
+ #include "enmity_container.h"
+ #include "entities/automaton_entity.h"
+@@ -1108,6 +1109,10 @@
+         highestLvl -= xirand::GetRandomNumber(3 - std::clamp<int16>(PChar->getMod(xi::Mod::JUG_LEVEL_RANGE), 0, 2));
+     }
+ 
++    if (petID == PETID_HARE_FAMILIAR && untamed::isActive(PMaster))
++    {
++        highestLvl = PMaster->GetMLevel();
++    }
+     PPet->SetMLevel(std::min(PPet->getSpawnLevel(), highestLvl));
+     if (petID == PETID_FAERIE_COMPANION)
+     {
+diff --git a/src/map/utils/untamed_actions.h b/src/map/utils/untamed_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/untamed_actions.h
+@@ -0,0 +1,33 @@
++#pragma once
++
++#include "ability.h"
++#include "entities/battle_entity.h"
++
++namespace untamed
++{
++inline auto isActive(const CBattleEntity* entity) -> bool
++{
++    return entity && entity->objtype == TYPE_PC && entity->GetMJob() == xi::Job::BST &&
++           entity->GetMLevel() >= 10 && entity->GetLocalVar("OX_UNT_ACTIVE") == 1;
++}
++
++inline auto kitAbility(uint16 id, uint8 level) -> bool
++{
++    switch (id)
++    {
++        case ABILITY_CHARM:
++        case ABILITY_FIGHT:
++        case ABILITY_HEEL:
++        case ABILITY_LEAVE:
++        case ABILITY_REWARD:
++        case ABILITY_CALL_BEAST:
++        case ABILITY_READY:
++        case ABILITY_FOOT_KICK:
++            return true;
++        case ABILITY_BESTIAL_LOYALTY:
++            return level >= 30;
++        default:
++            return false;
++    }
++}
++} // namespace untamed

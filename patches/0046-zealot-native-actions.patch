@@ -1,0 +1,381 @@
+diff --git a/scripts/globals/spells/damage_spell.lua b/scripts/globals/spells/damage_spell.lua
+--- a/scripts/globals/spells/damage_spell.lua
++++ b/scripts/globals/spells/damage_spell.lua
+@@ -1161,6 +1161,11 @@
+     finalDamage = math.floor(finalDamage * areaOfEffectResistance)
+     finalDamage = math.floor(finalDamage * actionTypeMultiplier)
+ 
++    local zealot = xi.soulspire and xi.soulspire.whmZealotSpecs
++    if zealot then
++        finalDamage = math.floor(finalDamage * zealot.damageMultiplier(caster, spell))
++    end
++
+     -- Handle "Nuke Wall". It must be handled after all previous calculations, but before clamp.
+     local nukeWallFactor = not absorb and calculateNukeWallFactor(target, spellElement, finalDamage) or 1
+     finalDamage          = math.floor(finalDamage * nukeWallFactor)
+@@ -1184,6 +1189,9 @@
+ 
+     -- Handle Bind break and TP?
+     target:takeSpellDamage(caster, spell, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + spellElement)
++    if zealot then
++        zealot.onNukeDamage(caster, spell, finalDamage)
++    end
+ 
+     -- Handle Afflatus Misery.
+     target:handleAfflatusMiseryDamage(finalDamage)
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -38,6 +38,7 @@
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
++#include "utils/zealot_actions.h"
+ #include "utils/zoneutils.h"
+ 
+ namespace
+@@ -122,6 +123,7 @@
+     {
+         return refuseWithErrorMsg();
+     }
++    m_zealotAbility = zealot::isActive(dynamic_cast<const CCharEntity*>(m_PEntity));
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     m_castTime = PAbility->getCastTime();
+ 
+@@ -292,6 +294,14 @@
+ 
+     if (auto* PChar = dynamic_cast<CCharEntity*>(m_PEntity))
+     {
++        const auto currentZealot = zealot::isActive(PChar);
++        if (m_zealotAbility != currentZealot ||
++            (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))))
++        {
++            PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, 0, MsgBasic::UnableToUseJobAbility2);
++            return false;
++        }
++
+         const bool isLuopanAbility = PAbility->getID() >= ABILITY_CONCENTRIC_PULSE && PAbility->getID() <= ABILITY_RADIAL_ARCANA;
+ 
+         if (PChar->PRecastContainer->HasRecast(xi::RecastType::Ability, PAbility->getRecastId(), PAbility->getRecastTime()))
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -49,5 +49,6 @@
+ 
+     timer::duration           m_castTime{ 0s };
+     const uint16              m_abilityId;
++    bool                      m_zealotAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -41,6 +41,7 @@
+ #include "spell.h"
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
++#include "utils/zealot_actions.h"
+ #include "utils/zoneutils.h"
+ 
+ namespace
+@@ -78,6 +79,7 @@
+     }
+ 
+     m_PSpell = PSpell->clone();
++    m_zealotCast = zealot::isActive(dynamic_cast<const CCharEntity*>(m_PEntity));
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+     if (!PTarget || this->HasErrorMsg())
+@@ -362,7 +364,9 @@
+ 
+ auto CMagicState::CanCastSpell(CBattleEntity* PTarget, bool isEndOfCast) -> bool
+ {
+-    auto ret = m_PEntity->CanUseSpell(GetSpell());
++    const auto currentZealot = zealot::isActive(dynamic_cast<const CCharEntity*>(m_PEntity));
++    auto ret = (m_zealotCast == currentZealot || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) &&
++               m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+     {
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -67,6 +67,7 @@
+     timer::duration         m_castTime{};
+     position_t              m_startPos;
+     bool                    m_startedMoving{ false };
++    bool                    m_zealotCast{ false };
+     bool                    m_interrupted{ false };
+     bool                    m_instantCast{ false };
+     uint8                   m_flags{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -60,6 +60,7 @@
+ #include "trust_entity.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
++#include "utils/zealot_actions.h"
+ #include "utils/fishingutils.h"
+ #include "utils/messageutils.h"
+ #include "utils/mobutils.h"
+@@ -3668,6 +3669,9 @@
+     //  Make sure our target is alive on each iteration to not overkill;
+     //  And make sure we aren't dead in case we died to a counter.
+     /////////////////////////////////////////////////////////////////////////
++    const auto* character = dynamic_cast<const CCharEntity*>(this);
++    const bool trackStaffHit = zealot::isActive(character) && zealot::hasStaff(character);
++    bool landedStaffHit = false;
+     while (attackRound.GetAttackSwingCount() && PTarget->isAlive() && this->isAlive())
+     {
+         action_result_t& actionResult = list.addResult();
+@@ -3874,6 +3878,7 @@
+                 }
+                 else
+                 {
++                    landedStaffHit |= trackStaffHit && damage > 0 && weaponSlot == SLOT_MAIN;
+                     // This will set the physical hit distortion accordingly
+                     actionResult.recordDamage(attack_outcome_t{
+                         .atkType    = xi::AttackType::Physical,
+@@ -3986,6 +3991,10 @@
+         }
+     }
+ 
++    if (landedStaffHit && isAlive())
++    {
++        PAI->EventHandler.triggerListener("SOUL_STAFF_HIT", this, PTarget);
++    }
+     PAI->EventHandler.triggerListener("ATTACK", this, PTarget, &action);
+     PTarget->PAI->EventHandler.triggerListener("ATTACKED", PTarget, this, &action);
+     /////////////////////////////////////////////////////////////////////////////////////////////
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -107,6 +107,7 @@
+ #include "universal_container.h"
+ #include "utils/battleutils.h"
+ #include "utils/charutils.h"
++#include "utils/zealot_actions.h"
+ #include "utils/gardenutils.h"
+ #include "utils/messageutils.h"
+ #include "utils/moduleutils.h"
+@@ -1435,6 +1436,13 @@
+     if (m_PMonstrosity && !monstrosity::CanCastSpell(PSpell))
+     {
+         return false;
++    }
++
++    if (zealot::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto profile = zealot::spellProfile(PSpell->getID(), GetMLevel());
++        return profile.level > 0 && GetMLevel() >= profile.level && zealot::hasStaff(this) &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+ 
+     return charutils::hasSpell(this, static_cast<uint16>(PSpell->getID())) && CBattleEntity::CanUseSpell(PSpell);
+diff --git a/src/map/lua/lua_base_entity.cpp b/src/map/lua/lua_base_entity.cpp
+--- a/src/map/lua/lua_base_entity.cpp
++++ b/src/map/lua/lua_base_entity.cpp
+@@ -11889,6 +11889,15 @@
+ 
+     PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+     PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++}
++
++void CLuaBaseEntity::sendSoulSpellList()
++{
++    if (m_PBaseEntity->objtype == TYPE_PC)
++    {
++        auto* character = static_cast<CCharEntity*>(m_PBaseEntity);
++        character->pushPacket<GP_SERV_COMMAND_MAGIC_DATA>(character);
++    }
+ }
+ 
+ void CLuaBaseEntity::sendTalentPacket(std::string const& payload)
+@@ -21492,6 +21501,7 @@
+ 
+     SOL_REGISTER("recalculateSkillsTable", CLuaBaseEntity::recalculateSkillsTable);
+     SOL_REGISTER("recalculateAbilitiesTable", CLuaBaseEntity::recalculateAbilitiesTable);
++    SOL_REGISTER("sendSoulSpellList", CLuaBaseEntity::sendSoulSpellList);
+     SOL_REGISTER("sendTalentPacket", CLuaBaseEntity::sendTalentPacket);
+     SOL_REGISTER("pushStatus", CLuaBaseEntity::pushStatus);
+     SOL_REGISTER("getEntitiesInRange", CLuaBaseEntity::getEntitiesInRange);
+diff --git a/src/map/lua/lua_base_entity.h b/src/map/lua/lua_base_entity.h
+--- a/src/map/lua/lua_base_entity.h
++++ b/src/map/lua/lua_base_entity.h
+@@ -597,6 +597,7 @@
+ 
+     void recalculateSkillsTable();
+     void recalculateAbilitiesTable();
++    void sendSoulSpellList();
+     void sendTalentPacket(std::string const& payload);
+     void pushStatus();
+     auto getEntitiesInRange(CLuaBaseEntity* PLuaEntityTarget, sol::variadic_args va) -> sol::table;
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -26,12 +26,37 @@
+ #include "entities/char_entity.h"
+ #include "monstrosity.h"
+ #include "spell.h"
++#include "utils/zealot_actions.h"
+ 
+ GP_SERV_COMMAND_MAGIC_DATA::GP_SERV_COMMAND_MAGIC_DATA(const CCharEntity* PChar)
+ {
+     auto& packet = this->data();
+ 
+     std::memcpy(packet.MagicDataTbl, &PChar->m_SpellList, sizeof(packet.MagicDataTbl));
++
++    if (zealot::isActive(PChar))
++    {
++        for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
++        {
++            const auto spellId = static_cast<SpellID>(id);
++            const auto* definition = spell::GetSpell(spellId);
++            if (definition && definition->getSpellGroup() == SPELLGROUP_TRUST)
++            {
++                continue;
++            }
++
++            const auto profile = zealot::spellProfile(spellId, PChar->GetMLevel());
++            const auto mask = static_cast<uint8_t>(1 << (id % 8));
++            if (profile.level > 0 && PChar->GetMLevel() >= profile.level)
++            {
++                packet.MagicDataTbl[id / 8] |= mask;
++            }
++            else
++            {
++                packet.MagicDataTbl[id / 8] &= static_cast<uint8_t>(~mask);
++            }
++        }
++    }
+ 
+     // A Monipulator lists its Trusts, and only the spells its species can cast.
+     if (PChar->m_PMonstrosity)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -24,6 +24,7 @@
+ #include <cstring>
+ 
+ #include "entities/char_entity.h"
++#include "utils/zealot_actions.h"
+ 
+ GP_SERV_COMMAND_COMMAND_DATA::GP_SERV_COMMAND_COMMAND_DATA(const CCharEntity* PChar)
+ {
+@@ -33,6 +34,15 @@
+     std::memcpy(packet.CommandDataTbl.WeaponSkills, PChar->m_WeaponSkills, sizeof(PChar->m_WeaponSkills));
+     std::memcpy(packet.CommandDataTbl.JobAbilities, PChar->m_Abilities, sizeof(PChar->m_Abilities));
+     std::memcpy(packet.CommandDataTbl.PetAbilities, PChar->m_PetCommands, sizeof(PChar->m_PetCommands));
++    if (zealot::isActive(PChar))
++    {
++        auto& abilities = packet.CommandDataTbl.JobAbilities;
++        constexpr auto seal = zealot::SealAbility;
++        const auto sealBit = abilities[seal / 8] & (1 << (seal % 8));
++        std::memset(abilities, 0, sizeof(abilities));
++        abilities[seal / 8] = static_cast<uint8_t>(sealBit);
++        std::memset(packet.CommandDataTbl.PetAbilities, 0, sizeof(packet.CommandDataTbl.PetAbilities));
++    }
+     // Note: Packet Traits is 32 bytes. CCharEntity is 18.
+     std::memcpy(packet.CommandDataTbl.Traits, PChar->m_TraitList, sizeof(PChar->m_TraitList));
+ }
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -46,6 +46,7 @@
+ #include "attack.h"
+ #include "attackutils.h"
+ #include "charutils.h"
++#include "utils/zealot_actions.h"
+ #include "data/datasets/animation_locks/dataset.h"
+ #include "data/datasets/skills/dataset.h"
+ #include "data/datasets/weapon_skills/dataset.h"
+@@ -374,6 +375,11 @@
+ auto CanUseWeaponskill(CCharEntity* PChar, CWeaponSkill* PSkill) -> bool
+ {
+     if (PChar == nullptr || PSkill == nullptr)
++    {
++        return false;
++    }
++
++    if (zealot::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff))
+     {
+         return false;
+     }
+@@ -5939,6 +5945,15 @@
+         return 0;
+     }
+ 
++    if (const auto* character = dynamic_cast<const CCharEntity*>(PEntity); zealot::isActive(character))
++    {
++        const auto profile = zealot::spellProfile(PSpell->getID(), character->GetMLevel());
++        if (profile.mpPercent != 0)
++        {
++            return static_cast<uint16>(std::clamp((PEntity->health.maxmp * profile.mpPercent + 99) / 100, 1, 9999));
++        }
++    }
++
+     bool   applyArts = true;
+     uint16 base      = PSpell->getMPCost();
+     if (PSpell->getID() == SpellID::Embrava || PSpell->getID() == SpellID::Kaustra) // Embrava/Kaustra
+@@ -6078,6 +6093,14 @@
+                 break;
+             default:
+                 break;
++        }
++    }
++    if (const auto* character = dynamic_cast<const CCharEntity*>(PEntity); zealot::isActive(character))
++    {
++        const auto profile = zealot::spellProfile(PSpell->getID(), character->GetMLevel());
++        if (profile.recastSeconds != 0)
++        {
++            base = std::chrono::seconds(profile.recastSeconds);
+         }
+     }
+     auto recast = base;
+diff --git a/src/map/utils/zealot_actions.h b/src/map/utils/zealot_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/zealot_actions.h
+@@ -0,0 +1,41 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "items/item_weapon.h"
++#include "spell.h"
++
++namespace zealot
++{
++struct SpellProfile
++{
++    uint8 level;
++    uint8 mpPercent;
++    uint8 recastSeconds;
++};
++
++inline constexpr uint16 SealAbility = 74;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::WHM && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_ZEALOT_ACTIVE") == 1;
++}
++
++inline auto hasStaff(const CCharEntity* character) -> bool
++{
++    const auto* weapon = dynamic_cast<const CItemWeapon*>(character->m_Weapons[SLOT_MAIN]);
++    return weapon && weapon->getSkillType() == xi::SkillType::Staff;
++}
++
++inline auto spellProfile(SpellID id, uint8 level) -> SpellProfile
++{
++    switch (id)
++    {
++        case SpellID::Banish:     return { 10, 8, 6 };
++        case SpellID::Banish_II:  return { 30, 12, 8 };
++        case SpellID::Banish_III: return { 50, 16, 12 };
++        case SpellID::Holy:       return { 50, static_cast<uint8>(level >= 70 ? 22 : 20), 14 };
++        default:                 return {};
++    }
++}
++} // namespace zealot

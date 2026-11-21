@@ -1,0 +1,492 @@
+diff --git a/scripts/globals/bluemagic.lua b/scripts/globals/bluemagic.lua
+--- a/scripts/globals/bluemagic.lua
++++ b/scripts/globals/bluemagic.lua
+@@ -1122,22 +1122,28 @@
+     -- Final adjustments.
+     local warmage = xi.soulspire and xi.soulspire.warmage
+     local arcane = xi.soulspire and xi.soulspire.arcaneArcher
+-    local claim
++    local herald = xi.soulspire and xi.soulspire.herald
++    local claim, accord
+     if dmg > 0 then
++        local base = dmg
+         if warmage then dmg = warmage.damage(caster, target, spell, dmg) end
++        local extra = math.max(0, dmg - base)
+         dmg = utils.clamp(utils.handlePhalanx(target, dmg), 0, 99999)
+         dmg = utils.clamp(utils.handleOneForAll(target, dmg), 0, 99999)
+         dmg = utils.handleStoneskin(target, dmg, attackType)
+-        if arcane and (attackType == xi.attackType.MAGICAL or attackType == xi.attackType.BREATH) then
+-            dmg, claim = arcane.reserve(caster, target, spellElement, dmg, 'spell')
++        if attackType == xi.attackType.MAGICAL or attackType == xi.attackType.BREATH then
++            local ordinary = math.max(0, dmg - extra)
++            if arcane then dmg, claim = arcane.reserve(caster, target, spellElement, dmg, 'spell') end
++            if herald then dmg, accord = herald.reserve(caster, target, spellElement, dmg, ordinary) end
+         end
+         dmg = utils.clamp(dmg, 0, target:getHP())
+         dmg = target:checkDamageCap(dmg)
+     end
+ 
+-    local hpBefore = claim and target:getHP() or 0
++    local hpBefore = (claim or accord) and target:getHP() or 0
+     target:takeSpellDamage(caster, spell, dmg, attackType, damageType)
+     if claim then arcane.finish(target, claim, hpBefore - target:getHP()) end
++    if accord then herald.finish(accord, hpBefore - target:getHP()) end
+ 
+     -- Handle Afflatus Misery.
+     target:handleAfflatusMiseryDamage(dmg)
+diff --git a/scripts/globals/job_utils/summoner.lua b/scripts/globals/job_utils/summoner.lua
+--- a/scripts/globals/job_utils/summoner.lua
++++ b/scripts/globals/job_utils/summoner.lua
+@@ -125,7 +125,10 @@
+     }
+ 
+     local primalist = xi.soulspire and xi.soulspire.primalist
+-    local baseMPCost = ability and primalist and primalist.pactCost(player, ability:getID()) or nil
++    local herald = xi.soulspire and xi.soulspire.herald
++    local baseMPCost = ability and
++        ((primalist and primalist.pactCost(player, ability:getID())) or
++         (herald and herald.pactCost(player, ability:getID()))) or nil
+ 
+     if ability and not baseMPCost then
+         if ability:getAddType() == xi.addType.ADDTYPE_ASTRAL_FLOW then
+diff --git a/scripts/globals/mobskills.lua b/scripts/globals/mobskills.lua
+--- a/scripts/globals/mobskills.lua
++++ b/scripts/globals/mobskills.lua
+@@ -1503,6 +1503,14 @@
+ -- Used as a conditional filter for target:takeDamage so the target doesn't take chip damage through shadows.
+ xi.mobskills.processDamage = function(actor, target, skill, action, info)
+     if info.hitsLanded > 0 then
++        local herald = xi.soulspire and xi.soulspire.herald
++        if herald and actor:isPet() and info.damage > 0 and
++            (info.attackType == xi.attackType.MAGICAL or info.attackType == xi.attackType.BREATH) then
++            local element = info.damageType - xi.damageType.ELEMENTAL
++            if element >= xi.element.FIRE and element <= xi.element.DARK then
++                info.damage = herald.preparePetClaim(actor, target, element, info.damage, info.heraldOrdinary)
++            end
++        end
+         target:updateEnmityFromDamage(actor, info.damage)
+ 
+         return true
+diff --git a/scripts/globals/spells/damage_spell.lua b/scripts/globals/spells/damage_spell.lua
+--- a/scripts/globals/spells/damage_spell.lua
++++ b/scripts/globals/spells/damage_spell.lua
+@@ -1203,17 +1203,21 @@
+     -- Handle final adjustments. Most are located in core. TODO: Decide if we want core handling this.
+     local arcane = xi.soulspire and xi.soulspire.arcaneArcher
+     local claim
++    local ordinaryDamage = math.max(0, finalDamage - math.floor(astroBonus * nukeWallFactor))
+     if arcane and finalDamage > 0 then
+-        local ordinaryDamage = math.max(0, finalDamage - math.floor(astroBonus * nukeWallFactor))
+         finalDamage, claim = arcane.reserve(caster, target, spellElement, finalDamage, 'spell', ordinaryDamage)
+     end
++    local herald = xi.soulspire and xi.soulspire.herald
++    local accord
++    if herald then finalDamage, accord = herald.reserve(caster, target, spellElement, finalDamage, ordinaryDamage) end
+     -- Check if the mob has a damage cap
+     finalDamage = target:checkDamageCap(finalDamage)
+ 
+     -- Handle Bind break and TP?
+-    local hpBefore = (astro or claim) and target:getHP() or 0
++    local hpBefore = (astro or claim or accord) and target:getHP() or 0
+     target:takeSpellDamage(caster, spell, finalDamage, xi.attackType.MAGICAL, xi.damageType.ELEMENTAL + spellElement)
+     if claim then arcane.finish(target, claim, hpBefore - target:getHP()) end
++    if accord then herald.finish(accord, hpBefore - target:getHP()) end
+     if zealot then
+         zealot.onNukeDamage(caster, spell, finalDamage)
+     end
+diff --git a/scripts/globals/weaponskills.lua b/scripts/globals/weaponskills.lua
+--- a/scripts/globals/weaponskills.lua
++++ b/scripts/globals/weaponskills.lua
+@@ -1004,7 +1004,14 @@
+     end
+ 
+     local arcane = xi.soulspire and xi.soulspire.arcaneArcher
+-    local claim
++    local herald = xi.soulspire and xi.soulspire.herald
++    local claim, accord
++    if herald and attack.type == xi.attackType.MAGICAL and wsResults.hitsLanded > 0 then
++        local element = attack.damageType - xi.damageType.ELEMENTAL
++        if element >= xi.element.FIRE and element <= xi.element.DARK then
++            finaldmg, accord = herald.reserve(attacker, defender, element, finaldmg)
++        end
++    end
+     if arcane and wsResults.hitsLanded > 0 and wsResults.arcaneElement and
+         attack.slot == xi.slot.RANGED and attack.weaponType == xi.skill.ARCHERY
+     then
+@@ -1012,9 +1019,10 @@
+     end
+     local jumpBonus = wsParams.lancerFollowup or 0
+     if jumpBonus > 0 and finaldmg > 0 then finaldmg = math.floor(finaldmg * (100 + jumpBonus) / 100) end
+-    local hpBefore = (claim or jumpBonus > 0) and defender:getHP() or 0
++    local hpBefore = (claim or accord or jumpBonus > 0) and defender:getHP() or 0
+     finaldmg = defender:takeWeaponskillDamage(attacker, finaldmg, attack.type, attack.damageType, attack.slot, primaryMsg, wsResults.tpHitsLanded * attackerTPMult, extraHitsTP, targetTPMult)
+     if claim then arcane.finish(defender, claim, hpBefore - defender:getHP()) end
++    if accord then herald.finish(accord, hpBefore - defender:getHP()) end
+     if jumpBonus > 0 and hpBefore > defender:getHP() then xi.soulspire.lancer.finishJump(attacker) end
+     if wsResults.tpHitsLanded + wsResults.extraHitsLanded > 0 then
+         action:recordDamage(defender, attack.type, math.abs(finaldmg), wsResults.criticalHit)
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -55,6 +55,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -167,7 +168,21 @@
+     m_untamedAbility = untamed::isActive(character);
+     m_beastspeakerAbility = beastspeaker::isActive(character);
+     m_primalistAbility = primalist::isActive(character);
++    m_heraldAbility = herald::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_heraldAbility && m_abilityId == ABILITY_AVATARS_FAVOR)
++    {
++        m_PAbility->setAOE(0);
++        m_PAbility->setRadius(0);
++        m_PAbility->setRecastTime(30s);
++        m_PAbility->setMeritModID(0);
++        m_PAbility->setCE(0);
++        m_PAbility->setVE(0);
++    }
++    else if (m_heraldAbility && primalist::isPact(m_abilityId))
++    {
++        m_PAbility->setRecastTime(20s);
++    }
+     if (m_primalistAbility)
+     {
+         if (m_abilityId == ABILITY_ASSAULT)
+@@ -415,9 +430,12 @@
+         const auto currentUntamed = untamed::isActive(PChar);
+         const auto currentBeastspeaker = beastspeaker::isActive(PChar);
+         const auto currentPrimalist = primalist::isActive(PChar);
++        const auto currentHerald = herald::isActive(PChar);
+         const auto* avatar = dynamic_cast<const CPetEntity*>(PChar->PPet);
+         const auto allowedPact = currentPrimalist && avatar ? primalist::pactForPet(PChar, avatar->petID()) : 0;
+         const bool primalistPact = allowedPact != 0 && allowedPact == PAbility->getID();
++        const auto heraldPactID = currentHerald && avatar ? herald::pactForPet(PChar, avatar->petID()) : 0;
++        const bool heraldPact = heraldPactID != 0 && heraldPactID == PAbility->getID();
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -439,6 +457,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_heraldAbility != currentHerald ||
++            (currentHerald && !heraldPact && !herald::playerAbility(PAbility->getID())) ||
+             m_primalistAbility != currentPrimalist ||
+             (currentPrimalist && !primalistPact && !primalist::playerAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_beastspeakerAbility != currentBeastspeaker ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -71,5 +71,6 @@
+     bool                      m_untamedAbility{ false };
+     bool                      m_beastspeakerAbility{ false };
+     bool                      m_primalistAbility{ false };
++    bool                      m_heraldAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -58,6 +58,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -123,7 +124,9 @@
+     m_untamedCast = untamed::isActive(caster);
+     m_beastspeakerCast = beastspeaker::isActive(caster);
+     m_primalistCast = primalist::isActive(caster);
+-    if (m_primalistCast && primalist::spellLevel(caster, m_spellId) != 0)
++    m_heraldCast = herald::isActive(caster);
++    if ((m_primalistCast && primalist::spellLevel(caster, m_spellId) != 0) ||
++        (m_heraldCast && herald::spellLevel(m_spellId) != 0))
+     {
+         m_PSpell->setMPCost(5);
+         m_PSpell->setCastTime(1500ms);
+@@ -580,7 +583,8 @@
+                           m_archivistCast == archivist::isActive(caster) &&
+                           m_untamedCast == untamed::isActive(caster) &&
+                           m_beastspeakerCast == beastspeaker::isActive(caster) &&
+-                          m_primalistCast == primalist::isActive(caster);
++                          m_primalistCast == primalist::isActive(caster) &&
++                          m_heraldCast == herald::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -90,6 +90,7 @@
+     bool                    m_untamedCast{ false };
+     bool                    m_beastspeakerCast{ false };
+     bool                    m_primalistCast{ false };
++    bool                    m_heraldCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "battle_entity.h"
++#include "utils/herald_actions.h"
+ 
+ #include <algorithm>
+ 
+@@ -3076,7 +3077,10 @@
+             }
+             else
+             {
+-                damage = luautils::OnPetAbility(PTargetFound, this, PSkill, PMaster, &action);
++                damage = herald::settlePetDamage(this, PMaster, PTargetFound, [&]
++            {
++                return luautils::OnPetAbility(PTargetFound, this, PSkill, PMaster, &action);
++            });
+             }
+         }
+         else
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -124,6 +124,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1512,6 +1513,12 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (herald::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto unlocked = herald::spellLevel(PSpell->getID());
++        return unlocked && GetMLevel() >= unlocked &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if (primalist::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/entities/pet_entity.cpp b/src/map/entities/pet_entity.cpp
+--- a/src/map/entities/pet_entity.cpp
++++ b/src/map/entities/pet_entity.cpp
+@@ -20,6 +20,7 @@
+ */
+ 
+ #include "pet_entity.h"
++#include "utils/herald_actions.h"
+ 
+ #include "ai/ai_container.h"
+ #include "ai/controllers/pet_controller.h"
+@@ -528,7 +529,10 @@
+         }
+         else*/
+         {
+-            damage = luautils::OnPetAbility(PTargetFound, this, PSkill, PMaster, &action);
++            damage = herald::settlePetDamage(this, PMaster, PTargetFound, [&]
++            {
++                return luautils::OnPetAbility(PTargetFound, this, PSkill, PMaster, &action);
++            });
+         }
+ 
+         // primary target will have msg == 0
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -43,6 +43,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -72,8 +73,9 @@
+     const bool untamedActive = untamed::isActive(PChar);
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
+     const bool primalistActive = primalist::isActive(PChar);
++    const bool heraldActive = herald::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -97,6 +99,7 @@
+                                                 : archivistActive ? archivist::spellLevel(spellId)
+                                                   : (untamedActive || beastspeakerActive) ? 0
+                                                     : primalistActive ? primalist::spellLevel(PChar, spellId)
++                                                      : heraldActive ? herald::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -41,6 +41,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -76,7 +77,8 @@
+     const bool untamedActive = untamed::isActive(PChar);
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
+     const bool primalistActive = primalist::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || valkyrie::isActive(PChar))
++    const bool heraldActive = herald::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || heraldActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -102,13 +104,14 @@
+                                                                : untamedActive ? untamed::kitAbility(id, PChar->GetMLevel())
+                                                                  : beastspeakerActive ? beastspeaker::kitAbility(id, PChar->GetMLevel())
+                                                                    : primalistActive ? primalist::playerAbility(id, PChar->GetMLevel())
++                                                                     : heraldActive ? herald::playerAbility(id)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+                 abilities[id / 8] &= static_cast<uint8_t>(~(1 << (id % 8)));
+             }
+         }
+-        if (!untamedActive && !primalistActive)
++        if (!untamedActive && !primalistActive && !heraldActive)
+         {
+             std::memset(packet.CommandDataTbl.PetAbilities, 0, sizeof(packet.CommandDataTbl.PetAbilities));
+         }
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -63,6 +63,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -422,7 +423,7 @@
+         (untamed::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)) ||
+         (beastspeaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe)) ||
+-        (primalist::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
++        ((primalist::isActive(PChar) || herald::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
+     {
+         return false;
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -111,6 +111,7 @@
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
+ #include "utils/primalist_actions.h"
++#include "utils/herald_actions.h"
+ #include "blueutils.h"
+ #include "char_points_queries.h"
+ #include "charutils.h"
+@@ -3372,9 +3373,11 @@
+         return;
+     }
+ 
+-    if (primalist::isActive(PChar))
+-    {
+-        const auto pact = PPet->getPetType() == PET_TYPE::AVATAR ? primalist::pactForPet(PChar, PetID) : 0;
++    if (const bool isHerald = herald::isActive(PChar); isHerald || primalist::isActive(PChar))
++    {
++        const auto pact = PPet->getPetType() == PET_TYPE::AVATAR
++            ? (isHerald ? herald::pactForPet(PChar, PetID) : primalist::pactForPet(PChar, PetID))
++            : 0;
+         if (pact != 0)
+         {
+             addPetAbility(PChar, pact - ABILITY_HEALING_RUBY);
+diff --git a/src/map/utils/herald_actions.h b/src/map/utils/herald_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/herald_actions.h
+@@ -0,0 +1,69 @@
++#pragma once
++
++#include "lua/luautils.h"
++#include "utils/primalist_actions.h"
++
++namespace herald
++{
++inline auto isActive(const CCharEntity* entity) -> bool
++{
++    return entity && entity->GetMJob() == xi::Job::SMN && entity->GetMLevel() >= 10 &&
++           entity->GetLocalVar("OX_HLD_ACTIVE") == 1;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    switch (id)
++    {
++        case SpellID::Carbuncle:
++        case SpellID::Ifrit:
++            return 10;
++        case SpellID::Garuda:
++        case SpellID::Shiva:
++            return 30;
++        case SpellID::Titan:
++        case SpellID::Leviathan:
++        case SpellID::Ramuh:
++            return 50;
++        default:
++            return 0;
++    }
++}
++
++inline auto pactForPet(const CCharEntity* entity, uint32 petID) -> uint16
++{
++    for (const auto& avatar : primalist::avatars)
++    {
++        if (avatar.pet == petID)
++        {
++            const auto unlock = spellLevel(avatar.spell);
++            return unlock != 0 && entity->GetMLevel() >= unlock ? avatar.pact : 0;
++        }
++    }
++    return 0;
++}
++
++inline auto playerAbility(uint16 id) -> bool
++{
++    return id == ABILITY_AVATARS_FAVOR || id == ABILITY_ASSAULT || id == ABILITY_RETREAT ||
++           id == ABILITY_RELEASE || id == ABILITY_BLOOD_PACT_RAGE;
++}
++
++template <typename Callback>
++auto settlePetDamage(CBattleEntity* pet, CBaseEntity* owner, CBattleEntity* target, Callback execute) -> int32
++{
++    if (!owner || owner->objtype != TYPE_PC || target->objtype != TYPE_MOB)
++    {
++        return execute();
++    }
++    const auto before = target->health.hp;
++    pet->SetLocalVar("OX_HLD_PET_SCOPE", 1);
++    const auto damage = execute();
++    pet->SetLocalVar("OX_HLD_PET_SCOPE", 0);
++    if (pet->GetLocalVar("OX_HLD_PET_PENDING") != 0)
++    {
++        luautils::callGlobal<void>("xi.soulspire.herald.finishPetClaim", pet, target, before - target->health.hp);
++    }
++    return damage;
++}
++} // namespace herald

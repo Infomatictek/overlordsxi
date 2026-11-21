@@ -1,0 +1,376 @@
+diff --git a/scripts/globals/job_utils/summoner.lua b/scripts/globals/job_utils/summoner.lua
+--- a/scripts/globals/job_utils/summoner.lua
++++ b/scripts/globals/job_utils/summoner.lua
+@@ -124,9 +124,10 @@
+         [xi.jobAbility.HYSTERIC_ASSAULT] = 222,
+     }
+ 
+-    local baseMPCost = nil
+-
+-    if ability then
++    local primalist = xi.soulspire and xi.soulspire.primalist
++    local baseMPCost = ability and primalist and primalist.pactCost(player, ability:getID()) or nil
++
++    if ability and not baseMPCost then
+         if ability:getAddType() == xi.addType.ADDTYPE_ASTRAL_FLOW then
+             baseMPCost = player:getMainLvl() * 2
+         else
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -54,6 +54,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -165,7 +166,26 @@
+     m_archivistAbility = archivist::isActive(character);
+     m_untamedAbility = untamed::isActive(character);
+     m_beastspeakerAbility = beastspeaker::isActive(character);
++    m_primalistAbility = primalist::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
++    if (m_primalistAbility)
++    {
++        if (m_abilityId == ABILITY_ASSAULT)
++        {
++            m_PAbility->setRecastTime(20s);
++        }
++        else if (primalist::isPact(m_abilityId))
++        {
++            m_PAbility->setRecastTime(18s);
++        }
++        else if (m_abilityId == ABILITY_ELEMENTAL_SIPHON || m_abilityId == ABILITY_MANA_CEDE)
++        {
++            m_PAbility->setRecastTime(1s);
++            m_PAbility->setMeritModID(0);
++            m_PAbility->setCE(0);
++            m_PAbility->setVE(0);
++        }
++    }
+     if (m_beastspeakerAbility)
+     {
+         if (m_abilityId == ABILITY_GAUGE || m_abilityId == ABILITY_TAME)
+@@ -394,6 +414,10 @@
+         const auto currentArchivist = archivist::isActive(PChar);
+         const auto currentUntamed = untamed::isActive(PChar);
+         const auto currentBeastspeaker = beastspeaker::isActive(PChar);
++        const auto currentPrimalist = primalist::isActive(PChar);
++        const auto* avatar = dynamic_cast<const CPetEntity*>(PChar->PPet);
++        const auto allowedPact = currentPrimalist && avatar ? primalist::pactForPet(PChar, avatar->petID()) : 0;
++        const bool primalistPact = allowedPact != 0 && allowedPact == PAbility->getID();
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -415,6 +439,8 @@
+             m_skybornAbility != currentSkyborn ||
+             (currentSkyborn && (!skyborn::isKitAbility(PAbility->getID()) || !skyborn::hasPolearm(PChar))) ||
+             m_warmageAbility != currentWarmage || (currentWarmage && PAbility->getID() != warmage::Assess) ||
++            m_primalistAbility != currentPrimalist ||
++            (currentPrimalist && !primalistPact && !primalist::playerAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_beastspeakerAbility != currentBeastspeaker ||
+             (currentBeastspeaker && !beastspeaker::kitAbility(PAbility->getID(), PChar->GetMLevel())) ||
+             m_untamedAbility != currentUntamed ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -70,5 +70,6 @@
+     bool                      m_archivistAbility{ false };
+     bool                      m_untamedAbility{ false };
+     bool                      m_beastspeakerAbility{ false };
++    bool                      m_primalistAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -57,6 +57,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -121,6 +122,13 @@
+     m_archivistCast = archivist::isActive(caster);
+     m_untamedCast = untamed::isActive(caster);
+     m_beastspeakerCast = beastspeaker::isActive(caster);
++    m_primalistCast = primalist::isActive(caster);
++    if (m_primalistCast && primalist::spellLevel(caster, m_spellId) != 0)
++    {
++        m_PSpell->setMPCost(5);
++        m_PSpell->setCastTime(1500ms);
++        m_PSpell->setRecastTime(5s);
++    }
+     if (m_archivistCast && archivist::spellLevel(m_spellId) != 0)
+     {
+         const bool countermeasure = m_spellId == SpellID::Sandstorm;
+@@ -571,7 +579,8 @@
+                           m_warmageCast == warmage::isActive(caster) &&
+                           m_archivistCast == archivist::isActive(caster) &&
+                           m_untamedCast == untamed::isActive(caster) &&
+-                          m_beastspeakerCast == beastspeaker::isActive(caster);
++                          m_beastspeakerCast == beastspeaker::isActive(caster) &&
++                          m_primalistCast == primalist::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -89,6 +89,7 @@
+     bool                    m_archivistCast{ false };
+     bool                    m_untamedCast{ false };
+     bool                    m_beastspeakerCast{ false };
++    bool                    m_primalistCast{ false };
+     uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -123,6 +123,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1511,6 +1512,12 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (primalist::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        const auto unlocked = primalist::spellLevel(this, PSpell->getID());
++        return unlocked && GetMLevel() >= unlocked &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if ((untamed::isActive(this) || beastspeaker::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -42,6 +42,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -70,8 +71,9 @@
+     const bool archivistActive = archivist::isActive(PChar);
+     const bool untamedActive = untamed::isActive(PChar);
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
++    const bool primalistActive = primalist::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || physicalKitActive || nightbladeActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -94,6 +96,7 @@
+                                               : warmageActive ? warmage::spellLevel(spellId)
+                                                 : archivistActive ? archivist::spellLevel(spellId)
+                                                   : (untamedActive || beastspeakerActive) ? 0
++                                                    : primalistActive ? primalist::spellLevel(PChar, spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -40,6 +40,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -74,7 +75,8 @@
+     const bool archivistActive = archivist::isActive(PChar);
+     const bool untamedActive = untamed::isActive(PChar);
+     const bool beastspeakerActive = beastspeaker::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || valkyrie::isActive(PChar))
++    const bool primalistActive = primalist::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || lancerActive || skybornActive || warmageActive || archivistActive || untamedActive || beastspeakerActive || primalistActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -99,13 +101,14 @@
+                                                              : archivistActive ? archivist::kitAbility(id, PChar->GetMLevel())
+                                                                : untamedActive ? untamed::kitAbility(id, PChar->GetMLevel())
+                                                                  : beastspeakerActive ? beastspeaker::kitAbility(id, PChar->GetMLevel())
++                                                                   : primalistActive ? primalist::playerAbility(id, PChar->GetMLevel())
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+                 abilities[id / 8] &= static_cast<uint8_t>(~(1 << (id % 8)));
+             }
+         }
+-        if (!untamedActive)
++        if (!untamedActive && !primalistActive)
+         {
+             std::memset(packet.CommandDataTbl.PetAbilities, 0, sizeof(packet.CommandDataTbl.PetAbilities));
+         }
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -62,6 +62,7 @@
+ #include "utils/archivist_actions.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -420,7 +421,9 @@
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)) ||
+         (untamed::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe) &&
+          PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatAxe)) ||
+-        (beastspeaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe)))
++        (beastspeaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Axe)) ||
++        (primalist::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Staff) &&
++         PSkill->getType() != static_cast<uint8>(xi::SkillType::Club)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/charutils.cpp b/src/map/utils/charutils.cpp
+--- a/src/map/utils/charutils.cpp
++++ b/src/map/utils/charutils.cpp
+@@ -110,6 +110,7 @@
+ #include "battleutils.h"
+ #include "utils/untamed_actions.h"
+ #include "utils/beastspeaker_actions.h"
++#include "utils/primalist_actions.h"
+ #include "blueutils.h"
+ #include "char_points_queries.h"
+ #include "charutils.h"
+@@ -3371,6 +3372,17 @@
+         return;
+     }
+ 
++    if (primalist::isActive(PChar))
++    {
++        const auto pact = PPet->getPetType() == PET_TYPE::AVATAR ? primalist::pactForPet(PChar, PetID) : 0;
++        if (pact != 0)
++        {
++            addPetAbility(PChar, pact - ABILITY_HEALING_RUBY);
++        }
++        PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
++        return;
++    }
++
+     if (beastspeaker::isActive(PChar))
+     {
+         PChar->pushPacket<GP_SERV_COMMAND_COMMAND_DATA>(PChar);
+diff --git a/src/map/utils/primalist_actions.h b/src/map/utils/primalist_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/primalist_actions.h
+@@ -0,0 +1,98 @@
++#pragma once
++
++#include <array>
++
++#include "ability.h"
++#include "entities/char_entity.h"
++#include "spell.h"
++#include "utils/petutils.h"
++
++namespace primalist
++{
++struct Avatar
++{
++    SpellID spell;
++    uint32  pet;
++    uint16  pact;
++};
++
++inline constexpr std::array<Avatar, 7> avatars =
++{
++    Avatar{ SpellID::Carbuncle, PETID_CARBUNCLE, 516 },
++    Avatar{ SpellID::Ifrit, PETID_IFRIT, 545 },
++    Avatar{ SpellID::Titan, PETID_TITAN, 561 },
++    Avatar{ SpellID::Leviathan, PETID_LEVIATHAN, 577 },
++    Avatar{ SpellID::Garuda, PETID_GARUDA, 593 },
++    Avatar{ SpellID::Shiva, PETID_SHIVA, 609 },
++    Avatar{ SpellID::Ramuh, PETID_RAMUH, 625 },
++};
++
++inline auto isActive(const CCharEntity* entity) -> bool
++{
++    return entity && entity->GetMJob() == xi::Job::SMN && entity->GetMLevel() >= 10 &&
++           entity->GetLocalVar("OX_PRM_ACTIVE") == 1;
++}
++
++inline auto spellLevel(const CCharEntity* entity, SpellID id) -> uint8
++{
++    if (id == SpellID::Carbuncle || id == SpellID::Ifrit)
++    {
++        return 10;
++    }
++    const auto spell = static_cast<uint16>(id);
++    if (spell >= static_cast<uint16>(SpellID::Titan) && spell <= static_cast<uint16>(SpellID::Ramuh))
++    {
++        if (entity->GetMLevel() >= 50)
++        {
++            return 50;
++        }
++        if (spell == entity->GetLocalVar("OX_PRM_CHOICE_A") || spell == entity->GetLocalVar("OX_PRM_CHOICE_B"))
++        {
++            return 30;
++        }
++    }
++    return 0;
++}
++
++inline auto pactForPet(const CCharEntity* entity, uint32 petID) -> uint16
++{
++    for (const auto& avatar : avatars)
++    {
++        if (avatar.pet == petID)
++        {
++            const auto unlock = spellLevel(entity, avatar.spell);
++            return unlock != 0 && entity->GetMLevel() >= unlock ? avatar.pact : 0;
++        }
++    }
++    return 0;
++}
++
++inline auto isPact(uint16 id) -> bool
++{
++    for (const auto& avatar : avatars)
++    {
++        if (avatar.pact == id)
++        {
++            return true;
++        }
++    }
++    return false;
++}
++
++inline auto playerAbility(uint16 id, uint8 level) -> bool
++{
++    switch (id)
++    {
++        case ABILITY_ASSAULT:
++        case ABILITY_RETREAT:
++        case ABILITY_RELEASE:
++        case ABILITY_BLOOD_PACT_RAGE:
++            return true;
++        case ABILITY_ELEMENTAL_SIPHON:
++        case ABILITY_MANA_CEDE:
++            return level >= 30 && level < 50;
++        default:
++            return false;
++    }
++}
++} // namespace primalist

@@ -78,16 +78,8 @@ class AnalyticsConfig:
     max_login_attempts: int = 10
     login_window_sec: int = 900
 
-    # Local Auth toggle (securely managed scrypt accounts)
+    # Local Auth toggle (securely managed scrypt accounts; NEVER FFXI passwords)
     enable_local_auth: bool = True
-
-    # Optional FFXI MariaDB account authentication (read-only against xidb.accounts & xidb.chars)
-    ffxi_db_host: str = ""
-    ffxi_db_port: int = 3306
-    ffxi_db_name: str = "xidb"
-    ffxi_db_user: str = ""
-    ffxi_db_password: str = ""
-    ffxi_gm_admin_level: int = 1
 
     # Optional Discord OAuth2 provider
     discord_client_id: str = ""
@@ -105,10 +97,6 @@ class AnalyticsConfig:
     oauth_allow_players: bool = True
 
     @property
-    def ffxi_db_auth_enabled(self) -> bool:
-        return bool(self.ffxi_db_host and self.ffxi_db_user and self.ffxi_db_password and self.ffxi_db_name)
-
-    @property
     def discord_enabled(self) -> bool:
         return bool(self.discord_client_id and self.discord_client_secret and self.discord_redirect_uri)
 
@@ -118,8 +106,6 @@ class AnalyticsConfig:
 
     def enabled_providers(self) -> list[str]:
         providers: list[str] = []
-        if self.ffxi_db_auth_enabled:
-            providers.append("ffxi")
         if self.enable_local_auth:
             providers.append("local")
         if self.discord_enabled:
@@ -166,12 +152,6 @@ class AnalyticsConfig:
             max_login_attempts=_env_int("OVERLORDS_MAX_LOGIN_ATTEMPTS", 10, minimum=3),
             login_window_sec=_env_int("OVERLORDS_LOGIN_WINDOW_SEC", 900, minimum=60),
             enable_local_auth=_env_bool("OVERLORDS_ENABLE_LOCAL_AUTH", True),
-            ffxi_db_host=os.environ.get("SOULSPIRE_FFXI_DB_HOST", "").strip(),
-            ffxi_db_port=_env_int("SOULSPIRE_FFXI_DB_PORT", 3306, minimum=1),
-            ffxi_db_name=os.environ.get("SOULSPIRE_FFXI_DB_NAME", "xidb").strip() or "xidb",
-            ffxi_db_user=os.environ.get("SOULSPIRE_FFXI_DB_USER", "").strip(),
-            ffxi_db_password=os.environ.get("SOULSPIRE_FFXI_DB_PASSWORD", ""),
-            ffxi_gm_admin_level=_env_int("SOULSPIRE_FFXI_GM_ADMIN_LEVEL", 1, minimum=1),
             discord_client_id=os.environ.get("OVERLORDS_DISCORD_CLIENT_ID", "").strip(),
             discord_client_secret=os.environ.get("OVERLORDS_DISCORD_CLIENT_SECRET", "").strip(),
             discord_redirect_uri=os.environ.get("OVERLORDS_DISCORD_REDIRECT_URI", "").strip(),

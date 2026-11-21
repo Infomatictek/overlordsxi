@@ -2713,11 +2713,13 @@ def main(argv: list[str] | None = None) -> int:
     server_ability_unlocks: dict[str, dict[int, int]] = {}
     server_spell_grants: dict[str, dict[int, int]] = {}
     kit_spells_by_soul: dict[str, dict] = {}
+    kit_ability_recasts = {}
     roster = soul_actions_wiki.build_soul_roster(ROOT_DIR)
 
     if lua_data:
         print(f"Using real Lua runtime ({lua_bin}) for exact module evaluation.")
         kit_spells_by_soul = lua_data.get("kitSpells", {}) or {}
+        kit_ability_recasts = lua_data.get("kitAbilityRecasts", {}) or {}
         jobs = []
         for j in lua_data.get("jobSpecs", []):
             jkey = j["jobKey"]
@@ -2840,6 +2842,7 @@ def main(argv: list[str] | None = None) -> int:
         roster=roster,
         kit_spells_by_soul=kit_spells_by_soul,
         server_ability_unlocks=server_ability_unlocks,
+        kit_ability_recasts=kit_ability_recasts,
         server_spell_grants=server_spell_grants,
         launcher_actions=launcher_actions,
         launcher_visibility=launcher_visibility,

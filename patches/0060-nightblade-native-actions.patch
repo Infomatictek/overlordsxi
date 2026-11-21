@@ -1,0 +1,482 @@
+diff --git a/src/map/ai/states/ability_state.cpp b/src/map/ai/states/ability_state.cpp
+--- a/src/map/ai/states/ability_state.cpp
++++ b/src/map/ai/states/ability_state.cpp
+@@ -47,6 +47,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -151,6 +152,7 @@
+     m_scourgeAbility = scourge::isActive(character);
+     m_sniperAbility = sniper::isActive(character);
+     m_arcaneArcherAbility = arcaneArcher::isActive(character);
++    m_nightbladeAbility = nightblade::isActive(character);
+     m_PAbility = std::make_unique<CAbility>(*PAbility);
+     if (m_scourgeAbility && m_abilityId == scourge::Rite)
+     {
+@@ -340,6 +342,7 @@
+         const auto currentScourge = scourge::isActive(PChar);
+         const auto currentSniper = sniper::isActive(PChar);
+         const auto currentArcaneArcher = arcaneArcher::isActive(PChar);
++        const auto currentNightblade = nightblade::isActive(PChar);
+         if (m_zealotAbility != currentZealot || m_valkyrieAbility != currentValkyrie ||
+             m_astromancerAbility != currentAstromancer || m_channelerAbility != currentChanneler ||
+             m_scarletAbility != currentScarlet || (currentScarlet && !scarlet::isKitAbility(PAbility->getID())) ||
+@@ -354,6 +357,8 @@
+             (currentSniper && (PAbility->getID() != sniper::DeepSight || PChar->GetMLevel() < 50)) ||
+             m_arcaneArcherAbility != currentArcaneArcher ||
+             (currentArcaneArcher && PAbility->getID() != arcaneArcher::NextElement && PAbility->getID() != arcaneArcher::PreviousElement) ||
++            m_nightbladeAbility != currentNightblade ||
++            (currentNightblade && (PAbility->getID() != nightblade::QuickRead || PChar->GetMLevel() < 30)) ||
+             (currentChanneler && (PAbility->getID() != channeler::ConduitLink || channeler::isHolding(PChar))) ||
+             (currentAstromancer && PAbility->getID() != astromancer::GatherAether) ||
+             (currentZealot && (PAbility->getID() != zealot::SealAbility || !zealot::hasStaff(PChar))) ||
+diff --git a/src/map/ai/states/ability_state.h b/src/map/ai/states/ability_state.h
+--- a/src/map/ai/states/ability_state.h
++++ b/src/map/ai/states/ability_state.h
+@@ -63,5 +63,6 @@
+     bool                      m_scourgeAbility{ false };
+     bool                      m_sniperAbility{ false };
+     bool                      m_arcaneArcherAbility{ false };
++    bool                      m_nightbladeAbility{ false };
+     std::unique_ptr<CAbility> m_PAbility;
+ };
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -50,6 +50,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -107,6 +108,24 @@
+     m_scourgeCast = scourge::isActive(caster);
+     m_sniperCast = sniper::isActive(caster);
+     m_arcaneArcherCast = arcaneArcher::isActive(caster);
++    m_nightbladeCast = nightblade::isActive(caster);
++
++    if (m_nightbladeCast && nightblade::spellLevel(m_spellId) != 0)
++    {
++        m_flags |= MAGICFLAGS_IGNORE_TOOLS;
++        const bool seal = nightblade::isSeal(m_spellId);
++        const bool quick = seal && caster->GetLocalVar("OX_NGB_QUICK_END") > nightblade::nowSecond();
++        m_PSpell->setCastTime(seal ? (quick ? 250ms : 500ms) : 1000ms);
++        m_PSpell->setRecastTime(seal ? 0s : 10s);
++        if (seal)
++        {
++            m_PSpell->setRange(15.0f);
++            m_PSpell->setFlag(m_PSpell->getFlag() | SPELLFLAG_IGNORE_SHADOWS);
++            m_PSpell->setCE(1);
++            m_PSpell->setVE(20);
++            m_PEntity->SetLocalVar("OX_NGB_CAST_RECAST", 0);
++        }
++    }
+ 
+     if (m_scourgeCast && scourge::spellLevel(m_spellId) != 0)
+     {
+@@ -221,6 +240,11 @@
+ 
+     // TODO: weaponskill lua object
+     luautils::OnSpellCastStart(m_PEntity, PTarget, m_PSpell.get());
++    if (m_castTime > 0ms && m_flags == MAGICFLAGS_NONE && m_PSpell->canTargetEnemy() &&
++        m_spellId != SpellID::Death && !(m_PSpell->getFlag() & (SPELLFLAG_NO_START_MSG | SPELLFLAG_IGNORE_SHADOWS)))
++    {
++        m_nightbladeTell = nightblade::beginTell(*m_PEntity, nightblade::Spell, nightblade::canDisrupt(*m_PEntity, *m_PSpell));
++    }
+     m_PEntity->PAI->EventHandler.triggerListener("MAGIC_START", m_PEntity, PTarget, m_PSpell.get(), &action);
+ 
+     // if spell:setFlag(xi.magic.spellFlag.NO_START_MSG) is called, don't give spell start packet
+@@ -278,11 +302,18 @@
+             m_PEntity->OnCastInterrupted(*this, action, msg, quiet);
+             m_PEntity->loc.zone->PushPacket(m_PEntity, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
+ 
++            nightblade::endTell(*m_PEntity, m_nightbladeTell);
+             Complete();
+             return false;
+         }
+ 
+         auto& PSpell = m_PSpell;
++
++        if (m_nightbladeTell != 0 && m_PEntity->GetLocalVar("OX_NGB_INTERRUPT_SEQ") == m_nightbladeTell &&
++            nightblade::canDisrupt(*m_PEntity, *m_PSpell))
++        {
++            m_interrupted = true;
++        }
+ 
+         // Bard songs do not get interrupted here
+         if (PSpell && PSpell->getSpellGroup() != SPELLGROUP_SONG && m_PEntity->StatusEffectContainer->HasPreventActionEffect())
+@@ -298,6 +329,7 @@
+         {
+             m_PEntity->OnCastInterrupted(*this, action, msg, quiet);
+ 
++            nightblade::endTell(*m_PEntity, m_nightbladeTell);
+             Complete();
+             return false;
+         }
+@@ -307,6 +339,7 @@
+             {
+                 m_PEntity->OnCastInterrupted(*this, action, msg, true);
+ 
++                nightblade::endTell(*m_PEntity, m_nightbladeTell);
+                 Complete();
+                 return false;
+             }
+@@ -318,6 +351,7 @@
+                     m_PEntity->OnCastInterrupted(*this, action, MsgBasic::TrustNoCastTrust, true);
+                     action.recast = 2s; // seems hardcoded to 2
+ 
++                    nightblade::endTell(*m_PEntity, m_nightbladeTell);
+                     Complete();
+                     return false;
+                 }
+@@ -337,6 +371,7 @@
+             {
+                 m_PEntity->OnCastInterrupted(*this, action, msg, true);
+ 
++                nightblade::endTell(*m_PEntity, m_nightbladeTell);
+                 Complete();
+                 return false;
+             }
+@@ -347,6 +382,7 @@
+         {
+             m_PEntity->OnCastInterrupted(*this, action, msg, true);
+ 
++            nightblade::endTell(*m_PEntity, m_nightbladeTell);
+             Complete();
+             return false;
+         }
+@@ -361,6 +397,7 @@
+                 mobController->OnCastStopped(*this, action);
+             }
+ 
++            nightblade::endTell(*m_PEntity, m_nightbladeTell);
+             Complete();
+             return false;
+         }
+@@ -375,6 +412,7 @@
+                 mobController->OnCastStopped(*this, action);
+             }
+ 
++            nightblade::endTell(*m_PEntity, m_nightbladeTell);
+             Complete();
+             return false;
+         }
+@@ -436,6 +474,7 @@
+ 
+         m_PEntity->loc.zone->PushPacket(m_PEntity, CHAR_INRANGE_SELF, std::make_unique<GP_SERV_COMMAND_BATTLE2>(action));
+ 
++        nightblade::endTell(*m_PEntity, m_nightbladeTell);
+         Complete();
+     }
+     else if (IsCompleted() && tick > GetEntryTime() + m_castTime + m_PSpell->getAnimationTime())
+@@ -452,6 +491,7 @@
+ 
+ void CMagicState::Cleanup(timer::time_point tick)
+ {
++    nightblade::endTell(*m_PEntity, m_nightbladeTell);
+     finishLink(false);
+     if (!IsCompleted())
+     {
+@@ -487,7 +527,8 @@
+                           m_reaperCast == reaper::isActive(caster) &&
+                           m_scourgeCast == scourge::isActive(caster) &&
+                           m_sniperCast == sniper::isActive(caster) &&
+-                          m_arcaneArcherCast == arcaneArcher::isActive(caster);
++                          m_arcaneArcherCast == arcaneArcher::isActive(caster) &&
++                          m_nightbladeCast == nightblade::isActive(caster);
+     auto ret = (sameSoul || m_PSpell->getSpellGroup() == SPELLGROUP_TRUST) && m_PEntity->CanUseSpell(GetSpell());
+ 
+     if (!ret)
+diff --git a/src/map/ai/states/magic_state.h b/src/map/ai/states/magic_state.h
+--- a/src/map/ai/states/magic_state.h
++++ b/src/map/ai/states/magic_state.h
+@@ -82,6 +82,8 @@
+     bool                    m_scourgeCast{ false };
+     bool                    m_sniperCast{ false };
+     bool                    m_arcaneArcherCast{ false };
++    bool                    m_nightbladeCast{ false };
++    uint32                  m_nightbladeTell{ 0 };
+     bool                    m_LinkReserved{ false };
+     uint32                  m_linkOwner{ 0 };
+     uint8                   m_linkSavings{ 0 };
+diff --git a/src/map/ai/states/mobskill_state.cpp b/src/map/ai/states/mobskill_state.cpp
+--- a/src/map/ai/states/mobskill_state.cpp
++++ b/src/map/ai/states/mobskill_state.cpp
+@@ -39,6 +39,7 @@
+ #include "packets/s2c/0x029_battle_message.h"
+ #include "status_effect_container.h"
+ #include "utils/battleutils.h"
++#include "utils/nightblade_actions.h"
+ #include "zone.h"
+ 
+ CMobSkillState::CMobSkillState(xi::Badge<CState>, CBattleEntity* PEntity, const EntityId& target, const uint16 wsid, const Maybe<timer::duration> castTimeOverride, const Maybe<uint16> tpCostOverride)
+@@ -91,6 +92,11 @@
+ 
+     if (m_castTime > 0s)
+     {
++        if ((skill->getValidTargets() & TARGET_ENEMY) && !(skill->getFlag() & SKILLFLAG_NO_START_MSG) &&
++            !m_castTimeOverride.has_value() && !m_tpCostOverride.has_value())
++        {
++            m_nightbladeTell = nightblade::beginTell(*m_PEntity, nightblade::Technique, false);
++        }
+         // For self-centered AoE damaging moves, show battle target in readies message
+         // For true self-target buffs (TARGET_SELF), show self
+         const bool isSelfBuff    = skill->getValidTargets() == TARGET_SELF;
+@@ -229,6 +235,13 @@
+ 
+         action_t action{};
+         m_PEntity->OnMobSkillFinished(*this, action);
++        if (m_nightbladeTell != 0 && m_PEntity->GetLocalVar("OX_NGB_SEALED_SEQ") == m_nightbladeTell &&
++            m_PEntity->GetLocalVar("OX_NGB_PHYSICAL_SEQ") != m_nightbladeTell &&
++            m_PSkill->getAttackType() != xi::AttackType::Physical && m_PSkill->getAttackType() != xi::AttackType::Ranged)
++        {
++            luautils::callGlobal<void>("xi.soulspire.nightblade.onNonPhysicalTelegraph", m_PEntity, m_nightbladeTell);
++        }
++        nightblade::endTell(*m_PEntity, m_nightbladeTell);
+ 
+         // Zero message ID
+         if (m_PSkill->getFlag() & SKILLFLAG_NO_FINISH_MSG)
+@@ -290,6 +303,10 @@
+ 
+ void CMobSkillState::Cleanup(timer::time_point tick)
+ {
++    if (m_PEntity)
++    {
++        nightblade::endTell(*m_PEntity, m_nightbladeTell);
++    }
+     if (!m_PEntity)
+     {
+         return;
+diff --git a/src/map/ai/states/mobskill_state.h b/src/map/ai/states/mobskill_state.h
+--- a/src/map/ai/states/mobskill_state.h
++++ b/src/map/ai/states/mobskill_state.h
+@@ -55,6 +55,7 @@
+     std::unique_ptr<CMobSkill>   m_PSkill;
+     timer::time_point            m_finishTime;
+     timer::duration              m_castTime{};
++    uint32                       m_nightbladeTell{ 0 };
+     int16                        m_spentTP;
+     bool                         m_skillSuccess{ false };
+ 
+diff --git a/src/map/entities/battle_entity.cpp b/src/map/entities/battle_entity.cpp
+--- a/src/map/entities/battle_entity.cpp
++++ b/src/map/entities/battle_entity.cpp
+@@ -64,6 +64,7 @@
+ #include "utils/oathbreaker_actions.h"
+ #include "utils/reaper_actions.h"
+ #include "utils/sniper_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/scarlet_weaver_actions.h"
+ #include "utils/fishingutils.h"
+@@ -2734,6 +2735,11 @@
+         StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Ebullience);
+     }
+ 
++    if (nightblade::isActive(dynamic_cast<const CCharEntity*>(this)) && nightblade::isSeal(PSpell->getID()))
++    {
++        action.recast = std::chrono::seconds(GetLocalVar("OX_NGB_CAST_RECAST"));
++        SetLocalVar("OX_NGB_CAST_RECAST", 0);
++    }
+     PRecastContainer->Add(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()), action.recast);
+ }
+ 
+diff --git a/src/map/entities/char_entity.cpp b/src/map/entities/char_entity.cpp
+--- a/src/map/entities/char_entity.cpp
++++ b/src/map/entities/char_entity.cpp
+@@ -116,6 +116,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -1504,6 +1505,11 @@
+         PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+         return false;
++    }
++    if (nightblade::isActive(this) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
++    {
++        return nightblade::spellLevel(PSpell->getID()) != 0 &&
++               !PRecastContainer->Has(xi::RecastType::Magic, static_cast<xi::Recast>(PSpell->getID()));
+     }
+     if ((sniper::isActive(this) || arcaneArcher::isActive(this)) && PSpell->getSpellGroup() != SPELLGROUP_TRUST)
+     {
+diff --git a/src/map/entities/mob_entity.cpp b/src/map/entities/mob_entity.cpp
+--- a/src/map/entities/mob_entity.cpp
++++ b/src/map/entities/mob_entity.cpp
+@@ -728,6 +728,8 @@
+ void CMobEntity::Spawn()
+ {
+     TracyZoneScopedN("CMobEntity::Spawn");
++    SetLocalVar("OX_NGB_TELL", 0);
++    SetLocalVar("OX_NGB_SEALED_SEQ", 0);
+     SetLocalVar("OX_ACA_MARK_END", 0);
+     SetLocalVar("OX_SCR_CURSE_END", 0);
+     SetLocalVar("OX_SCR_WARD_END", 0);
+@@ -1528,6 +1530,8 @@
+ void CMobEntity::OnDisengage(CAttackState& state)
+ {
+     TracyZoneScopedN("CMobEntity::OnDisengage");
++    SetLocalVar("OX_NGB_TELL", 0);
++    SetLocalVar("OX_NGB_SEALED_SEQ", 0);
+     SetLocalVar("OX_ACA_MARK_END", 0);
+     SetLocalVar("OX_SCR_CURSE_END", 0);
+     SetLocalVar("OX_SCR_WARD_END", 0);
+diff --git a/src/map/packets/s2c/0x0aa_magic_data.cpp b/src/map/packets/s2c/0x0aa_magic_data.cpp
+--- a/src/map/packets/s2c/0x0aa_magic_data.cpp
++++ b/src/map/packets/s2c/0x0aa_magic_data.cpp
+@@ -35,6 +35,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -57,8 +58,9 @@
+     const bool reaperActive = reaper::isActive(PChar);
+     const bool scourgeActive = scourge::isActive(PChar);
+     const bool shotKitActive = sniper::isActive(PChar) || arcaneArcher::isActive(PChar);
++    const bool nightbladeActive = nightblade::isActive(PChar);
+     if (zealotActive || astroActive || chnActive || scarletActive || royalActive || thfKitActive ||
+-        oathbreakerActive || reaperActive || scourgeActive || shotKitActive || valkyrie::isActive(PChar))
++        oathbreakerActive || reaperActive || scourgeActive || shotKitActive || nightbladeActive || valkyrie::isActive(PChar))
+     {
+         for (uint16 id = 0; id < sizeof(packet.MagicDataTbl) * 8; ++id)
+         {
+@@ -77,6 +79,7 @@
+                                       : (thfKitActive || shotKitActive) ? 0
+                                         : reaperActive ? (spellId == SpellID::Drain ? 10 : 0)
+                                           : scourgeActive ? scourge::spellLevel(spellId)
++                                            : nightbladeActive ? nightblade::spellLevel(spellId)
+                                           : (spellId == SpellID::Banish ? 10 : 0);
+             const auto mask = static_cast<uint8_t>(1 << (id % 8));
+             if (unlock > 0 && PChar->GetMLevel() >= unlock)
+diff --git a/src/map/packets/s2c/0x0ac_command_data.cpp b/src/map/packets/s2c/0x0ac_command_data.cpp
+--- a/src/map/packets/s2c/0x0ac_command_data.cpp
++++ b/src/map/packets/s2c/0x0ac_command_data.cpp
+@@ -33,6 +33,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -60,7 +61,8 @@
+     const bool scourgeActive = scourge::isActive(PChar);
+     const bool sniperActive = sniper::isActive(PChar);
+     const bool arcaneArcherActive = arcaneArcher::isActive(PChar);
+-    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || valkyrie::isActive(PChar))
++    const bool nightbladeActive = nightblade::isActive(PChar);
++    if (zealotActive || astroActive || chnActive || scarletActive || royalActive || banditActive || tricksterActive || phantomActive || oathbreakerActive || reaperActive || scourgeActive || sniperActive || arcaneArcherActive || nightbladeActive || valkyrie::isActive(PChar))
+     {
+         auto& abilities = packet.CommandDataTbl.JobAbilities;
+         for (uint16 id = 0; id < sizeof(abilities) * 8; ++id)
+@@ -78,6 +80,7 @@
+                                                : scourgeActive ? id == scourge::Rite
+                                                  : sniperActive ? sniper::kitAbility(id, PChar->GetMLevel())
+                                                    : arcaneArcherActive ? (id == arcaneArcher::AttunementArrow || id == arcaneArcher::NextElement || id == arcaneArcher::PreviousElement)
++                                                     : nightbladeActive ? (id == nightblade::QuickRead && PChar->GetMLevel() >= 30)
+                                            : valkyrie::isKitAbility(id);
+             if (!allowed)
+             {
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -55,6 +55,7 @@
+ #include "utils/scourge_actions.h"
+ #include "utils/sniper_actions.h"
+ #include "utils/arcane_archer_actions.h"
++#include "utils/nightblade_actions.h"
+ #include "utils/phantom_actions.h"
+ #include "utils/trickster_actions.h"
+ #include "utils/royal_tactician_actions.h"
+@@ -404,7 +405,8 @@
+         (oathbreaker::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::GreatSword)) ||
+         ((reaper::isActive(PChar) || scourge::isActive(PChar)) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Scythe)) ||
+         (sniper::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Marksmanship)) ||
+-        (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)))
++        (arcaneArcher::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Archery)) ||
++        (nightblade::isActive(PChar) && PSkill->getType() != static_cast<uint8>(xi::SkillType::Katana)))
+     {
+         return false;
+     }
+diff --git a/src/map/utils/nightblade_actions.h b/src/map/utils/nightblade_actions.h
+new file mode 100644
+--- /dev/null
++++ b/src/map/utils/nightblade_actions.h
+@@ -0,0 +1,64 @@
++#pragma once
++
++#include "entities/char_entity.h"
++#include "spell.h"
++#include "status_effect_container.h"
++
++namespace nightblade
++{
++inline constexpr uint16 QuickRead = 249;
++inline constexpr uint32 Spell = 1;
++inline constexpr uint32 Technique = 2;
++
++inline auto isActive(const CCharEntity* character) -> bool
++{
++    return character && character->GetMJob() == xi::Job::NIN && character->GetMLevel() >= 10 &&
++           character->GetLocalVar("OX_NGB_ACTIVE") == 1;
++}
++
++inline auto isSeal(SpellID id) -> bool
++{
++    return id == SpellID::Jubaku_Ichi || id == SpellID::Hojo_Ichi;
++}
++
++inline auto spellLevel(SpellID id) -> uint8
++{
++    return isSeal(id) || id == SpellID::Katon_Ichi ? 10 : 0;
++}
++
++inline auto nowSecond() -> uint32
++{
++    return static_cast<uint32>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
++}
++
++inline auto canDisrupt(CBattleEntity& mob, CSpell& spell) -> bool
++{
++    return spell.getSkillType() != xi::SkillType::Singing && mob.getMod(xi::Mod::SPELLINTERRUPT) < 100 &&
++           !mob.StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::Manafont, xi::StatusEffect::Chainspell });
++}
++
++inline auto beginTell(CBattleEntity& mob, uint32 category, bool interruptible) -> uint32
++{
++    if (mob.objtype != TYPE_MOB || mob.allegiance != xi::Allegiance::Mob || mob.GetLocalVar("OX_NGB_SCRIPTED") != 0)
++    {
++        return 0;
++    }
++    const auto sequence = std::max(mob.GetLocalVar("OX_NGB_SEQUENCE") + 1, 1u);
++    mob.SetLocalVar("OX_NGB_SEQUENCE", sequence);
++    mob.SetLocalVar("OX_NGB_TELL", category);
++    mob.SetLocalVar("OX_NGB_INTERRUPTIBLE", interruptible ? 1 : 0);
++    mob.SetLocalVar("OX_NGB_SEALED_SEQ", 0);
++    return sequence;
++}
++
++inline void endTell(CBattleEntity& mob, uint32& sequence)
++{
++    if (sequence != 0 && mob.GetLocalVar("OX_NGB_SEQUENCE") == sequence)
++    {
++        mob.SetLocalVar("OX_NGB_TELL", 0);
++        mob.SetLocalVar("OX_NGB_INTERRUPTIBLE", 0);
++        mob.SetLocalVar("OX_NGB_SEALED_SEQ", 0);
++    }
++    sequence = 0;
++}
++} // namespace nightblade
