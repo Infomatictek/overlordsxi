@@ -377,55 +377,6 @@ class AnalyticsDB:
             finally:
                 conn.close()
 
-    def upsert_ffxi_user(
-        self,
-        *,
-        acc_id: str,
-        username: str,
-        display_name: str,
-        role: str,
-        character_names: list[str],
-    ) -> dict[str, Any]:
-        now = utc_now_iso()
-        chars_json = json.dumps(character_names)
-        with self._lock:
-            conn = self._connect()
-            try:
-                row = conn.execute(
-                    "SELECT * FROM users WHERE auth_provider = 'ffxi' AND provider_subject = ?",
-                    (acc_id,),
-                ).fetchone()
-                if row is not None:
-                    conn.execute(
-                        "UPDATE users SET display_name = ?, role = ?, character_names_json = ?, is_active = 1, last_login_at = ? WHERE id = ?",
-                        (display_name, role, chars_json, now, row["id"]),
-                    )
-                    conn.commit()
-                    updated = conn.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone()
-                    return self._row_to_user(updated)  # type: ignore[return-value]
-
-                base_username = f"ffxi:{username}"
-                candidate = base_username
-                suffix = 1
-                while conn.execute("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE", (candidate,)).fetchone():
-                    suffix += 1
-                    candidate = f"{base_username}_{suffix}"
-
-                cur = conn.execute(
-                    """
-                    INSERT INTO users (
-                        username, display_name, role, auth_provider, provider_subject,
-                        password_hash, character_names_json, is_active, created_at, last_login_at
-                    ) VALUES (?, ?, ?, 'ffxi', ?, NULL, ?, 1, ?, ?)
-                    """,
-                    (candidate, display_name, role, acc_id, chars_json, now, now),
-                )
-                conn.commit()
-                created = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
-                return self._row_to_user(created)  # type: ignore[return-value]
-            finally:
-                conn.close()
-
     def update_user_characters(self, user_id: int, character_names: list[str]) -> dict[str, Any] | None:
         cleaned = [c.strip() for c in character_names if c.strip()]
         with self._lock:

@@ -1244,8 +1244,7 @@
   function renderAuthGate() {
     const hasDiscord = crState.providers.includes('discord');
     const hasGithub = crState.providers.includes('github');
-    const hasFfxiAuth = crState.providers.includes('ffxi');
-    const hasPasswordAuth = hasFfxiAuth || crState.providers.includes('local');
+    const hasLocalAuth = crState.providers.includes('local');
 
     return `
       <section class="wiki-hero">
@@ -1268,25 +1267,22 @@
                   Backend API at <code>${escapeHtml(crState.apiBase)}</code> is not reachable from this static host.
                   You can configure a backend URL below, or use the <strong>Local JSONL Viewer</strong> on the right.
                 </div>`
-              : hasFfxiAuth
-                ? `<div class="cr-notice">
-                    Reports are private by default. Sign in with your <strong>SoulspireXI game account</strong> to view your characters' combat reports.
-                  </div>`
-                : `<div class="cr-notice">
-                    Reports are private by default. Sign in with your Combat Analytics account or OAuth provider.
-                  </div>`
+              : `<div class="cr-notice">
+                  Reports are private by default. Sign in with your dedicated Combat Analytics account or OAuth provider.
+                  <strong>Do not use your FFXI game password.</strong>
+                </div>`
           }
 
           ${
-            hasPasswordAuth && crState.backendAvailable !== false
+            hasLocalAuth && crState.backendAvailable !== false
               ? `
               <form id="crLoginForm">
                 <div class="cr-form-row">
-                  <label for="crLoginUser">${hasFfxiAuth ? 'SoulspireXI Username' : 'Username'}</label>
+                  <label for="crLoginUser">Analytics Username</label>
                   <input id="crLoginUser" class="cr-input" type="text" autocomplete="username" required />
                 </div>
                 <div class="cr-form-row">
-                  <label for="crLoginPass">${hasFfxiAuth ? 'SoulspireXI Password' : 'Password'}</label>
+                  <label for="crLoginPass">Analytics Password</label>
                   <input id="crLoginPass" class="cr-input" type="password" autocomplete="current-password" required />
                 </div>
                 <button type="submit" class="btn-primary" style="width:100%;">Sign In</button>

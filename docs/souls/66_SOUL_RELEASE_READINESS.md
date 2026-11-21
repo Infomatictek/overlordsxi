@@ -4,7 +4,7 @@
 
 - **Total Canonical Souls:** **66** (`DNC:freelancer` retired/excluded)
 - **Implemented Souls:** **66 / 66** (0 incomplete, 0 planned)
-- **Automated Verification:** **66 / 66** (strict roster audit, 101 LuaJIT module syntax checks, 141/147 Python + Lupa runtime tests passing, cross-repo wiki + Soul Actions validation passing, 1,109/1,109 launcher manifest entries verified)
+- **Automated Verification:** **66 / 66** (strict roster audit, 101 LuaJIT module syntax checks, 147/147 Python + Lupa + Node UI tests passing, cross-repo wiki + Soul Actions validation passing, 1,109/1,109 launcher manifest entries verified)
 - **Live Gameplay Verification:** **41 baseline Souls** previously deployed on `main`; **25 newly integrated Souls** require **Manual Verification Required** on a live test server + Ashita v4 client (levels 10, 30, 50, 75; 0 talent points at Lv. 10).
 - **Status:** Both server and launcher integration branches are cleanly branched from current `main`, reconciled, verified, and pushed for PR review. Neither branch has been merged into `main` or deployed to the live server.
 
@@ -34,9 +34,9 @@
   - Levels **10, 30, 50, 75** (especially **Lv. 10 with 0 talent points**).
   - Soul switching, relogging, level sync (including Burrows Reborn Lv. 10 sync), native action menu visibility (no leaked original FFXI action names), cooldowns/recasts, resource HUD synchronization, pet lifecycle (`untamed`, `beastspeaker`, `primalist`, `herald`), and weapon/WS restrictions.
 
-### Actually Missing or Broken (Found & Addressed / Documented)
+### Actually Missing or Broken (Found & Fixed)
 1. **Fixed — Launcher repo URL references:** `manifest.json`, `LauncherManifest.cs`, `LauncherSelfUpdateService.cs`, `ManifestUpdateService.cs`, addon metadata, and tests still referenced `Infomatictek/overlordsxi-launcher`. Updated all canonical references to `Infomatictek/soulspirexi-launcher` (while retaining `LegacyLauncherExeAssetName = "OverlordsLauncher.exe"` for upgrade migration) and regenerated `manifest.json` (1,109 entries verified).
-2. **Pre-existing `main` test discrepancy (not introduced by this integration):** `tests/test_combat_analytics.py::SecurityHygieneAndUiSuiteTests::test_no_private_logs_or_secrets_in_static_site_or_backend` fails because `combat_analytics/auth.py` intentionally added `import pymysql` on `main` (commit `30eb966`, FFXI MariaDB account auth) while the older test assertion still forbids `"import pymysql"`. Left untouched so security-test intent is reviewed explicitly.
+2. **Fixed — Combat Analytics / FFXI account separation:** Commit `30eb966` on `main` had added `import pymysql` / FFXI MariaDB auth into `combat_analytics/` and removed the `"Do not use your FFXI game password."` warning from `site/combat-reports.js`, breaking both `test_no_private_logs_or_secrets_in_static_site_or_backend` and `test_frontend_js_syntax_and_ui_unit_tests`. Removed FFXI MariaDB auth coupling from `combat_analytics/` and `deploy/unraid/docker-compose.yml` (preserving Unraid SWAG deployment and `DEFAULT_API_BASE`) and restored the dedicated Combat Analytics auth UI warning without weakening any security tests.
 
 ---
 
@@ -90,7 +90,7 @@
 |---|---|---|
 | `tools/audit_soul_coverage.py .` | All 66 canonical Souls | **PASS** (`implemented: 66, incomplete: 0, planned: 0`) |
 | `luajit -bl` on all server custom Lua | 101 files (`modules/custom/lua/*.lua`, `modules/custom/commands/*.lua`) | **PASS** (101/101) |
-| `python3 -m unittest discover -s tests` (with `lupa`) | 147 server tests (native + Lupa Lua runtime + Burrows + WS Foundation + CI + Analytics) | **141 PASS, 5 SKIP** (no `node`/`lua` in slim analytics image), **1 pre-existing `main` FAIL** (`test_no_private_logs_or_secrets_in_static_site_or_backend` — `import pymysql` from `30eb966`) |
+| `python3 -m unittest discover -s tests` (with `lupa`) + `node --test tests/test_combat_reports_ui.mjs` | 147 server tests + 8 Node UI tests (native + Lupa Lua runtime + Burrows + WS Foundation + CI + Analytics) | **PASS** (0 failures) |
 | `scripts/generate-site-data.py --require-lua --launcher-dir /launcher --strict-actions` | Cross-repo Lua export + wiki + Soul Actions TSV | **PASS** (66 Specs, 256 JAs, 44 Traits, 219 WS Trees, 77 Patches) |
 | `scripts/verify-launcher-manifest.py` | Launcher `manifest.json` (read-only) | **PASS** (1,109 / 1,109 files verified) |
 | `scripts/validate-soul-actions-tsv.py` | Launcher `soul_actions.tsv` & `visibility.tsv` | **PASS** (159 / 159 rows across 26 Souls) |
@@ -106,7 +106,6 @@
 1. **PR Review & CI Green:** Open PRs for both `feat/souls-66-final-integration` branches targeting `main` and verify GitHub Actions (`soul-coverage.yml`, `update-wiki.yml`, `build-launcher.yml` including Windows `.NET 8` `dotnet test`).
 2. **Server Docker Image Build:** Rebuild `soulspirexi/server` from the merged server branch so C++ patches `0046-zealot` through `0070-diviner` are compiled into `xi_map`.
 3. **Manual Gameplay Verification:** Test the rebuilt server image + synced Ashita v4 client on a staging/test environment for the 25 new Souls at Lv. 10/30/50/75.
-4. **Optional Analytics Test Fix:** Decide whether to update `test_no_private_logs_or_secrets_in_static_site_or_backend` on `main` to allow the intentional read-only `pymysql` FFXI auth added in `30eb966`.
 
 ### Safe Merge & Deployment Order
 1. **Merge Launcher PR first** (`Infomatictek/soulspirexi-launcher`: `feat/souls-66-final-integration` → `main`).
