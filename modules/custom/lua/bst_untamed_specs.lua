@@ -2,7 +2,6 @@ require('modules/module_utils')
 require('modules/custom/lua/soulspire_job_specs')
 require('scripts/globals/player')
 require('scripts/globals/pets')
-require('scripts/globals/utils')
 
 local m = Module:new('soulspire_bst_untamed')
 local spec = xi.soulspire.spec

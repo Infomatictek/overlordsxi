@@ -453,16 +453,24 @@ describe('Soul Proving Grounds — Full Timeline, Timing, Feedback & Real Combat
         boss = R.spawnTrialMob(player:getZone(), encounter, { spawnLifetimeSec = 60 })
         assert(boss ~= nil, 'Failed to spawn dummy for write-failure test')
 
+        -- Create a regular file to act as an impossible parent directory on both POSIX (Linux/Docker) and Windows.
+        local blockerPath = 'log/proving_grounds/.pg_unwritable_blocker'
+        local blockerFile = io.open(blockerPath, 'w')
+        assert(blockerFile ~= nil, 'Failed to create blocker file for cross-platform write-failure test')
+        blockerFile:write('not-a-directory\n')
+        blockerFile:close()
+
         local telem = T.beginSession({
             mob                     = boss,
             actors                  = { player },
             encounter               = encounter,
             testMode                = 'automated_real',
-            baseDir                 = 'log/proving_grounds/<invalid:path>',
-            legacyLogPath           = 'log/proving_grounds/<invalid:legacy>.jsonl',
+            baseDir                 = blockerPath .. '/nested',
+            legacyLogPath           = blockerPath .. '/legacy.jsonl',
             enableLiveSnapshotTimer = false,
         })
         local record = T.finishSession(telem, 'reset', { writeLog = true })
+        os.remove(blockerPath)
         assert(record ~= nil, 'finishSession returned nil')
         assert(record.logging_status.ok == false, 'Expected logging_status.ok == false on unwritable path')
         assert(record.logging_status.partial_recording == true, 'Expected partial_recording == true on write error')
