@@ -40,8 +40,13 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Sniper | `a341a24` | Verified `rng_sniper_specs.lua` |
 | Scarlet Weaver | `78f2480` | Verified `rdm_scarlet_weaver_specs.lua` |
 | Royal Tactician | `59e1365` | Verified `rdm_royal_tactician_specs.lua` |
+| Arcane Archer | `4154052` | Verified `rng_arcane_archer_specs.lua` |
+| Archivist | `be63c10` | Verified `sch_archivist_specs.lua` |
+| Astromancer | `0252934` | Verified `blm_astromancer_specs.lua` |
+| Warmage | `4b99fe1` | Verified `blu_warmage_specs.lua` |
+| Scourge | `166fd9b` | Verified `drk_scourge_specs.lua` |
 
-**Status:** 20/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 25/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
