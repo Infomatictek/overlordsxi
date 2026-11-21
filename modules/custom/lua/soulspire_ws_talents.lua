@@ -2572,9 +2572,12 @@ function talents.sendMetaAndSpent(player)
     local _, perWs = talents.getTotalSpent(player, jobId)
     local mainSkill = player:getWeaponSkillType(xi.slot.MAIN) or 0
     local rangedSkill = player:getWeaponSkillType(xi.slot.RANGED) or 0
-    local _, _, specName = talents.getActiveSpec(player, jobId)
+    local _, specKey, specName, specRole = talents.getActiveSpec(player, jobId)
+    local normSoulKey = talents.resolveSpecCategory(player, jobId, specKey)
 
-    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s', jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill, sanitizeField(specName)))
+    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s|%s|%s',
+        jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill,
+        sanitizeField(specName), sanitizeField(normSoulKey), sanitizeField(specRole or 'Damage')))
 
     local spentItems = {}
     for wsId, wsSpent in pairs(perWs) do
@@ -2631,15 +2634,24 @@ function talents.sendWSDetail(player, wsId)
         local reqKey = node.requires and node.requires.key or ''
         local reqRank = node.requires and node.requires.rank or 0
         local desc = sanitizeField(node.describe(r, ws, player, jobId))
-        if #desc > 60 then
-            desc = string.sub(desc, 1, 57) .. '...'
+        if #desc > 110 then
+            desc = string.sub(desc, 1, 107) .. '...'
+        end
+        local nextDesc = ''
+        if r < (node.maxRank or 1) then
+            nextDesc = sanitizeField(node.describe(r + 1, ws, player, jobId))
+            if #nextDesc > 110 then
+                nextDesc = string.sub(nextDesc, 1, 107) .. '...'
+            end
         end
         local scTier = node.scTier or 0
         local scId = scTier > 0 and talents.getSCChoice(player, jobId, ws.id, scTier) or 0
         local scName = scId > 0 and (SC_SHORT[scId] or SC_NAMES[scId] or '') or ''
         local nextReqLvl = talents.getNodeNextReqLevel(node, r)
+        local branchName = node.branch or (scTier > 0 and 'skillchain') or (tree.evolution and 'evolution') or (node.col == 2 and 'utility' or (node.col == 3 and 'soul' or 'damage'))
+        local exclGroup = sanitizeField(node.exclusiveGroup or '')
 
-        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u',
+        sendProto(player, string.format('NODE|%u|%s|%u|%u|%u|%u|%u|%u|%s|%u|%s|%s|%u|%u|%u|%s|%u|%s|%s|%s',
             ws.id,
             node.key,
             node.tier,
@@ -2656,7 +2668,10 @@ function talents.sendWSDetail(player, wsId)
             scTier,
             scId,
             scName,
-            node.slot or 0
+            node.slot or 0,
+            branchName,
+            exclGroup,
+            nextDesc
         ))
     end
 
@@ -2698,8 +2713,11 @@ local function sendMetaOnly(player)
     local avail, earned, spent = talents.getAvailablePoints(player, jobId)
     local mainSkill = player:getWeaponSkillType(xi.slot.MAIN) or 0
     local rangedSkill = player:getWeaponSkillType(xi.slot.RANGED) or 0
-    local _, _, specName = talents.getActiveSpec(player, jobId)
-    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s', jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill, sanitizeField(specName)))
+    local _, specKey, specName, specRole = talents.getActiveSpec(player, jobId)
+    local normSoulKey = talents.resolveSpecCategory(player, jobId, specKey)
+    sendProto(player, string.format('META|%s|%u|%u|%u|%u|%u|%u|%s|%s|%s',
+        jobKey, jobLvl, avail, spent, earned, mainSkill, rangedSkill,
+        sanitizeField(specName), sanitizeField(normSoulKey), sanitizeField(specRole or 'Damage')))
 end
 
 function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
