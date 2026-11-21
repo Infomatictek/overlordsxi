@@ -45,8 +45,13 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Astromancer | `0252934` | Verified `blm_astromancer_specs.lua` |
 | Warmage | `4b99fe1` | Verified `blu_warmage_specs.lua` |
 | Scourge | `166fd9b` | Verified `drk_scourge_specs.lua` |
+| Berserker | `463988b` | Verified `war_specs.lua` |
+| Black Belt | `3cc40de` | Verified `mnk_specs.lua` |
+| Vampire | `3483294` | Verified `dnc_healer_specs.lua` |
+| Musician | `25cb042` | Verified `brd_specs.lua` |
+| Minstrel | `f1616a5` | Verified `brd_specs.lua` |
 
-**Status:** 25/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 30/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
