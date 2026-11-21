@@ -56,8 +56,22 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Adventurer | `03d1bd5` | Verified `brd_specs.lua` |
 | Sage | `a4e7226` | Verified `sch_specs.lua` and Titania companion definition |
 | Bladewheel | `7a8d5ca` | Verified `dnc_specs.lua`; weapon skill detail from existing guide |
+| Ronin | `95df46b` | Verified `sam_specs.lua` |
+| Commander | `714f8d0` | Existing guide and `war_specs.lua` |
+| Imperial Archer | `a64c1ef` | Existing guide and `sam_specs.lua` |
+| Buccaneer | `a7931ad` | Existing guide and `cor_specs.lua` |
+| Pugilist | `c3ee410` | Verified `pup_specs.lua` |
+| Celestial | `a16ea5b` | Verified `smn_specs.lua` |
+| Verdant | `6d8f14d` | Verified `geo_specs.lua` |
+| Vanguard | `5a802f9` | Existing guide and `pup_specs.lua` |
+| Mirage Sentinel | `96c84a2` | Existing guide and `dnc_specs.lua` |
+| Gambler | `a62ea5f` | Existing guide and `cor_specs.lua` |
+| Magus | `9c7ad57` | Existing guide and `blu_healer_specs.lua` |
+| Bishop | `51f3166` | Existing guide and `whm_specs.lua` |
+| Templar | `7b499c9` | Existing guide and `pld_healer_specs.lua` |
+| Warlord | `5d65191` | Existing guide and `sam_specs.lua` |
 
-**Status:** 36/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 50/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
