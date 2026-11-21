@@ -524,4 +524,63 @@ describe('Soul Weapon Configuration System (Template 4: vanilla & Lv10/30/50/75 
         assert(swap:getEquippedItem(xi.slot.SUB) == nil, 'Job change WAR Berserker -> MNK must unequip SUB Great Axe')
         assert(swap:hasItem(ITEM_BUTTERFLY_AXE) and swap:hasItem(ITEM_BUTTERFLY_AXE_P1), 'Job change preserves both Great Axes')
     end)
+
+    it('guarantees zero weaponConfig leakage across all 66 Souls and verifies Berserker TP/damage scaling profile', function()
+        local allowedSpecs =
+        {
+            [tostring(xi.job.BRD) .. ':adventurer'] = wc.MODE.DUAL_1H,
+            [tostring(xi.job.WAR) .. ':berserker']  = wc.MODE.DUAL_2H,
+            [tostring(xi.job.WAR) .. ':spartan']    = wc.MODE.TWOHAND_SHIELD,
+            [tostring(xi.job.WAR) .. ':gladiator']  = wc.MODE.TWOHAND_SHIELD,
+        }
+
+        local totalSpecsChecked = 0
+        local customSpecsFound  = 0
+        for jobId = 1, 22 do
+            local def = spec.jobs and spec.jobs[jobId]
+            for _, entry in ipairs((def and def.ordered) or {}) do
+                if entry.key and entry.key ~= 'freelancer' then
+                    totalSpecsChecked = totalSpecsChecked + 1
+                    local cfg = wc.getConfigForSpec(jobId, entry)
+                    local compositeKey = tostring(jobId) .. ':' .. string.lower(tostring(entry.key or ''))
+                    local expectedMode = allowedSpecs[compositeKey]
+                    if expectedMode ~= nil then
+                        assert(cfg ~= nil and cfg.mode == expectedMode,
+                            string.format('Expected %s to have mode=%s', compositeKey, tostring(expectedMode)))
+                        customSpecsFound = customSpecsFound + 1
+                    else
+                        assert(cfg == nil,
+                            string.format('Unexpected weaponConfig leak on Soul %s', compositeKey))
+                    end
+                end
+            end
+        end
+
+        assert(totalSpecsChecked >= 66, 'Expected to audit all 66 Souls, checked ' .. tostring(totalSpecsChecked))
+        assert(customSpecsFound >= 3, 'Expected at least 3 configured prototype Souls (Adventurer, Berserker, Spartan)')
+
+        -- Verify Berserker dual_2h independent damage & TP scaling profile values
+        local ber = xi.test.world:spawnPlayer({
+            zone  = xi.zone.WEST_RONFAURE,
+            job   = xi.job.WAR,
+            level = 75,
+        })
+        ber:changeContainerSize(xi.inv.INVENTORY, 60)
+        spec.set(ber, xi.job.WAR, 'berserker', { silent = true })
+        spec.refreshPlayer(ber)
+        assert(ber:addItem(ITEM_BUTTERFLY_AXE), 'add main GA')
+        assert(ber:addItem(ITEM_HEAVY_AXE), 'add sub GA')
+        ber:equipItem(ITEM_BUTTERFLY_AXE, xi.inv.INVENTORY, xi.slot.MAIN)
+        ber:equipItem(ITEM_HEAVY_AXE, xi.inv.INVENTORY, xi.slot.SUB)
+        xi.test.world:skipTime(1)
+
+        local prof = wc.getCombatProfile(ber)
+        assert(prof ~= nil and prof.active == true, 'Berserker dual_2h profile must be active')
+        assert(math.abs(prof.mainDamageScale - 0.72) < 0.001, 'mainDamageScale must be 0.72')
+        assert(math.abs(prof.subDamageScale - 0.52) < 0.001, 'subDamageScale must be 0.52')
+        assert(math.abs(prof.delayScale - 0.58) < 0.001, 'delayScale must be 0.58')
+        assert(math.abs(prof.tpScale - 0.85) < 0.001, 'tpScale must be 0.85')
+        assert(prof.subMultiAttackOff == true and prof.wsUsesMainOnly == true)
+        assert(ber:getLocalVar('OX_WEAPON_CFG_ACTIVE') == 1, 'OX_WEAPON_CFG_ACTIVE fast-path flag must be 1 for Berserker')
+    end)
 end)
