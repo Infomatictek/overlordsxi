@@ -9,8 +9,10 @@ JOB_SPECS_LUA = ROOT / "modules/custom/lua/soulspire_job_specs.lua"
 RUNTIME_LUA = ROOT / "modules/custom/lua/soulspire_job_spec_runtime.lua"
 INIT_APPEND = ROOT / "modules/init.append.txt"
 PATCH_0073 = ROOT / "patches/0073-soul-weapon-config.patch"
+PATCH_0074 = ROOT / "patches/0074-soul-weapon-templates.patch"
 LUA_TEST_SUITE = ROOT / "tests/lua/soul_weapon_config.lua"
 DESIGN_DOC = ROOT / "docs/soul-weapon-configuration-system.md"
+PROGRESS_DOC = ROOT / "docs/soul-weapon-modes-progress.md"
 
 
 class SoulWeaponConfigStaticTests(unittest.TestCase):
@@ -83,6 +85,26 @@ class SoulWeaponConfigStaticTests(unittest.TestCase):
         self.assertIn("Dual Two-Handed", doc)
         self.assertIn("Two-Handed + Shield", doc)
         self.assertIn("Manual In-Game Verification Checklist", doc)
+
+    def test_universal_templates_patch_0074_and_registrations(self):
+        wc_src = WEAPON_CONFIG_LUA.read_text(encoding="utf-8")
+        self.assertIn("WC.VISUAL_PROFILES", wc_src)
+        self.assertIn("compact_dual_axe", wc_src)
+        self.assertIn("WC.register(xi.job.WAR, 'berserker'", wc_src)
+        self.assertIn("WC.register(xi.job.WAR, 'spartan'", wc_src)
+        self.assertIn("WC.getCombatProfile", wc_src)
+        self.assertIn("WC.getVisualModels", wc_src)
+
+        p74 = PATCH_0074.read_text(encoding="utf-8")
+        self.assertIn("GetSoulWeaponCombatProfile", p74)
+        self.assertIn("GetSoulWeaponVisualModels", p74)
+        self.assertIn("allowSoulSub2H", p74)
+        self.assertIn("CLuaBaseEntity::getWeaponDelay", p74)
+        self.assertIn("CLuaBaseEntity::getWeaponLook", p74)
+
+        prog = PROGRESS_DOC.read_text(encoding="utf-8")
+        for token in ("dual_1h", "dual_2h", "twohand_shield", "vanilla", "NOT TESTED"):
+            self.assertIn(token, prog)
 
 
 if __name__ == "__main__":

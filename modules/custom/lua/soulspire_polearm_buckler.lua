@@ -86,8 +86,17 @@ m:addOverride('xi.combat.physical.calculateBlockRate', function(defender, attack
         return B.VIRTUAL_BLOCK_RATE
     end
 
-    -- Real Buckler in SUB with a 2H Polearm in MAIN: stock logic only inspects SUB.
-    return super(defender, attacker)
+    -- Real Shield in SUB with a 2H weapon in MAIN: stock logic inspects SUB, then apply
+    -- optional shieldBlockScale if configured on an active twohand_shield Soul profile.
+    local rate = super(defender, attacker)
+    local wc = xi.soulspire and xi.soulspire.weaponConfig
+    if wc and wc.getCombatProfile and defender and defender:isPC() then
+        local profile = wc.getCombatProfile(defender)
+        if profile and profile.active and profile.shieldBlockScale and profile.shieldBlockScale ~= 1.0 then
+            rate = math.max(0, math.floor(rate * profile.shieldBlockScale))
+        end
+    end
+    return rate
 end)
 
 m:addOverride('xi.combat.physical.getDamageReductionForBlock', function(defender, attacker, damage)

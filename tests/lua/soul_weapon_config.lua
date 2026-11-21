@@ -41,8 +41,7 @@ local function spawnStationaryMob(player)
     mob:setUnkillable(true)
     mob:setMaxHP(50000)
     mob:setHP(50000)
-    local pos = mob:getPos()
-    player:setPos(pos.x, pos.y, pos.z)
+    player.entities:moveTo(mob)
     return mob
 end
 
@@ -79,7 +78,9 @@ describe('Soul Weapon Configuration System (BRD Adventurer Slice)', function()
         local hpBefore = mob:getHP()
         player.packets:clear()
         player.actions:engage(mob)
-        xi.test.world:skipTime(14)
+        for _ = 1, 3 do
+            xi.test.world:skipTime(6)
+        end
         player:disengage()
         player:removeListener('TEST_BRD_DW_HIT')
 
@@ -219,8 +220,12 @@ describe('Soul Weapon Configuration System (BRD Adventurer Slice)', function()
         assert(war:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BRONZE_SPEAR, 'WAR Spartan must keep Polearm in MAIN')
         assert(war:getEquippedItem(xi.slot.SUB):getID() == ITEM_ASPIS_BUCKLER, 'WAR Spartan must keep Size-1 Buckler in SUB')
 
-        -- Phase 5 advanced modes must remain inert by default
-        assert(wc.evaluatePair(war, war:getEquippedItem(xi.slot.MAIN), war:getEquippedItem(xi.slot.SUB)) == wc.RESULT.VANILLA,
+        -- WAR Spartan is now registered under twohand_shield (ALLOW_SUB_NON_DW = 2)
+        assert(wc.evaluatePair(war, war:getEquippedItem(xi.slot.MAIN), war:getEquippedItem(xi.slot.SUB)) == wc.RESULT.ALLOW_SUB_NON_DW,
+            'WAR Spartan Polearm + Size-1 Buckler must evaluate to ALLOW_SUB_NON_DW (2)')
+        assert(not war:isDualWielding(), 'WAR Spartan twohand_shield must NOT enable dual wield')
+        -- Unconfigured Soul (NIN with no Soul) must still evaluate to VANILLA (0)
+        assert(wc.evaluatePair(nin, nin:getEquippedItem(xi.slot.MAIN), nin:getEquippedItem(xi.slot.SUB)) == wc.RESULT.VANILLA,
             'Unconfigured Souls must evaluate to VANILLA (0)')
     end)
 end)
@@ -377,5 +382,146 @@ describe('Soul Weapon Configuration System (Template 2: dual_2h WAR Berserker)',
         xi.test.world:skipTime(1)
         assert(player:getEquippedItem(xi.slot.SUB) == nil, 'Deleveling Berserker to Lv9 must unequip SUB Great Axe')
         assert(player:hasItem(ITEM_BUTTERFLY_AXE) and player:hasItem(ITEM_BUTTERFLY_AXE_P1), 'Both Great Axes preserved after delevel reconciliation')
+    end)
+end)
+
+describe('Soul Weapon Configuration System (Template 3: twohand_shield WAR Spartan)', function()
+    it('supports WAR Spartan Polearm + Size-1 Buckler across Lv10, 30, 50, 75 and rejects larger shields', function()
+        for _, lvl in ipairs({ 10, 30, 50, 75 }) do
+            local player = xi.test.world:spawnPlayer({
+                zone  = xi.zone.WEST_RONFAURE,
+                job   = xi.job.WAR,
+                level = lvl,
+            })
+            player:changeContainerSize(xi.inv.INVENTORY, 60)
+            spec.set(player, xi.job.WAR, 'spartan', { silent = true })
+            spec.refreshPlayer(player)
+            spec.syncPolearmBuckler(player, spec.get(player, xi.job.WAR))
+            xi.test.world:skipTime(1)
+
+            assert(player:addItem(ITEM_BRONZE_SPEAR), 'add Polearm at Lv' .. tostring(lvl))
+            assert(player:addItem(ITEM_ASPIS_BUCKLER), 'add Size-1 Buckler at Lv' .. tostring(lvl))
+            assert(player:addItem(ITEM_LAUAN_SHIELD), 'add Size-2 Shield at Lv' .. tostring(lvl))
+
+            player:equipItem(ITEM_BRONZE_SPEAR, xi.inv.INVENTORY, xi.slot.MAIN)
+            -- Size-2 shield must be rejected without unequipping Polearm
+            player:equipItem(ITEM_LAUAN_SHIELD, xi.inv.INVENTORY, xi.slot.SUB)
+            xi.test.world:skipTime(1)
+            assert(player:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BRONZE_SPEAR, 'Polearm must stay equipped when Size-2 shield is rejected')
+            assert(player:getEquippedItem(xi.slot.SUB) == nil, 'Size-2 Shield must be rejected on Spartan at Lv' .. tostring(lvl))
+
+            -- Size-1 Buckler must equip alongside Polearm without enabling Dual Wield
+            player:equipItem(ITEM_ASPIS_BUCKLER, xi.inv.INVENTORY, xi.slot.SUB)
+            xi.test.world:skipTime(1)
+            assert(player:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BRONZE_SPEAR, 'Polearm in MAIN at Lv' .. tostring(lvl))
+            assert(player:getEquippedItem(xi.slot.SUB):getID() == ITEM_ASPIS_BUCKLER, 'Size-1 Buckler in SUB at Lv' .. tostring(lvl))
+            assert(not player:isDualWielding(), 'twohand_shield must NOT set isDualWielding()')
+            assert(wc.evaluatePair(player, player:getEquippedItem(xi.slot.MAIN), player:getEquippedItem(xi.slot.SUB)) == wc.RESULT.ALLOW_SUB_NON_DW,
+                'Spartan Polearm + Buckler must evaluate to ALLOW_SUB_NON_DW (2)')
+
+            -- Switching away from Spartan -> Commander unequips Buckler and preserves inventory
+            if lvl == 10 or lvl == 75 then
+                spec.set(player, xi.job.WAR, 'commander', { silent = true })
+                spec.refreshPlayer(player)
+                spec.syncPolearmBuckler(player, spec.get(player, xi.job.WAR))
+                xi.test.world:skipTime(1)
+                assert(player:getEquippedItem(xi.slot.SUB) == nil, 'Switching Spartan -> Commander must unequip Buckler')
+                assert(player:hasItem(ITEM_ASPIS_BUCKLER), 'Unequipped Buckler preserved in inventory')
+            end
+        end
+    end)
+
+    it('enforces Lv9 delevel reconciliation on WAR Spartan Polearm + Buckler', function()
+        local player = xi.test.world:spawnPlayer({
+            zone  = xi.zone.WEST_RONFAURE,
+            job   = xi.job.WAR,
+            level = 10,
+        })
+        player:changeContainerSize(xi.inv.INVENTORY, 60)
+        spec.set(player, xi.job.WAR, 'spartan', { silent = true })
+        spec.refreshPlayer(player)
+        spec.syncPolearmBuckler(player, spec.get(player, xi.job.WAR))
+        assert(player:addItem(ITEM_BRONZE_SPEAR), 'add Polearm')
+        assert(player:addItem(ITEM_ASPIS_BUCKLER), 'add Buckler')
+        player:equipItem(ITEM_BRONZE_SPEAR, xi.inv.INVENTORY, xi.slot.MAIN)
+        player:equipItem(ITEM_ASPIS_BUCKLER, xi.inv.INVENTORY, xi.slot.SUB)
+        assert(player:getEquippedItem(xi.slot.SUB):getID() == ITEM_ASPIS_BUCKLER, 'Buckler equipped at Lv10')
+
+        player:setLevel(9)
+        spec.refreshPlayer(player)
+        spec.syncPolearmBuckler(player, spec.get(player, xi.job.WAR))
+        xi.test.world:skipTime(1)
+        assert(player:getEquippedItem(xi.slot.SUB) == nil, 'Deleveling Spartan to Lv9 must unequip Buckler')
+        assert(player:hasItem(ITEM_ASPIS_BUCKLER), 'Buckler preserved after delevel')
+    end)
+end)
+
+describe('Soul Weapon Configuration System (Template 4: vanilla & Lv10/30/50/75 regression)', function()
+    it('preserves vanilla NIN DW, single 2H, 1H+Shield, BRD Adventurer dual_1h, and job-change reconciliation across Lv10/30/50/75', function()
+        for _, lvl in ipairs({ 10, 30, 50, 75 }) do
+            -- 1. Vanilla NIN Dual Wield (no Soul)
+            local nin = xi.test.world:spawnPlayer({
+                zone  = xi.zone.WEST_RONFAURE,
+                job   = xi.job.NIN,
+                level = lvl,
+            })
+            nin:changeContainerSize(xi.inv.INVENTORY, 60)
+            assert(nin:addItem(ITEM_WIND_KNIFE_P1), 'add dagger')
+            assert(nin:addItem(ITEM_ASH_CLUB_P1), 'add club')
+            nin:equipItem(ITEM_WIND_KNIFE_P1, xi.inv.INVENTORY, xi.slot.MAIN)
+            nin:equipItem(ITEM_ASH_CLUB_P1, xi.inv.INVENTORY, xi.slot.SUB)
+            assert(nin:getEquippedItem(xi.slot.SUB):getID() == ITEM_ASH_CLUB_P1, 'Vanilla NIN DW works at Lv' .. tostring(lvl))
+            assert(wc.evaluatePair(nin, nin:getEquippedItem(xi.slot.MAIN), nin:getEquippedItem(xi.slot.SUB)) == wc.RESULT.VANILLA)
+            assert(wc.getCombatProfile(nin) == nil, 'Vanilla NIN must have no Soul combat scaling')
+
+            -- 2. Vanilla single 2H and 1H + Shield on unconfigured WAR Commander
+            local war = xi.test.world:spawnPlayer({
+                zone  = xi.zone.WEST_RONFAURE,
+                job   = xi.job.WAR,
+                level = lvl,
+            })
+            war:changeContainerSize(xi.inv.INVENTORY, 60)
+            spec.set(war, xi.job.WAR, 'commander', { silent = true })
+            spec.refreshPlayer(war)
+            assert(war:addItem(ITEM_BUTTERFLY_AXE), 'add GA')
+            assert(war:addItem(ITEM_BRONZE_SWORD), 'add Sword')
+            assert(war:addItem(ITEM_LAUAN_SHIELD), 'add Size-2 Shield')
+            war:equipItem(ITEM_BUTTERFLY_AXE, xi.inv.INVENTORY, xi.slot.MAIN)
+            assert(war:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BUTTERFLY_AXE, 'Single 2H GA equipped at Lv' .. tostring(lvl))
+            war:equipItem(ITEM_BRONZE_SWORD, xi.inv.INVENTORY, xi.slot.MAIN)
+            war:equipItem(ITEM_LAUAN_SHIELD, xi.inv.INVENTORY, xi.slot.SUB)
+            assert(war:getEquippedItem(xi.slot.MAIN):getID() == ITEM_BRONZE_SWORD and
+                   war:getEquippedItem(xi.slot.SUB):getID() == ITEM_LAUAN_SHIELD, 'Vanilla 1H + Shield works at Lv' .. tostring(lvl))
+
+            -- 3. Template 1 (dual_1h) BRD Adventurer across Lv10/30/50/75
+            local brd = spawnBrdWar(lvl)
+            spec.set(brd, xi.job.BRD, 'adventurer', { silent = true })
+            spec.refreshPlayer(brd)
+            assert(brd:addItem(ITEM_WIND_KNIFE_P1), 'add dagger')
+            assert(brd:addItem(ITEM_ONION_SWORD), 'add sword')
+            brd:equipItem(ITEM_WIND_KNIFE_P1, xi.inv.INVENTORY, xi.slot.MAIN)
+            brd:equipItem(ITEM_ONION_SWORD, xi.inv.INVENTORY, xi.slot.SUB)
+            assert(brd:getEquippedItem(xi.slot.SUB):getID() == ITEM_ONION_SWORD, 'BRD Adventurer dual_1h works at Lv' .. tostring(lvl))
+            assert(wc.getCombatProfile(brd) == nil, 'dual_1h must not inject dual_2h combat scaling')
+        end
+
+        -- 4. Job change from WAR Berserker (dual_2h) to MNK cleanly reconciles without inventory loss
+        local swap = xi.test.world:spawnPlayer({
+            zone  = xi.zone.WEST_RONFAURE,
+            job   = xi.job.WAR,
+            level = 30,
+        })
+        swap:changeContainerSize(xi.inv.INVENTORY, 60)
+        spec.set(swap, xi.job.WAR, 'berserker', { silent = true })
+        spec.refreshPlayer(swap)
+        assert(swap:addItem(ITEM_BUTTERFLY_AXE), 'add GA1')
+        assert(swap:addItem(ITEM_BUTTERFLY_AXE_P1), 'add GA2')
+        swap:equipItem(ITEM_BUTTERFLY_AXE, xi.inv.INVENTORY, xi.slot.MAIN)
+        swap:equipItem(ITEM_BUTTERFLY_AXE_P1, xi.inv.INVENTORY, xi.slot.SUB)
+        assert(swap:getEquippedItem(xi.slot.SUB):getID() == ITEM_BUTTERFLY_AXE_P1)
+        swap:changeJob(xi.job.MNK)
+        xi.test.world:skipTime(1)
+        assert(swap:getEquippedItem(xi.slot.SUB) == nil, 'Job change WAR Berserker -> MNK must unequip SUB Great Axe')
+        assert(swap:hasItem(ITEM_BUTTERFLY_AXE) and swap:hasItem(ITEM_BUTTERFLY_AXE_P1), 'Job change preserves both Great Axes')
     end)
 end)

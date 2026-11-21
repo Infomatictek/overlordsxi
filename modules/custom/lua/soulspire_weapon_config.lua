@@ -521,6 +521,9 @@ function WC.evaluatePair(player, mainItem, subItem)
         return WC.RESULT.VANILLA
     end
     if subInfo.isShield then
+        if mainInfo.isTwoHanded and cfg.mode == WC.MODE.TWOHAND_SHIELD then
+            return WC.RESULT.DENY
+        end
         if cfg.allowVanillaShield and not mainInfo.isTwoHanded then
             return WC.RESULT.VANILLA
         end
@@ -768,6 +771,38 @@ if xi.job and xi.job.WAR then
             wsUsesMainOnly    = true,
         },
     })
+
+    -----------------------------------
+    -- Template 3 Reference (twohand_shield): WAR Spartan / Gladiator (Polearm + Size-1 Buckler)
+    -----------------------------------
+    local spartanConfig =
+    {
+        mode               = WC.MODE.TWOHAND_SHIELD,
+        minLevel           = 10,
+        allowAdvancedModes = true,
+        mainWhitelist      = { 'polearm' },
+        subWhitelist       = { 'buckler' },
+        subShieldSize      = { exact = 1 },
+        pairings           =
+        {
+            {
+                main          = { 'polearm' },
+                sub           = { 'buckler' },
+                subShieldSize = { exact = 1 },
+                mode          = WC.MODE.TWOHAND_SHIELD,
+                enabled       = true,
+            },
+        },
+        restrictSoulDualWieldToPairings = true,
+        allowVanillaShield              = true,
+        combat                          =
+        {
+            shieldBlockScale   = 1.0,
+            twoHandedStatScale = 1.0,
+        },
+    }
+    WC.register(xi.job.WAR, 'spartan', spartanConfig)
+    WC.register(xi.job.WAR, 'gladiator', spartanConfig)
 end
 
 return WC
