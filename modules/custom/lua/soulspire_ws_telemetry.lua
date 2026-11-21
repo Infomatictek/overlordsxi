@@ -125,7 +125,7 @@ function W.applySoulHookPostWS(attacker, target, ws, soulKey, node, rank, hook)
     local status = W.STATUS.APPLIED
     local reason = ''
 
-    -- 1. Soul resource / stack build (e.g., Grit, Zeal, Cadence, Crimson Flow, Grapeshot, Ashura, Bloodlust, Clone Sync)
+    -- 1. Soul resource / stack build (e.g., Grit, Zeal, Cadence, Crimson Flow, Grapeshot, Ashura, Bloodlust, Clone Sync, Conduction)
     if (hook.kind == 'resource_build' or hook.kind == 'clone_interaction') and type(hook.localVar) == 'string' then
         local cur = (attacker.getLocalVar and attacker:getLocalVar(hook.localVar)) or 0
         local delta = pickVal(hook.delta, rank) or 1
@@ -137,6 +137,12 @@ function W.applySoulHookPostWS(attacker, target, ws, soulKey, node, rank, hook)
         end
         postState[hook.localVar] = nxt
         applied.soul_resource = { var = hook.localVar, delta = nxt - cur, cap = cap, hook_id = hook.id }
+    elseif hook.kind == 'resource_build' and hook.conductionAdd ~= nil then
+        local delta = pickVal(hook.conductionAdd, rank) or 1
+        local cur = (attacker.getLocalVar and attacker:getLocalVar('OX_CONDUCTION')) or 0
+        preState.OX_CONDUCTION = cur
+        postState.OX_CONDUCTION = cur + delta
+        applied.soul_resource = { var = 'OX_CONDUCTION', delta = delta, hook_id = hook.id }
     end
 
     -- 2. Bounded TP Refund (anti-infinite-TP guardrail: hard-capped at 350 TP per WS)
@@ -166,6 +172,52 @@ function W.applySoulHookPostWS(attacker, target, ws, soulKey, node, rank, hook)
             postState.mp = attacker.getMP and attacker:getMP() or (preMp + gain)
             applied.mp_gain = gain
         end
+    end
+
+    -- 4. Party pulse / Pet TP+Heal / Next-WS Prime / Enmity / Debuff / Stance Soul hooks
+    if hook.kind == 'party_pulse' then
+        applied.soul_hook = {
+            hook_id = hook.id, kind = hook.kind,
+            party_tp = hook.partyTp and pickVal(hook.partyTp, rank) or 0,
+            party_heal_pct = hook.partyHealPct and pickVal(hook.partyHealPct, rank) or 0,
+        }
+    elseif hook.kind == 'pet_tp_heal' then
+        local pet = attacker.getPet and attacker:getPet() or nil
+        if pet ~= nil and pet:isAlive() then
+            applied.pet_interaction = {
+                hook_id = hook.id,
+                pet_tp = hook.petTp and pickVal(hook.petTp, rank) or 0,
+                eos_heal = hook.eosHeal and pickVal(hook.eosHeal, rank) or 0,
+            }
+        else
+            applied.soul_hook = {
+                hook_id = hook.id, kind = hook.kind, pet_present = false,
+                bonus_wsd = hook.bonusWsd and pickVal(hook.bonusWsd, rank) or 0,
+            }
+        end
+    elseif hook.kind == 'next_ws_prime' then
+        applied.next_ws_primer = {
+            hook_id = hook.id,
+            next_wsd = hook.nextWsd and pickVal(hook.nextWsd, rank) or 0,
+            next_tp = hook.nextTp and pickVal(hook.nextTp, rank) or 0,
+        }
+    elseif hook.kind == 'enmity_surge' then
+        applied.enmity_modifier = {
+            hook_id = hook.id,
+            enmity = hook.enmity and pickVal(hook.enmity, rank) or 0,
+        }
+    elseif hook.kind == 'debuff_extend' then
+        applied.target_debuff = {
+            hook_id = hook.id,
+            debuff = hook.targetDebuff,
+            power = hook.debuffPower and pickVal(hook.debuffPower, rank) or 0,
+        }
+    elseif hook.kind == 'stance_empower' then
+        applied.stance_empower = {
+            hook_id = hook.id,
+            bonus_wsd = hook.bonusWsd and pickVal(hook.bonusWsd, rank) or 0,
+            matt = hook.matt and pickVal(hook.matt, rank) or 0,
+        }
     end
 
     return W.emit(attacker, ws, normSoul, node, rank, 'post_ws', status, {

@@ -15,6 +15,10 @@
 --   so Lv 1 characters can enable Skillchains immediately, or leave
 --   them off on Utility WSs to avoid interrupting party Skillchains.
 -----------------------------------
+if xi and xi.soulspire and xi.soulspire.wsTalents and xi.soulspire.wsTalents._initialized then
+    return xi.soulspire.wsTalents
+end
+
 require('modules/custom/lua/soulspire_ws_catalog')
 local wsEligibility = require('modules/custom/lua/soulspire_ws_eligibility')
 local wsContracts   = require('modules/custom/lua/soulspire_ws_talent_contracts')
@@ -2764,5 +2768,6 @@ function talents.handleClientPacket(player, operation, wsId, arg1, arg2)
     end
 end
 
+talents._initialized = true
 return talents
 

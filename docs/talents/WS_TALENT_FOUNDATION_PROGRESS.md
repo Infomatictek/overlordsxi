@@ -1,72 +1,54 @@
-# SoulspireXI — Weapon Skill Talent Foundation Pass 2.0 Progress
+# SoulspireXI — Weapon Skill Talent Foundation Progress (Pass 2.0 + Pass 2.1 Live Combat Validation)
 
-**Branch:** `feat/ws-talent-foundation-v2` (branched from `origin/main` @ `30d1fad`)  
+**Branch:** `feat/ws-talent-foundation-v2` (branched from `origin/main` @ `30d1fad`, NOT merged to `main`)  
 **Schema Version:** `2.0.0`  
-**Status:** **FOUNDATION PASS COMPLETE** (all 5 checkpoints committed & pushed)
+**Status:** **PASS 2.1 LIVE COMBAT VALIDATION & REPAIR COMPLETE**
 
 ---
 
-## 1. Phase 1 — Architecture Audit Summary
+## 1. Before / After Summary (Pass 2.1)
 
-- **Tree Structure:** Three branches (`Col 1 = Damage`, `Col 2 = Utility`, `Col 3 = Soul`) × 4 Tiers (`T1..T4`), plus optional Skillchain Augment (`Col 4`). `EVOLUTION_WS` (`#1 Combo`, `#47 Sanguine Blade`) preserved with versioned storage.
-- **Point Economy:** `3` pts/level (`225` at Lv 75), `56` max pts/WS (`4` mastered WSs).
-- **WS Catalog:** `219` weapon skills across `15` weapon families (`modules/custom/lua/soulspire_ws_catalog.lua`), including custom Chakram Throwing WSs (`#241-#252`).
-- **Role Tiers:** 6-tier system in `soulspire_job_specs.lua` (`Damage`, `HybridSupport`, `Support`, `CombatHealer`, `Healer`, `Tank`).
-
-### Gaps Resolved in Pass 2.0
-1. **Full 66-Soul Coverage:** Expanded `P.ALL_SPECS`, `SPEC_KEY_TO_CATEGORY`, and `soulspire_ws_soul_mechanics.lua` from 34 partial specs to all **66 canonical Souls** with real, grounded Soul-branch hooks (zero invented resources).
-2. **Strict Soul Weapon Eligibility:** Replaced broad base-job proficiency tables (`WAR_OPEN_SKILLS`, `RUN_OPEN_SKILLS`, `SCH_OPEN_SKILLS`, Sword leaking onto Bladewheel) with the explicit 66-Soul manifest (`ws_eligibility_manifest.json` + `soulspire_ws_eligibility.lua`).
-3. **Runtime, UI & Migration Enforcement:** `getTreeForWS`, `canInvest`, and `sendCatalogSync` now strictly enforce Soul weapon eligibility; `reconcileIneligibleAllocations` provides safe, deterministic refund/migration for legacy incompatible allocations while preserving eligible investments.
-4. **Sanguine Blade (`#47`) Role Fix:** Restricted `e_sg_control` (`hpDrain`) to `{ vampire, lifebinder, defender, aegistemplar, templar }` so Tier-1 pure DPS RDM (`scarletweaver`) cannot bypass pure-DPS sustain guardrails.
-5. **Machine-Readable Contracts & Taxonomy:** Added `soulspire_ws_talent_contracts.lua` (22 taxonomy effect types) and exported all **23,427** compiled contracts to `modules/custom/data/ws_talent_contracts.json`.
-6. **Combat Instrumentation:** Added `soulspire_ws_telemetry.lua` wired into `soulspire_ws_overrides.lua` and `soulspire_proving_grounds_telemetry.lua` (zero production log spam; emits `ws_talent_eval` distinguishing `allocated`, `eligible`, `activated`, `applied`, `condition_not_met`, `blocked_by_restriction`, `proc_failed`, `unexpected_outcome`).
-7. **Autoparser Integration:** Added `soulspire_suite/models/ws_talents.py` and `soulspire_suite/telemetry/ws_talent_validator.py`, extended `functional_matrix.py` (`STATUS_NOT_EXERCISED`) and `engine_bridge.py` (`talent_branch`, `talent_allocations`).
-
----
-
-## 2. Eligibility & Reduction Metrics
-
-| Metric | Count |
-|---|---|
-| Canonical Souls | 66 / 66 |
-| Total Catalog Weapon Skills | 219 (15 families) |
-| Full Catalog Combinations (`66 × 219`) | 14,454 |
-| Base-Job Theoretically Equipable Combinations | 5,619 |
-| **Approved Eligible Soul × WS Combinations** | **1,476** |
-| Excluded Base-Job Equipable Combinations | 4,143 (**73.73% reduction**) |
-| Estimated Talent Definitions Avoided (`12 / WS`) | **49,716** (`67,428 -> 17,712`) |
-| Total Compiled Talent Contracts (incl. SC + Evo) | **23,427** (100% machine-readable) |
-| Reusable Effect Taxonomy Types | 22 |
-
-Full per-Soul breakdown: `docs/talents/WS_TALENT_COVERAGE_MATRIX.md` and `docs/talents/ws_talent_coverage_matrix.json`.
+| Metric | Pass 2.0 Baseline (`89a138a`) | Pass 2.1 Final |
+|---|---:|---:|
+| Eligible Soul × WS combinations | 1,476 | **1,476** (66/66 Souls verified) |
+| Compiled contracts | 23,427 | **23,427** |
+| Structural PASS | 23,427 (14 cross-branch dup warnings) | **23,427** (0 defects) |
+| Runtime handler PASS (unique taxonomy types) | 0 live-verified / 22 static | **22 / 22 live `xi_test` verified** |
+| Live combat PASS (contracts) | 0 verified | **211 PASS** (66/66 Souls × D/U/S + 32/32 Lv10/30/50/75 + Evo + Adv Handlers) |
+| Live combat FAIL | 0 (untested) | **0** |
+| Live combat BLOCKED | 0 (untested) | **0** |
+| Live combat NOT EXERCISED | 23,427 | **23,216** (explicitly tracked) |
+| Redundant / invalid cross-branch talents | 14 | **0** |
+| Confirmed defects repaired | 0 | **6** |
 
 ---
 
-## 3. Verification Evidence
+## 2. Confirmed Defects Repaired in Pass 2.1
 
-| Suite | Result | Details |
-|---|---|---|
-| `luajit tests/lua/ws_talent_foundation_v2.lua` | **8 / 8 PASS** | 66-Soul eligibility, UI catalog filtering, tier/level prereqs, evolution mutual exclusions, Sanguine Blade DPS block, deterministic migration refund, Soul switching isolation, live `wsTelemetry` + `applySoulHookPostWS` execution |
-| `luajit tools/export_ws_talent_contracts.lua` | **PASS** | 66 Souls, 1,476 eligible trees, 23,427 contracts exported, 0 pure-DPS heal/defense violations, 0 no-MP violations, 0 petless pet-hook violations |
-| `python3 -m unittest tests/test_ws_foundation.py tests/test_ws_talent_foundation_v2.py` | **9 / 9 PASS** | All 219 WS foundation proxies + 66-Soul manifest/contract parity + 0 excluded contracts |
-| `python3 -m unittest tests/test_ws_talent_autoparser.py` (in `parser-src`) | **5 / 5 PASS** | 66-Soul automated test plans, non-damage Soul resource credit (`PASS`), all 5 matrix statuses (`PASS`, `FAIL`, `BLOCKED`, `NOT EXERCISED`, `NOT APPLICABLE`) |
-
----
-
-## 4. Checkpoint Tracker
-
-| Checkpoint | Scope | Commit | Status |
-|---|---|---|---|
-| **CP1** | Phase 1 Audit + Phase 2 66-Soul Eligibility Manifest (JSON + Lua) | `972b58a` | **DONE** |
-| **CP2** | Phases 3–6: 66-Soul 3-Branch Mechanics, Role Guardrails, Contracts, Eligibility & Migration | `ca97a0a` | **DONE** |
-| **CP3** | Phase 7: Structured WS Talent Combat Telemetry & Soul-Hook Runtime | `a1908bb` | **DONE** |
-| **CP4** | Phases 8–10: Contract Catalog Export, Sanguine Blade Fix, Autoparser Integration, LuaJIT & Python Suites | `929e9fd` | **DONE** |
-| **CP5** | Phases 11–12: Permanent Coverage Matrix, Final Regression Run & Push | *(HEAD)* | **DONE** |
+1. **Server Double-Load Bug Breaking Combo (`#1`) Evolution (`soulspire_ws_talents.lua`):** Because `soulspire_ws_talents.lua` is loaded via `init.txt` (`dofile`) and also `require()`d by `soulspire_ws_overrides.lua`, it executed twice on real server boot, wiping `CUSTOM_TREES` while `package.loaded['modules/custom/lua/soulspire_ws_evolution']` skipped re-registering Combo `#1`. Fixed with an idempotent `talents._initialized` guard.
+2. **Cross-Branch Single-Effect Duplication (`soulspire_ws_spec_profiles.lua`):** 14 cross-branch pairs collapsed to identical single-effect signatures after role/magic sanitization. Fixed via a shared Branch Differentiation Normalizer (`14 -> 0`).
+3. **Incomplete Soul-Hook Contract Extraction (`soulspire_ws_talent_contracts.lua`):** Added contract extraction for `tp_refund`, `mp_siphon`, `party_pulse`, `next_ws_prime`, `enmity_surge`, `debuff_extend`, and `stance_empower`.
+4. **Missing Cleanse Effect Extraction (`soulspire_ws_talent_contracts.lua`):** Added `cleanseSelf` / `cleanseParty` extraction into `status_apply`.
+5. **Empty Post-WS Telemetry Payloads (`soulspire_ws_telemetry.lua`):** Populated real `applied_effects` payloads in `applySoulHookPostWS` for `party_pulse`, `pet_tp_heal`, `next_ws_prime`, `enmity_surge`, `debuff_extend`, and `stance_empower`.
+6. **Spellblade Conduction Telemetry Gap (`soulspire_ws_telemetry.lua`):** Caught by live `xi_test` + Autoparser (`ws:48:spellblade:spb_t1c3`); wired `hook.conductionAdd` into `applied.soul_resource` (`OX_CONDUCTION`).
 
 ---
 
-## 5. Outstanding Balance & Live-Gauntlet Follow-Ups (Post-Foundation)
+## 3. Verification Evidence & Snapshots
 
-- **Numerical Balance Pass:** All talent curves and Soul-hook magnitudes are foundation-grade; final numerical balancing at Lv 10/30/50/75 is deferred to the project owner's balance pass.
-- **Live `xi_test` Matrix Execution:** Every Soul's live `xi_test` combat gauntlet column is explicitly marked `NOT EXERCISED` in `WS_TALENT_COVERAGE_MATRIX.md` until the owner runs the automated gauntlet queue with `talent_branch` / `talent_allocations` enabled.
-- **Flintlock Dual-Pistol Compatibility:** Flintlock is scoped to `Marksmanship` and ready for future dual-pistol client/engine additions without assuming unfinished client features.
+- **Baseline Structural Audit:** `docs/talents/ws_talent_v21_baseline_audit.json`
+- **Post-Repair Structural Audit:** `docs/talents/ws_talent_v21_post_audit.json` (`23,427 PASS / 0 FAIL / 0 defects`)
+- **Live `xi_test` Combat Evidence:** `docs/talents/ws_talent_v21_live_evidence.json` (real LandSandBoat C++ MapEngine against isolated staging DB `xidb_staging`; `66/66 Souls` × Damage/Utility/Soul, `32/32` Lv 10/30/50/75 checks, `22/22` unique effect handlers, `0` failures)
+- **Permanent Coverage Matrix:** `docs/talents/WS_TALENT_COVERAGE_MATRIX.md` & `docs/talents/ws_talent_coverage_matrix.json`
+- **Live `xi_test` Suite:** `tests/lua/ws_talent_live_xi_test.lua` (`[  PASSED  ] 1 test.` in ~29s)
+- **LuaJIT Runtime Suite:** `tests/lua/ws_talent_foundation_v2.lua` (`8 / 8 PASS`)
+- **Repo Python Suites:** `tests/test_ws_foundation.py` + `tests/test_ws_talent_foundation_v2.py` (`9 / 9 PASS`)
+- **Autoparser Suite:** `parser-src/tests/test_ws_talent_autoparser.py` (`5 / 5 PASS`)
+
+---
+
+## 4. Remaining Untested Mechanics & Known Risks (Non-Blocking for Merge)
+
+- **Exhaustive Per-WS Live Coverage:** `211` representative contracts (covering all `66/66` Souls, all 3 branches, all `22/22` unique effect handlers, Evolution `#1`/`#47`, and Lv 10/30/50/75) are live `xi_test`-verified; the remaining `23,216` contracts are structurally verified (`23,427/23,427`) and explicitly tracked as `NOT EXERCISED` in live combat.
+- **Pre-Existing Unrelated Bug Observed in Logs:** `modules/custom/lua/war_specs.lua:420` logs `attempt to call method 'getBattleTarget' (a nil value)` during Spartan's Sense tick (outside WS talent scope; did not block Spartan WS execution).
+- **Numerical Balance:** Deferred to owner balance pass (post-foundation).
