@@ -34,8 +34,14 @@ Use **Soul-facing action names only**. Do not expose vanilla action mappings, ra
 | Reaper | `3349b7c` | Verified `drk_reaper_specs.lua` |
 | Oathbreaker | `60ebf19` | Verified `pld_oathbreaker_specs.lua` |
 | Valkyrie | `79bb94a` | Verified `whm_valkyrie_specs.lua` |
+| Nightblade | `f97846c` | Verified `nin_nightblade_specs.lua` |
+| Channeler | `e221ca9` | Verified `blm_channeler_specs.lua` |
+| Lancer | `fb365d5` | Verified `drg_lancer_specs.lua` |
+| Sniper | `a341a24` | Verified `rng_sniper_specs.lua` |
+| Scarlet Weaver | `78f2480` | Verified `rdm_scarlet_weaver_specs.lua` |
+| Royal Tactician | `59e1365` | Verified `rdm_royal_tactician_specs.lua` |
 
-**Status:** 14/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
+**Status:** 20/66 documentation revisions committed. Not merged or wiki-published. No automated full wiki regeneration or integration suite has yet been executed for these commits.
 
 ## Findings and resume instructions
 
