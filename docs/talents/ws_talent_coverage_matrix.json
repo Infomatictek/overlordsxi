@@ -1,0 +1,1599 @@
+{
+  "aggregate": {
+    "schema_version": "2.0.0",
+    "canonical_souls": 66,
+    "total_catalog_ws": 219,
+    "total_eligible_soul_ws_combinations": 1476,
+    "total_excluded_equipable_soul_ws_combinations": 4143,
+    "weapon_filtering_reduction_pct": 73.73,
+    "estimated_definitions_avoided": 49716,
+    "total_talent_contracts": 23427,
+    "reusable_taxonomy_effect_types": 22,
+    "branch_counts": {
+      "damage": 5832,
+      "evolution": 99,
+      "skillchain": 5832,
+      "soul": 5832,
+      "utility": 5832
+    },
+    "pct_with_machine_readable_contracts": 100.0,
+    "pct_runtime_schema_and_guardrail_verified": 100.0,
+    "live_xi_test_combat_gauntlet_status": "NOT EXERCISED (instrumentation & Autoparser contracts ready)"
+  },
+  "souls": [
+    {
+      "job": "BLM",
+      "soul_key": "astromancer",
+      "soul_name": "Astromancer",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 17,
+      "excluded_ws_count": 60,
+      "defined_talents": 272,
+      "defined_non_sc_talents": 204,
+      "implemented_talents": 272,
+      "autoparser_compatible_talents": 272,
+      "runtime_static_verified": 272,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blm_astromancer_celestial",
+      "soul_hook_kind": "mp_siphon",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BLM",
+      "soul_key": "channeler",
+      "soul_name": "Channeler",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 17,
+      "excluded_ws_count": 60,
+      "defined_talents": 272,
+      "defined_non_sc_talents": 204,
+      "implemented_talents": 272,
+      "autoparser_compatible_talents": 272,
+      "runtime_static_verified": 272,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blm_channeler_resonance",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BLM",
+      "soul_key": "necromancer",
+      "soul_name": "Necromancer",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 63,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blm_necromancer_pact",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BLU",
+      "soul_key": "azurebastion",
+      "soul_name": "Azure Bastion",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 34,
+      "excluded_ws_count": 0,
+      "defined_talents": 530,
+      "defined_non_sc_talents": 398,
+      "implemented_talents": 530,
+      "autoparser_compatible_talents": 530,
+      "runtime_static_verified": 530,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blu_azure_carapace",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BLU",
+      "soul_key": "magus",
+      "soul_name": "Magus",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 34,
+      "excluded_ws_count": 0,
+      "defined_talents": 535,
+      "defined_non_sc_talents": 403,
+      "implemented_talents": 535,
+      "autoparser_compatible_talents": 535,
+      "runtime_static_verified": 535,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blu_magus_mending",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BLU",
+      "soul_key": "warmage",
+      "soul_name": "Warmage",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 34,
+      "excluded_ws_count": 0,
+      "defined_talents": 530,
+      "defined_non_sc_talents": 398,
+      "implemented_talents": 530,
+      "autoparser_compatible_talents": 530,
+      "runtime_static_verified": 530,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "blu_warmage_surge",
+      "soul_hook_kind": "stance_empower",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BRD",
+      "soul_key": "adventurer",
+      "soul_name": "Adventurer",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 36,
+      "excluded_ws_count": 45,
+      "defined_talents": 562,
+      "defined_non_sc_talents": 422,
+      "implemented_talents": 562,
+      "autoparser_compatible_talents": 562,
+      "runtime_static_verified": 562,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "brd_cadence_encore",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BRD",
+      "soul_key": "minstrel",
+      "soul_name": "Minstrel",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 36,
+      "excluded_ws_count": 45,
+      "defined_talents": 562,
+      "defined_non_sc_talents": 422,
+      "implemented_talents": 562,
+      "autoparser_compatible_talents": 562,
+      "runtime_static_verified": 562,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "brd_minstrel_anthem",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BRD",
+      "soul_key": "musician",
+      "soul_name": "Musician",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 35,
+      "excluded_ws_count": 46,
+      "defined_talents": 560,
+      "defined_non_sc_talents": 420,
+      "implemented_talents": 560,
+      "autoparser_compatible_talents": 560,
+      "runtime_static_verified": 560,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "brd_musician_ballad",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BST",
+      "soul_key": "alphawarden",
+      "soul_name": "Alpha Warden",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Axe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 80,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "bst_alpha_pack",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BST",
+      "soul_key": "beastspeaker",
+      "soul_name": "Beastspeaker",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Axe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 80,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "bst_beastspeaker_rally",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "BST",
+      "soul_key": "untamed",
+      "soul_name": "Untamed",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Axe"
+      ],
+      "eligible_ws_count": 28,
+      "excluded_ws_count": 66,
+      "defined_talents": 448,
+      "defined_non_sc_talents": 336,
+      "implemented_talents": 448,
+      "autoparser_compatible_talents": 448,
+      "runtime_static_verified": 448,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "bst_untamed_feral",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "COR",
+      "soul_key": "buccaneer",
+      "soul_name": "Buccaneer",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 18,
+      "excluded_ws_count": 43,
+      "defined_talents": 274,
+      "defined_non_sc_talents": 206,
+      "implemented_talents": 274,
+      "autoparser_compatible_talents": 274,
+      "runtime_static_verified": 274,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "cor_buccaneer_grapeshot",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "COR",
+      "soul_key": "flintlock",
+      "soul_name": "Flintlock",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 13,
+      "excluded_ws_count": 48,
+      "defined_talents": 208,
+      "defined_non_sc_talents": 156,
+      "implemented_talents": 208,
+      "autoparser_compatible_talents": 208,
+      "runtime_static_verified": 208,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "cor_flintlock_deadeye",
+      "soul_hook_kind": "tp_refund",
+      "missing_dependencies": []
+    },
+    {
+      "job": "COR",
+      "soul_key": "gambler",
+      "soul_name": "Gambler",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [
+        "Dagger"
+      ],
+      "eligible_ws_count": 31,
+      "excluded_ws_count": 30,
+      "defined_talents": 496,
+      "defined_non_sc_talents": 372,
+      "implemented_talents": 496,
+      "autoparser_compatible_talents": 496,
+      "runtime_static_verified": 496,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "cor_gambler_advantage",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DNC",
+      "soul_key": "bladewheel",
+      "soul_name": "Bladewheel",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Throwing"
+      ],
+      "secondary_signature_weapons": [
+        "Dagger"
+      ],
+      "eligible_ws_count": 30,
+      "excluded_ws_count": 34,
+      "defined_talents": 480,
+      "defined_non_sc_talents": 360,
+      "implemented_talents": 480,
+      "autoparser_compatible_talents": 480,
+      "runtime_static_verified": 480,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "dnc_bladewheel_stance",
+      "soul_hook_kind": "tp_refund",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DNC",
+      "soul_key": "miragesentinel",
+      "soul_name": "Mirage Sentinel",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 18,
+      "excluded_ws_count": 46,
+      "defined_talents": 288,
+      "defined_non_sc_talents": 216,
+      "implemented_talents": 288,
+      "autoparser_compatible_talents": 288,
+      "runtime_static_verified": 288,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "dnc_mirage_fandance",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DNC",
+      "soul_key": "vampire",
+      "soul_name": "Vampire",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Throwing"
+      ],
+      "eligible_ws_count": 30,
+      "excluded_ws_count": 34,
+      "defined_talents": 480,
+      "defined_non_sc_talents": 360,
+      "implemented_talents": 480,
+      "autoparser_compatible_talents": 480,
+      "runtime_static_verified": 480,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "dnc_vampire_feast",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRG",
+      "soul_key": "lancer",
+      "soul_name": "Lancer",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 69,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drg_lancer_vault",
+      "soul_hook_kind": "next_ws_prime",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRG",
+      "soul_key": "skyborn",
+      "soul_name": "Skyborn",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 69,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drg_skyborn_guard",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRG",
+      "soul_key": "wyvernheart",
+      "soul_name": "Wyvernheart",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 69,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drg_wyrmscale_breath",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRK",
+      "soul_key": "dreadnought",
+      "soul_name": "Dreadnought",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 107,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drk_blood_pool",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRK",
+      "soul_key": "reaper",
+      "soul_name": "Reaper",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 107,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drk_reaper_finality",
+      "soul_hook_kind": "stance_empower",
+      "missing_dependencies": []
+    },
+    {
+      "job": "DRK",
+      "soul_key": "scourge",
+      "soul_name": "Scourge",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Scythe"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 107,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "drk_scourge_curse",
+      "soul_hook_kind": "debuff_extend",
+      "missing_dependencies": []
+    },
+    {
+      "job": "GEO",
+      "soul_key": "diviner",
+      "soul_name": "Diviner",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "geo_diviner_meridian",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "GEO",
+      "soul_key": "terramancer",
+      "soul_name": "Terramancer",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "geo_terramancer_fault",
+      "soul_hook_kind": "stance_empower",
+      "missing_dependencies": []
+    },
+    {
+      "job": "GEO",
+      "soul_key": "verdant",
+      "soul_name": "Verdant",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "geo_verdant_canopy",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "MNK",
+      "soul_key": "blackbelt",
+      "soul_name": "Black Belt",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 45,
+      "defined_talents": 250,
+      "defined_non_sc_talents": 190,
+      "implemented_talents": 250,
+      "autoparser_compatible_talents": 250,
+      "runtime_static_verified": 250,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "mnk_impetus_chain",
+      "soul_hook_kind": "next_ws_prime",
+      "missing_dependencies": []
+    },
+    {
+      "job": "MNK",
+      "soul_key": "chiweaver",
+      "soul_name": "Chi Weaver",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 45,
+      "defined_talents": 250,
+      "defined_non_sc_talents": 190,
+      "implemented_talents": 250,
+      "autoparser_compatible_talents": 250,
+      "runtime_static_verified": 250,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "mnk_chi_harmony",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "MNK",
+      "soul_key": "sensei",
+      "soul_name": "Sensei",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 17,
+      "excluded_ws_count": 44,
+      "defined_talents": 272,
+      "defined_non_sc_talents": 204,
+      "implemented_talents": 272,
+      "autoparser_compatible_talents": 272,
+      "runtime_static_verified": 272,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "mnk_dojo_riposte",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "NIN",
+      "soul_key": "kagemusha",
+      "soul_name": "Kagemusha",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 118,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "nin_kagemusha_shadows",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "NIN",
+      "soul_key": "kurogane",
+      "soul_name": "Shinobi",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 118,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "nin_kurogane_clone_sync",
+      "soul_hook_kind": "clone_interaction",
+      "missing_dependencies": []
+    },
+    {
+      "job": "NIN",
+      "soul_key": "nightblade",
+      "soul_name": "Nightblade",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 118,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "nin_nightblade_seal",
+      "soul_hook_kind": "debuff_extend",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PLD",
+      "soul_key": "defender",
+      "soul_name": "Defender",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 34,
+      "excluded_ws_count": 63,
+      "defined_talents": 533,
+      "defined_non_sc_talents": 401,
+      "implemented_talents": 533,
+      "autoparser_compatible_talents": 533,
+      "runtime_static_verified": 533,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pld_zeal_nova",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PLD",
+      "soul_key": "oathbreaker",
+      "soul_name": "Oathbreaker",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 83,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pld_oathbreaker_reckoning",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PLD",
+      "soul_key": "templar",
+      "soul_name": "Templar",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 81,
+      "defined_talents": 256,
+      "defined_non_sc_talents": 192,
+      "implemented_talents": 256,
+      "autoparser_compatible_talents": 256,
+      "runtime_static_verified": 256,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pld_beacon_light",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PUP",
+      "soul_key": "animist",
+      "soul_name": "Animist",
+      "role": "Healer",
+      "tier": "CombatHealer",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 46,
+      "defined_talents": 250,
+      "defined_non_sc_talents": 190,
+      "implemented_talents": 250,
+      "autoparser_compatible_talents": 250,
+      "runtime_static_verified": 250,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pup_animist_cells",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PUP",
+      "soul_key": "pugilist",
+      "soul_name": "Pugilist",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 46,
+      "defined_talents": 250,
+      "defined_non_sc_talents": 190,
+      "implemented_talents": 250,
+      "autoparser_compatible_talents": 250,
+      "runtime_static_verified": 250,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pup_pugilist_tandem",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "PUP",
+      "soul_key": "vanguard",
+      "soul_name": "Vanguard",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Hand-to-Hand"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 16,
+      "excluded_ws_count": 46,
+      "defined_talents": 250,
+      "defined_non_sc_talents": 190,
+      "implemented_talents": 250,
+      "autoparser_compatible_talents": 250,
+      "runtime_static_verified": 250,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "pup_vanguard_bulwark",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RDM",
+      "soul_key": "crimsonduelist",
+      "soul_name": "Crimson Duelist",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 18,
+      "excluded_ws_count": 74,
+      "defined_talents": 279,
+      "defined_non_sc_talents": 211,
+      "implemented_talents": 279,
+      "autoparser_compatible_talents": 279,
+      "runtime_static_verified": 279,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rdm_crimson_flow",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RDM",
+      "soul_key": "royaltactician",
+      "soul_name": "Royal Tactician",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 18,
+      "excluded_ws_count": 74,
+      "defined_talents": 279,
+      "defined_non_sc_talents": 211,
+      "implemented_talents": 279,
+      "autoparser_compatible_talents": 279,
+      "runtime_static_verified": 279,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rdm_tactical_enfeeble",
+      "soul_hook_kind": "debuff_extend",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RDM",
+      "soul_key": "scarletweaver",
+      "soul_name": "Scarlet Weaver",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 18,
+      "excluded_ws_count": 74,
+      "defined_talents": 279,
+      "defined_non_sc_talents": 211,
+      "implemented_talents": 279,
+      "autoparser_compatible_talents": 279,
+      "runtime_static_verified": 279,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rdm_scarlet_weave",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RNG",
+      "soul_key": "arcanearcher",
+      "soul_name": "Arcane Archer",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Archery"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 11,
+      "excluded_ws_count": 91,
+      "defined_talents": 176,
+      "defined_non_sc_talents": 132,
+      "implemented_talents": 176,
+      "autoparser_compatible_talents": 176,
+      "runtime_static_verified": 176,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rng_arcane_attune",
+      "soul_hook_kind": "debuff_extend",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RNG",
+      "soul_key": "huntsman",
+      "soul_name": "Huntsman",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Archery"
+      ],
+      "secondary_signature_weapons": [
+        "Marksmanship"
+      ],
+      "eligible_ws_count": 24,
+      "excluded_ws_count": 78,
+      "defined_talents": 384,
+      "defined_non_sc_talents": 288,
+      "implemented_talents": 384,
+      "autoparser_compatible_talents": 384,
+      "runtime_static_verified": 384,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rng_huntsman_ration",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RNG",
+      "soul_key": "sniper",
+      "soul_name": "Sniper",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Marksmanship"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 13,
+      "excluded_ws_count": 89,
+      "defined_talents": 208,
+      "defined_non_sc_talents": 156,
+      "implemented_talents": 208,
+      "autoparser_compatible_talents": 208,
+      "runtime_static_verified": 208,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "rng_sniper_sightline",
+      "soul_hook_kind": "stance_empower",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RUN",
+      "soul_key": "inquisitor",
+      "soul_name": "Inquisitor",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 62,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "run_inquisitor_riposte",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RUN",
+      "soul_key": "lifebinder",
+      "soul_name": "Lifebinder",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 62,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "run_lifebinder_lifetap",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "RUN",
+      "soul_key": "spellblade",
+      "soul_name": "Spellblade",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Sword"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 62,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "run_spellblade_conduction",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SAM",
+      "soul_key": "imperialarcher",
+      "soul_name": "Imperial Archer",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [
+        "Archery"
+      ],
+      "eligible_ws_count": 25,
+      "excluded_ws_count": 78,
+      "defined_talents": 400,
+      "defined_non_sc_talents": 300,
+      "implemented_talents": 400,
+      "autoparser_compatible_talents": 400,
+      "runtime_static_verified": 400,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sam_drawn_oisoya",
+      "soul_hook_kind": "next_ws_prime",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SAM",
+      "soul_key": "ronin",
+      "soul_name": "Ronin",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 89,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sam_ronin_stagger",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SAM",
+      "soul_key": "warlord",
+      "soul_name": "Warlord",
+      "role": "Support",
+      "tier": "HybridSupport",
+      "primary_weapons": [
+        "Great Katana"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 89,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sam_ashura_edge",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SCH",
+      "soul_key": "archivist",
+      "soul_name": "Archivist",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 30,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sch_archivist_tome",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SCH",
+      "soul_key": "medic",
+      "soul_name": "Medic",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 30,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sch_medic_eos",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SCH",
+      "soul_key": "sage",
+      "soul_name": "Sage",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 30,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "sch_sage_helix",
+      "soul_hook_kind": "mp_siphon",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SMN",
+      "soul_key": "celestial",
+      "soul_name": "Celestial",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "smn_celestial_starlight",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SMN",
+      "soul_key": "herald",
+      "soul_name": "Herald",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "smn_herald_pact",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "SMN",
+      "soul_key": "primalist",
+      "soul_name": "Primalist",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [
+        "Club"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 18,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "smn_primalist_surge",
+      "soul_hook_kind": "pet_tp_heal",
+      "missing_dependencies": []
+    },
+    {
+      "job": "THF",
+      "soul_key": "bandit",
+      "soul_name": "Bandit",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 36,
+      "excluded_ws_count": 82,
+      "defined_talents": 562,
+      "defined_non_sc_talents": 422,
+      "implemented_talents": 562,
+      "autoparser_compatible_talents": 562,
+      "runtime_static_verified": 562,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "thf_bandit_opening",
+      "soul_hook_kind": "tp_refund",
+      "missing_dependencies": []
+    },
+    {
+      "job": "THF",
+      "soul_key": "phantom",
+      "soul_name": "Phantom",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Katana"
+      ],
+      "eligible_ws_count": 32,
+      "excluded_ws_count": 86,
+      "defined_talents": 512,
+      "defined_non_sc_talents": 384,
+      "implemented_talents": 512,
+      "autoparser_compatible_talents": 512,
+      "runtime_static_verified": 512,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "thf_phantom_shadow",
+      "soul_hook_kind": "enmity_surge",
+      "missing_dependencies": []
+    },
+    {
+      "job": "THF",
+      "soul_key": "trickster",
+      "soul_name": "Trickster",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Dagger"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 36,
+      "excluded_ws_count": 82,
+      "defined_talents": 562,
+      "defined_non_sc_talents": 422,
+      "implemented_talents": 562,
+      "autoparser_compatible_talents": 562,
+      "runtime_static_verified": 562,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "thf_pass_blame",
+      "soul_hook_kind": "debuff_extend",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WAR",
+      "soul_key": "berserker",
+      "soul_name": "Berserker",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Axe"
+      ],
+      "eligible_ws_count": 28,
+      "excluded_ws_count": 163,
+      "defined_talents": 448,
+      "defined_non_sc_talents": 336,
+      "implemented_talents": 448,
+      "autoparser_compatible_talents": 448,
+      "runtime_static_verified": 448,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "war_bloodlust_surge",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WAR",
+      "soul_key": "commander",
+      "soul_name": "Commander",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Great Axe"
+      ],
+      "secondary_signature_weapons": [
+        "Sword"
+      ],
+      "eligible_ws_count": 32,
+      "excluded_ws_count": 159,
+      "defined_talents": 498,
+      "defined_non_sc_talents": 374,
+      "implemented_talents": 498,
+      "autoparser_compatible_talents": 498,
+      "runtime_static_verified": 498,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "war_tactical_breach",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WAR",
+      "soul_key": "spartan",
+      "soul_name": "Spartan",
+      "role": "Tank",
+      "tier": "Tank",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 177,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "war_spartan_grit",
+      "soul_hook_kind": "resource_build",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WHM",
+      "soul_key": "bishop",
+      "soul_name": "Bishop",
+      "role": "Healer",
+      "tier": "Healer",
+      "primary_weapons": [
+        "Club"
+      ],
+      "secondary_signature_weapons": [
+        "Staff"
+      ],
+      "eligible_ws_count": 33,
+      "excluded_ws_count": 26,
+      "defined_talents": 528,
+      "defined_non_sc_talents": 396,
+      "implemented_talents": 528,
+      "autoparser_compatible_talents": 528,
+      "runtime_static_verified": 528,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "whm_solace_mend",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WHM",
+      "soul_key": "valkyrie",
+      "soul_name": "Valkyrie",
+      "role": "Support",
+      "tier": "Support",
+      "primary_weapons": [
+        "Polearm"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 14,
+      "excluded_ws_count": 45,
+      "defined_talents": 224,
+      "defined_non_sc_talents": 168,
+      "implemented_talents": 224,
+      "autoparser_compatible_talents": 224,
+      "runtime_static_verified": 224,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "whm_valkyrie_wingmate",
+      "soul_hook_kind": "party_pulse",
+      "missing_dependencies": []
+    },
+    {
+      "job": "WHM",
+      "soul_key": "zealot",
+      "soul_name": "Zealot",
+      "role": "Damage",
+      "tier": "Damage",
+      "primary_weapons": [
+        "Staff"
+      ],
+      "secondary_signature_weapons": [],
+      "eligible_ws_count": 17,
+      "excluded_ws_count": 42,
+      "defined_talents": 272,
+      "defined_non_sc_talents": 204,
+      "implemented_talents": 272,
+      "autoparser_compatible_talents": 272,
+      "runtime_static_verified": 272,
+      "live_gauntlet_status": "NOT EXERCISED (awaiting live xi_test matrix pass)",
+      "failing_talents": 0,
+      "soul_hook_id": "whm_zealot_sanctify",
+      "soul_hook_kind": "stance_empower",
+      "missing_dependencies": []
+    }
+  ]
+}
