@@ -1,23 +1,40 @@
 # Mirage Sentinel (DNC) — Playstyle Guide
 
 ## At a Glance
-Mirage Sentinel transforms Dancer into an **acrobatic Dual-Dagger parry and Waltz-shield tank** (`Tank` tier: -60% damage dealt, 0.12x WS scaling, +60–120 baseline Enmity). Your `Fan Dance` grants **-30% Physical & Magical DT** without locking out Waltzes, while spending **Finishing Moves** on Flourishes triggers **Aegis Waltz** damage barriers (up to 15% Max HP) + self-cleanses!
+Mirage Sentinel is a **dual-Dagger parry and Waltz-shield tank**. Its version of **Fan Dance** grants strong mitigation without disabling Waltzes, while **Steps** provide Finishing Moves, threat and Cripple. Spending Finishing Moves on qualifying Flourishes creates **Aegis Waltz** barriers, and Dagger weapon skills refresh the decaying Fan Dance protection. You are expected to actively build, spend and refresh defenses rather than hold one passive tank stance.
 
 ## Setup & Gear
-- **Required Weapons:** **Dual Daggers (Dagger in BOTH Main AND Sub slots).** Equipping anything else in Main or Sub disables Dual-Wield delay reduction, Parry bonuses, Step enmity/Cripple, Flourish Aegis Waltz shields, Dagger WS Fan Dance refresh, and `Dazzling Cadence`.
-- **Priority Stats:** AGI, VIT, HP, Parry Rate, Dagger Skill, Enmity, Waltz Potency.
+- **Unlock:** Equip the Mirage Sentinel Soul Crystal or use `!spec set miragesentinel` at Lv. 10.
+- **Mandatory loadout:** Equip **Dagger in both Main and Sub**. Multiple key passives, Flourish effects, counter triggers and Fan Dance maintenance check for dual Daggers.
+- **Stats:** HP, AGI, VIT, Parry, Dagger skill, Enmity, Waltz Potency and sufficient Accuracy for weapon skills.
+- **Party role:** Establish hate rapidly and manage incoming boss hits. The Soul gains reduced personal damage in exchange for defensive tools.
+- **Resources:** Watch Finishing Moves, TP, Fan Dance mitigation strength and availability of defensive Flourishes.
 
 ## How to Play (Step-by-Step)
-1. **Stance Up & Pull:** Activate `Fan Dance` (15s CD, 300s duration: **does NOT lock Waltzes**; starts at `-30%` Phys/Mag DT and decays 5% per hit down to `-10%`). Open with `Dazzling Cadence` (25s CD, 6y: heavy threat, 2s Stun, Blind, Slow, and **+3 Finishing Moves**) and **Quickstep / Box Step** (5s CD, **0 TP**: +2 FMs, snap threat, stacking `Cripple` up to 3 stacks).
-2. **Spend FMs on Flourishes -> `Aegis Waltz` Shield:** Spend 1–5 Finishing Moves on `Animated Flourish` (12s CD, high enmity — usable even at 0 FM), `Building Flourish` (20s CD), `Violent Flourish` (18s CD + 2s Stun), or `Wild Flourish` to trigger **Aegis Waltz** (`3%` Max HP Stoneskin per FM spent, max 15% for 12s, plus self-Erase of 1 debuff).
-3. **Refresh `Fan Dance` with Dagger WSs:** Every **Dagger WS** restores **+10% Fan Dance DT** (pushing you right back toward the `-30%` cap), builds +1 FM, and pulses enmity.
-4. **Parry Counter & Emergency Tools:** Press `Pirouette Deflect` (40s CD, 8s): resets `Fan Dance` back to `-30%` DT, adds `+20%` Parry & Knockback Immunity, and causes every **Parry or Evade** to counter-strike (within 5y), build **+1 FM**, and generate threat! Use `Curing Waltz I–V` (10s CD, 200 TP, works inside Fan Dance!), `No Foot Rise` (15s CD: instant 5 FMs + 250 TP), and `Trance` (30s: -20% DT + infinite 5 FMs without spending them).
+1. **Start Fan Dance:** Activate **Fan Dance** as your main defensive stance. Its mitigation begins strong and weakens as hits are received, so plan to refresh it.
+2. **Pull with Dazzling Cadence:** Use **Dazzling Cadence** for immediate threat, brief control effects and **three Finishing Moves**. Its stun and enemy impairments provide an early stabilization window.
+3. **Use Quickstep and Box Step:** They cost no TP under Mirage Sentinel, build two Finishing Moves, add threat and help build **Cripple** stacks on the target.
+4. **Spend on defensive Flourishes:** Use **Animated Flourish**, **Building Flourish**, **Violent Flourish** or **Wild Flourish** as appropriate. Finishing Moves consumed by qualifying Flourishes create **Aegis Waltz** shielding and a self-cleanse.
+5. **Refresh Fan Dance with Dagger weapon skills:** Eligible Dagger weapon skills restore part of Fan Dance's lost mitigation and provide further Finishing Moves and enmity.
+6. **Use Pirouette Deflect before danger:** It resets Fan Dance's protection and temporarily increases Parry and knockback resistance. During its window, eligible Parry or Evasion can trigger counter-damage, Finishing Moves and extra threat.
+7. **Heal through the stance:** Mirage Sentinel can use its available **Curing Waltzes** during Fan Dance. Use TP for timely healing rather than assuming the stance locks Waltzes out.
+8. **Prepare the emergency phase:** **No Foot Rise** supplies Finishing Moves and TP; **Trance** supports repeated defensive spending and adds mitigation. Align these with dangerous boss phases.
 
 ## Key Mechanics & Stacks
-- **`Fan Dance` Decay & Refresh:** Starts at `-30%` DT, drops 5% per hit taken (floor `-10%`). Refreshed +10% per Dagger WS or reset to `-30%` by `Pirouette Deflect`.
-- **Steps Cost 0 TP:** Use Quickstep/Box Step freely on cooldown to build Finishing Moves and maintain 3x `Cripple`.
+- **Dual-Dagger restriction:** Main and Sub must both hold Daggers for the full specialized tank toolkit; otherwise numerous passive and reactive effects are disabled.
+- **Fan Dance:** **15-second recast**, up to **300-second duration**; starts near **30% physical/magical damage reduction**, declines by about **5 percentage points per eligible hit**, and floors around **10%**.
+- **Fan Dance recovery:** Each eligible Dagger weapon skill restores approximately **10 percentage points** of mitigation, up to the starting cap. **Pirouette Deflect** can reset it directly.
+- **Steps:** Quickstep and Box Step are **zero TP cost** and have short recasts; they generate two Finishing Moves and may stack Cripple on the enemy.
+- **Dazzling Cadence:** **25-second recast**, close-range high-threat tool with brief Stun/Blind/Slow and **three Finishing Moves**.
+- **Aegis Waltz:** Spending Finishing Moves on eligible Flourishes creates a short Stoneskin barrier at **3% maximum HP per move**, up to **15%**, plus a qualifying self-cleanse.
+- **Pirouette Deflect:** **40-second recast**, **8-second** parry-focused protection, mitigation reset and reactive counter window.
+- **Waltz and threat:** Animated Flourish is usable for threat even without Finishing Moves, while Curing Waltzes can still heal during Fan Dance.
+- **Level progression:** Tank passives and mitigation/Flourish effectiveness scale through Lv. 10/30/50/70. The dual-Dagger and resource-management requirements remain central throughout.
 
 ## Common Mistakes (Don't Do This)
-- **Never unequip either Dagger (Main or Sub):** Dual Daggers are required for the entire Mirage Sentinel kit.
-- **Don't let `Fan Dance` sit at `-10%` DT:** Weave Dagger WSs and `Pirouette Deflect` on cooldown to stay near `-30%` DT.
-- **Remember Waltzes ARE unlocked in `Fan Dance`:** Use `Curing Waltz I–V` freely whenever you have spare TP.
+- **Swapping either Dagger for another weapon or shield:** This can disable most of the kit's special mitigation and enmity effects.
+- **Letting Fan Dance remain at minimum protection:** Refresh it through Dagger weapon skills or reset it with Pirouette Deflect.
+- **Saving Finishing Moves indefinitely:** Spend them on defensive Flourishes when an Aegis Waltz barrier is needed.
+- **Assuming Fan Dance blocks Waltzes:** Mirage Sentinel explicitly retains Curing Waltzes inside its signature stance.
+- **Forgetting Step enmity:** Quickstep and Box Step are important early threat and resource builders, not just damage debuffs.
+- **Using emergency abilities before the boss spike:** Preserve Pirouette Deflect and Trance for actual survival windows.
