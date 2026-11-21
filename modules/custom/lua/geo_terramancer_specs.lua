@@ -129,7 +129,7 @@ end)
 local spellKit =
 {
     [159] = { script = 'stone', name = 'Stone Chip', description = 'Strike one enemy with earth magic and establish your claim.', unlockLvl = 10, castMs = 500, recastSec = 4, mpCost = 3 },
-    [160] = { script = 'stone_ii', name = 'Shallow Fault', description = 'Mark your claimed enemy’s position. Erupt after two seconds if it remains within the mark. Costs 7% max MP.', unlockLvl = 10, castMs = 750, recastSec = 8 },
+    [160] = { script = 'stone_ii', name = 'Shallow Fault', description = 'Mark your claimed enemy\'s position. Erupt after two seconds if it remains within the mark. Costs 7% max MP.', unlockLvl = 10, castMs = 750, recastSec = 8 },
     [161] = { script = 'stone_iii', name = 'Deep Fault', description = 'Mark a claimed enemy for a stronger eruption after four seconds. Costs 12% max MP.', unlockLvl = 30, castMs = 750, recastSec = 8 },
 }
 xi.soulspire.geoTerramancerSpecs = { TERRAMANCER_KIT_SPELLS = spellKit }
@@ -157,7 +157,7 @@ end
 spec.registerCrystal(xi.job.GEO,
 {
     id = 3, key = 'terramancer', name = 'Terramancer', abr = 'TRM', role = 'Damage', icon = 'terramancer', reqLevel = 10,
-    description = 'Predict a claimed quarry’s position and erupt a single-target fault beneath it.',
+    description = 'Predict a claimed quarry\'s position and erupt a single-target fault beneath it.',
     highlights =
     {
         'Lv.10: Stone Chip establishes claim. Shallow Fault erupts after two seconds. Lv.30: Deep Fault erupts after four.',
