@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000000..8b4c92d10a
 --- /dev/null
 +++ b/scripts/zones/Ghoyus_Reverie/instances/the_first_descent.lua
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,61 @@
 +-----------------------------------
 +-- SoulspireXI — Burrows Reborn: The First Descent
 +-- Instance bridge for Ghoyu's Reverie (instanceId 12901).

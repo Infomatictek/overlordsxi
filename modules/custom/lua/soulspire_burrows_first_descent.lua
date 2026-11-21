@@ -88,28 +88,238 @@ local function ensureDir(path)
     end
 end
 
+local function diagError(msg)
+    print('[BurrowsReborn][ERROR] ' .. tostring(msg))
+end
+
+local function nowUtcIso()
+    return os.date('!%Y-%m-%dT%H:%M:%SZ')
+end
+
+local function nowUtcFileStamp()
+    return os.date('!%Y%m%d_%H%M%S')
+end
+
+local function initSessionLogger(session)
+    if session == nil or session.loggerInitialized then
+        return
+    end
+    session.loggerInitialized = true
+    local logDir = C.resolveLogDir()
+    ensureDir(logDir)
+
+    local stamp = nowUtcFileStamp()
+    local entropy = math.floor(((os.clock() or 0) * 100000 + (session.runId or 0) * 997 + (os.time() or 0)) % 65536)
+    session.sessionId = string.format('r%d_%04x', tonumber(session.runId) or 0, entropy)
+    session.logDir = logDir
+    session.eventLogPath = string.format('%s/burrows_%s_%s.jsonl', logDir, stamp, session.sessionId)
+    session.summaryPath = string.format('%s/burrows_%s_%s_summary.json', logDir, stamp, session.sessionId)
+    session.runsIndexPath = (type(C.LOG_RUNS_PATH) == 'string' and C.LOG_RUNS_PATH ~= '')
+        and C.LOG_RUNS_PATH
+        or (logDir .. '/runs.jsonl')
+    session.startedAtUtc = nowUtcIso()
+    session.logBuffer = {}
+    session.eventCount = 0
+    session.encounterTimings = {}
+    session.combatStats =
+    {
+        damageDealt         = 0,
+        damageReceived      = 0,
+        healingTotal        = 0,
+        healingObserved     = false,
+        playerDeaths        = 0,
+        weaponskills        = 0,
+        spellsCast          = 0,
+        abilitiesUsed       = 0,
+        interrupts          = 0,
+        enmityTargetChanges = 0,
+    }
+end
+
+local function flushEventLog(session)
+    if session == nil or not session.logBuffer or #session.logBuffer == 0 then
+        return true
+    end
+    if not session.eventLogPath or session.eventLogPath == '' then
+        initSessionLogger(session)
+    end
+    ensureDir(session.logDir)
+    local fh, err = io.open(session.eventLogPath, 'a')
+    if not fh then
+        diagError(string.format('Failed to open event log %s: %s', tostring(session.eventLogPath), tostring(err)))
+        return false
+    end
+    local ok, werr = pcall(function()
+        fh:write(table.concat(session.logBuffer, '\n') .. '\n')
+        fh:flush()
+    end)
+    fh:close()
+    if not ok then
+        diagError(string.format('Failed to write event log %s: %s', tostring(session.eventLogPath), tostring(werr)))
+        return false
+    end
+    session.logBuffer = {}
+    return true
+end
+
+local function logEvent(session, eventType, payload, flushNow)
+    if session == nil then
+        return
+    end
+    if not session.loggerInitialized then
+        initSessionLogger(session)
+    end
+    if (session.eventCount or 0) >= (C.LOG_MAX_EVENTS or 25000) then
+        return
+    end
+    local entry =
+    {
+        schema_version = C.SCHEMA_VERSION,
+        session_id     = session.sessionId,
+        event          = tostring(eventType or 'unknown'),
+        timestamp_utc  = nowUtcIso(),
+        elapsed_sec    = session.elapsedSec or 0,
+        stage          = session.stage or 0,
+    }
+    if type(payload) == 'table' then
+        for k, v in pairs(payload) do
+            entry[k] = v
+        end
+    end
+    session.eventCount = (session.eventCount or 0) + 1
+    session.logBuffer[#session.logBuffer + 1] = C.encodeJson(entry)
+    if flushNow or #session.logBuffer >= (C.LOG_FLUSH_BATCH_SIZE or 32) then
+        flushEventLog(session)
+    end
+end
+
 local function writeTelemetryRecord(session, outcome)
     if session == nil or session.telemetryWritten then
         return nil
     end
+    if not session.loggerInitialized then
+        initSessionLogger(session)
+    end
     session.telemetryWritten = true
+    session.endedAtUtc = nowUtcIso()
+
+    logEvent(session, 'session_end', {
+        outcome        = outcome or session.outcome or 'unknown',
+        cleanup_status = session.cleanupStatus or 'completed',
+    }, true)
+
     local record = C.buildTelemetryRecord(session, outcome)
     session.lastTelemetryRecord = record
-    pcall(function()
-        ensureDir(C.LOG_BASE_DIR)
-        local fh = io.open(C.LOG_RUNS_PATH, 'a')
-        if fh then
-            fh:write(C.encodeJson(record) .. '\n')
-            fh:close()
+
+    ensureDir(session.logDir)
+    local jsonLine = C.encodeJson(record)
+
+    local sfh, serr = io.open(session.summaryPath, 'w')
+    if sfh then
+        local ok, werr = pcall(function()
+            sfh:write(jsonLine .. '\n')
+            sfh:flush()
+        end)
+        sfh:close()
+        if not ok then
+            diagError(string.format('Failed to write summary %s: %s', tostring(session.summaryPath), tostring(werr)))
         end
-    end)
+    else
+        diagError(string.format('Failed to open summary %s: %s', tostring(session.summaryPath), tostring(serr)))
+    end
+
+    local rfh, rerr = io.open(session.runsIndexPath, 'a')
+    if rfh then
+        local ok, werr = pcall(function()
+            rfh:write(jsonLine .. '\n')
+            rfh:flush()
+        end)
+        rfh:close()
+        if not ok then
+            diagError(string.format('Failed to write runs index %s: %s', tostring(session.runsIndexPath), tostring(werr)))
+        end
+    else
+        diagError(string.format('Failed to open runs index %s: %s', tostring(session.runsIndexPath), tostring(rerr)))
+    end
+
     return record
+end
+
+local function attachPlayerCombatListeners(session, player)
+    if session == nil or player == nil or not player.addListener then
+        return
+    end
+    local tag = 'BURROWS_PLOG_' .. tostring(session.runId)
+    local pId = player.getID and player:getID() or 0
+    local pName = player.getName and player:getName() or 'unknown'
+
+    player:addListener('TAKE_DAMAGE', tag, function(target, amount, attacker, attackType, damageType)
+        local dmg = tonumber(amount) or 0
+        if session.combatStats then
+            session.combatStats.damageReceived = session.combatStats.damageReceived + dmg
+        end
+        logEvent(session, 'damage_received', {
+            target_id     = pId,
+            target_name   = pName,
+            attacker_name = (attacker and attacker.getName and attacker:getName()) or 'unknown',
+            amount        = dmg,
+            attack_type   = tonumber(attackType) or 0,
+            damage_type   = tonumber(damageType) or 0,
+            hp_after      = (target and target.getHP and target:getHP()) or 0,
+            max_hp        = (target and target.getMaxHP and target:getMaxHP()) or 0,
+        }, false)
+    end)
+
+    player:addListener('MAGIC_USE', tag, function(caster, target, spell)
+        if session.combatStats then
+            session.combatStats.spellsCast = session.combatStats.spellsCast + 1
+        end
+        logEvent(session, 'spell_cast', {
+            actor_id    = pId,
+            actor_name  = pName,
+            spell_id    = (spell and spell.getID and spell:getID()) or 0,
+            target_name = (target and target.getName and target:getName()) or '',
+        }, false)
+    end)
+
+    player:addListener('ABILITY_USE', tag, function(actor, target, ability)
+        if session.combatStats then
+            session.combatStats.abilitiesUsed = session.combatStats.abilitiesUsed + 1
+        end
+        logEvent(session, 'ability_used', {
+            actor_id    = pId,
+            actor_name  = pName,
+            ability_id  = (ability and ability.getID and ability:getID()) or 0,
+            target_name = (target and target.getName and target:getName()) or '',
+        }, false)
+    end)
+
+    player:addListener('DEATH', tag, function(deadChar, killer)
+        if session.combatStats then
+            session.combatStats.playerDeaths = session.combatStats.playerDeaths + 1
+        end
+        logEvent(session, 'player_death', {
+            char_id     = pId,
+            char_name   = pName,
+            killer_name = (killer and killer.getName and killer:getName()) or 'unknown',
+        }, true)
+    end)
+end
+
+local function detachPlayerCombatListeners(player, runId)
+    if player == nil or not player.removeListener or runId == nil then
+        return
+    end
+    local tag = 'BURROWS_PLOG_' .. tostring(runId)
+    pcall(function()
+        player:removeListener(tag)
+    end)
 end
 
 local function tell(player, message)
     if player ~= nil and player.printToPlayer then
         local chan = (xi.msg and xi.msg.channel and xi.msg.channel.SYSTEM_3) or 0
-        player:printToPlayer('[SoulspireXI Burrows] ' .. tostring(message), chan, '')
+        player:printToPlayer(tostring(message), chan, '')
     end
 end
 
@@ -312,7 +522,11 @@ function B.restorePlayerState(player, opts)
     end
 
     local charId = player.getID and player:getID() or nil
-    local session = (charId and playerRunId[charId]) and sessionsByRunId[playerRunId[charId]] or nil
+    local activeRunId = charId and playerRunId[charId] or nil
+    local session = activeRunId and sessionsByRunId[activeRunId] or nil
+    if activeRunId then
+        detachPlayerCombatListeners(player, activeRunId)
+    end
     local ret = opts.returnPos
     if ret == nil and session and charId and session.returnPosByCharId then
         ret = session.returnPosByCharId[charId]
@@ -401,6 +615,7 @@ local function spawnExpeditionMob(session, encDef, level, hpMult, pos, callbacks
     end
 
     local allowed = encDef.allowedSkills
+    local lastTargetId = 0
     local def =
     {
         objtype               = xi.objType and xi.objType.MOB or 2,
@@ -419,6 +634,9 @@ local function spawnExpeditionMob(session, encDef, level, hpMult, pos, callbacks
         specialSpawnAnimation = false,
         onMobSpawn = function(m)
             applyNoRewardFlags(m)
+            if m.setMobMod and xi.mobMod and xi.mobMod.NO_AGGRO then
+                m:setMobMod(xi.mobMod.NO_AGGRO, 1)
+            end
             if encDef.spellList and encDef.spellList > 0 then
                 if m.setSpellList then
                     m:setSpellList(encDef.spellList)
@@ -436,6 +654,13 @@ local function spawnExpeditionMob(session, encDef, level, hpMult, pos, callbacks
             end
         end,
         onMobEngage = function(m, target)
+            lastTargetId = (target and target.getID and target:getID()) or 0
+            logEvent(session, 'mob_engage', {
+                mob_id      = (m and m.getID and m:getID()) or 0,
+                mob_name    = encDef.packetName,
+                target_id   = lastTargetId,
+                target_name = (target and target.getName and target:getName()) or '',
+            }, true)
             if callbacks.onMobEngage then
                 callbacks.onMobEngage(m, target)
             end
@@ -444,11 +669,31 @@ local function spawnExpeditionMob(session, encDef, level, hpMult, pos, callbacks
             if m.setCallForHelpFlag and m.getCallForHelpFlag and not m:getCallForHelpFlag() then
                 m:setCallForHelpFlag(true)
             end
+            local curTargetId = (target and target.getID and target:getID()) or 0
+            if curTargetId ~= 0 and curTargetId ~= lastTargetId then
+                local prevId = lastTargetId
+                lastTargetId = curTargetId
+                if session.combatStats then
+                    session.combatStats.enmityTargetChanges = session.combatStats.enmityTargetChanges + 1
+                end
+                logEvent(session, 'enmity_target_change', {
+                    mob_name       = encDef.packetName,
+                    prev_target_id = prevId,
+                    new_target_id  = curTargetId,
+                    new_target     = (target and target.getName and target:getName()) or '',
+                }, false)
+            end
             if callbacks.onMobFight then
                 callbacks.onMobFight(m, target)
             end
         end,
         onMobDeath = function(deadMob, killer, optParams)
+            logEvent(session, 'mob_death', {
+                mob_id      = (deadMob and deadMob.getID and deadMob:getID()) or 0,
+                mob_name    = encDef.packetName,
+                killer_id   = (killer and killer.getID and killer:getID()) or 0,
+                killer_name = (killer and killer.getName and killer:getName()) or '',
+            }, true)
             if callbacks.onMobDeath then
                 callbacks.onMobDeath(deadMob, killer, optParams)
             end
@@ -494,6 +739,55 @@ local function spawnExpeditionMob(session, encDef, level, hpMult, pos, callbacks
     applyScaledHp(mob, hpMult)
     applyNoRewardFlags(mob)
 
+    if mob.setMobMod and xi.mobMod and xi.mobMod.NO_AGGRO then
+        mob:setMobMod(xi.mobMod.NO_AGGRO, 1)
+    end
+
+    if mob.addListener then
+        local mTag = 'BURROWS_MLOG_' .. tostring(session.runId) .. '_' .. tostring(encDef.id)
+        mob:addListener('TAKE_DAMAGE', mTag, function(m, amount, attacker, attackType, damageType)
+            local dmg = tonumber(amount) or 0
+            if session.combatStats then
+                session.combatStats.damageDealt = session.combatStats.damageDealt + dmg
+            end
+            logEvent(session, 'damage_dealt', {
+                actor_id    = (attacker and attacker.getID and attacker:getID()) or 0,
+                actor_name  = (attacker and attacker.getName and attacker:getName()) or 'unknown',
+                target_name = encDef.packetName,
+                amount      = dmg,
+                attack_type = tonumber(attackType) or 0,
+                damage_type = tonumber(damageType) or 0,
+                mob_hpp     = (m and m.getHPP and m:getHPP()) or 0,
+            }, false)
+        end)
+        mob:addListener('WEAPONSKILL_TAKE', mTag, function(m, user, wsid)
+            if session.combatStats then
+                session.combatStats.weaponskills = session.combatStats.weaponskills + 1
+            end
+            logEvent(session, 'weaponskill_used', {
+                actor_id    = (user and user.getID and user:getID()) or 0,
+                actor_name  = (user and user.getName and user:getName()) or 'unknown',
+                target_name = encDef.packetName,
+                ws_id       = tonumber(wsid) or 0,
+            }, false)
+        end)
+        mob:addListener('MAGIC_TAKE', mTag, function(m, caster, spell)
+            logEvent(session, 'spell_hit', {
+                actor_id    = (caster and caster.getID and caster:getID()) or 0,
+                actor_name  = (caster and caster.getName and caster:getName()) or 'unknown',
+                target_name = encDef.packetName,
+                spell_id    = (spell and spell.getID and spell:getID()) or 0,
+            }, false)
+        end)
+    end
+
+    logEvent(session, 'mob_spawn', {
+        mob_id   = (mob.getID and mob:getID()) or 0,
+        mob_name = encDef.packetName,
+        level    = level,
+        max_hp   = (mob.getMaxHP and mob:getMaxHP()) or 0,
+    }, true)
+
     session.activeMobs[#session.activeMobs + 1] = mob
     return mob
 end
@@ -511,7 +805,8 @@ local function clearBossExposedWindow(session)
     safeDelMod(b.mob, xi.mod and xi.mod.DMGPHYS, bonusDt)
     safeDelMod(b.mob, xi.mod and xi.mod.DMGMAGIC, 2500)
     safeDelMod(b.mob, xi.mod and xi.mod.DEFP, -25)
-    broadcast(session, 'Grudgeburrow recovers its footing — vulnerability window ended.')
+    logEvent(session, 'boss_exposed_end', { mob_name = C.ENCOUNTERS.grudgeburrow.packetName }, false)
+    broadcast(session, 'Grudgeburrow recovers its footing.')
 end
 
 local function startBossExposedWindow(session)
@@ -526,11 +821,12 @@ local function startBossExposedWindow(session)
     safeAddMod(b.mob, xi.mod and xi.mod.DMGPHYS, bonusDt)
     safeAddMod(b.mob, xi.mod and xi.mod.DMGMAGIC, 2500)
     safeAddMod(b.mob, xi.mod and xi.mod.DEFP, -25)
-    broadcast(session, string.format(
-        'Grudgeburrow staggers after its slam — EXPOSED for %ds (+%d%% physical / +25%% magic damage taken)! Unleash Weapon Skills and Soul bursts!',
-        cfg.exposedDurationSec,
-        math.floor(bonusDt / 100)
-    ))
+    logEvent(session, 'boss_exposed_start', {
+        mob_name     = C.ENCOUNTERS.grudgeburrow.packetName,
+        duration_sec = cfg.exposedDurationSec,
+        bonus_dt_pct = math.floor(bonusDt / 100),
+    }, false)
+    broadcast(session, 'Grudgeburrow\'s shell fractures, leaving it vulnerable!')
 end
 
 local function computeMitigatedHeavyDamage(target, rawDmg)
@@ -581,7 +877,12 @@ local function resolveBossHeavySlam(session)
             end
         end)
         local tName = (target.getName and target:getName()) or 'its target'
-        broadcast(session, string.format('Grudgeburrow unleashes CRUSHING BURROW SLAM on %s for %d damage!', tName, finalDmg))
+        logEvent(session, 'boss_mechanic_resolve', {
+            mechanic    = 'crushing_mandibles',
+            target_name = tName,
+            damage      = finalDmg,
+        }, false)
+        broadcast(session, string.format('Grudgeburrow strikes %s with Crushing Mandibles!', tName))
     end
     b.heavySlamsResolved = (b.heavySlamsResolved or 0) + 1
     startBossExposedWindow(session)
@@ -630,8 +931,12 @@ local function resolveBossAoeTremor(session)
     end
 
     b.aoeTremorsResolved = (b.aoeTremorsResolved or 0) + 1
-    local extra = adapt.tremorAppliesDebuff and ' A heavy ward weakens your defenses!' or ''
-    broadcast(session, string.format('Grudgeburrow shakes the cavern with BURROW TREMOR (%d targets hit)!%s', hitCount, extra))
+    logEvent(session, 'boss_mechanic_resolve', {
+        mechanic       = 'burrowing_tremor',
+        targets_hit    = hitCount,
+        debuff_applied = adapt.tremorAppliesDebuff == true,
+    }, false)
+    broadcast(session, 'Grudgeburrow unleashes Burrowing Tremor!')
 end
 
 -- Dynamically recalculates and applies Grudgeburrow's exact adaptation modifiers
@@ -722,16 +1027,7 @@ local function spawnStage3Boss(session)
                 session.outcome = 'victory'
                 session.exitCountdown = C.VICTORY_EXIT_SEC
                 writeTelemetryRecord(session, 'victory')
-                broadcast(session, string.format(
-                    'VICTORY! Grudgeburrow has fallen! [%s | %d players | %ds]',
-                    session.mode.shortLabel,
-                    session.initialPartySize,
-                    session.elapsedSec
-                ))
-                broadcast(session, string.format(
-                    'Prototype complete (0 EXP / 0 gil / 0 loot). Returning safely to your hub in %ds (or speak to the Guide to exit now).',
-                    C.VICTORY_EXIT_SEC
-                ))
+                broadcast(session, 'Grudgeburrow has been defeated! Returning to town shortly...')
                 if session.instance and session.instance.complete then
                     pcall(function()
                         session.instance:complete()
@@ -762,6 +1058,22 @@ local function tickStage3Boss(session)
 
     b.combatSec = b.combatSec + 1
 
+    if (b.phase or 1) == 1 and b.mob.getHPP then
+        local hpp = b.mob:getHPP() or 100
+        if hpp <= 50 then
+            b.phase = 2
+            b.heavyCadence = math.max(10, (b.heavyCadence or 16) - 2)
+            b.aoeCadence = math.max(14, (b.aoeCadence or 20) - 2)
+            logEvent(session, 'boss_phase_change', {
+                phase         = 2,
+                hpp           = hpp,
+                heavy_cadence = b.heavyCadence,
+                aoe_cadence   = b.aoeCadence,
+            }, true)
+            broadcast(session, 'Grudgeburrow lets out a furious roar!')
+        end
+    end
+
     if b.exposedActive then
         b.exposedRemaining = b.exposedRemaining - 1
         if b.exposedRemaining <= 0 then
@@ -780,11 +1092,11 @@ local function tickStage3Boss(session)
         b.heavyTelegraphLeft = session.mode.grudgeburrow.heavyTelegraphSec
         local t = b.mob.getTarget and b.mob:getTarget() or nil
         local tName = (t and t.getName and t:getName()) or 'the front line'
-        broadcast(session, string.format(
-            'WARNING: Grudgeburrow draws back for CRUSHING BURROW SLAM on %s in %ds! Mitigate or brace!',
-            tName,
-            b.heavyTelegraphLeft
-        ))
+        logEvent(session, 'boss_mechanic_telegraph', {
+            mechanic    = 'crushing_mandibles',
+            target_name = tName,
+        }, false)
+        broadcast(session, 'Grudgeburrow draws back for Crushing Mandibles!')
     end
 
     -- Manageable Area Damage cycle
@@ -796,10 +1108,10 @@ local function tickStage3Boss(session)
         end
     elseif b.combatSec >= b.nextAoeAt then
         b.aoeWarningLeft = session.mode.grudgeburrow.aoeWarningSec
-        broadcast(session, string.format(
-            'Grudgeburrow gathers earthen force — BURROW TREMOR incoming in %ds!',
-            b.aoeWarningLeft
-        ))
+        logEvent(session, 'boss_mechanic_telegraph', {
+            mechanic = 'burrowing_tremor',
+        }, false)
+        broadcast(session, 'Grudgeburrow gathers earthen force...')
     end
 end
 
@@ -983,11 +1295,12 @@ local function breakShamanRitual(session, reason)
     end
     sh.ritualState = 'broken'
     session.shamanRitualBroken = true
+    if session.combatStats then
+        session.combatStats.interrupts = session.combatStats.interrupts + 1
+    end
     syncBossAdaptationMods(session)
-    broadcast(session, string.format(
-        'The Burrow Shaman\'s chant shatters (%s) — a resonant hum fades somewhere deeper in the cavern.',
-        tostring(reason or 'disrupted')
-    ))
+    logEvent(session, 'shaman_ritual_interrupted', { reason = tostring(reason or 'disrupted') }, true)
+    broadcast(session, 'The incantation fades.')
 end
 
 local function completeShamanRitual(session)
@@ -998,7 +1311,8 @@ local function completeShamanRitual(session)
     sh.ritualState = 'completed'
     session.shamanRitualBroken = false
     syncBossAdaptationMods(session)
-    broadcast(session, 'The Burrow Shaman completes its chant! A deep pulse ripples across the stone.')
+    logEvent(session, 'shaman_ritual_completed', { outcome = 'completed' }, true)
+    broadcast(session, 'A dark pulse ripples through the cavern.')
 end
 
 local function checkStage1Complete(session)
@@ -1107,10 +1421,11 @@ local function tickStage1Shaman(session)
         sh.ritualState = 'channeling'
         sh.ritualRemaining = cfg.ritualDurationSec
         sh.ritualStartHpp = (sh.mob.getHPP and sh.mob:getHPP()) or 100
-        broadcast(session, string.format(
-            'The Burrow Shaman begins chanting a strange ritual (%ds)! Interrupt with Stun/Silence, a Weapon Skill, or burst it down!',
-            cfg.ritualDurationSec
-        ))
+        logEvent(session, 'shaman_ritual_start', {
+            duration_sec = cfg.ritualDurationSec,
+            start_hpp    = sh.ritualStartHpp,
+        }, true)
+        broadcast(session, 'The Burrow Shaman begins an ominous incantation...')
     elseif sh.ritualState == 'channeling' then
         -- Check Stun or Silence status effects for reliable FFXI spell/ability interruption.
         local stunned = sh.mob.hasStatusEffect and xi.effect and xi.effect.STUN and sh.mob:hasStatusEffect(xi.effect.STUN)
@@ -1124,12 +1439,7 @@ local function tickStage1Shaman(session)
         end
 
         sh.ritualRemaining = sh.ritualRemaining - 1
-        if sh.ritualRemaining == 15 or sh.ritualRemaining == 5 then
-            broadcast(session, string.format(
-                'The Burrow Shaman\'s chant swells (%ds remaining)...',
-                sh.ritualRemaining
-            ))
-        elseif sh.ritualRemaining <= 0 then
+        if sh.ritualRemaining <= 0 then
             completeShamanRitual(session)
         end
     end
@@ -1142,33 +1452,50 @@ local function buildInInstanceGuideMenu(player, session)
     local modeLabel = session and session.mode and session.mode.shortLabel or 'Expedition'
     return
     {
-        title = string.format('Burrows Guide (%s)', modeLabel),
+        title = string.format('Burrows (%s)', modeLabel),
         options =
         {
             {
-                'Expedition Status',
+                'Time Remaining',
                 function(p)
                     if not session then
-                        tell(p, 'No active expedition session found.')
+                        tell(p, 'No active expedition found.')
                         return
                     end
                     local rem = math.max(0, C.TIME_LIMIT_SEC - (session.elapsedSec or 0))
-                    local bossStanding = (session.bossState and isMobAlive(session.bossState.mob)) and 'Active in the chamber ahead' or 'Defeated'
-                    tell(p, string.format(
-                        '%s [%s] | Time Left: %dm %02ds | Grudgeburrow: %s',
-                        C.EXPEDITION_NAME,
-                        session.mode.label,
-                        math.floor(rem / 60),
-                        rem % 60,
-                        bossStanding
-                    ))
+                    tell(p, string.format('Time remaining: %dm %02ds.', math.floor(rem / 60), rem % 60))
                 end,
             },
             {
-                'Exit Expedition Safely (Restore Level & Return)',
+                'Exit Expedition Safely',
                 function(p)
-                    tell(p, 'Restoring your original level and returning you safely to your hub.')
+                    local exitingId = p and p.getID and p:getID() or 0
+                    tell(p, 'Returning you safely to town.')
+                    if session then
+                        logEvent(session, 'player_manual_exit', {
+                            char_id   = exitingId,
+                            char_name = (p and p.getName and p:getName()) or '',
+                        }, true)
+                    end
                     B.restorePlayerState(p, { warpToHub = true })
+                    if session and not session.finished then
+                        local remaining = 0
+                        if session.instance and session.instance.getChars then
+                            local ok, chars = pcall(function() return session.instance:getChars() end)
+                            if ok and type(chars) == 'table' then
+                                for _, c in pairs(chars) do
+                                    if c and c.getID and c:getID() ~= exitingId then
+                                        remaining = remaining + 1
+                                    end
+                                end
+                            end
+                        end
+                        if remaining == 0 then
+                            session.finished = true
+                            session.outcome = 'abandoned'
+                            B.concludeSession(session, 'abandoned')
+                        end
+                    end
                 end,
             },
             {
@@ -1179,15 +1506,17 @@ local function buildInInstanceGuideMenu(player, session)
     }
 end
 
+local tickSession
+
 local function spawnInInstanceGuide(session)
     if session.instance == nil or not session.instance.insertDynamicEntity then
         return
     end
     local pos = C.ARENA_POS.guideNpc
-    session.instance:insertDynamicEntity({
+    local guide = session.instance:insertDynamicEntity({
         objtype    = xi.objType and xi.objType.NPC or 4,
         name       = 'Burrows_Exit_Guide',
-        packetName = 'Burrows Expedition Guide',
+        packetName = C.NPC_PACKET_NAME,
         look       = C.NPC_LOOK_ID,
         x          = pos.x,
         y          = pos.y,
@@ -1198,6 +1527,28 @@ local function spawnInInstanceGuide(session)
             player:customMenu(buildInInstanceGuideMenu(player, session))
         end,
     })
+    session.guideNpc = guide
+
+    if guide ~= nil and guide.timer ~= nil then
+        local function scheduleHeartbeat()
+            if sessionsByRunId[session.runId] ~= session then
+                return
+            end
+            guide:timer(1000, function()
+                if sessionsByRunId[session.runId] ~= session then
+                    return
+                end
+                session.lastTimerTickAt = os.time()
+                if tickSession then
+                    tickSession(session, nil)
+                end
+                if sessionsByRunId[session.runId] == session then
+                    scheduleHeartbeat()
+                end
+            end)
+        end
+        scheduleHeartbeat()
+    end
 end
 
 -----------------------------------
@@ -1278,12 +1629,7 @@ function B.requestEntry(requester, modeKey)
         requestedAt = os.time(),
     }
 
-    tell(requester, string.format(
-        'Preparing %s [%s, Effective Lv.%d]... No items or fees required.',
-        C.EXPEDITION_NAME,
-        check.mode.label,
-        C.EFFECTIVE_LEVEL
-    ))
+    tell(requester, string.format('Preparing your descent into The First Descent (%s)...', check.mode.shortLabel))
 
     if requester.createInstance then
         requester:createInstance(C.INSTANCE_ID)
@@ -1297,41 +1643,34 @@ function B.requestEntry(requester, modeKey)
 end
 
 function B.buildHubMenu(player)
-    local curLvl = getUnsyncedLevel(player)
-    local party = (player and player.getParty and player:getParty()) or { player }
-    local pCount = type(party) == 'table' and #party or 1
     return
     {
-        title = string.format('SoulspireXI: %s (Party: %d, Lv.%d)', C.EXPEDITION_NAME, pCount, curLvl),
+        title = 'SoulspireXI: First Descent',
         options =
         {
             {
-                'Enter: Low Man (1-3 Players, Lv.10 Sync)',
+                'Enter: Low Man (1-3)',
                 function(p)
                     B.requestEntry(p, 'low_man')
                 end,
             },
             {
-                'Enter: Full Party (4-6 Players, Lv.10 Sync)',
+                'Enter: Full Party (4-6)',
                 function(p)
                     B.requestEntry(p, 'full_party')
                 end,
             },
             {
-                'Expedition Briefing (Encounters & Rules)',
+                'What are the Burrows?',
                 function(p)
-                    tell(p, string.format(
-                        'Welcome to SoulspireXI — %s! A free, repeatable Lv.%d tactical expedition in Ghoyu\'s Reverie.',
-                        C.EXPEDITION_NAME,
-                        C.EFFECTIVE_LEVEL
-                    ))
+                    tell(p, 'Our researchers uncovered strange tremors beneath the Burrows. All adventurers are synchronized to Level 10 while inside, and your full strength returns the moment you leave.')
+                    tell(p, 'Low Man (1-3 players) is tuned for solo or small groups. Full Party (4-6 players) brings heavier threats that reward coordinated tanking, healing, and interrupts.')
                     tell(p, 'Grudgeburrow waits at the heart of the cavern. Other denizens lurk along the chamber flanks — observant parties may decide whether to challenge the boss directly or explore first.')
-                    tell(p, 'Rules: Effective Lv.10 sync (original level restored on exit), zero entry items/fees, unlimited replays, zero rewards (gameplay test prototype).')
                     openLater(p, B.buildHubMenu)
                 end,
             },
             {
-                'Close',
+                'Leave',
                 function() end,
             },
         },
@@ -1362,6 +1701,7 @@ function I.onInstanceCreated(instance)
         mode                 = C.MODES.low_man,
         participants         = {},
         participantIds       = {},
+        participantRecords   = {},
         participantSouls     = {},
         initialPartySize     = 0,
         returnPosByCharId    = {},
@@ -1378,8 +1718,6 @@ function I.onInstanceCreated(instance)
         stoneguardDefeated   = false,
         stoneguardCleanBreak = false,
         bossAdaptations      = nil,
-        pendingStageSpawnAt  = nil,
-        pendingStageNumber   = nil,
         initialized          = false,
     }
 end
@@ -1409,11 +1747,15 @@ function I.onInstanceCreatedCallback(requester, instance)
         session.initialPartySize = 1
     end
 
+    initSessionLogger(session)
+
     -- Apply native Lv. 10 level sync + skill-up lock to ALL participants before entry.
     local synced = {}
     for _, member in ipairs(session.participants) do
         local mId = member:getID()
         local retPos = (pending and pending.returnPos) or C.getReturnPosForZoneId(member.getZoneID and member:getZoneID() or C.FALLBACK_RETURN.zoneId)
+        local unsyncedLvl = getUnsyncedLevel(member)
+        local soulKey = getActiveSoulKey(member)
 
         if R and R.applyLevelSync then
             local ok, err = R.applyLevelSync(member, C.EFFECTIVE_LEVEL)
@@ -1422,6 +1764,8 @@ function I.onInstanceCreatedCallback(requester, instance)
                     B.restorePlayerState(prev, { warpToHub = false })
                 end
                 tell(requester, 'Level 10 sync failed: ' .. tostring(err))
+                session.cleanupStatus = 'level_sync_failed'
+                writeTelemetryRecord(session, 'entry_failed')
                 if instance.fail then
                     pcall(function() instance:fail() end)
                 end
@@ -1436,13 +1780,36 @@ function I.onInstanceCreatedCallback(requester, instance)
 
         session.participantIds[mId] = true
         session.returnPosByCharId[mId] = retPos
-        session.participantSouls[#session.participantSouls + 1] = getActiveSoulKey(member)
+        session.participantSouls[#session.participantSouls + 1] = soulKey
+        session.participantRecords[#session.participantRecords + 1] =
+        {
+            char_id        = mId,
+            name           = (member.getName and member:getName()) or 'unknown',
+            main_job       = (member.getMainJob and member:getMainJob()) or 0,
+            sub_job        = (member.getSubJob and member:getSubJob()) or 0,
+            unsynced_level = unsyncedLvl,
+            soul           = soulKey,
+        }
         playerRunId[mId] = session.runId
         saveReturnCharVars(member, retPos)
+        attachPlayerCombatListeners(session, member)
         synced[#synced + 1] = member
     end
 
-    -- Spawn in-instance Guide book + ALL encounter mobs at the beginning:
+    logEvent(session, 'session_start', {
+        expedition      = C.EXPEDITION_ID,
+        mode            = session.modeKey,
+        instance_id     = C.INSTANCE_ID,
+        effective_level = C.EFFECTIVE_LEVEL,
+        party_size      = session.initialPartySize,
+        participants    = session.participantRecords,
+        souls           = session.participantSouls,
+        log_dir         = session.logDir,
+        event_log_path  = session.eventLogPath,
+        summary_path    = session.summaryPath,
+    }, true)
+
+    -- Spawn in-instance Guide + ALL encounter mobs at the beginning:
     -- Grudgeburrow is showcased front-and-center; Shaman & Stoneguard lurk on
     -- separated flanks as non-obvious hidden unlocks that weaken Grudgeburrow live.
     session.initialized = true
@@ -1473,20 +1840,19 @@ function I.afterInstanceRegister(player)
             player:countdown(session.instance:getTimeLimit())
         end)
     end
-    tell(player, string.format(
-        'Entered %s [%s | Effective Lv.%d]. Grudgeburrow looms straight ahead in the main chamber — survey your surroundings and engage when ready. (Zero rewards prototype.)',
-        C.EXPEDITION_NAME,
-        session.mode.label,
-        C.EFFECTIVE_LEVEL
-    ))
+    tell(player, 'You have entered The First Descent. Speak to the Burrows Guide beside you to exit at any time.')
 end
 
-function I.onInstanceTimeUpdate(instance, elapsed)
-    local session = B.getSessionByInstance(instance)
+tickSession = function(session, elapsedOverride)
     if session == nil then
         return
     end
-    session.elapsedSec = tonumber(elapsed) or (session.elapsedSec + 1)
+    local instance = session.instance
+    if elapsedOverride ~= nil then
+        session.elapsedSec = tonumber(elapsedOverride) or ((session.elapsedSec or 0) + 1)
+    else
+        session.elapsedSec = (session.elapsedSec or 0) + 1
+    end
 
     -- Handle post-victory or post-wipe exit grace countdown.
     if session.finished then
@@ -1503,7 +1869,7 @@ function I.onInstanceTimeUpdate(instance, elapsed)
     if session.elapsedSec >= C.TIME_LIMIT_SEC then
         session.finished = true
         session.outcome = 'timeout'
-        broadcast(session, 'Expedition time limit reached! Restoring your level and returning you safely to your hub.')
+        broadcast(session, 'Your time in the Burrows has expired. Returning to town...')
         if instance.fail then
             pcall(function() instance:fail() end)
         else
@@ -1551,10 +1917,7 @@ function I.onInstanceTimeUpdate(instance, elapsed)
 
     if not anyAlive then
         if session.wipeSec == 0 then
-            broadcast(session, string.format(
-                'The party has fallen! Recovering and returning everyone safely to your hub in %ds...',
-                C.WIPE_EXIT_SEC
-            ))
+            broadcast(session, 'Your party has fallen. Returning to town shortly...')
         end
         session.wipeSec = session.wipeSec + 1
         if session.wipeSec >= C.WIPE_EXIT_SEC then
@@ -1575,6 +1938,17 @@ function I.onInstanceTimeUpdate(instance, elapsed)
     tickStage1Shaman(session)
     tickStage2Stoneguard(session)
     tickStage3Boss(session)
+end
+
+function I.onInstanceTimeUpdate(instance, elapsed)
+    local session = B.getSessionByInstance(instance)
+    if session == nil then
+        return
+    end
+    if session.lastTimerTickAt ~= nil and (os.time() - session.lastTimerTickAt) < 2 then
+        return
+    end
+    tickSession(session, elapsed)
 end
 
 function I.onInstanceProgressUpdate(instance, progress)
@@ -1616,7 +1990,7 @@ if hasServerRuntime then
             zone:insertDynamicEntity({
                 objtype    = xi.objType.NPC,
                 name       = 'Burrows_Guide',
-                packetName = 'Burrows Expedition Guide',
+                packetName = C.NPC_PACKET_NAME,
                 look       = C.NPC_LOOK_ID,
                 x          = hubCfg.x,
                 y          = hubCfg.y,
@@ -1624,11 +1998,7 @@ if hasServerRuntime then
                 rotation   = hubCfg.rotation,
                 widescan   = 1,
                 onTrigger  = function(player)
-                    tell(player, string.format(
-                        'Greetings, adventurer! I guide expeditions into SoulspireXI\'s %s (Effective Lv.%d).',
-                        C.EXPEDITION_NAME,
-                        C.EFFECTIVE_LEVEL
-                    ))
+                    tell(player, 'Welcome, adventurer! Our researchers have uncovered something dangerous beneath the Burrows. Are you willing to investigate?')
                     player:customMenu(B.buildHubMenu(player))
                 end,
             })
@@ -1659,17 +2029,19 @@ if hasServerRuntime then
         if player == nil or not player.getZoneID then
             return
         end
-        local inBurrows = (player:getZoneID() == C.INSTANCE_ZONE_ID)
+        local zoneId = player:getZoneID()
+        local inBurrows = (zoneId == C.INSTANCE_ZONE_ID)
+        local inUnknownZone = (zoneId == 0)
         local activeVar = (player.getCharVar and player:getCharVar('[BurrowsReborn]Active') == 1) or false
         local session = B.getSessionForPlayer(player)
 
-        if not inBurrows and (activeVar or session ~= nil) then
-            B.restorePlayerState(player, { warpToHub = false })
-            tell(player, 'Your Burrows expedition level sync has been restored.')
-        elseif inBurrows and activeVar and session == nil then
-            -- Relogged into Ghoyu's Reverie after instance ended or server restarted.
+        if (inBurrows or inUnknownZone) and activeVar and session == nil then
+            -- Relogged into Ghoyu's Reverie (or LandSandBoat's zone 0 fallback) after instance ended or server restarted.
             B.restorePlayerState(player, { warpToHub = true })
-            tell(player, 'Your previous Burrows expedition has ended. Level restored and returned safely to your hub.')
+            tell(player, 'Your previous expedition has ended. Returning you safely to town.')
+        elseif not inBurrows and (activeVar or session ~= nil) then
+            B.restorePlayerState(player, { warpToHub = false })
+            tell(player, 'Your level sync has been restored.')
         end
     end)
 

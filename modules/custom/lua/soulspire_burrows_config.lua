@@ -17,20 +17,89 @@ xi.soulspire.burrows.config = xi.soulspire.burrows.config or {}
 
 local C = xi.soulspire.burrows.config
 
-C.SCHEMA_VERSION   = '1.0.0'
-C.SERVER_NAME      = 'SoulspireXI'
-C.EXPEDITION_ID    = 'the_first_descent'
-C.EXPEDITION_NAME  = 'Burrows Reborn: The First Descent'
-C.INSTANCE_ID      = 12901
-C.INSTANCE_ZONE_ID = (xi.zone and xi.zone.GHOYUS_REVERIE) or 129
-C.EFFECTIVE_LEVEL  = 10
-C.TIME_LIMIT_SEC   = 1800 -- 30 minutes
-C.VICTORY_EXIT_SEC = 12   -- Grace period before safe return on victory
-C.WIPE_EXIT_SEC    = 8    -- Grace period before safe return on full wipe
-C.EMPTY_GRACE_SEC  = 20   -- Grace period before tearing down an empty instance
-C.NPC_LOOK_ID      = 2433 -- Existing FFXI NPC model (no DAT edits)
-C.LOG_BASE_DIR     = 'log/burrows_reborn'
-C.LOG_RUNS_PATH    = 'log/burrows_reborn/runs.jsonl'
+C.SCHEMA_VERSION       = '2.0.0'
+C.SERVER_NAME          = 'SoulspireXI'
+C.EXPEDITION_ID        = 'the_first_descent'
+C.EXPEDITION_NAME      = 'Burrows Reborn: The First Descent'
+C.INSTANCE_ID          = 12901
+C.INSTANCE_ZONE_ID     = (xi.zone and xi.zone.GHOYUS_REVERIE) or 129
+C.EFFECTIVE_LEVEL      = 10
+C.TIME_LIMIT_SEC       = 1800 -- 30 minutes
+C.VICTORY_EXIT_SEC     = 12   -- Grace period before safe return on victory
+C.WIPE_EXIT_SEC        = 8    -- Grace period before safe return on full wipe
+C.EMPTY_GRACE_SEC      = 20   -- Grace period before tearing down an empty instance
+C.NPC_LOOK_ID          = 2433 -- Existing FFXI NPC model (no DAT edits)
+C.NPC_PACKET_NAME      = 'Burrows Guide' -- <= 15 chars so FFXI client never truncates
+C.LOG_BASE_DIR         = nil -- Optional explicit override (tests); nil uses C.resolveLogDir()
+C.LOG_RUNS_PATH        = nil -- Optional explicit override (tests); nil uses <resolvedDir>/runs.jsonl
+C.LOG_FLUSH_BATCH_SIZE = 32
+C.LOG_MAX_EVENTS       = 25000
+
+local function isAbsolutePath(p)
+    if type(p) ~= 'string' or p == '' then
+        return false
+    end
+    return p:sub(1, 1) == '/' or p:match('^%a:[/\\]') ~= nil
+end
+
+local function dirExists(path)
+    if type(path) ~= 'string' or path == '' then
+        return false
+    end
+    local ok, res = pcall(os.execute, 'test -d "' .. path .. '"')
+    if ok and (res == true or res == 0) then
+        return true
+    end
+    return false
+end
+
+local function detectCwd()
+    local isWin = (package and package.config and package.config:sub(1, 1) == '\\')
+    local cmd = isWin and 'cd' or 'pwd'
+    local ok, fh = pcall(io.popen, cmd)
+    if ok and fh then
+        local out = fh:read('*l')
+        fh:close()
+        if type(out) == 'string' and out ~= '' then
+            return out:gsub('\\', '/'):gsub('/+$', '')
+        end
+    end
+    return nil
+end
+
+function C.resolveLogDir()
+    if type(C.LOG_BASE_DIR) == 'string' and C.LOG_BASE_DIR ~= '' then
+        if isAbsolutePath(C.LOG_BASE_DIR) then
+            return C.LOG_BASE_DIR:gsub('\\', '/'):gsub('/+$', '')
+        end
+        local cwd = detectCwd()
+        if cwd then
+            return cwd .. '/' .. C.LOG_BASE_DIR:gsub('\\', '/'):gsub('^/+', ''):gsub('/+$', '')
+        end
+        return C.LOG_BASE_DIR:gsub('\\', '/'):gsub('/+$', '')
+    end
+
+    local envBurrows = os.getenv and os.getenv('SOULSPIRE_BURROWS_LOG_DIR') or nil
+    if type(envBurrows) == 'string' and envBurrows ~= '' then
+        return envBurrows:gsub('\\', '/'):gsub('/+$', '')
+    end
+
+    local envLog = os.getenv and os.getenv('SOULSPIRE_LOG_DIR') or nil
+    if type(envLog) == 'string' and envLog ~= '' then
+        return envLog:gsub('\\', '/'):gsub('/+$', '') .. '/burrows_reborn'
+    end
+
+    if dirExists('/server/log') then
+        return '/server/log/burrows_reborn'
+    end
+
+    local cwd = detectCwd()
+    if cwd then
+        return cwd .. '/log/burrows_reborn'
+    end
+
+    return 'log/burrows_reborn'
+end
 
 -- Safe hub locations accessible to fresh Level 10 players across all starting
 -- nations plus Ru'Lude Gardens (each positioned clear of Starter Weapons Moogles).
@@ -39,12 +108,12 @@ C.HUB_GUIDES =
     {
         zoneName = 'Port_San_dOria',
         zoneId   = (xi.zone and xi.zone.PORT_SAN_DORIA) or 232,
-        label    = 'Port San d\'Oria (Mog House Plaza)',
-        x        = -2.500,
-        y        = 0.000,
-        z        = -2.000,
+        label    = 'Port San d\'Oria (Home Point #1 Plaza)',
+        x        = -36.500,
+        y        = -4.000,
+        z        = -61.500,
         rotation = 64,
-        returnPos = { x = -1.500, y = 0.000, z = -3.500, rotation = 64 },
+        returnPos = { x = -38.000, y = -4.000, z = -63.000, rotation = 0 },
     },
     {
         zoneName = 'Bastok_Mines',
@@ -205,7 +274,7 @@ C.ENCOUNTERS =
         id            = 'shaman',
         stage         = 1,
         entityName    = 'Burrow_Shaman',
-        packetName    = 'The Burrow Shaman',
+        packetName    = 'Burrow Shaman',
         groupId       = 6892, -- Orcish_Hexspinner (BLM/BLM, visible model)
         groupZoneId   = 129,
         spellList     = 21,   -- Beastmen_BLM
@@ -227,7 +296,7 @@ C.ENCOUNTERS =
         id            = 'stoneguard',
         stage         = 2,
         entityName    = 'The_Stoneguard',
-        packetName    = 'The Stoneguard',
+        packetName    = 'Stoneguard',
         groupId       = 6888, -- Old_Quadav (WAR/WAR, visible model)
         groupZoneId   = 129,
         spellList     = 0,
@@ -519,24 +588,69 @@ C.encodeJson = encodeJsonValue
 function C.buildTelemetryRecord(session, outcome)
     session = session or {}
     local adaptations = session.bossAdaptations or C.computeBossAdaptations(session)
+    local stats = session.combatStats or {}
+    local shamanOutcome = 'unknown'
+    if session.shamanState then
+        shamanOutcome = session.shamanState.ritualState or 'unknown'
+    elseif session.shamanRitualBroken then
+        shamanOutcome = 'broken'
+    end
+    local stoneguardOutcome = 'not_reached'
+    if session.stoneguardDefeated then
+        stoneguardOutcome = session.stoneguardCleanBreak and 'defeated_clean_break' or 'defeated'
+    elseif session.stoneguardState then
+        stoneguardOutcome = 'in_progress'
+    end
+    local healingValue = (stats.healingObserved and stats.healingTotal) or 'unavailable'
     return
     {
         schema_version          = C.SCHEMA_VERSION,
         server                  = C.SERVER_NAME,
         expedition              = C.EXPEDITION_ID,
+        session_id              = session.sessionId or tostring(session.runId or 'burrows_unknown'),
         run_id                  = session.runId or 'burrows_unknown',
+        instance_id             = C.INSTANCE_ID,
         mode                    = session.modeKey or 'low_man',
         effective_level         = C.EFFECTIVE_LEVEL,
         party_size              = session.initialPartySize or 0,
+        participants            = session.participantRecords or {},
         souls                   = session.participantSouls or {},
+        started_at_utc          = session.startedAtUtc or '',
+        ended_at_utc            = session.endedAtUtc or os.date('!%Y-%m-%dT%H:%M:%SZ'),
         outcome                 = outcome or 'unknown',
         duration_sec            = session.elapsedSec or 0,
         stage_reached           = session.stage or 0,
+        encounters              = session.encounterTimings or {},
+        shaman_ritual_outcome   = shamanOutcome,
         shaman_ritual_broken    = adaptations.shamanRitualBroken,
+        stoneguard_outcome      = stoneguardOutcome,
         stoneguard_defeated     = adaptations.stoneguardDefeated,
         stoneguard_clean_break  = adaptations.stoneguardCleanBreak,
         boss_ritual_empowered   = adaptations.ritualEmpowered,
         boss_armor_weakened     = adaptations.armorWeakened,
+        boss_phase_reached      = (session.bossState and session.bossState.phase) or 0,
+        boss_adaptations        = adaptations,
+        combat_totals           =
+        {
+            damage_dealt          = stats.damageDealt or 0,
+            damage_received       = stats.damageReceived or 0,
+            healing               = healingValue,
+            player_deaths         = stats.playerDeaths or 0,
+            weaponskills          = stats.weaponskills or 0,
+            spells_cast           = stats.spellsCast or 0,
+            abilities_used        = stats.abilitiesUsed or 0,
+            interrupts            = stats.interrupts or 0,
+            enmity_target_changes = stats.enmityTargetChanges or 0,
+        },
+        cleanup_status          = session.cleanupStatus or 'completed',
+        event_count             = session.eventCount or 0,
+        event_log_path          = session.eventLogPath or '',
+        summary_path            = session.summaryPath or '',
+        event_source_limitations =
+        {
+            enmity_ce_ve_table = 'unavailable_in_lua_api_tracked_via_target_changes',
+            direct_heal_amount = stats.healingObserved and 'observed_via_listener' or 'unavailable_without_heal_listener_spells_tracked_via_magic_use',
+        },
         rewards_suppressed      = true,
         exp_awarded             = 0,
         gil_awarded             = 0,

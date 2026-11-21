@@ -231,6 +231,7 @@ update_env_tag() {
     else
         echo "SOULSPIRE_TAG=${tag}" >> "${ENV_FILE}"
     fi
+    export SOULSPIRE_TAG="${tag}"
 }
 
 cmd_deploy() {
