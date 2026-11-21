@@ -1,0 +1,139 @@
+diff --git a/src/map/ai/states/magic_state.cpp b/src/map/ai/states/magic_state.cpp
+--- a/src/map/ai/states/magic_state.cpp
++++ b/src/map/ai/states/magic_state.cpp
+@@ -88,5 +88,93 @@
+         if (m_spellId == static_cast<SpellID>(246)) m_PSpell->setMPCost(12); // Drain II
+         if (m_spellId == static_cast<SpellID>(277)) m_PSpell->setMPCost(0);  // Dread Spikes spends HP in Lua
+     }
++
++    // Soul spell cost & cast-time overrides applied on the per-cast clone BEFORE
++    // CanCastSpell / HasCost / CalculateSpellCastTime so zero-cost and discounted
++    // Soul spells never fail affordability checks or mutate shared CSpell objects.
++    if (auto* caster = dynamic_cast<CCharEntity*>(m_PEntity); caster && caster->GetMLevel() >= 10)
++    {
++        const uint8 mLvl = caster->GetMLevel();
++        const uint16 sid = static_cast<uint16>(m_spellId);
++
++        // BLU Azure Bastion: Azure Surge (858) grants 0 MP + instant cast on Blue Magic;
++        // Physical Blue Magic (-30% MP) and Azure Lore (-50% MP) stack multiplicatively.
++        if (caster->GetMJob() == xi::Job::BLU &&
++            caster->GetLocalVar("OX_AZB_ACTIVE") == 1 &&
++            m_PSpell->getSkillType() == xi::SkillType::BlueMagic)
++        {
++            if (caster->StatusEffectContainer->HasStatusEffect(static_cast<xi::StatusEffect>(858)))
++            {
++                m_PSpell->setMPCost(0);
++                m_PSpell->setCastTime(0ms);
++            }
++            else
++            {
++                const uint16 baseMp = m_PSpell->getMPCost();
++                double factor = 1.0;
++                if (sid == 623 || sid == 692 || sid == 529 || sid == 527 || sid == 688 || sid == 666)
++                {
++                    factor *= 0.70;
++                }
++                if (caster->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AzureLore))
++                {
++                    factor *= 0.50;
++                }
++                if (factor < 1.0 && baseMp > 0)
++                {
++                    m_PSpell->setMPCost(static_cast<uint16>(std::max<int32>(1, static_cast<int32>(std::floor(baseMp * factor + 0.5)))));
++                }
++            }
++        }
++
++        // BLU Magus: Level-scaled MP costs for early-unlocked baseline Blue Magic spells
++        // applied safely on the per-cast clone rather than mutating shared CSpell instances.
++        if (caster->GetMJob() == xi::Job::BLU &&
++            caster->GetLocalVar("OX_MAG_ACTIVE") == 1 &&
++            m_PSpell->getSkillType() == xi::SkillType::BlueMagic)
++        {
++            struct MagusSpellCost { uint16 id; uint8 reqLvl; uint16 baseMp; };
++            static constexpr MagusSpellCost kMagusBaseline[] = {
++                { 593, 58,  72 }, { 690, 94, 145 }, { 658, 76, 106 }, { 581, 16,  55 },
++                { 578, 30,  37 }, { 681, 89,  36 }, { 549,  1,   8 }, { 662, 79,  50 },
++                { 632, 67,  99 }, { 530, 48,  29 }, { 547,  8,  10 }, { 517,  8,  19 },
++                { 647, 65,  31 }, { 623, 12,  12 }, { 592, 38,  25 }, { 692, 95,  18 },
++                { 542, 36,  20 },
++            };
++            for (const auto& entry : kMagusBaseline)
++            {
++                if (entry.id == sid && mLvl < entry.reqLvl)
++                {
++                    const double ratio = std::clamp(static_cast<double>(mLvl) / static_cast<double>(entry.reqLvl), 0.20, 1.0);
++                    const uint16 scaled = static_cast<uint16>(std::max<int32>(4, static_cast<int32>(std::floor(entry.baseMp * ratio + 0.5))));
++                    if (m_PSpell->getMPCost() > scaled)
++                    {
++                        m_PSpell->setMPCost(scaled);
++                    }
++                    break;
++                }
++            }
++        }
++
++        // RUN Spellblade: Conduction-discounted MP cost and cast time for Runic Bolt (363)
++        // and Runic Sever (364) set before HasCost() so discounted casts never fail affordability.
++        if (caster->GetMJob() == xi::Job::RUN &&
++            caster->GetLocalVar("OX_RUN_SPELLBLADE") == 1 &&
++            (sid == 363 || sid == 364))
++        {
++            const bool isSever = (sid == 364);
++            const int32 l = std::clamp<int32>(mLvl, 10, 75);
++            const int32 baseMp = isSever
++                ? (l <= 55 ? 32 : 32 + static_cast<int32>(std::floor(((l - 55) * 8.0) / 20.0 + 0.5)))
++                : (l <= 15 ? 8 : 8 + static_cast<int32>(std::floor(((l - 15) * 16.0) / 60.0 + 0.5)));
++            const int32 stacks = std::clamp<int32>(static_cast<int32>(caster->GetLocalVar("OX_RUN_CONDUCTION")), 0, 3);
++            const double mpFactor = 1.0 - (0.15 * stacks);
++            const uint16 mpCost = static_cast<uint16>(std::max<int32>(1, isSever ? static_cast<int32>(std::floor(baseMp * mpFactor)) : static_cast<int32>(std::floor(baseMp * mpFactor + 0.5))));
++            const int32 baseCastMs = isSever ? 3000 : 2000;
++            const int32 prepCastMs = std::max<int32>(250, baseCastMs - (stacks * 500));
++            m_PSpell->setMPCost(mpCost);
++            m_PSpell->setCastTime(std::chrono::milliseconds(prepCastMs));
++        }
++    }
+ 
+     auto* PTarget = m_PEntity->IsValidTarget(target(), m_PSpell->getValidTarget(), m_errorMsg);
+diff --git a/src/map/utils/battleutils.cpp b/src/map/utils/battleutils.cpp
+--- a/src/map/utils/battleutils.cpp
++++ b/src/map/utils/battleutils.cpp
+@@ -2194,6 +2194,26 @@ auto isShinobiKitSpell(const SpellID spellId) -> bool
+     }
+ }
+ 
++auto isKagemushaKitSpell(const SpellID spellId) -> bool
++{
++    switch (spellId)
++    {
++        case SpellID::Katon_Ichi:
++        case SpellID::Hyoton_Ichi:
++        case SpellID::Huton_Ichi:
++        case SpellID::Doton_Ichi:
++        case SpellID::Raiton_Ichi:
++        case SpellID::Suiton_Ichi:
++        case SpellID::Utsusemi_Ichi:
++        case SpellID::Utsusemi_Ni:
++        case SpellID::Hojo_Ichi:
++        case SpellID::Kurayami_Ichi:
++            return true;
++        default:
++            return false;
++    }
++}
++
+ auto TryInterruptSpell(CBattleEntity* PAttacker, CBattleEntity* PDefender, CSpell* PSpell) -> bool
+ {
+     // Early return: Spell can't be interrupted.
+@@ -3878,6 +3897,11 @@ auto HasNinjaTool(CBattleEntity* PEntity, CSpell* PSpell, bool ConsumeTool) -> b
+         if (isKagemushaSpec(PChar) && PSpell->getSpellFamily() == SPELLFAMILY_UTSUSEMI)
+         {
+             return true;
+         }
++
++        if (isKagemushaSpec(PChar) && PChar->GetLocalVar("OX_KGM_DUAL_KATANA") == 1 && isKagemushaKitSpell(PSpell->getID()))
++        {
++            return true;
++        }
+ 
+         if (isShinobiSpec(PChar) && isShinobiKitSpell(PSpell->getID()))

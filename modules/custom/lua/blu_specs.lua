@@ -266,36 +266,18 @@ local function attachBluListeners(player)
             return
         end
 
+        -- MP cost and instant-cast overrides are applied in C++ (CMagicState) on the
+        -- per-cast spell clone before HasCost() and CalculateSpellCastTime().
+        -- Track Azure Surge consumption here so MAGIC_USE can trigger the AoE VE pulse.
         if caster:hasStatusEffect(EFFECT_AZURE_SURGE) then
             if caster.setLocalVar then
                 caster:setLocalVar('OX_BLU_SURGE_PENDING', 1)
-            end
-            if spell.setMPCost then
-                spell:setMPCost(0)
-            end
-            if spell.setCastTime then
-                spell:setCastTime(0)
             end
             return
         end
 
         if caster.setLocalVar then
             caster:setLocalVar('OX_BLU_SURGE_PENDING', 0)
-        end
-
-        local spellId = spell.getID and spell:getID() or 0
-        local baseMp  = spell.getMPCost and spell:getMPCost() or 0
-        local factor  = 1.0
-
-        if PHYSICAL_BLUE_SPELL_IDS[spellId] then
-            factor = factor * 0.70
-        end
-        if caster:hasStatusEffect(xi.effect.AZURE_LORE) then
-            factor = factor * 0.50
-        end
-
-        if factor < 1.0 and baseMp > 0 and spell.setMPCost then
-            spell:setMPCost(math.max(1, math.floor(baseMp * factor + 0.5)))
         end
     end)
 
@@ -637,9 +619,15 @@ if xi.job and xi.job.BLU then
                 }
             end,
             onApply = function(player)
+                if player ~= nil and player.setLocalVar then
+                    player:setLocalVar('OX_AZB_ACTIVE', 1)
+                end
                 attachBluListeners(player)
             end,
             onRemove = function(player)
+                if player ~= nil and player.setLocalVar then
+                    player:setLocalVar('OX_AZB_ACTIVE', 0)
+                end
                 if player ~= nil and player.delStatusEffectSilent then
                     player:delStatusEffectSilent(EFFECT_CHITIN_CARAPACE)
                     player:delStatusEffectSilent(EFFECT_AZURE_SURGE)
