@@ -78,7 +78,7 @@ Use the 10/30/50/70 bands shown above. A three-band passive holds its Lv50 value
 **Registered mechanics to preserve.** These are the entry’s own descriptions. For coefficients and eligibility use the executable handler if its text differs.
 
 - Scythe & Dark Magic Mastery: +15/25/35/50 Scythe & Dark Magic skill, +10/14/18/22% Parry Rate (Inquartata), -20/30/40/50% Dark Magic Cast Time & 100% SIRD on Dark Magic.
-- Blood-Pool, Blood Tithe & Dread Spikes: Drain II (30s CD) scales off 12/15/18/22% Max HP + VIT (+25% Max HP overcap 30s); Absorb-STR/VIT/TP/ACC (18s shared CD, instant) restore +6% Max MP & grant +1 Blood Tithe (max 3); Dread Spikes (45s CD, instant, 10% Current HP cost) builds 25% + 5%/Tithe Max HP shield (up to 40%).
+- Blood-Pool, Blood Tithe & Dread Spikes: Drain II (12 MP, 30s CD) scales off 12/15/18/22% Max HP + VIT (+25% Max HP overcap 30s); Absorb-STR/VIT/TP/ACC (18s shared CD, instant) restore +6% Max MP & grant +1 Blood Tithe (max 3); Dread Spikes (45s CD, no MP, 10% Current HP cost) builds 25% + 5%/Tithe Max HP shield (up to 40%).
 - Scythe WS Reap & Souleater: Scythe WSs heal 5/6/7/8% Max HP (10/12/14/16% w/ Drain II or Souleater; 2x in Dread Bastion), extend Drain II +6s, and inflict Cripple (-15% ATTP / -15 MATT / -20 ACC, 15s); Souleater (45s CD, 12s, -12% DT) spends 2% HP/hit for VE + Blood Tithe + Blood Reap (+20% WS heal).
 - JAs: Abyssal Cleave (25s CD, 2s Stun, heavy VE, Breach -15% DEF/-15 MDEF, +8% MP, +1 Blood Tithe); Dread Bastion (60s CD, 12s: -18% DT, Knockback Immune, +35 Enmity, 2s AoE VE pulses, 2x WS heal); Blood Weapon (+4% Max HP/swing, +50 Enmity, -20% DT); Arcane Circle (shared Ward -10% DMG/+25 MEVA).
 

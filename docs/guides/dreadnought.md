@@ -22,8 +22,8 @@ Dreadnought is a **Scythe drain-and-barrier tank**. **Drain II** creates a tempo
 
 ## Key Mechanics & Stacks
 - **Blood Tithe:** Up to **3 stacks**, retained for roughly **30 seconds**. Built by Absorb, Abyssal Cleave and qualifying Blood Carapace swings.
-- **Drain II / Blood-Pool:** **30-second recast**, HP recovery scaling with level and VIT; grants temporary **25% maximum-HP overcap** for about 30 seconds. The overcap can conflict with some other maximum-HP boosts.
-- **Dread Spikes:** Specialized **45-second recast**, instant with eligible Scythe. Consumes **10% current HP**, requires your HP above **15%**, and converts Tithe into a physical barrier with a cap of roughly **25% + 5% per stack**, up to **40% maximum HP**.
+- **Drain II / Blood-Pool:** **12 MP**, **30-second recast**, HP recovery scaling with level and VIT; grants temporary **25% maximum-HP overcap** for about 30 seconds. The overcap can conflict with some other maximum-HP boosts.
+- **Dread Spikes:** Specialized **45-second recast**, instant with eligible Scythe. Costs **0 MP** and consumes **10% current HP**, requires your HP above **15%**, and converts Tithe into a physical barrier with a cap of roughly **25% + 5% per stack**, up to **40% maximum HP**.
 - **Vampiric Scythe weapon skills:** **Shadow of Death, Nightmare Scythe, Vorpal Scythe, Guillotine, Catastrophe and Insurgency** trigger the special healing and Blood-Pool extension.
 - **Blood Carapace:** Modified Souleater provides a short defensive window and a small HP cost on eligible melee hits, building Blood Tithe and preparing Blood Reap.
 - **Abyssal Cleave:** **25-second recast**, high-threat action with a brief stun, target Breach, MP return and Blood Tithe.

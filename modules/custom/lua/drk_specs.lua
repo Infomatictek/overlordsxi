@@ -308,6 +308,9 @@ local function clearDrkWeaponMods(player)
     if player == nil or not player.getID then
         return
     end
+    if player.setLocalVar then
+        player:setLocalVar('OX_DRN_SCYTHE', 0)
+    end
     local charId = player:getID()
     local prev   = weaponModStateByChar[charId]
     if prev ~= nil and player.delMod then
@@ -342,6 +345,9 @@ local function syncDrkWeaponMods(player, force)
 
     local mods = {}
     if hasScythe then
+        if player.setLocalVar then
+            player:setLocalVar('OX_DRN_SCYTHE', 1)
+        end
         table.insert(mods, { xi.mod.SCYTHE,          scaleTier(lvl, 15, 25, 35, 50) })
         table.insert(mods, { xi.mod.DARK,            scaleTier(lvl, 15, 25, 35, 50) })
         table.insert(mods, { xi.mod.INQUARTATA,      scaleTier(lvl, 10, 14, 18, 22) })
@@ -432,7 +438,7 @@ m:addOverride('xi.spells.canUseSpellOverride', function(player, spell)
     return super(player, spell)
 end)
 
--- Drain II: normal MP cost, 30s recast, Max-HP + VIT scaled drain bypassing -60% MAG_DMG_DEALT, +25% Max HP overcap for 30s
+-- Drain II: 12 MP with Dreadnought and Scythe, 30s recast, Max-HP + VIT scaled drain bypassing -60% MAG_DMG_DEALT, +25% Max HP overcap for 30s
 m:addOverride('xi.actions.spells.black.drain_ii.onSpellCast', function(caster, target, spell)
     if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
         local dmg = 0
@@ -496,7 +502,7 @@ m:addOverride('xi.actions.spells.black.drain_iii.onSpellCast', function(caster, 
     return dmg
 end)
 
--- Dread Spikes: instant-cast, 45s recast, costs 10% Current HP (requires >15% HP),
+-- Dread Spikes: instant-cast, 45s recast, costs no MP and 10% Current HP (requires >15% HP),
 -- consumes Blood Tithe (0..3) for 25% + 5%/stack Max HP shield (up to 40%)
 m:addOverride('xi.actions.spells.black.dread_spikes.onMagicCastingCheck', function(caster, target, spell)
     if isDrkSpec(caster, DREADNOUGHT_KEY) and isScytheEquipped(caster) then
@@ -892,7 +898,7 @@ if xi.job and xi.job.DRK then
             {
                 'Passives (Lv10/30/50/70+): +15/20/25/32% Max HP, +8/14/20/26 VIT & INT, +12/18/24/30% DEF, -8/11/14/18% DT, +60/80/100/120 Enmity & +25/35/45/60% Enmity Retention.',
                 'Scythe & Dark Magic Mastery: +15/25/35/50 Scythe & Dark Magic skill, +10/14/18/22% Parry Rate (Inquartata), -20/30/40/50% Dark Magic Cast Time & 100% SIRD on Dark Magic.',
-                'Blood-Pool, Blood Tithe & Dread Spikes: Drain II (30s CD) scales off 12/15/18/22% Max HP + VIT (+25% Max HP overcap 30s); Absorb-STR/VIT/TP/ACC (18s shared CD, instant) restore +6% Max MP & grant +1 Blood Tithe (max 3); Dread Spikes (45s CD, instant, 10% Current HP cost) builds 25% + 5%/Tithe Max HP shield (up to 40%).',
+                'Blood-Pool, Blood Tithe & Dread Spikes: Drain II (12 MP, 30s CD) scales off 12/15/18/22% Max HP + VIT (+25% Max HP overcap 30s); Absorb-STR/VIT/TP/ACC (18s shared CD, instant) restore +6% Max MP & grant +1 Blood Tithe (max 3); Dread Spikes (45s CD, no MP, 10% Current HP cost) builds 25% + 5%/Tithe Max HP shield (up to 40%).',
                 'Scythe WS Reap & Souleater: Scythe WSs heal 5/6/7/8% Max HP (10/12/14/16% w/ Drain II or Souleater; 2x in Dread Bastion), extend Drain II +6s, and inflict Cripple (-15% ATTP / -15 MATT / -20 ACC, 15s); Souleater (45s CD, 12s, -12% DT) spends 2% HP/hit for VE + Blood Tithe + Blood Reap (+20% WS heal).',
                 'JAs: Abyssal Cleave (25s CD, 2s Stun, heavy VE, Breach -15% DEF/-15 MDEF, +8% MP, +1 Blood Tithe); Dread Bastion (60s CD, 12s: -18% DT, Knockback Immune, +35 Enmity, 2s AoE VE pulses, 2x WS heal); Blood Weapon (+4% Max HP/swing, +50 Enmity, -20% DT); Arcane Circle (shared Ward -10% DMG/+25 MEVA).',
             },
