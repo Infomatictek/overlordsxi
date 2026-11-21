@@ -1,24 +1,40 @@
 # Magus (BLU) — Playstyle Guide
 
 ## At a Glance
-Magus turns Blue Mage into a **dual-wielding Azure Alchemist & Siphon-Healer** (`CombatHealer` tier: -50% damage dealt, 0.20x WS scaling). Healing Blue Magic splashes across the 15y party at 85% potency, while dual-wield melee hits build **Azure Catalyst** stacks that erupt into party-wide **Azure Mending Waves** and **Osmotic Conduit** turns every swing into party HP/MP siphon.
+Magus is a **Blue Mage combat healer** that uses both melee attacks and healing magic to sustain a party. **Azure Catalyst** stacks build through weapon attacks, then become **Azure Mending Wave** bursts. Healing Blue Magic spreads much of its recovery to nearby allies, while **Osmotic Conduit**, **White Wind Surge** and a shortened **Diffusion** cooldown provide additional group support. Magus is designed to fight in melee while healing, not to remain permanently idle in the backline.
 
 ## Setup & Gear
-- **Recommended Weapons:** **Dual Wield Swords or Clubs** (Magus grants innate **Dual Wield** at Lv.10+ scaling +15/20/25/30% DW and +15/25/35/50 Sword & Club skill).
-- **Baseline Spells:** Magus automatically grants its core healing/support Blue Magic kit at Lv.10+ with level-scaled MP costs so you can heal immediately under Level Sync.
+- **Unlock:** Equip the Magus Soul Crystal or use `!spec set magus` at Lv. 10.
+- **Weapons:** Dual-wield **Swords or Clubs** where possible. The Soul grants Dual Wield and increasing skill bonuses for those weapons.
+- **Spells:** Core healing/support Blue Magic becomes available through the Soul's spell setup, including during level sync.
+- **Stats:** Max HP, Healing/Magic skill, MND, Accuracy, Store TP, Dual Wield and survivability support the hybrid role.
+- **Position:** The key group heals reach about **15 yalms**; attack a stable target without leaving injured party members behind.
 
 ## How to Play (Step-by-Step)
-1. **Stay in Melee to Build Azure Catalyst:** Dual-wield auto-attacks stack **Azure Catalyst** (up to 5 stacks). Reaching 5 stacks — or landing any Sword/Club Weaponskill — triggers **Azure Mending Wave**, healing the 15y party for **12/16/20/24% Max HP** and restoring **+6% Max MP**.
-2. **Splash Blue Magic Heals:** Cast your healing Blue Magic spells to heal your target AND splash 85% of the heal to all party members within 15y. Use `Diffusion` (reduced to **20s CD** on Magus) for party-wide utility buffs and **100% SIRD**.
-3. **Link Blades with `Osmotic Conduit`:** Press `Osmotic Conduit` (25s CD) to grant the 15y party **-10% Magic Damage Taken** for 12s while siphoning **3% HP and 2% MP** to allies on every swing.
-4. **Burst Heal & Cleanse with `White Wind Surge`:** Use `White Wind Surge` (20s CD) for an instant **28% Max HP** 15y party heal, **2-debuff cleanse**, and **15% Max HP Stoneskin** barrier. Activate `Azure Lore` during heavy raid damage to double your **Azure Mending Wave** heals.
+1. **Engage with your preferred weapon pair:** Melee contact is central to Magus. Each eligible dual-wield attack moves you toward another Azure Catalyst threshold.
+2. **Build Azure Catalyst:** Accumulate stacks through qualifying melee hits. At five stacks, **Azure Mending Wave** triggers for party healing and MP restoration.
+3. **Use weapon skills as healing opportunities:** Eligible **Sword or Club weapon skills** can trigger Azure Mending Wave immediately, giving a way to respond without waiting for another stack cycle.
+4. **Cast healing Blue Magic:** Target the ally who needs recovery most. The Soul can distribute **85% of the main heal** to other party members within its range, making your normal healing spells useful group tools.
+5. **Activate Osmotic Conduit:** During its 12-second window, nearby party members gain magical damage reduction, and your eligible melee strikes can siphon additional HP and MP for the group.
+6. **Use White Wind Surge for emergencies:** This ability gives an immediate sizable party heal, removes two debuffs and grants a protective Stoneskin effect.
+7. **Use Diffusion for group utility:** Its shortened cooldown helps spread appropriate Blue Magic buffs; plan it around beneficial magic rather than treating it as an offensive nuke.
+8. **Coordinate Azure Lore:** Its enhanced window can amplify Azure Mending Wave. Activate it around high-pressure encounters where your melee-triggered healing is reliable.
 
 ## Key Mechanics & Stacks
-- **Azure Catalyst (0–5 stacks):** Built by dual-wield melee hits. Automatically cashed in at 5 stacks (or immediately on any Sword/Club Weaponskill) for **Azure Mending Wave** (12/16/20/24% Max HP AoE heal + 6% Max MP).
-- **Azure Mending & AoE Diffusion:** Healing Blue Magic splashes to all party members within 15y at 85% potency. `Diffusion` has a 20s cooldown and grants **100% SIRD** while active (alongside `Unbridled Learning`).
-- **Osmotic Conduit (25s CD, 12s):** Party-wide -10% MDT plus 3% HP / 2% MP siphon per melee swing.
+- **Azure Catalyst:** Up to **five stacks** generated by qualifying melee hits. Reaching the threshold triggers **Azure Mending Wave**.
+- **Azure Mending Wave:** Heals nearby allies for **12/16/20/24% maximum HP** at Lv. 10/30/50/70 and restores about **6% maximum MP**.
+- **Weapon-skill interaction:** Eligible Sword/Club weapon skills can trigger the Mending Wave without requiring another ordinary stack cycle.
+- **Healing splash:** Magus's qualifying healing Blue Magic can splash **85%** of its primary healing to allies within **15 yalms**.
+- **Osmotic Conduit:** **25-second recast**, **12-second** group support; grants about **10% magic damage reduction**, and eligible melee strikes restore approximately **3% HP and 2% MP** to nearby allies.
+- **White Wind Surge:** **20-second recast**, **28% party healing**, up to **two debuff cleanses** and a **15% maximum-HP Stoneskin** barrier.
+- **Diffusion:** Modified **20-second recast** for more frequent group-spread Blue Magic support, with substantial spell-interruption resistance during the applicable effect.
+- **Level progression:** Innate Dual Wield improves through **15/20/25/30%** and Sword/Club skill through **+15/+25/+35/+50** at Lv. 10/30/50/70, alongside growing healer support.
+- **Role tradeoff:** Magus's personal attack damage is reduced to emphasize combat healing; DPS is part of maintaining the sustain engine, not the end goal.
 
 ## Common Mistakes (Don't Do This)
-- **Don't camp in the backline like a pure caster:** Magus's free party healing and MP sustain come from **Azure Catalyst** waves and **Osmotic Conduit** melee swings.
-- **Don't forget `Diffusion` is only a 20s cooldown:** Use it frequently for party-wide Blue Magic buffs and 100% SIRD during boss AoEs.
-- **Don't waste `White Wind Surge` when nobody has debuffs or missing HP:** Save it to simultaneously recover from AoE spikes, clear 2 debuffs, and apply a 15% Stoneskin cushion.
+- **Staying in the backline through the entire fight:** You lose Catalyst generation and melee-triggered support.
+- **Letting Azure Catalyst sit at its limit:** Use an eligible weapon skill or successful attacks to convert momentum into actual party healing.
+- **Activating Osmotic Conduit before you can attack:** Its HP/MP siphon depends on successful melee contact during the window.
+- **Forgetting that splash heals have a range:** Allies beyond 15 yalms do not receive the same secondary recovery.
+- **Using White Wind Surge only for raw HP:** Its cleanse and barrier are valuable when timed to incoming group debuffs.
+- **Treating Dual Wield as license to tank:** Magus is a combat healer and still depends on the party's actual tank for control.

@@ -1,22 +1,40 @@
 # Imperial Archer (SAM) — Playstyle Guide
 
 ## At a Glance
-Imperial Archer is a **hybrid Bow + Great Katana skirmisher** (`Support` tier: -40% damage dealt, 0.35x WS scaling) built around an alternating **Weapon Skill weave loop**: Tachi WS primes **Drawn Oisoya** (supercharging your next Archery WS), and Archery WS consumes it to refund **+125 TP** and prime **Cosmic Brand** (supercharging your next Tachi WS + Skillchain damage!).
+Imperial Archer is a **Bow-and-Great-Katana skirmishing support** Samurai built around alternating Archery and Tachi weapon skills. One weapon family prepares the other: **Drawn Oisoya** empowers Bow weapon skills, while **Cosmic Brand** prepares Great Katana follow-ups and skillchain damage. **Oisoya Shot** supplies a ranged opening and can establish both forms of momentum. The purpose is coordinated single-target pressure and skillchain support, not repeated attacks with only one weapon.
 
 ## Setup & Gear
-- **Required Weapons:** **Bow + Arrows in Ranged/Ammo + Great Katana in Main Hand.** Equipping a Bow unlocks A+ Archery skill, 100% Arrow Recycle, 20y auto-shooting (`OX_AUTO_RANGED`), and **zero point-blank penalty** when paired with a Great Katana (or Drawn Oisoya).
-- **Use `Hasso` With Bow Too:** Unlike retail SAM, `Hasso` (Lv.10+, 30s CD) grants `+8–15% Snapshot`, `+10–18% R.Atk%`, `+15–30 R.Acc`, `+4–12 AGI`, and `+10% Ability Haste` even with your Bow!
+- **Unlock:** Equip the Imperial Archer Soul Crystal or use `!spec set imperialarcher` from Lv. 10.
+- **Weapons:** Equip a **Great Katana** in Main and **Bow with arrows** in Ranged/Ammo. The full alternating loop requires both weapons, although the general equipment system does not forcibly remove unrelated choices.
+- **Stats:** Accuracy, Ranged Accuracy, Attack, Ranged Attack, AGI, Store TP and skillchain-related gear all support the hybrid rotation.
+- **Ammo:** Even with full arrow Recycle, at least one appropriate arrow must be equipped to perform Bow attacks.
+- **Party coordination:** Align the Tachi and Archery sequence around allies who can close skillchains and benefit from the bonus damage.
 
 ## How to Play (Step-by-Step)
-1. **Open & Prime Both Buffs:** Activate `Hasso` (30s CD) and fire `Oisoya Shot` (25s CD, 20y, Bow required: piercing shot that applies **Chainbound** 10s, restores **+200–350 TP**, and grants **both `Drawn Oisoya` and `Cosmic Brand`**!).
-2. **Fire an Empowered Archery WS:** Spending `Drawn Oisoya` on any Archery WS grants `+150–375 TP Bonus`, `+15–30% Atk`, `+20–50 Acc`, `+8–18% WSD`, **refunds +125 TP**, and grants **`Cosmic Brand`** (15s: +ACC/+ATTP).
-3. **Close with an Empowered Tachi WS:** Spending `Cosmic Brand` on any Great Katana (Tachi) WS grants those same huge WS bonuses **plus `+18–40% Skillchain Damage`**, **refunds +125 TP**, and primes **`Drawn Oisoya`** (15s: +RACC/+RATTP) — ready to repeat!
-4. **Shortcut Primers:** Use `Meditate` or `Konzen-ittai` (with Bow equipped) to prime `Drawn Oisoya`, `Sekkanoki` (120s CD) to prime both buffs, or `Meikyo Shisui` to prime both buffs without consuming them while adding `+25%` Skillchain damage.
+1. **Set Hasso with the ranged loadout:** Imperial Archer's Hasso helps Bow combat with Snapshot, Ranged Attack and Ranged Accuracy benefits when the correct equipment is active.
+2. **Open with Oisoya Shot:** Fire **Oisoya Shot** on the target from up to 20 yalms. It grants TP, marks the quarry with a short **Chainbound** effect and provides both Drawn Oisoya and Cosmic Brand primers.
+3. **Spend Drawn Oisoya on Archery:** Use an eligible Bow weapon skill while Drawn Oisoya is active. The skill gains bonus TP-related offense and returns **125 TP**, then sets up Cosmic Brand.
+4. **Spend Cosmic Brand on Tachi:** Follow with an eligible **Great Katana weapon skill** to gain its bonus damage and skillchain enhancements, recover **125 TP**, and prepare Drawn Oisoya again.
+5. **Keep alternating:** Repeat Tachi → Bow → Tachi where TP and encounter conditions allow. Each correctly matched family consumes the buff meant for it and primes the next family.
+6. **Recover a broken sequence:** **Meditate** and **Konzen-ittai** can prepare Drawn Oisoya; **Sekkanoki** can prepare both primers. Use these to recover when a phase shift interrupts the ideal weave.
+7. **Use major cooldowns for skillchains:** **Meikyo Shisui** offers a period of stronger skillchain opportunity and protects its special primer flow according to the Soul rules.
+8. **Adjust for movement:** You can deliver Bow pressure at range while approaching or repositioning for the next Tachi strike. Do not sacrifice survival to complete an unsafe alternation.
 
 ## Key Mechanics & Stacks
-- **Alternate `Tachi` <-> `Archery` WSs:** Each WS type consumes the buff created by the other (`Cosmic Brand` -> `Tachi` -> `Drawn Oisoya` -> `Archery` -> `Cosmic Brand`) while refunding +125 TP every step!
-- **Closing Skillchains:** Closing any Skillchain grants an extra `+12–30%` SC damage and `+100 TP` naturally.
+- **Drawn Oisoya:** A short-lived primer for the next eligible Archery weapon skill; successful use gives an empowered Bow strike, **125 TP** and Cosmic Brand.
+- **Cosmic Brand:** A short-lived primer for the next eligible Great Katana weapon skill; successful use gives enhanced Tachi damage and skillchain damage, **125 TP** and fresh Drawn Oisoya.
+- **Primer lifetimes:** The active alternation buffs generally last about **15 seconds**, so hold enough TP to spend them before expiry.
+- **Oisoya Shot:** A **25-second-recast** ranged attack up to **20 yalms**, applying a **10-second Chainbound** opportunity and restoring roughly **200–350 TP** by level.
+- **Hasso transformation:** When paired with the appropriate Bow/Great Katana setup, provides additional Snapshot, Ranged Attack, Ranged Accuracy, AGI and Ability Haste.
+- **Arrow conservation:** The Soul provides full arrow Recycle under the eligible Bow loadout but still requires arrows to be equipped.
+- **Skillchain support:** A correctly completed skillchain gains an extra damage modifier and TP recovery as defined by the Soul; the special alternation makes this more accessible.
+- **Lv. 10/30/50/70 progression:** Hasso ranged bonuses, primer weapon-skill bonuses, Oisoya Shot TP returns and skillchain modifiers improve through these thresholds.
+- **Weapon requirements:** A Bow-only or Great-Katana-only setup loses one half of the intended back-and-forth sequence.
 
 ## Common Mistakes (Don't Do This)
-- **Don't fire two Tachi WSs or two Archery WSs back-to-back** (outside `Meikyo Shisui`): Repeating the same WS weapon doesn't consume the opposite buff and forfeits the +125 TP refund and massive TP Bonus/WSD procs.
-- **Don't forget Arrows:** You get 100% Arrow preservation once equipped, but you need at least 1 arrow in Ammo to shoot.
+- **Using the same weapon-skill family repeatedly:** Without the corresponding opposing primer you miss the special refund and bonus.
+- **Forgetting arrows:** Recycle preserves ammunition; it does not manufacture a valid projectile when none is equipped.
+- **Allowing primers to expire:** Prepare enough TP before committing to a switching sequence.
+- **Equipping an unrelated main weapon:** Great Katana unlocks the Tachi and related hybrid bonuses.
+- **Ignoring the enemy's position:** A Bow shot can be prepared at range, but the next Tachi often requires closer engagement.
+- **Treating the Soul as a plain ranged DPS:** Much of its support comes from alternating weapon families and preparing skillchains.

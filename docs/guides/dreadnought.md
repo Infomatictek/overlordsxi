@@ -1,24 +1,39 @@
 # Dreadnought (DRK) — Playstyle Guide
 
 ## At a Glance
-Dreadnought transforms Dark Knight into a **Scythe-wielding drain and Dread Spikes tank** (`Tank` tier: -60% personal damage dealt, 0.12x WS scaling, +60–120 baseline Enmity). Your `Drain II` bypasses the -60% damage penalty to deal Max-HP-scaled damage and overcap your Max HP by +25% (**Blood-Pool**), while `Absorb` spells and `Souleater` stack **Blood Tithe (0–3)** to turn instant-cast `Dread Spikes` into an enormous physical shield.
+Dreadnought is a **Scythe drain-and-barrier tank**. **Drain II** creates a temporary **Blood-Pool** HP overcap, while **Absorb**, **Abyssal Cleave** and blood-enhanced melee build **Blood Tithe**. You spend Blood Tithe on an empowered **Dread Spikes** physical shield, then use eligible Scythe weapon skills to heal, extend Blood-Pool and weaken the enemy. Your biggest decision is when to spend HP for protection versus when to drain or weapon-skill it back.
 
 ## Setup & Gear
-- **Required Weapon:** **Scythe in Main Hand.** Without a Scythe equipped, you lose Dark/Scythe skill bonuses, Parry rate, 100% SIRD, instant `Dread Spikes` & `Absorb` casts, Lv.10+ `Drain II`, Blood-Pool overcap, Vampiric Scythe WS heals, and `Abyssal Cleave`.
-- **Priority Stats:** Max HP, VIT, INT, Dark Magic Skill, DT-, Parry, and Enmity. (Both `Drain II` and `Dread Spikes` are auto-learned.)
+- **Unlock:** Equip the Dreadnought Soul Crystal or use `!spec set dreadnought` at Lv. 10.
+- **Required weapon:** Main-hand a **Scythe**. The signature drain, barrier, parry and recovery mechanics depend on this weapon.
+- **Stats:** Max HP, VIT, INT, Dark Magic skill, Parry, Enmity and Damage Taken reduction. Accuracy is essential for weapon-skill recovery.
+- **Spells:** Keep **Drain II**, **Dread Spikes**, and useful **Absorb** spells available. The Soul makes important ranks accessible at lower levels.
+- **Team role:** Establish threat early and tell healers that using Dread Spikes has an HP cost even when the resulting barrier is strong.
 
 ## How to Play (Step-by-Step)
-1. **Pull & Tag:** Open with `Abyssal Cleave` (25s CD, 8y: heavy threat, 2s Stun, Breach `-15% DEF/-15 MDEF` for 12s, +8% MP, **+1 Blood Tithe**) or an instant-cast `Absorb-STR/VIT/TP/ACC` (18s shared CD: high enmity, +6% MP, **+1 Blood Tithe**).
-2. **Overcap HP & Stack Blood Tithe:** Cast `Drain II` (30s CD) to drain `12–22%` of your Max HP + VIT and gain a 30s **+25% Max HP Blood-Pool Overcap**. Turn on `Souleater` (Blood Carapace, 45s CD, 12s: -12% DT) so each melee swing spends 2% HP for enmity, **+1 Blood Tithe**, and primes **Blood Reap**.
-3. **Spend Tithe on Instant `Dread Spikes`:** With **1–3 Blood Tithe** stacked, cast instant `Dread Spikes` (45s CD, costs 10% current HP, requires >15% HP) to convert your Tithe into a physical barrier absorbing up to **40% Max HP** (`25% + 5%/Tithe`) while generating `+180 VE` per hit absorbed.
-4. **Sustain with Vampiric Scythe WSs:** Unload **Shadow of Death, Nightmare Scythe, Vorpal Scythe, Guillotine, Catastrophe, or Insurgency** to heal `5–8%` Max HP (`10–16%` with Blood-Pool or Blood Carapace active, **2x** inside `Dread Bastion`, **+20% flat Max HP** if Blood Reap is primed), extend Blood-Pool +6s (up to 60s), and apply `Cripple` (`-15% ATK/-15% MATK/-20 ACC`). Use `Dread Bastion` (60s CD, 12s: -18% DT, Knockback Immunity, AoE enmity pulses) and `Blood Weapon` (-20% DT, 4% HP heal/hit) during spikes.
+1. **Pull with Abyssal Cleave:** Use **Abyssal Cleave** for strong threat, brief control, Breach, MP return and one Blood Tithe.
+2. **Build Blood Tithe:** Cast eligible **Absorb** spells for enmity, MP and more stacks. Under the modified **Souleater / Blood Carapace**, qualifying Scythe swings can also generate Tithe while consuming a little HP.
+3. **Establish Blood-Pool:** Use **Drain II** on a valid enemy for HP recovery and temporary overcap. This is especially useful before committing HP to Dread Spikes.
+4. **Spend Tithe on Dread Spikes:** With sufficient health, cast the specialized instant **Dread Spikes**. It consumes Blood Tithe to generate a larger physical damage barrier and threat when it absorbs hits.
+5. **Maintain HP through Scythe weapon skills:** Eligible Vampiric Scythe weapon skills heal you, extend Blood-Pool and may apply **Cripple**. A prepared **Blood Reap** adds another recovery opportunity.
+6. **Use Dread Bastion before spikes:** Activate it during heavy incoming damage to strengthen mitigation, prevent knockback and pulse enmity.
+7. **Use Blood Weapon appropriately:** The modified effect adds HP recovery on attacks and additional physical safety. Align it with a phase where you can continue landing hits.
+8. **Repeat the protection cycle:** Rebuild Blood Tithe, renew Dread Spikes before the next threatening physical exchange, and keep Blood-Pool available when possible.
 
 ## Key Mechanics & Stacks
-- **Blood Tithe (0–3 stacks, 30s):** Built by `Absorb` spells (+1), `Abyssal Cleave` (+1), and `Blood Carapace` (`Souleater`) swings (+1). Consumed by `Dread Spikes` to boost barrier size up to 40% Max HP.
-- **Vampiric Scythe WSs:** Only `Shadow of Death`, `Nightmare Scythe`, `Vorpal Scythe`, `Guillotine`, `Catastrophe`, and `Insurgency` trigger your heal, Blood-Pool extension, and `Cripple`.
+- **Blood Tithe:** Up to **3 stacks**, retained for roughly **30 seconds**. Built by Absorb, Abyssal Cleave and qualifying Blood Carapace swings.
+- **Drain II / Blood-Pool:** **30-second recast**, HP recovery scaling with level and VIT; grants temporary **25% maximum-HP overcap** for about 30 seconds. The overcap can conflict with some other maximum-HP boosts.
+- **Dread Spikes:** Specialized **45-second recast**, instant with eligible Scythe. Consumes **10% current HP**, requires your HP above **15%**, and converts Tithe into a physical barrier with a cap of roughly **25% + 5% per stack**, up to **40% maximum HP**.
+- **Vampiric Scythe weapon skills:** **Shadow of Death, Nightmare Scythe, Vorpal Scythe, Guillotine, Catastrophe and Insurgency** trigger the special healing and Blood-Pool extension.
+- **Blood Carapace:** Modified Souleater provides a short defensive window and a small HP cost on eligible melee hits, building Blood Tithe and preparing Blood Reap.
+- **Abyssal Cleave:** **25-second recast**, high-threat action with a brief stun, target Breach, MP return and Blood Tithe.
+- **Dread Bastion:** **60-second recast**, **12-second** defensive state with damage reduction, knockback protection and enmity pulses.
+- **Level progression:** Dark/Scythe skill, passive mitigation, drain strength and the Vampiric weapon-skill heal grow through Lv. 10/30/50/70.
 
 ## Common Mistakes (Don't Do This)
-- **Don't cast `Dread Spikes` at `<=15%` HP:** It is blocked at or below 15% HP — heal up with a Vampiric Scythe WS or `Drain II` first.
-- **Don't rely on non-Vampiric Scythe WSs:** `Cross Reaper`, `Spiral Hell`, and `Entropy` will not heal you, extend Blood-Pool, or apply Cripple.
-- **Watch food/song % Max HP buffs:** Standard `%` `MAX_HP_BOOST` effects from outside sources prevent Blood-Pool Overcap from overwriting them; flat HP gear/food is fine.
-- **Don't use `Drain II` on Undead targets.**
+- **Using an unrelated weapon:** The Scythe requirement is essential for the drain, instant barriers and special weapon-skill recovery.
+- **Casting Dread Spikes at critically low HP:** The ability fails at or below 15% HP and otherwise spends some of your current health.
+- **Expecting every Scythe weapon skill to heal:** Only the eligible Vampiric list triggers the special recovery.
+- **Casting Drain II on an undrainable target:** Undead and strongly resistant enemies may not provide the intended Blood-Pool payoff.
+- **Treating overcapped HP as permanent:** Blood-Pool expires; plan for the drop when it does.
+- **Ignoring Blood Tithe expiry:** Build stacks near the defensive phase and spend before they vanish.

@@ -1,26 +1,40 @@
 # Animist (PUP) — Playstyle Guide
 
 ## At a Glance
-Animist turns Puppetmaster into a **Maneuver-Command Automaton Combat Healer** (`CombatHealer` tier: -50% Master damage dealt; Automaton focuses 100% on curing, cleansing, Protect/Shell/Haste, and enfeebling rather than melee/nuking). Using **Light, Water, and Earth Maneuvers** fires instant healing/cleanse/barrier directives, **H2H WSs** stack **Aether Cells (0–3)** while pulsing Maneuver auras, and `Aether Overhaul` cashes Cells in for huge AoE heals and Automaton recast resets.
+Animist is an **automaton-centered combat healer**. The companion prioritizes curing, cleansing, defensive buffs and enfeebles rather than melee damage. **Light, Water and Earth Maneuvers** issue immediate healing commands, while qualifying Hand-to-Hand weapon skills build **Aether Cells** and trigger party support pulses. **Aether Overhaul** spends those cells for major recovery and automaton recast resets. You are the automaton's tactical commander, not a conventional pure-damage Puppetmaster.
 
 ## Setup & Gear
-- **Required Weapon:** **Hand-to-Hand** to trigger Synchronized Overclock (**+1 Aether Cell**, +10% Pet MP, `-4s` Pet recasts, and AoE Maneuver pulses) on Weaponskills.
-- **Frame & Head Rules:** Below Lv.30 use Harlequin or Stormwaker; at **Lv.30+ forces Stormwaker Frame + Soulsoother (or Stormwaker) Head**. (100% Overload Immunity & 0 Oil `Repair` built in.)
+- **Unlock:** Equip the Animist Soul Crystal or use `!spec set animist` at Lv. 10.
+- **Weapon:** **Hand-to-Hand** is required for the special weapon-skill pulse, Aether Cell and pet resource loop.
+- **Automaton:** At early levels, use an eligible **Harlequin/Stormwaker** combination. From Lv. 30, the Soul favors the **Stormwaker Frame with Soulsoother or Stormwaker Head**.
+- **Stats:** HP, MP recovery, Cure Potency, Pet MP, Pet Magic Accuracy, Accuracy and enough survivability to safely use Hand-to-Hand attacks.
+- **Party position:** Remain within appropriate support range for party pulses. The automaton is designed to cast from safer distance, not to tank or contribute heavy melee damage.
 
 ## How to Play (Step-by-Step)
-1. **Summon & Pick Your Directive Maneuver (`10s CD`):** Summon your Stormwaker/Soulsoother Automaton (`15s CD`). Unlike normal PUP, pressing **Light, Water, or Earth Maneuver** fires an immediate tactical directive:
-   - **Light Maneuver:** Instant **16–25% Master Max HP Cure** on the most injured ally.
-   - **Water Maneuver:** **+12% Pet MP**, 1-ally debuff cleanse, AND keeping >=1 Water Maneuver active passively pulses a **12y Hybrid Regen mist** every 3s!
-   - **Earth Maneuver:** **12% Stoneskin** on lowest ally & Pet.
-2. **Punch & Weave H2H WSs (`Build Aether Cells`, Max 3):** Every **H2H Weaponskill** grants **+1 Aether Cell** (max 3, 30s), restores **+10% Pet MP**, shaves **-4s off Automaton recasts**, and fires an **AoE party pulse** matching your highest active Maneuver (Light = 14–20% party heal; Water = party cleanse + Regen mist; Earth = 10% party Stoneskin; None = 16% ST heal). `Cooldown` and `Ventriloquy` (30s CD) also shed enmity and grant **+1 Cell**.
-3. **Spend Cells on `Aether Overhaul`:** Press `Aether Overhaul` (45s CD) to spend all Aether Cells (0–3) for a **`16% / 21% / 26% / 31%` party + pet HP heal**, cleanse 2 debuffs (`3` at 3 Cells), and **reset all Automaton recasts**.
-4. **Defensive & Overdrive Windows:** Pop `Clockwork Aegis` (75s CD: 15s of **18% party Stoneskin** + `-12% DMG / +30 MEVA` ward), `Repair` (30s CD, 0 oil: 50% Pet HP/MP + 5 Pet cleanses + 12s party Regen), and `Overdrive` (30s: **0 MP cost & 90% haste/recast** on Automaton, counts as 3 Cells, and H2H WSs fire **all 3 Maneuver pulses**!).
+1. **Summon and assign the automaton:** Use **Activate** to bring your healer pet into play. Confirm its active frame/head and MP before the encounter.
+2. **Use Light Maneuver for a quick heal:** Light issues an immediate directive to heal the most injured eligible ally, on top of the automaton's autonomous cure logic.
+3. **Use Water Maneuver for cleansing and sustain:** Water restores pet MP, removes a debuff and enables periodic **Regen Mist** pulses while the Maneuver remains available.
+4. **Use Earth Maneuver for protection:** Earth grants a protective Stoneskin effect to a vulnerable ally and the pet; choose it before incoming party damage.
+5. **Build Aether Cells through Hand-to-Hand weapon skills:** Each eligible weapon skill adds a Cell, restores pet MP, reduces companion recasts and triggers a support pulse matching the active Maneuver emphasis.
+6. **Spend Aether Overhaul:** Use it when several allies are hurt or the pet needs its cooldowns back. It consumes available Aether Cells for group/pet recovery, cleansing and automaton recast reset.
+7. **Use Repair before the pet fails:** Animist's **Repair** does not require oil and supplies pet HP/MP, cleanse and party regeneration.
+8. **Plan major protection:** Use **Clockwork Aegis** for party shielding and a magic-defense ward; **Overdrive** greatly accelerates pet casting and changes weapon-skill pulse behavior in a major healing window.
 
 ## Key Mechanics & Stacks
-- **Aether Cells (0–3 stacks, 30s):** Built by H2H WSs (+1), `Cooldown` (+1), and `Ventriloquy` (+1). Consumed by `Aether Overhaul`.
-- **Standback Automaton AI:** Your Automaton stays safely at 12y and never wastes time or MP meleeing, nuking, or casting Bio/Dia/TP WSs.
+- **Aether Cells:** Up to **3 stacks**, approximately **30-second** lifetime; built by eligible Hand-to-Hand weapon skills, **Cooldown** and **Ventriloquy**.
+- **Weapon-skill overclock:** Eligible Hand-to-Hand weapon skills grant one Cell, about **10% pet MP**, shorten pet recasts and create a party pulse based on the chosen Maneuver.
+- **Light directive:** Immediate single-ally heal scaled around **16–25% of master's maximum HP**.
+- **Water directive:** Pet MP recovery, one-ally cleanse and a **12-yalm Regen Mist** pulse every three seconds while active.
+- **Earth directive:** A short Stoneskin barrier for the most injured ally and automaton.
+- **Aether Overhaul:** **45-second recast**; consumes zero to three Cells for approximately **16/21/26/31%** group and pet healing and extra cleansing at full Cells, then resets automaton recasts.
+- **Clockwork Aegis:** **75-second recast**, about **15 seconds** of group Stoneskin and defensive support.
+- **Repair:** Modified **30-second recast**, no oil, pet HP/MP recovery and extended party Regen.
+- **Overdrive:** Short burst state with much faster pet healing and discounted spell cost. The automaton remains focused on healing/support over offense.
 
 ## Common Mistakes (Don't Do This)
-- **Don't use non-H2H weaponskills:** Only Hand-to-Hand WSs grant Aether Cells, restore Pet MP, shave recasts, and pulse Maneuver heals/shields.
-- **Only Light, Water, and Earth Maneuvers trigger Animist directives** (other elements don't have special pulses/directives).
-- **Don't expect the Automaton to deal damage:** Its auto-attacks, nukes, and WSs are intentionally disabled so 100% of its AI goes to healing and support.
+- **Equipping an ineligible weapon:** Without Hand-to-Hand weapon skills, you lose major Aether Cell and support pulse generation.
+- **Using only offensive Maneuvers:** The unique directive kit is centered on **Light, Water and Earth**.
+- **Expecting the automaton to be a DPS pet:** Animist deliberately prioritizes support spells and avoids ordinary pet melee/nuking loops.
+- **Using Aether Overhaul with no injured allies:** Save large recovery for a meaningful party or pet need, while respecting its recast.
+- **Letting the automaton run out of MP:** Maintain Water directives and Repair support during extended encounters.
+- **Ignoring the active Maneuver before a weapon skill:** That choice changes the resulting support pulse.

@@ -1,22 +1,40 @@
 # Minstrel (BRD) — Playstyle Guide
 
 ## At a Glance
-Minstrel turns Bard into a **classic Pre-Nerf Lv.75 Song Enmity Tank** (`Tank` tier: -60% damage dealt, 0.12x WS scaling, +60–120 baseline Enmity). Your defensive songs (`Minne`, `Paeon`, `Scherzo`) passively upgrade into personal mitigation auras while you hold ironclad single-target and AoE threat by cycling offensive/debuff songs (**Lullabies, Elegies, Requiems, Threnodies, Finale**) and snapping bosses with `Dissonant Chord`.
+Minstrel is a **Bard tank** inspired by early level-75 song-enmity play. It holds enemies through high-threat offensive and debuff songs while maintaining **Minne**, **Paeon** and **Scherzo** for defensive value. **Dissonant Chord** offers immediate single-target threat and Attack Down; **Iron Aria** provides a short survival window for dangerous boss phases. Minstrel sacrifices personal damage to control enemy attention rather than operating like a pure-damage Bard.
 
 ## Setup & Gear
-- **Weapon / Armor:** Shield + defensive/DT-/CHR/VIT gear, Instrument for fast casting (`105%` SIRD and `-30–50%` Song Cast Time are built in). No weapon lock.
-- **Auto-Upgraded Buff Songs:** Simply having `Minne` (-6% PDT), `Paeon` (+3–12 Regen/tick), and `Scherzo` (refunds 45% of any single hit exceeding 35% Max HP) active empowers your durability passively without re-casting.
+- **Unlock:** Equip the Minstrel Soul Crystal or use `!spec set minstrel` at Lv. 10.
+- **Equipment:** Favor a Shield, defensive armor, Damage Taken reduction, HP, CHR and an appropriate instrument for efficient song use. No single main-hand weapon is mandatory for the signature threat loop.
+- **Songs:** Prepare **Minne**, **Paeon** and **Scherzo** for survival, plus offensive or debuff songs such as Lullaby, Elegy, Requiem, Threnody and Finale to generate threat.
+- **Party role:** Establish enemy attention before heavy damage or healing begins. Coordinate enemy positioning and backup mitigation with your healer.
+- **Casting:** Strong interruption resistance and faster song casting support frequent debuff use under pressure.
 
 ## How to Play (Step-by-Step)
-1. **Keep Defensive Auras Up:** Maintain `Minne`, `Paeon`, and `Scherzo` (alongside any needed party songs).
-2. **Pull & Snap Taunt:** Engage with `Dissonant Chord` (15s CD, 20y: massive `+900 CE / +1800 VE` snap enmity + `-15% Attack Down` for 15s).
-3. **Hold Threat with Debuff Songs:** Spam **Lullabies, Elegies, Requiems, Threnodies, Magic Finale, Nocturne, and Virelai** — every offensive song generates heavy pre-nerf Volatile & Cumulative Enmity (`200–380 CE / 600–1140 VE` per cast) without disturbing your buff slots.
-4. **Mitigation Burst:** Activate `Iron Aria` (45s CD, 15s: `-20%` PDT, `-15%` MDT, `+30` Enmity, `+40` DEF, plus **Light sonic reflect damage** whenever hit) during heavy boss phases.
+1. **Set defensive songs:** Maintain Minne, Paeon and Scherzo when available. Their passive enhancements improve your personal survival while the effects remain active.
+2. **Claim the enemy:** Use **Dissonant Chord** on a living target to generate a large immediate enmity burst and a short **Attack Down** effect. The ability reaches up to 20 yalms and has a 15-second recast.
+3. **Build enmity through offensive songs:** Cast eligible debuff songs as enemy actions and the fight permit. Unlike defensive buff-song upkeep, these offensive songs have enhanced cumulative and volatile threat.
+4. **Maintain threat over time:** Reapply Dissonant Chord when it is valuable, while refreshing appropriate offensive song debuffs. Avoid replacing your defensive song setup needlessly.
+5. **Prepare tank-buster survival:** Keep **Scherzo** active to benefit from its special large-hit response when a single damaging hit exceeds the configured portion of maximum HP.
+6. **Use Iron Aria for heavy pressure:** Activate **Iron Aria** before concentrated incoming physical or magical damage. It lasts 15 seconds and gives extra defense, enmity and damage reduction.
+7. **Coordinate support:** Minstrel is a tank even though its action bar resembles Bard support. Ask allies to let your song-based threat settle before major opening bursts.
+8. **Recover and refresh:** Restore expired defensive songs, keep the current enemy focused, and save Iron Aria for damage phases rather than ordinary low-pressure swings.
 
 ## Key Mechanics & Stacks
-- **Tank-Buster Shielding (`Scherzo`):** Any hit exceeding 35% of your Max HP refunds 45% of that damage when Scherzo is active.
-- **Pre-Nerf Song Hate:** Unlike modern retail Bard, debuff/lullaby songs generate massive threat per cast.
+- **Dissonant Chord:** 15-second recast, 20-yalm target range, **900 cumulative / 1800 volatile enmity**, plus **15% Attack Down for 15 seconds** if the target does not already have that status.
+- **Iron Aria:** 45-second recast, 15-second duration. Adds **20% physical damage reduction**, **15% magical damage reduction**, +30 Enmity and +40 Defense for the active interval.
+- **Minne synergy:** Having Minne active grants an additional **6% physical damage reduction** through Minstrel's passive enhancement.
+- **Paeon synergy:** While Paeon is active, its special Regen support scales by level rather than requiring repeated song spam.
+- **Scherzo synergy:** Scherzo can mitigate exceptional single hits beyond the designated HP threshold; keep it active before major boss attacks.
+- **Song-threat toolkit:** Offensive and debuff song casts create greatly increased threat. Their enmity amounts vary with song family rather than being an identical static value.
+- **Progression:** Survivability improves through Lv. 10, 30, 50 and 70 via the Soul's tank passive scaling and stronger supporting song effects. Use the native Soul HUD and ability timers for active threat and defensive windows.
+- **Damage tradeoff:** Minstrel is a Tank-tier specialization with heavily reduced personal damage. It is built to hold enemies rather than compete with damage Souls.
+- **Stacking caution:** Maintain your defensive song coverage as allowed by Bard's normal song rules; the special passive effects depend on active songs, not on repeated recasts of the same effect.
 
 ## Common Mistakes (Don't Do This)
-- **Don't spam `Minne` / `Paeon` / `Scherzo` over and over to build enmity:** Their passive mitigations just need to stay active; **only offensive/debuff songs** and `Dissonant Chord` generate your pre-nerf tank threat!
-- **Keep `Dissonant Chord` on cooldown:** On a short 15s recast, it doubles as both your biggest threat tool and a permanent `-15% Attack Down` debuff.
+- **Trying to tank only through personal damage:** Minstrel's damage output is deliberately restricted; use song-based threat and Dissonant Chord.
+- **Spamming defensive buff songs purely for hate:** Maintain Minne, Paeon and Scherzo for survival, but offensive/debuff songs provide the special enmity engine.
+- **Using Iron Aria on a trivial hit:** Its best value comes during sustained danger or predictable boss spikes.
+- **Assuming Dissonant Chord always refreshes Attack Down:** The script only adds it when the enemy lacks an existing Attack Down.
+- **Ignoring song positioning or casting:** Minstrel can lose control if its offensive songs fail or its defensive songs expire.
+- **Forgetting that you are the tank:** Coordinate pull timing and enemy placement so party members can safely execute their rotations.
