@@ -3128,6 +3128,45 @@ function P.buildSpecTree(wsId, archetype, baseNodes, specKey, opts)
         end
         n = sanitizeSpecNode(n, normKey, ctx)
         n = M.enforceRoleGuardrails(n, normKey, wsId)
+
+        -- Shared Branch Differentiation Normalizer:
+        -- Ensure Col 1 (Damage), Col 2 (Utility), and Col 3 (Soul) never collapse
+        -- into identical single-effect duplicates after role/magic sanitization.
+        if type(n.effect) == 'table' then
+            local eff = n.effect
+            local mr = n.maxRank or 5
+            if n.col == 1 then
+                local hasDmg = eff.ftpCurve or eff.ftpAdd or eff.wsc or eff.wsd or eff.atkPct or eff.matt
+                    or eff.hits or eff.bonusHits or eff.crit or eff.critCurve or eff.critDmg or eff.defIgnore
+                if not hasDmg then
+                    if ctx.isPhys then
+                        eff.wsd = lin(4, mr)
+                    else
+                        eff.matt = lin(8, mr)
+                    end
+                end
+            elseif n.col == 2 then
+                local hasUtil = eff.tpBonus or eff.tpRefund or eff.partyTp or eff.mpReturn or eff.mpDrain
+                    or eff.enmity or eff.subtleBlow or eff.dispel or eff.nextWs or eff.scBonus
+                    or (type(eff.targetDebuffs) == 'table' and #eff.targetDebuffs > 0)
+                    or eff.nativeDebuff
+                    or (type(eff.statusBuffs) == 'table' and #eff.statusBuffs > 0)
+                    or (type(eff.partyBuffs) == 'table' and #eff.partyBuffs > 0)
+                    or eff.cleanseParty or eff.cleanseSelf or eff.eosHeal or eff.petTp
+                if not hasUtil then
+                    if prof and prof.tier == 'Tank' then
+                        eff.enmity = lin(5, mr)
+                    elseif prof and (prof.tier == 'Support' or prof.tier == 'HybridSupport') then
+                        eff.scBonus = lin(5, mr)
+                    else
+                        eff.tpBonus = lin(45, mr)
+                    end
+                end
+            elseif n.col == 3 and prof and prof.soulHook and eff.soulHook == nil and eff.stance == nil then
+                eff.soulHook = prof.soulHook
+            end
+        end
+
         nodes[i] = n
     end
     return nodes

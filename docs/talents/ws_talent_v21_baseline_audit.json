@@ -1,0 +1,168 @@
+{
+  "summary": {
+    "canonical_souls": 66,
+    "eligible_soul_ws_combinations": 1476,
+    "compiled_contracts": 23427,
+    "structural_pass": 23427,
+    "structural_fail": 0,
+    "taxonomy_types": 22,
+    "missing_runtime_handlers": [],
+    "defect_counts": {
+      "duplicate_talent_ids": 0,
+      "ineligible_ws_leakage": 0,
+      "unknown_effect_types": 0,
+      "empty_effects": 0,
+      "invalid_prerequisites": 0,
+      "broken_exclusive_groups": 0,
+      "unreachable_tiers": 0,
+      "duplicate_branch_nodes_in_tree": 14,
+      "missing_three_branch_distinction": 0
+    },
+    "total_defect_items": 14,
+    "identical_single_effect_cross_branch_count": 14
+  },
+  "defects_sample": {
+    "duplicate_branch_nodes_in_tree": [
+      {
+        "soul": "berserker",
+        "ws_id": 81,
+        "tier": 3,
+        "talents": [
+          "ws:81:berserker:zrk_t3c1",
+          "ws:81:berserker:zrk_t3c2"
+        ],
+        "signature": "[[\"tp_gain\", \"self\"]]"
+      },
+      {
+        "soul": "blackbelt",
+        "ws_id": 15,
+        "tier": 2,
+        "talents": [
+          "ws:15:blackbelt:bbt_t2c1",
+          "ws:15:blackbelt:bbt_t2c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "necromancer",
+        "ws_id": 102,
+        "tier": 2,
+        "talents": [
+          "ws:102:necromancer:nec_t2c1",
+          "ws:102:necromancer:nec_t2c2"
+        ],
+        "signature": "[[\"debuff_apply\", \"target\"]]"
+      },
+      {
+        "soul": "imperialarcher",
+        "ws_id": 194,
+        "tier": 2,
+        "talents": [
+          "ws:194:imperialarcher:imp_t2c1",
+          "ws:194:imperialarcher:imp_t2c2"
+        ],
+        "signature": "[[\"debuff_apply\", \"target\"]]"
+      },
+      {
+        "soul": "warlord",
+        "ws_id": 152,
+        "tier": 3,
+        "talents": [
+          "ws:152:warlord:wrl_t3c1",
+          "ws:152:warlord:wrl_t3c2"
+        ],
+        "signature": "[[\"critical_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "gambler",
+        "ws_id": 20,
+        "tier": 2,
+        "talents": [
+          "ws:20:gambler:gmb_t2c1",
+          "ws:20:gambler:gmb_t2c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "gambler",
+        "ws_id": 23,
+        "tier": 3,
+        "talents": [
+          "ws:23:gambler:gmb_t3c1",
+          "ws:23:gambler:gmb_t3c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "gambler",
+        "ws_id": 27,
+        "tier": 3,
+        "talents": [
+          "ws:27:gambler:gmb_t3c1",
+          "ws:27:gambler:gmb_t3c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "gambler",
+        "ws_id": 215,
+        "tier": 4,
+        "talents": [
+          "ws:215:gambler:gmb_t4c2",
+          "ws:215:gambler:gmb_t4c3"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "gambler",
+        "ws_id": 221,
+        "tier": 4,
+        "talents": [
+          "ws:221:gambler:capstone",
+          "ws:221:gambler:gmb_t4c3"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "bladewheel",
+        "ws_id": 22,
+        "tier": 2,
+        "talents": [
+          "ws:22:bladewheel:blw_t2c1",
+          "ws:22:bladewheel:blw_t2c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "bladewheel",
+        "ws_id": 28,
+        "tier": 2,
+        "talents": [
+          "ws:28:bladewheel:blw_t2c1",
+          "ws:28:bladewheel:blw_t2c2"
+        ],
+        "signature": "[[\"debuff_apply\", \"target\"]]"
+      },
+      {
+        "soul": "bladewheel",
+        "ws_id": 30,
+        "tier": 2,
+        "talents": [
+          "ws:30:bladewheel:blw_t2c1",
+          "ws:30:bladewheel:blw_t2c2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      },
+      {
+        "soul": "bladewheel",
+        "ws_id": 242,
+        "tier": 2,
+        "talents": [
+          "ws:242:bladewheel:c1_t2",
+          "ws:242:bladewheel:c3_t2"
+        ],
+        "signature": "[[\"damage_modifier\", \"target\"]]"
+      }
+    ]
+  }
+}

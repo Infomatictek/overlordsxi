@@ -255,9 +255,10 @@ function C.extractEffects(node)
             enmity = eff.enmity ~= nil, subtleBlow = eff.subtleBlow ~= nil,
         })
     end
-    if eff.statusBuffs or eff.partyBuffs or eff.timedMods then
-        addEffect(out, 'status_apply', eff.partyBuffs and 'party' or 'self', {
+    if eff.statusBuffs or eff.partyBuffs or eff.timedMods or eff.cleanseSelf or eff.cleanseParty then
+        addEffect(out, 'status_apply', (eff.partyBuffs or eff.cleanseParty) and 'party' or 'self', {
             selfBuffs = eff.statusBuffs ~= nil, partyBuffs = eff.partyBuffs ~= nil, timedMods = eff.timedMods ~= nil,
+            cleanse = (eff.cleanseSelf ~= nil or eff.cleanseParty ~= nil),
         })
     end
     if eff.targetDebuffs or eff.nativeDebuff or eff.tpDrain then
@@ -291,6 +292,23 @@ function C.extractEffects(node)
         addEffect(out, 'clone_interaction', 'clones', {
             hook_id = eff.soulHook.id, local_var = eff.soulHook.localVar,
         })
+    elseif type(eff.soulHook) == 'table' then
+        local hk = eff.soulHook.kind
+        if hk == 'tp_refund' and not eff.tpRefund then
+            addEffect(out, 'tp_gain', 'self', { hook_id = eff.soulHook.id })
+        elseif hk == 'mp_siphon' and not eff.mpReturn then
+            addEffect(out, 'mp_gain', 'self', { hook_id = eff.soulHook.id })
+        elseif hk == 'party_pulse' and not eff.partyTp and not eff.partyHealPct then
+            addEffect(out, 'tp_gain', 'party', { hook_id = eff.soulHook.id })
+        elseif hk == 'next_ws_prime' and not eff.nextWs then
+            addEffect(out, 'next_ws_primer', 'self', { hook_id = eff.soulHook.id })
+        elseif hk == 'enmity_surge' and not eff.enmity then
+            addEffect(out, 'enmity_modifier', 'self', { hook_id = eff.soulHook.id })
+        elseif hk == 'debuff_extend' and not eff.targetDebuffs then
+            addEffect(out, 'debuff_apply', 'target', { hook_id = eff.soulHook.id })
+        elseif hk == 'stance_empower' and not eff.stance then
+            addEffect(out, 'stance_conditional', 'self', { hook_id = eff.soulHook.id })
+        end
     end
     if eff.scBonus then
         addEffect(out, 'skillchain_modifier', 'self', { scBonus = true })

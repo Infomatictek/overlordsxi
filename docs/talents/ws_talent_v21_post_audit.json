@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "canonical_souls": 66,
+    "eligible_soul_ws_combinations": 1476,
+    "compiled_contracts": 23427,
+    "structural_pass": 23427,
+    "structural_fail": 0,
+    "taxonomy_types": 22,
+    "missing_runtime_handlers": [],
+    "defect_counts": {
+      "duplicate_talent_ids": 0,
+      "ineligible_ws_leakage": 0,
+      "unknown_effect_types": 0,
+      "empty_effects": 0,
+      "invalid_prerequisites": 0,
+      "broken_exclusive_groups": 0,
+      "unreachable_tiers": 0,
+      "duplicate_branch_nodes_in_tree": 0,
+      "missing_three_branch_distinction": 0
+    },
+    "total_defect_items": 0,
+    "identical_single_effect_cross_branch_count": 0
+  },
+  "defects_sample": {}
+}
