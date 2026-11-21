@@ -1,25 +1,39 @@
 # Inquisitor (RUN) — Playstyle Guide
 
 ## At a Glance
-Inquisitor transforms Rune Fencer into a **dual-stance weaving Parry & Ward tank** (`Tank` tier: -60% damage dealt, 0.12x WS scaling, +60–120 baseline Enmity). You hold **3 Runes at Lv.10+** (which `Swipe`, `Lunge`, `Gambit`, and `Rayke` **never consume**), weave between **Iron Battuta** (physical/parry stance) and **Runic Aegis** (magic/ward stance) every 15s for free Stoneskin or MP/HP/cleanse bursts, and counter-blast attackers whenever you **Parry**!
+Inquisitor is a **Rune Fencer tank that alternates physical and magical defensive stances**. **Iron Battuta** emphasizes Parry and physical protection; **Runic Aegis** emphasizes magic/breath resistance, Magic Evasion and self-recovery. Switching stances refreshes Rune support and generates threat. **Runic Riposte** rewards successful Parry, while **Runic Convergence** briefly combines the two styles. The Soul is strongest when you choose a stance for the next dangerous mechanic rather than remaining in one mode through an entire encounter.
 
 ## Setup & Gear
-- **Recommended Weapon:** **Great Sword in Main Hand** (+10% Parry Rate vs +5% without, +12–50 GS & Parry skill).
-- **Priority Stats:** VIT, HP, Parry Rate, Magic Evasion, DEF, DT-, Enmity.
+- **Unlock:** Equip the Inquisitor Soul Crystal or use `!spec set inquisitor` from Lv. 10.
+- **Weapon:** **Great Sword** is strongly preferred, increasing the Soul's special Parry performance and skill. Other weapons may remain equipable but reduce key benefits.
+- **Runes:** Keep **three Runes** active, matching the enemy's important element when possible. Inquisitor's altered Rune actions avoid permanently consuming your existing runes.
+- **Stats:** HP, VIT, Defense, Parry, Magic Evasion, Enmity and Damage Taken reduction.
+- **Party role:** Maintain attention with stance-entry enmity and Rune Fencer defensive actions. Have a plan for both physical and magical boss phases.
 
 ## How to Play (Step-by-Step)
-1. **Stack 3 Runes & Open (`Swordplay` + Stance):** Harbor **3 Runes** matching the boss's main element (`Swipe`, `Lunge`, 60s `Gambit`, and 60s `Rayke` all keep your Runes intact and generate bonus threat!). Activate `Swordplay` (starts at **max stacks**!) + `Vallation`/`Valiance` (adds +10–25% DEF & Enmity) or `Pflug`.
-2. **Pick or Weave Your Stance (15s CD, mutually exclusive):**
-   - **Iron Battuta** (`412`, 15s CD — physical fights): `+15–40%` Parry Rate, `-8–20%` PDT, `+15–50%` DEF; swapping in refreshes Runes, grants a **4–10% Stoneskin**, and pulses 12y AoE enmity (`Steel Flash`).
-   - **Runic Aegis** (`413`, 15s CD — magic/breath fights): `-10–25%` MDT/BDT, `+20–70` MEVA, `+15–50%` MDEF, `+10–25%` Magic Absorb; swapping in refreshes Runes, restores **4–10% HP & MP**, cleanses 1–2 debuffs, and pulses AoE enmity (`Odyllic Pulse`).
-   *(Swap between the two stances on cooldown whenever you want quick Runes + Stoneskin/HP/MP + AoE threat!)*
-3. **Parry Counter Engine (`Runic Riposte`):** Every **Parry** restores `1.5% HP + 1% MP`, grants `+50 TP`, builds heavy enmity, and unleashes elemental **Runic Riposte** counter-damage (+35% stronger inside `Iron Battuta`).
-4. **Fuse Both Stances (`Runic Convergence`):** Press `Runic Convergence` (30s CD, 10s, requires >=1 Rune) to combine **both** stances (`-12–25%` DT, `+20–50%` Parry, `+30–80` MEVA, `+30–60` Enmity), heal `3%` HP per Rune, and pulse AoE threat! Use `Battuta` (90s), `Liement` (60s), `One for All` (60s), and `Elemental Sforzo` for AoE enmity + Rune refreshes.
+1. **Prepare Runes:** Establish your three active Rune enchantments before taking on the enemy, and refresh them as needed.
+2. **Open physical fights in Iron Battuta:** Activate **Iron Battuta** to gain extra Parry, physical mitigation and Defense. Its entry refreshes Rune duration, applies a small Stoneskin and pulses threat.
+3. **Open magic fights in Runic Aegis:** Activate **Runic Aegis** for increased Magic Evasion/Defense, magic/breath reduction and an elemental absorb chance. Entering also refreshes Runes, restores HP/MP and clears eligible debuffs.
+4. **React to boss phases:** The stances are **mutually exclusive** and have a short shared recast. Swap when the damage profile changes or when the stance-entry recovery matters.
+5. **Exploit Runic Riposte:** Genuine Parry events trigger elemental retaliation, threat, TP and some personal HP/MP recovery. Great Sword and Iron Battuta strengthen this pattern.
+6. **Use other Rune attacks:** **Swipe**, **Lunge**, **Gambit** and **Rayke** can provide elemental/offensive or party utility while Inquisitor restores its Rune supply after those actions.
+7. **Fuse defenses with Runic Convergence:** Activate **Runic Convergence** when a mixed physical/magical danger window requires both defensive profiles. It requires an active Rune and provides further recovery and threat.
+8. **Rotate major survival tools:** **Vallation**, **Valiance**, **Pflug**, **Liement**, **One for All** and **Elemental Sforzo** can reinforce protections according to boss phase; coordinate long cooldowns instead of stacking everything at once.
 
 ## Key Mechanics & Stacks
-- **Non-Consuming Runes:** Unlike base RUN, `Swipe`, `Lunge`, `Gambit`, and `Rayke` restore all 3 Runes right after use so you never lose your passive/Riposte Rune scaling.
-- **Stance Swapping:** Activating `Iron Battuta` cancels `Runic Aegis` and vice versa — that swap trigger is intentional and gives free Runes, threat, and sustain every 15s.
+- **Iron Battuta:** Physical/Parry stance; roughly **15-second stance recast** with additional Parry, physical damage reduction, Defense, Stoneskin and threat on entry.
+- **Runic Aegis:** Magic/breath stance with Magic Evasion, Magic Defense, elemental absorb, a small heal/MP restore, cleanse and enmity on entry.
+- **Stance exclusivity:** Entering one ends the other. Swapping deliberately is a core maintenance tool, not a failure to keep a permanent stance.
+- **Runic Riposte:** Qualifying Parry provides **1.5% maximum HP, 1% maximum MP and 50 TP**, extra enmity and elemental counter-damage, stronger during Iron Battuta.
+- **Rune preservation:** Inquisitor keeps its Rune resources after eligible Swipe, Lunge, Gambit and Rayke actions instead of losing their passive benefits.
+- **Runic Convergence:** **30-second recast**, approximately **10-second** mixed-defense window requiring at least one Rune; gives extra mitigation, Parry, Magic Evasion, HP recovery per Rune and threat.
+- **Level progression:** Physical and magical defensive percentages improve through Lv. 10/30/50/70, along with Great Sword/Parry skill and Enmity.
+- **Threat management:** Stance entries and specialized Rune Fencer defensive cooldowns contribute to enmity, so tank control does not rely solely on damage.
 
 ## Common Mistakes (Don't Do This)
-- **Never cast `Runic Convergence` with 0 Runes:** Always keep at least 1–3 Runes active for Runic Convergence, Riposte damage, and JA threat scaling.
-- **Don't camp one stance all fight if you need MP/cleanses or Stoneskin:** Toggling stances every 15–30s triggers Steel Flash / Odyllic Pulse and refreshes all Rune timers!
+- **Using Convergence with zero Runes:** The ability requires an active Rune enchantment.
+- **Remaining in Iron Battuta against a spell-heavy boss:** Change to the appropriate magical ward when dangerous direct spell damage is expected.
+- **Remaining in Runic Aegis through constant physical attacks:** Iron Battuta's Parry and physical mitigation can be more useful.
+- **Treating the Rune kit as a consumable burst:** Its preserved Runes are part of ongoing defense, threat and riposte.
+- **Assuming every avoidance event counts as Parry:** Runic Riposte requires a qualifying Parry rather than merely missing a hit.
+- **Spending every major tank cooldown simultaneously:** Spread protections across the boss's physical and magical danger windows.
